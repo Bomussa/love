@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "clinicId": "vitals",
+    "dateKey": "2025-10-21",
+    "version": 1
+  },
+  "nextCallTicket": 1,
+  "waiting": [],
+  "in": [],
+  "done": []
+}

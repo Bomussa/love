@@ -1,0 +1,13 @@
+/**
+ * core/errors.ts
+ * رموز أخطاء موحدة.
+ */
+export const ERR = {
+  SESSION_DUP: 'SESSION_DUP',
+  PIN_INVALID: 'PIN_INVALID',
+  QUEUE_DUP: 'QUEUE_DUP',
+  OCCUPANCY_CONFLICT: 'OCCUPANCY_CONFLICT',
+  BACKEND_TIMEOUT: 'BACKEND_TIMEOUT',
+  BE_RESP_ERR: 'BE_RESP_ERR',
+  MW_APP_ERR: 'MW_APP_ERR'
+};
