@@ -9,6 +9,7 @@ import { QrScanPage } from './components/QrScanPage'
 import EnhancedThemeSelector from './components/EnhancedThemeSelector'
 import api from './lib/api-unified'
 import enhancedApi from './lib/enhanced-api'
+import { validateAdminCredentials } from './config/admin-credentials'
 
 import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
@@ -244,6 +245,44 @@ function App() {
     // credentials format: "username:password"
     const [username, password] = credentials.split(':')
 
+    // التحقق من صحة البيانات المدخلة
+    if (!username || !password) {
+      showNotification(
+        language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password',
+        'error'
+      )
+      return
+    }
+
+    // التحقق من طول اسم المستخدم
+    if (username.length < 3) {
+      showNotification(
+        language === 'ar' ? 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل' : 'Username must be at least 3 characters',
+        'error'
+      )
+      return
+    }
+
+    // التحقق من طول كلمة المرور
+    if (password.length < 4) {
+      showNotification(
+        language === 'ar' ? 'كلمة المرور يجب أن تكون 4 أحرف على الأقل' : 'Password must be at least 4 characters',
+        'error'
+      )
+      return
+    }
+
+    // ✅ التحقق من بيانات الدخول المحلية أولاً (مشروع 2027)
+    if (validateAdminCredentials(username, password)) {
+      setIsAdmin(true)
+      setCurrentView('admin')
+      showNotification(
+        language === 'ar' ? '✅ تم تسجيل الدخول بنجاح - مشروع 2027' : '✅ Login successful - Project 2027',
+        'success'
+      )
+      return
+    }
+
     try {
       const formData = new URLSearchParams()
       formData.append('username', username)
@@ -264,14 +303,36 @@ function App() {
       if (response.ok || finalUrl.includes('/admin/dashboard') || finalUrl.includes('/admin')) {
         setIsAdmin(true)
         setCurrentView('admin')
+        showNotification(
+          language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
+          'success'
+        )
         return
       }
 
-      // إذا فشل
-      alert(language === 'ar' ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials')
+      // التحقق من نوع الخطأ
+      if (response.status === 401 || response.status === 403) {
+        showNotification(
+          language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid username or password',
+          'error'
+        )
+      } else if (response.status === 404) {
+        showNotification(
+          language === 'ar' ? '⚠️ الخادم غير متوفر حالياً' : '⚠️ Server not available',
+          'error'
+        )
+      } else {
+        showNotification(
+          language === 'ar' ? 'فشل تسجيل الدخول - يرجى المحاولة مرة أخرى' : 'Login failed - please try again',
+          'error'
+        )
+      }
     } catch (error) {
-      // Admin login error
-      alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
+      console.error('Admin login error:', error)
+      showNotification(
+        language === 'ar' ? '⚠️ لا يمكن الاتصال بالخادم - يرجى التحقق من الاتصال' : '⚠️ Cannot connect to server - please check connection',
+        'error'
+      )
     }
   }
 
