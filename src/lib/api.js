@@ -416,39 +416,30 @@ class ApiService {
    * Backend: GET /api/v1/events/stream?clinic=xxx
    */
   connectSSE(clinic, callback) {
-    const url = `${window.location.origin}${API_VERSION}/events/stream?clinic=${clinic}`
-    const eventSource = new EventSource(url)
-
-    eventSource.addEventListener('queue_update', (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        callback({ type: 'queue_update', data })
-      } catch (err) {
-        console.error('SSE parse error:', err)
+    // استخدام eventBus بدلاً من إنشاء EventSource مكرر
+    // event-bus.js يدير الاتصال المركزي
+    
+    const handleQueueUpdate = (data) => {
+      if (data.clinic === clinic || !data.clinic) {
+        callback({ type: 'queue_update', data });
       }
-    })
-
-    eventSource.addEventListener('heartbeat', (e) => {
-      console.log('SSE heartbeat received')
-      callback({ type: 'heartbeat', data: { timestamp: e.data } })
-    })
-
-    eventSource.onerror = (err) => {
-      console.error('SSE connection error:', err)
-      eventSource.close()
-
-      // إعادة الاتصال بعد 5 ثوان
-      setTimeout(() => {
-        console.log('SSE reconnecting...')
-        this.connectSSE(clinic, callback)
-      }, 5000)
-    }
-
-    eventSource.onopen = () => {
-      console.log('SSE connected to', clinic)
-    }
-
-    return eventSource
+    };
+    
+    const handleHeartbeat = (data) => {
+      callback({ type: 'heartbeat', data });
+    };
+    
+    // الاشتراك في الأحداث
+    const unsubscribe1 = eventBus.on('queue:update', handleQueueUpdate);
+    const unsubscribe2 = eventBus.on('heartbeat', handleHeartbeat);
+    
+    // إرجاع كائن يحاكي EventSource للتوافق
+    return {
+      close: () => {
+        unsubscribe1();
+        unsubscribe2();
+      }
+    };
   }
 
   // ==========================================

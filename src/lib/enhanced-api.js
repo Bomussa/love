@@ -311,51 +311,38 @@ class EnhancedApiClient {
             clinic = null
         }
 
-        const url = clinic 
-            ? `${this.baseUrl}${API_VERSION}/events/stream?clinic=${clinic}`
-            : `${this.baseUrl}${API_VERSION}/events/stream`
-
-        const eventSource = new EventSource(url)
-
-        eventSource.addEventListener('open', () => {
-            console.log('SSE Connected:', clinic || 'all')
-        })
-
-        eventSource.addEventListener('queue_update', (event) => {
-            try {
-                const data = JSON.parse(event.data)
-                if (onNotice) onNotice({ type: 'queue_update', data })
-            } catch (error) {
-                console.error('SSE parse error:', error)
+        // استخدام eventBus بدلاً من EventSource المكرر
+        const handleQueueUpdate = (data) => {
+            if (!clinic || data.clinic === clinic) {
+                if (onNotice) onNotice({ type: 'queue_update', data });
             }
-        })
-
-        eventSource.addEventListener('heartbeat', (event) => {
-            console.log('SSE heartbeat:', event.data)
-            if (onNotice) onNotice({ type: 'heartbeat', data: { timestamp: event.data } })
-        })
-
-        eventSource.addEventListener('notice', (event) => {
-            try {
-                const notice = JSON.parse(event.data)
-                if (onNotice) onNotice({ type: 'notice', data: notice })
-            } catch (error) {
-                console.error('SSE Notice parse error:', error)
+        };
+        
+        const handleHeartbeat = (data) => {
+            if (onNotice) onNotice({ type: 'heartbeat', data });
+        };
+        
+        const handleNotice = (data) => {
+            if (!clinic || data.clinic === clinic) {
+                if (onNotice) onNotice({ type: 'notice', data });
             }
-        })
-
-        eventSource.onerror = (error) => {
-            console.error('SSE Error:', error)
-            eventSource.close()
-            
-            // إعادة الاتصال بعد 5 ثوان
-            setTimeout(() => {
-                console.log('SSE reconnecting...')
-                this.connectSSE(clinic, onNotice)
-            }, 5000)
+        };
+        
+        // الاشتراك في الأحداث
+        const unsubscribe1 = eventBus.on('queue:update', handleQueueUpdate);
+        const unsubscribe2 = eventBus.on('heartbeat', handleHeartbeat);
+        const unsubscribe3 = eventBus.on('notice', handleNotice);
+        
+        console.log('SSE Connected via eventBus:', clinic || 'all');
+        
+        // إرجاع كائن يحاكي EventSource
+        return {
+            close: () => {
+                unsubscribe1();
+                unsubscribe2();
+                unsubscribe3();
+            }
         }
-
-        return eventSource
     }
 
     // ============================================
