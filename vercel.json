@@ -4,29 +4,13 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
-  "routes": [
-    { "src": "/api/v1/status", "dest": "/api/v1/status.js" },
-    { "src": "/api/v1/patient/login", "dest": "/api/v1/patient/login.js" },
-    { "src": "/api/v1/queue/enter", "dest": "/api/v1/queue/enter.js" },
-    { "src": "/api/v1/queue/status", "dest": "/api/v1/queue/status.js" },
-    { "src": "/api/v1/queue/done", "dest": "/api/v1/queue/done.js" },
-    { "src": "/api/v1/queue/call", "dest": "/api/v1/queue/call.js" },
-    { "src": "/api/v1/pin/status", "dest": "/api/v1/pin/status.js" },
-    { "src": "/api/v1/pin/verify", "dest": "/api/v1/pin/verify.js" },
-    { "src": "/api/v1/pin/generate", "dest": "/api/v1/pin/generate.js" },
-    { "src": "/api/v1/path/choose", "dest": "/api/v1/path/choose.js" },
-    { "src": "/api/v1/route/create", "dest": "/api/v1/route/create.js" },
-    { "src": "/api/v1/route/get", "dest": "/api/v1/route/get.js" },
-    { "src": "/api/v1/clinic/exit", "dest": "/api/v1/clinic/exit.js" },
-    { "src": "/api/v1/admin/status", "dest": "/api/v1/admin/status.js" },
-    { "src": "/api/v1/reports/daily", "dest": "/api/v1/reports/daily.js" },
-    { "src": "/api/v1/reports/weekly", "dest": "/api/v1/reports/weekly.js" },
-    { "src": "/api/v1/reports/monthly", "dest": "/api/v1/reports/monthly.js" },
-    { "src": "/api/v1/reports/annual", "dest": "/api/v1/reports/annual.js" },
-    { "src": "/api/v1/stats/dashboard", "dest": "/api/v1/stats/dashboard.js" },
-    { "src": "/api/v1/stats/queues", "dest": "/api/v1/stats/queues.js" },
-    { "src": "/api/v1/events/stream", "dest": "/api/v1/events/stream.js" }
-  ],
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -49,9 +33,6 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "/api/v1/:path*" }
   ]
 }
 
