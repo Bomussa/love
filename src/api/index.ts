@@ -10,8 +10,6 @@ const app = new Hono();
 
 // Static files
 
-
-
 // API Endpoints
 app.post('/api/pin/issue', async (c) => {
   const { clinicId, dateKey } = await c.req.json();

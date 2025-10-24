@@ -42,7 +42,7 @@ class MMSCoreAPI {
 
       return await response.json();
     } catch (error) {
-      console.error(`MMS Core API Error [${endpoint}]:`, error.message);
+      // // // // console.error(`MMS Core API Error [${endpoint}]:`, error.message);
       throw error;
     }
   }
@@ -126,7 +126,7 @@ class MMSCoreAPI {
   // SSE Events Connection
   connectToEvents(onMessage) {
     if (!this.isAvailable) {
-      console.warn('MMS Core not available, SSE disabled');
+
       return null;
     }
 
@@ -147,9 +147,7 @@ class MMSCoreAPI {
     const unsubscribe1 = eventBus.on('notice', handleNotice);
     const unsubscribe2 = eventBus.on('queue:update', handleQueueUpdate);
     const unsubscribe3 = eventBus.on('queue:call', handleQueueCall);
-    
-    console.log('MMS Core SSE connected via eventBus');
-    
+
     // إرجاع كائن يحاكي EventSource
     return {
       close: () => {

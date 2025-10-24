@@ -233,7 +233,7 @@ function App() {
         'success'
       )
     } catch (error) {
-      console.error('Exam selection failed:', error)
+      // // // // console.error('Exam selection failed:', error)
       showNotification(
         language === 'ar' ? 'فشل التسجيل في قائمة الانتظار' : 'Failed to register in queue',
         'error'
@@ -328,7 +328,7 @@ function App() {
         )
       }
     } catch (error) {
-      console.error('Admin login error:', error)
+      // // // // console.error('Admin login error:', error)
       showNotification(
         language === 'ar' ? '⚠️ لا يمكن الاتصال بالخادم - يرجى التحقق من الاتصال' : '⚠️ Cannot connect to server - please check connection',
         'error'

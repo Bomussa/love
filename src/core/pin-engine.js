@@ -55,8 +55,6 @@ class PinEngine {
     this.dailyPins = this.generateRandomPins()
     this.usedPinsIndex = 0
     
-    console.log(`[PIN Engine] Reset completed at ${new Date().toISOString()}`)
-    console.log(`[PIN Engine] Generated ${this.dailyPins.length} random PINs:`, this.dailyPins.join(', '))
   }
 
   async assignNextPin(clinicId) {
@@ -69,7 +67,7 @@ class PinEngine {
 
     // إذا استخدمنا كل البينات، ابدأ من جديد
     if (this.usedPinsIndex >= this.dailyPins.length) {
-      console.warn('[PIN Engine] All PINs used today, restarting from beginning')
+
       this.usedPinsIndex = 0
     }
 

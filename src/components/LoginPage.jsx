@@ -40,7 +40,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     try {
       await onLogin({ patientId: patientId.trim(), gender })
     } catch (error) {
-      console.error('Login error:', error)
+      // // // // console.error('Login error:', error)
     } finally {
       setLoading(false)
     }
@@ -50,14 +50,12 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     e.preventDefault()
     if (!adminUsername.trim() || !adminPassword.trim()) return
 
-    console.log('Admin form submitted:', { username: adminUsername, password: '***' })
-
     setLoading(true)
     try {
       // إرسال username:password كرمز واحد
       await onAdminLogin(`${adminUsername.trim()}:${adminPassword.trim()}`)
     } catch (error) {
-      console.error('Admin login error:', error)
+      // // // // console.error('Admin login error:', error)
       alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
     } finally {
       setLoading(false)
@@ -88,7 +86,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
               size="sm"
               className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
               onClick={() => {
-                console.log('Admin button clicked, current mode:', isAdminMode)
+
                 setIsAdminMode(!isAdminMode)
               }}
               title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}

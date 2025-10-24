@@ -42,7 +42,7 @@ export default function useQueueWatcher({
           onSuccess(newState);
         }
       } catch (err) {
-        console.warn('⚠️ فشل في تحديث الدور:', err.message);
+
         retryCountRef.current++;
         
         if (onError) {
@@ -53,7 +53,7 @@ export default function useQueueWatcher({
           // إعادة المحاولة بعد تأخير
           setTimeout(safeFetch, RECOVERY_DELAY);
         } else {
-          console.error('🔁 إعادة تهيئة النظام...');
+          // // // // console.error('🔁 إعادة تهيئة النظام...');
           
           // تسجيل حالة الإصلاح الذاتي
           try {
@@ -67,7 +67,7 @@ export default function useQueueWatcher({
               })
             });
           } catch (logErr) {
-            console.warn('Failed to log recovery event:', logErr);
+
           }
           
           // إصلاح ذاتي نهائي

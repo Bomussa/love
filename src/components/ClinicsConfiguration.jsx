@@ -169,7 +169,7 @@ export function ClinicsConfiguration({ language }) {
       setEditMode(false)
       alert(language === 'ar' ? 'تم حفظ التعديلات بنجاح' : 'Changes saved successfully')
     } catch (error) {
-      console.error('Error saving changes:', error)
+      // // // // console.error('Error saving changes:', error)
       alert(language === 'ar' ? 'فشل حفظ التعديلات' : 'Failed to save changes')
     }
   }

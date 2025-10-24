@@ -34,7 +34,6 @@ class QueueEngine {
 
   resetAll() {
     this.queues.clear()
-    console.log(`[Queue Engine] Reset completed at ${new Date().toISOString()}`)
   }
 
   getOrCreateQueue(clinicId) {

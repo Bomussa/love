@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Error in patient enqueue API:', error);
+    // // // // console.error('Error in patient enqueue API:', error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error',

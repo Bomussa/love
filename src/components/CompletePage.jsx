@@ -11,7 +11,7 @@ export function CompletePage({ patientData, onBackToHome, language }) {
 
   const handleDownload = () => {
     // يمكن إضافة وظيفة تحميل التقرير هنا
-    console.log('تحميل التقرير')
+
   }
 
   return (

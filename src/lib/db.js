@@ -26,13 +26,12 @@ class KVDatabaseAdapter {
    */
   async query(sql, params = []) {
     if (!this.env) {
-      console.warn('[db.js] Environment not initialized. Using empty result.');
+
       return { rows: [] };
     }
 
     // This is a stub - actual queries should use KV directly
     // Legacy code using this should be migrated to use KV namespaces
-    console.warn('[db.js] Legacy SQL query detected:', sql.substring(0, 100));
     return { rows: [] };
   }
 
