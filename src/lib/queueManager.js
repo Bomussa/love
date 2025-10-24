@@ -33,7 +33,7 @@ export async function getQueueSnapshot(clinicId) {
     
     return snapshot;
   } catch (error) {
-    // // // // console.error(`Error getting queue snapshot for clinic ${clinicId}:`, error);
+    // console.error(`Error getting queue snapshot for clinic ${clinicId}:`, error);
     return { waiting: 0, called: 0, in: 0, done: 0, no_show: 0 };
   }
 }
@@ -72,7 +72,7 @@ export async function getQueueDetails(clinicId) {
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    // // // // console.error(`Error getting queue details for clinic ${clinicId}:`, error);
+    // console.error(`Error getting queue details for clinic ${clinicId}:`, error);
     return {
       waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
       patients: [],
@@ -190,7 +190,7 @@ export async function callNextPatient(clinicId) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // // // // console.error(`Error calling next patient for clinic ${clinicId}:`, error);
+    // console.error(`Error calling next patient for clinic ${clinicId}:`, error);
     return {
       success: false,
       reason: 'database_error',
@@ -257,7 +257,7 @@ export async function checkInAtClinic(clinicId, patientId) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // // // // console.error(`Error checking in patient ${patientId} at clinic ${clinicId}:`, error);
+    // console.error(`Error checking in patient ${patientId} at clinic ${clinicId}:`, error);
     return false;
   } finally {
     client.release();
@@ -322,7 +322,7 @@ export async function completeClinicForPatient(clinicId, patientId) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // // // // console.error(`Error completing clinic for patient ${patientId} at clinic ${clinicId}:`, error);
+    // console.error(`Error completing clinic for patient ${patientId} at clinic ${clinicId}:`, error);
     return false;
   } finally {
     client.release();
@@ -376,7 +376,7 @@ export async function expireNoShows(clinicId) {
 
     return rows.length;
   } catch (error) {
-    // // // // console.error(`Error expiring no-shows for clinic ${clinicId}:`, error);
+    // console.error(`Error expiring no-shows for clinic ${clinicId}:`, error);
     return 0;
   }
 }
@@ -425,7 +425,7 @@ export async function getDailyStats(clinicId, date = null) {
       efficiencyScore: parseFloat(stats.efficiency_score)
     };
   } catch (error) {
-    // // // // console.error(`Error getting daily stats for clinic ${clinicId}:`, error);
+    // console.error(`Error getting daily stats for clinic ${clinicId}:`, error);
     return {
       date: date || new Date().toISOString().split('T')[0],
       totalPatients: 0,

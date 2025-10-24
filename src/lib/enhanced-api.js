@@ -105,7 +105,7 @@ class EnhancedApiClient {
                 return this.requestWithRetry(endpoint, options, attempt + 1)
             }
             
-            // // // // console.error(`API Error [${endpoint}]:`, error)
+            // console.error(`API Error [${endpoint}]:`, error)
             throw error
         }
     }

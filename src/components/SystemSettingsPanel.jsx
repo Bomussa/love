@@ -47,7 +47,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
         setSettings(prev => ({ ...prev, ...data.settings }))
       }
     } catch (error) {
-      // // // // console.error('Failed to load settings:', error)
+      // console.error('Failed to load settings:', error)
       showMessage('فشل تحميل الإعدادات', 'error')
     } finally {
       setLoading(false)
@@ -64,7 +64,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
         showMessage('فشل حفظ الإعدادات', 'error')
       }
     } catch (error) {
-      // // // // console.error('Failed to save settings:', error)
+      // console.error('Failed to save settings:', error)
       showMessage('فشل حفظ الإعدادات', 'error')
     } finally {
       setSaving(false)
@@ -84,7 +84,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
         showMessage('تم إعادة تعيين الإعدادات', 'success')
       }
     } catch (error) {
-      // // // // console.error('Failed to reset settings:', error)
+      // console.error('Failed to reset settings:', error)
       showMessage('فشل إعادة التعيين', 'error')
     } finally {
       setSaving(false)

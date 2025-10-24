@@ -98,7 +98,7 @@ class UnifiedStorage {
       
       return entry
     } catch (error) {
-      // // // // console.error('[Queue] Error:', error)
+      // console.error('[Queue] Error:', error)
       throw error
     }
   }
@@ -118,7 +118,7 @@ class UnifiedStorage {
       
       return next
     } catch (error) {
-      // // // // console.error('[Queue] Error:', error)
+      // console.error('[Queue] Error:', error)
       throw error
     }
   }
@@ -152,7 +152,7 @@ class UnifiedStorage {
       
       return pinData
     } catch (error) {
-      // // // // console.error('[PIN] Error:', error)
+      // console.error('[PIN] Error:', error)
       throw error
     }
   }

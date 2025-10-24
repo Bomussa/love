@@ -8,7 +8,7 @@ let toast;
   } catch (err) {
     toast = {
       success: (msg) => console.log('[Toast ✅]', msg),
-      error: (msg) => // // // // console.error('[Toast ❌]', msg),
+      error: (msg) => console.log('[Toast ❌]', msg),
       loading: (msg) => console.info('[Toast ⏳]', msg),
     };
 
@@ -153,7 +153,7 @@ class RealtimeNotificationEngine {
         try {
           callback(fullNotification)
         } catch (e) {
-          // // // // console.error('Error in notification callback:', e)
+          // console.error('Error in notification callback:', e)
         }
       })
     }
@@ -192,7 +192,7 @@ class RealtimeNotificationEngine {
       try {
         callback(fullNotification)
       } catch (e) {
-        // // // // console.error('Error in admin notification callback:', e)
+        // console.error('Error in admin notification callback:', e)
       }
     })
 
@@ -494,7 +494,7 @@ class RealtimeNotificationEngine {
         const notifications = JSON.parse(stored)
         this.notifications.set(patientId, notifications)
       } catch (e) {
-        // // // // console.error('Error loading notifications:', e)
+        // console.error('Error loading notifications:', e)
       }
     }
   }
@@ -505,7 +505,7 @@ class RealtimeNotificationEngine {
       try {
         this.adminNotifications = JSON.parse(stored)
       } catch (e) {
-        // // // // console.error('Error loading admin notifications:', e)
+        // console.error('Error loading admin notifications:', e)
       }
     }
   }

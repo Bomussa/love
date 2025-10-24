@@ -47,9 +47,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
       }
     } catch (e) {
-      // // // // console.error('Auto-enter first clinic failed:', e)
+      // console.error('Auto-enter first clinic failed:', e)
       // في حالة الفشل، لا نعطي أي رقم افتراضي
-      // // // // console.error('Cannot enter clinic without backend connection')
+      // console.error('Cannot enter clinic without backend connection')
     }
   }
 
@@ -78,7 +78,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       setLoading(false)
     } catch (e) {
-      // // // // console.error('Enter clinic failed:', e)
+      // console.error('Enter clinic failed:', e)
       alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
       setLoading(false)
     }
@@ -102,7 +102,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         }
       } catch (err) {
-        // // // // console.error('Failed to fetch daily PINs:', err)
+        // console.error('Failed to fetch daily PINs:', err)
       }
     }
     
@@ -143,7 +143,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             )
 
           } catch (err) {
-            // // // // console.error('❌ Failed to save route:', err)
+            // console.error('❌ Failed to save route:', err)
           }
         }
         
@@ -175,7 +175,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         }
       } catch (err) {
-        // // // // console.error('Failed to load pathway:', err)
+        // console.error('Failed to load pathway:', err)
       }
     }
     
@@ -323,7 +323,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           // إعادة المحاولة بعد تأخير
           setTimeout(updateQueueStatus, RECOVERY_DELAY);
         } else {
-          // // // // console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
+          // console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
           // إعادة تعيين العداد والانتظار على SSE
           retryCount = 0;
         }
@@ -372,7 +372,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
-        // // // // console.error('Event bus parse error:', err);
+        // console.error('Event bus parse error:', err);
       }
     };
     
@@ -456,7 +456,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
       alert(msg)
     } catch (e) {
-      // // // // console.error('Complete clinic failed', e)
+      // console.error('Complete clinic failed', e)
       const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
       alert(msg)
     } finally {

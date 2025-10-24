@@ -40,7 +40,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     try {
       await onLogin({ patientId: patientId.trim(), gender })
     } catch (error) {
-      // // // // console.error('Login error:', error)
+      // console.error('Login error:', error)
     } finally {
       setLoading(false)
     }
@@ -55,7 +55,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       // إرسال username:password كرمز واحد
       await onAdminLogin(`${adminUsername.trim()}:${adminPassword.trim()}`)
     } catch (error) {
-      // // // // console.error('Admin login error:', error)
+      // console.error('Admin login error:', error)
       alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
     } finally {
       setLoading(false)

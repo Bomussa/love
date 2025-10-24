@@ -53,7 +53,7 @@ export default function useQueueWatcher({
           // إعادة المحاولة بعد تأخير
           setTimeout(safeFetch, RECOVERY_DELAY);
         } else {
-          // // // // console.error('🔁 إعادة تهيئة النظام...');
+          // console.error('🔁 إعادة تهيئة النظام...');
           
           // تسجيل حالة الإصلاح الذاتي
           try {

@@ -40,7 +40,7 @@ class EventBus {
         try {
           callback(data, payload)
         } catch (error) {
-          // // // // console.error(`[EventBus] Error in listener for ${event}:`, error)
+          // console.error(`[EventBus] Error in listener for ${event}:`, error)
         }
       }
     }
@@ -51,7 +51,7 @@ class EventBus {
         try {
           callback(data, payload)
         } catch (error) {
-          // // // // console.error(`[EventBus] Error in wildcard listener:`, error)
+          // console.error(`[EventBus] Error in wildcard listener:`, error)
         }
       }
     }
@@ -111,7 +111,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('queue:update', data);
       } catch (err) {
-        // // // // console.error('[EventBus] Error parsing queue_update:', err);
+        // console.error('[EventBus] Error parsing queue_update:', err);
       }
     });
 
@@ -120,7 +120,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('queue:call', data);
       } catch (err) {
-        // // // // console.error('[EventBus] Error parsing queue_call:', err);
+        // console.error('[EventBus] Error parsing queue_call:', err);
       }
     });
 
@@ -133,7 +133,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('notice', data);
       } catch (err) {
-        // // // // console.error('[EventBus] Error parsing notice:', err);
+        // console.error('[EventBus] Error parsing notice:', err);
       }
     });
 
@@ -142,12 +142,12 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('stats:update', data);
       } catch (err) {
-        // // // // console.error('[EventBus] Error parsing stats_update:', err);
+        // console.error('[EventBus] Error parsing stats_update:', err);
       }
     });
 
     sseConnection.onerror = (err) => {
-      // // // // console.error('[EventBus] ❌ SSE Error:', err);
+      // console.error('[EventBus] ❌ SSE Error:', err);
       eventBus.emit('sse:error', { error: err });
       
       // إغلاق الاتصال الحالي
@@ -167,7 +167,7 @@ function connectToSSE() {
     };
 
   } catch (err) {
-    // // // // console.error('[EventBus] Failed to create SSE connection:', err);
+    // console.error('[EventBus] Failed to create SSE connection:', err);
   }
 }
 

@@ -115,7 +115,7 @@ export function QrScanPage({ language, toggleLanguage }) {
         }, 1000)
       }
     } catch (error) {
-      // // // // console.error('❌ خطأ في التحقق:', error)
+      // console.error('❌ خطأ في التحقق:', error)
       setStatus('error')
       
       const errorCode = error.response?.data?.error || 'UNKNOWN_ERROR'

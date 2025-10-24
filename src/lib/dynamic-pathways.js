@@ -44,7 +44,7 @@ async function fetchClinicWeights(clinicIds) {
     
     await Promise.all(promises)
   } catch (err) {
-    // // // // console.error('Failed to fetch clinic weights:', err)
+    // console.error('Failed to fetch clinic weights:', err)
   }
   
   return weights

@@ -67,7 +67,7 @@ class ApiService {
     const offline = this.offlineFallback(endpoint, options)
     if (offline.ok) return offline.data
 
-    // // // // console.error('API Error:', lastError)
+    // console.error('API Error:', lastError)
     throw lastError || new Error('تعذر الوصول إلى الخادم')
   }
 
@@ -114,7 +114,7 @@ class ApiService {
       })
       localStorage.setItem('mms.offlineQueue', JSON.stringify(queue))
     } catch (e) {
-      // // // // console.error('Failed to queue offline operation:', e)
+      // console.error('Failed to queue offline operation:', e)
     }
   }
 
@@ -129,7 +129,7 @@ class ApiService {
           await this.request(op.endpoint, op.options)
 
         } catch (e) {
-          // // // // console.error(`❌ Failed to sync: ${op.endpoint}`, e)
+          // console.error(`❌ Failed to sync: ${op.endpoint}`, e)
           remaining.push(op)
         }
       }
@@ -142,7 +142,7 @@ class ApiService {
 
       }
     } catch (e) {
-      // // // // console.error('Sync error:', e)
+      // console.error('Sync error:', e)
     }
   }
 
@@ -192,7 +192,7 @@ class ApiService {
       return data
       
     } catch (error) {
-      // // // // console.error(`Enter queue failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
+      // console.error(`Enter queue failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
       
       if (retryCount < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 100))
@@ -241,7 +241,7 @@ class ApiService {
       return data
       
     } catch (error) {
-      // // // // console.error(`Queue position fetch failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
+      // console.error(`Queue position fetch failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
       
       // إعادة المحاولة إذا لم نصل للحد الأقصى
       if (retryCount < maxRetries) {
@@ -573,7 +573,7 @@ class ApiService {
     }
 
     ws.onerror = (error) => {
-      // // // // console.error('WebSocket error:', error)
+      // console.error('WebSocket error:', error)
     }
 
     return ws

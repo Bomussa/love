@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       } catch (error) {
         clinicResult.error = error.message;
         results.errors.push(`Clinic ${clinic.id}: ${error.message}`);
-        // // // // console.error(`Error processing clinic ${clinic.id}:`, error);
+        // console.error(`Error processing clinic ${clinic.id}:`, error);
       }
 
       results.clinicResults.push(clinicResult);
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    // // // // console.error('Error in system tick:', error);
+    // console.error('Error in system tick:', error);
 
     const executionTime = Date.now() - startTime;
 
@@ -145,7 +145,7 @@ async function updateDailyEfficiencyScores() {
       updated_at = NOW()
     `);
   } catch (error) {
-    // // // // console.error('Error updating efficiency scores:', error);
+    // console.error('Error updating efficiency scores:', error);
     throw error;
   }
 }

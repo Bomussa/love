@@ -100,7 +100,7 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
       setLastUpdate(new Date())
       setError(null) // Clear any previous errors
     } catch (err) {
-      // // // // console.error('خطأ في جلب البيانات:', err)
+      // console.error('خطأ في جلب البيانات:', err)
       // Always set default stats to prevent blank screen
       if (!stats) {
         setStats({

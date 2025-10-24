@@ -42,7 +42,7 @@ class MMSCoreAPI {
 
       return await response.json();
     } catch (error) {
-      // // // // console.error(`MMS Core API Error [${endpoint}]:`, error.message);
+      // console.error(`MMS Core API Error [${endpoint}]:`, error.message);
       throw error;
     }
   }
