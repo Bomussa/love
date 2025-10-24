@@ -19,23 +19,23 @@ export function AdminQrManager({ language = 'ar' }) {
   const [stats, setStats] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // جلب إحصائيات الجلسات
-  useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 60000) // Fallback polling كل 60 ثانية (QR غير حرج)
-    return () => clearInterval(interval)
-  }, [])
+  // جلب إحصائيات الجلسات - DISABLED: endpoint not available
+  // useEffect(() => {
+  //   fetchStats()
+  //   const interval = setInterval(fetchStats, 60000)
+  //   return () => clearInterval(interval)
+  // }, [])
 
-  const fetchStats = async () => {
-    try {
-      const response = await axios.get('/api/session/stats')
-      if (response.data.ok) {
-        setStats(response.data.stats)
-      }
-    } catch (error) {
-      console.error('خطأ في جلب الإحصائيات:', error)
-    }
-  }
+  // const fetchStats = async () => {
+  //   try {
+  //     const response = await axios.get('/api/v1/stats/dashboard')
+  //     if (response.data.success) {
+  //       setStats(response.data.stats)
+  //     }
+  //   } catch (error) {
+  //     console.error('خطأ في جلب الإحصائيات:', error)
+  //   }
+  // }
 
   /**
    * إنشاء QR Code جديد

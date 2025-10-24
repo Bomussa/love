@@ -46,9 +46,12 @@ export async function onRequestPost(context) {
     const userKey = `queue:user:${clinic}:${nextPatient.user}`;
     const userData = await kv.get(userKey, 'json');
     
+    const now = new Date().toISOString();
+    
     if (userData) {
       userData.status = 'IN_SERVICE';
-      userData.called_at = new Date().toISOString();
+      userData.called_at = now;
+      userData.service_started_at = now; // بداية الخدمة
       
       await kv.put(userKey, JSON.stringify(userData), {
         expirationTtl: 86400

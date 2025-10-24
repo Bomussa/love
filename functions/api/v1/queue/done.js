@@ -79,23 +79,6 @@ export async function onRequest(context) {
       }, 403);
     }
     
-    // Additional security check: verify PIN belongs to this clinic only
-    // Check if the entered PIN belongs to any other clinic
-    for (const [otherClinic, otherPinData] of Object.entries(dailyPins)) {
-      if (otherClinic !== clinic) {
-        const otherPin = typeof otherPinData === 'object' ? otherPinData.pin : otherPinData;
-        if (String(otherPin).trim() === normalizedInputPin) {
-          return jsonResponse({ 
-            success: false, 
-            error: `رقم PIN هذا يخص عيادة ${otherClinic} وليس ${clinic}`,
-            message: `This PIN belongs to ${otherClinic} clinic, not ${clinic}`,
-            correctClinic: otherClinic,
-            requestedClinic: clinic
-          }, 403);
-        }
-      }
-    }
-    
     // Get user entry
     const userKey = `queue:user:${clinic}:${user}`;
     const userEntry = await kv.get(userKey, 'json');
@@ -114,7 +97,19 @@ export async function onRequest(context) {
     // Update user status to DONE
     userEntry.status = 'DONE';
     userEntry.exit_time = exitTime;
+    userEntry.service_ended_at = exitTime;
     userEntry.duration_minutes = durationMinutes;
+    
+    // Calculate service duration (from called_at or service_started_at)
+    if (userEntry.service_started_at) {
+      const serviceStart = new Date(userEntry.service_started_at);
+      const serviceDurationMs = now - serviceStart;
+      userEntry.service_duration_minutes = Math.round(serviceDurationMs / 60000);
+    } else if (userEntry.called_at) {
+      const calledTime = new Date(userEntry.called_at);
+      const serviceDurationMs = now - calledTime;
+      userEntry.service_duration_minutes = Math.round(serviceDurationMs / 60000);
+    }
     
     await kv.put(userKey, JSON.stringify(userEntry), {
       expirationTtl: 86400
@@ -153,4 +148,3 @@ export async function onRequest(context) {
 export async function onRequestOptions() {
   return corsResponse(['POST', 'OPTIONS']);
 }
-

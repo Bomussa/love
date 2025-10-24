@@ -105,8 +105,8 @@ export async function onRequestGet(context) {
       // First in queue = currently being served or next
       displayNumber = 0;
     } else {
-      // Waiting = show position (1, 2, 3, ...)
-      displayNumber = ahead;
+      // Waiting = show actual position number (2, 3, 4, ...)
+      displayNumber = myPosition;
     }
     
     // Estimate waiting time (average 5 minutes per patient)

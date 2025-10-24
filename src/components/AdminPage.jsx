@@ -4,6 +4,7 @@ import { Button } from './Button'
 import { Input } from './Input'
 import { EnhancedAdminDashboard } from './EnhancedAdminDashboard'
 import { ClinicsConfiguration } from './ClinicsConfiguration'
+import { SystemSettingsPanel } from './SystemSettingsPanel'
 import {
   BarChart3,
   Users,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react'
 import { themes } from '../lib/utils'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
+import eventBus from '../core/event-bus'
 import { t } from '../lib/i18n'
 import api from '../lib/api'
 
@@ -37,11 +39,14 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
 
   // مرجع للاحتفاظ بكائن SSE
   const sseRef = useRef(null)
+  const pollingIntervalRef = useRef(null)
+  
   useEffect(() => {
     loadStats()
     loadActivePins()
     loadQueues()
     loadRecentReports()
+    
     // تفعيل SSE للتحديث اللحظي
     if (sseRef.current) sseRef.current.close()
     sseRef.current = api.connectSSE('admin', (event) => {
@@ -53,16 +58,42 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         setStats(event.data)
       }
     })
-    // Fallback polling كل 60 ثانية فقط (في حالة فشل SSE)
-    // SSE هو المصدر الرئيسي للتحديثات
-    const interval = setInterval(() => {
-      loadStats()
-      loadActivePins()
-      loadQueues()
-      loadRecentReports()
-    }, 60000)
+    
+    // Adaptive Polling: يعمل فقط إذا SSE غير نشط
+    const handleSSEConnected = () => {
+      console.log('[AdminPage] ✅ SSE Active - Polling disabled');
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+    
+    const handleSSEError = () => {
+      console.log('[AdminPage] ⚠️ SSE Inactive - Polling enabled');
+      if (!pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(() => {
+          loadStats()
+          loadActivePins()
+          loadQueues()
+          loadRecentReports()
+        }, 60000);
+      }
+    };
+    
+    const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
+    const unsubscribeError = eventBus.on('sse:error', handleSSEError);
+    
+    // التحقق من حالة SSE الحالية
+    if (window.eventBusSSE?.isConnected()) {
+      handleSSEConnected();
+    } else {
+      handleSSEError();
+    }
+    
     return () => {
-      clearInterval(interval)
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+      unsubscribeConnected();
+      unsubscribeError();
       if (sseRef.current) sseRef.current.close()
     }
   }, [])
@@ -571,12 +602,18 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   )
 
   const renderSettings = () => {
-    
-
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">إعدادات النظام</h1>
+          <h1 className="text-2xl font-bold text-white">إعدادات النظام المتقدمة</h1>
+        </div>
+        
+        {/* لوحة الإعدادات المتقدمة */}
+        <SystemSettingsPanel language={language} />
+        
+        {/* إعدادات المظهر */}
+        <div className="mt-6">
+          <h2 className="text-xl font-bold text-white mb-4">إعدادات المظهر</h2>
         </div>
 
         {/* General Settings */}

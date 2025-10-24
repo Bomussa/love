@@ -54,14 +54,23 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
       // جلب الإحصائيات الحقيقية مع fallback
       try {
         const statsData = await api.getDashboardStats()
-        setStats(statsData || {
-          currentPatients: 0,
-          completedToday: 0,
-          avgWaitTime: 0,
-          throughputHour: 0
-        })
+        if (statsData && statsData.stats) {
+          setStats({
+            currentPatients: statsData.stats.totalWaiting || 0,
+            completedToday: statsData.stats.completedToday || 0,
+            avgWaitTime: statsData.stats.avgWaitTime || 0,
+            throughputHour: statsData.stats.activeQueues || 0
+          })
+        } else {
+          setStats({
+            currentPatients: 0,
+            completedToday: 0,
+            avgWaitTime: 0,
+            throughputHour: 0
+          })
+        }
       } catch (e) {
-        console.warn('Stats API unavailable, using defaults')
+        console.warn('Stats API unavailable, using defaults:', e.message)
         setStats({
           currentPatients: 0,
           completedToday: 0,
@@ -75,7 +84,7 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
         const clinicsData = await api.getClinicOccupancy()
         setClinics(Array.isArray(clinicsData) ? clinicsData : [])
       } catch (e) {
-        console.warn('Clinics API unavailable, using empty array')
+        console.warn('Clinics API unavailable, using empty array:', e.message)
         setClinics([])
       }
 
@@ -84,7 +93,7 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
         const queueData = await api.getActiveQueue()
         setQueue(Array.isArray(queueData) ? queueData : [])
       } catch (e) {
-        console.warn('Queue API unavailable, using empty array')
+        console.warn('Queue API unavailable, using empty array:', e.message)
         setQueue([])
       }
 
@@ -92,10 +101,16 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
       setError(null) // Clear any previous errors
     } catch (err) {
       console.error('خطأ في جلب البيانات:', err)
-      // Don't show error if we have partial data
+      // Always set default stats to prevent blank screen
       if (!stats) {
-        setError('فشل في تحميل البيانات من الخادم')
+        setStats({
+          currentPatients: 0,
+          completedToday: 0,
+          avgWaitTime: 0,
+          throughputHour: 0
+        })
       }
+      setError('بعض البيانات غير متوفرة - يتم استخدام القيم الافتراضية')
     } finally {
       setLoading(false)
     }

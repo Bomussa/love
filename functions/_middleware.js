@@ -9,19 +9,17 @@ const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute
 
 export async function onRequest(context) {
-  const { request, next, env } = context;
+  const { request, next } = context;
   const url = new URL(request.url);
 
-  // 1. WWW Redirect (301 Permanent)
-  if (!url.hostname.startsWith('www.') && url.hostname === 'mmc-mms.com') {
-    const wwwUrl = new URL(request.url);
-    wwwUrl.hostname = 'www.' + wwwUrl.hostname;
-    
+  // 1. WWW Redirect (from 2027)
+  if (url.hostname === 'mmc-mms.com') {
+    url.hostname = 'www.mmc-mms.com';
     return new Response(null, {
       status: 301,
       headers: {
-        'Location': wwwUrl.toString(),
-        'Cache-Control': 'public, max-age=31536000'
+        'Location': url.toString(),
+        'Cache-Control': 'public, max-age=31536000, immutable'
       }
     });
   }

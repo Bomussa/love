@@ -9,9 +9,9 @@ const CLINICS = [
   'derma', 'bones'
 ];
 
-// Generate random 2-digit PIN (01-20 range)
+// Generate random 2-digit PIN (01-99 range)
 function generatePin() {
-  const pin = Math.floor(Math.random() * 20) + 1;
+  const pin = Math.floor(Math.random() * 99) + 1;
   return String(pin).padStart(2, '0');
 }
 

@@ -11,6 +11,7 @@ import api from '../lib/api'
 import enhancedApi from '../lib/enhanced-api'
 import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
 import NotificationSystem from './NotificationSystem'
+import { CountdownTimer } from './CountdownTimer'
 import eventBus from '../core/event-bus'
 
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
@@ -23,6 +24,65 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
+
+  // دخول تلقائي للعيادة الأولى
+  const handleAutoEnterFirstClinic = async (station) => {
+    try {
+      // دخول الدور
+      await api.enterQueue(station.id, patientData.id, true)
+      
+      // جلب الموقع الفعلي من Backend
+      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      
+      if (positionData && positionData.success) {
+        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
+        setStations(prev => prev.map((s, idx) => idx === 0 ? {
+          ...s,
+          yourNumber: positionData.display_number,
+          ahead: positionData.ahead,
+          totalWaiting: positionData.total_waiting,
+          status: 'ready',
+          isEntered: true,
+          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
+        } : s))
+      }
+    } catch (e) {
+      console.error('Auto-enter first clinic failed:', e)
+      // في حالة الفشل، لا نعطي أي رقم افتراضي
+      console.error('Cannot enter clinic without backend connection')
+    }
+  }
+
+  // دخول يدوي لأي عيادة
+  const handleEnterClinic = async (station) => {
+    try {
+      setLoading(true)
+      // دخول الدور
+      await api.enterQueue(station.id, patientData.id, true)
+      
+      // جلب الموقع الفعلي من Backend
+      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      
+      if (positionData && positionData.success) {
+        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
+        setStations(prev => prev.map(s => s.id === station.id ? {
+          ...s,
+          yourNumber: positionData.display_number,
+          ahead: positionData.ahead,
+          totalWaiting: positionData.total_waiting,
+          status: 'ready',
+          isEntered: true,
+          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
+        } : s))
+      }
+      
+      setLoading(false)
+    } catch (e) {
+      console.error('Enter clinic failed:', e)
+      alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
+      setLoading(false)
+    }
+  }
 
   // جلب أرقام البن كود اليومية من API
   useEffect(() => {
@@ -71,13 +131,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
-          examStations = await getDynamicMedicalPathway(patientData.queueType, patientData.gender)
+          examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
           
           // حفظ المسار الجديد في Backend
           try {
             await api.createRoute(
               patientData.id,
-              patientData.queueType,
+              patientData.examType || patientData.queueType,
               patientData.gender,
               examStations
             )
@@ -120,64 +180,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
     
     loadPathway()
-  }, [patientData.queueType, patientData.gender])
-
-  // دخول يدوي لأي عيادة
-  const handleEnterClinic = async (station) => {
-    try {
-      setLoading(true)
-      // دخول الدور
-      await api.enterQueue(station.id, patientData.id, true)
-      
-      // جلب الموقع الفعلي من Backend
-      const positionData = await api.getQueuePosition(station.id, patientData.id)
-      
-      if (positionData && positionData.success) {
-        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
-        setStations(prev => prev.map(s => s.id === station.id ? {
-          ...s,
-          yourNumber: positionData.display_number,
-          ahead: positionData.ahead,
-          totalWaiting: positionData.total_waiting,
-          status: 'ready',
-          isEntered: true
-        } : s))
-      }
-      
-      setLoading(false)
-    } catch (e) {
-      console.error('Enter clinic failed:', e)
-      alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
-      setLoading(false)
-    }
-  }
-
-  // دخول تلقائي للعيادة الأولى
-  const handleAutoEnterFirstClinic = async (station) => {
-    try {
-      // دخول الدور
-      await api.enterQueue(station.id, patientData.id, true)
-      
-      // جلب الموقع الفعلي من Backend
-      const positionData = await api.getQueuePosition(station.id, patientData.id)
-      
-      if (positionData && positionData.success) {
-        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
-        setStations(prev => prev.map((s, idx) => idx === 0 ? {
-          ...s,
-          yourNumber: positionData.display_number,
-          ahead: positionData.ahead,
-          totalWaiting: positionData.total_waiting,
-          status: 'ready',
-          isEntered: true
-        } : s))
-      }
-    } catch (e) {
-      console.error('Auto-enter first clinic failed:', e)
-      // في حالة الفشل، لا نعطي أي رقم افتراضي
-      console.error('Cannot enter clinic without backend connection')
-    }
-  }
+  }, [patientData.examType, patientData.queueType, patientData.gender])
 
   // Fetch route with ZFD validation
   useEffect(() => {
@@ -202,20 +205,58 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const MAX_RETRY = 3;
     const RECOVERY_DELAY = 5000; // 5 ثواني
     const lastStateRef = { current: null };
+    let pollingInterval = null;
+    let isSSEActive = false;
+    
+    // مراقبة حالة SSE
+    const handleSSEConnected = () => {
+      isSSEActive = true;
+      console.log('[PatientPage] ✅ SSE Active - Polling disabled');
+      // إيقاف Polling عند اتصال SSE
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+    
+    const handleSSEError = () => {
+      isSSEActive = false;
+      console.log('[PatientPage] ⚠️ SSE Inactive - Polling enabled');
+      // تفعيل Polling عند فشل SSE
+      if (!pollingInterval) {
+        pollingInterval = setInterval(() => {
+          updateQueueStatus();
+        }, dynamicInterval);
+      }
+    };
+    
+    // الاستماع لحالة SSE
+    const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
+    const unsubscribeError = eventBus.on('sse:error', handleSSEError);
+    
+    // التحقق من حالة SSE الحالية
+    if (window.eventBusSSE?.isConnected()) {
+      handleSSEConnected();
+    } else {
+      handleSSEError();
+    }
     
     const updateQueueStatus = async () => {
       if (document.hidden) return;
       
       const start = Date.now();
       try {
-        for (const station of stations) {
-          if (station.isEntered && station.status === 'ready') {
-            // استخدام endpoint position للحصول على موقع دقيق
-            const positionData = await api.getQueuePosition(station.id, patientData.id);
-            if (positionData && positionData.success) {
-              // تجنب التحديثات المكررة
-              const stateKey = `${station.id}-${positionData.display_number}`;
-              if (lastStateRef.current === stateKey) continue;
+        // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط (تقليل 429 Errors)
+        const currentStation = stations.find(s => s.isEntered && s.status === 'ready');
+        
+        if (currentStation) {
+          // استخدام endpoint position للحصول على موقع دقيق
+          const station = currentStation;
+          const positionData = await api.getQueuePosition(station.id, patientData.id);
+          if (positionData && positionData.success) {
+            // تجنب التحديثات المكررة
+            const stateKey = `${station.id}-${positionData.display_number}`;
+            if (lastStateRef.current !== stateKey) {
               lastStateRef.current = stateKey;
               
               // تحديث الأرقام من الباك اند
@@ -239,14 +280,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         clinic: station.nameAr
                       });
                       
-                      // تشغيل صوت عند دورك الآن (0)
+                      // تشغيل صوت عند دورك الآن (0) - استخدام notification engine
                       if (positionData.display_number === 0) {
-                        try {
-                          const audio = new Audio('/notification.mp3');
-                          audio.play().catch(e => console.log('Audio play failed:', e));
-                        } catch (e) {
-                          console.log('Audio error:', e);
-                        }
+                        eventBus.emit('queue:your_turn', {
+                          clinicName: station.nameAr,
+                          position: positionData.display_number
+                        });
                       }
                       
                       setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
@@ -284,30 +323,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           // إعادة المحاولة بعد تأخير
           setTimeout(updateQueueStatus, RECOVERY_DELAY);
         } else {
-          console.error('🔁 إعادة تهيئة النظام...');
-          
-          // تسجيل حالة الإصلاح الذاتي
-          try {
-            await fetch('/api/v1/events/recovery', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                source: 'queue-watcher',
-                retries: retryCount,
-                timestamp: new Date().toISOString()
-              })
-            });
-          } catch (logErr) {
-            console.warn('Failed to log recovery event:', logErr);
-          }
-          
-          // إصلاح ذاتي نهائي مع تفريغ الكاش
-          if ('caches' in window) {
-            caches.keys().then(names => {
-              names.forEach(name => caches.delete(name));
-            });
-          }
-          window.location.reload(true);
+          console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
+          // إعادة تعيين العداد والانتظار على SSE
+          retryCount = 0;
         }
       }
     };
@@ -315,42 +333,34 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     // تحديث فوري
     updateQueueStatus();
     
-    // Fallback polling مع الفترة الديناميكية
-    const interval = setInterval(() => {
-      updateQueueStatus();
-    }, dynamicInterval);
+    // Adaptive Polling: يعمل فقط إذا SSE غير نشط
+    // سيتم تفعيله/إيقافه تلقائياً حسب حالة SSE
     
-    // Heartbeat لمراقبة الصفحة
+    // Heartbeat لمراقبة الصفحة (تحذير فقط، بدون إعادة تحميل)
     const heartbeatInterval = setInterval(() => {
       const now = Date.now();
-      if (now - lastResponseTime > 60000) {
-        console.warn('🩺 الصفحة لم تستجب منذ دقيقة — إعادة تهيئة...');
-        // تفريغ الكاش قبل إعادة التحميل
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => caches.delete(name));
-          });
-        }
-        window.location.reload(true);
+      if (now - lastResponseTime > 120000) { // دقيقتان بدلاً من دقيقة
+        console.warn('⚠️ لا توجد استجابة منذ دقيقتين - الاعتماد على SSE');
+        // إعادة تعيين الوقت لتجنب التحذيرات المتكررة
+        lastResponseTime = Date.now();
       }
     }, 60000);
     
     return () => {
-      clearInterval(interval);
+      if (pollingInterval) clearInterval(pollingInterval);
+      unsubscribeConnected();
+      unsubscribeError();
       clearInterval(heartbeatInterval);
     };
   }, [patientData?.id, stations, language]);
   
-  // Connect to SSE for real-time notifications
+  // Listen to real-time notifications via eventBus (no duplicate EventSource)
   useEffect(() => {
     if (!patientData?.id) return;
     
-    const url = `/api/v1/events/stream?user=${patientData.id}`;
-    const eventSource = new EventSource(url);
-    
-    eventSource.addEventListener('queue_update', (e) => {
+    // Listen to queue events from eventBus
+    const handleQueueUpdate = (data) => {
       try {
-        const data = JSON.parse(e.data);
         const message = language === 'ar' ? data.message : data.messageEn;
         
         setCurrentNotice({
@@ -360,24 +370,20 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           clinic: data.clinic
         });
         
-        enhancedApi.playNotificationSound();
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
-        console.error('SSE parse error:', err);
+        console.error('Event bus parse error:', err);
       }
-    });
-    
-    eventSource.addEventListener('connected', (e) => {
-      console.log('SSE connected:', e.data);
-    });
-    
-    eventSource.onerror = (err) => {
-      console.error('SSE error:', err);
-      eventSource.close();
     };
+    
+    eventBus.on('queue:update', handleQueueUpdate);
+    eventBus.on('queue:near_turn', handleQueueUpdate);
+    eventBus.on('queue:your_turn', handleQueueUpdate);
 
     return () => {
-      eventSource.close();
+      eventBus.off('queue:update', handleQueueUpdate);
+      eventBus.off('queue:near_turn', handleQueueUpdate);
+      eventBus.off('queue:your_turn', handleQueueUpdate);
     };
   }, [patientData?.id, language])
 
@@ -677,16 +683,33 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   </div>
                   
                   {station.isEntered && (
-                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
-                          🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
-                        </span>
-                        <span className="text-blue-400 font-bold">
-                          {station.ahead ? `~${station.ahead * 5} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
-                        </span>
+                    <>
+                      {/* عرض العد التنازلي */}
+                      {station.entered_at && (
+                        <div className="mt-3">
+                          <CountdownTimer
+                            enteredAt={station.entered_at}
+                            maxSeconds={240}
+                            show={true}
+                            language={language}
+                            onTimeout={() => {
+                              console.log('Timeout for station:', station.id)
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-300">
+                            🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
+                          </span>
+                          <span className="text-blue-400 font-bold">
+                            {station.ahead ? `~${station.ahead * 5} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {station.status === 'ready' && !station.isEntered && (
