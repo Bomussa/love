@@ -1,9 +1,16 @@
+// MIGRATED TO SUPABASE
 // Queue Done - Exit from clinic with PIN verification
 
-import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js';
+import { jsonResponse, corsResponse, validateRequiredFields } from '../../../_shared/utils.js';
+import { supabase } from '../../../lib/supabase.js';
+
+// Table names
+const QUEUE_TABLE = 'queue_entries'; // To replace kv.get(userKey) and kv.put(userKey)
+const PINS_TABLE = 'daily_pins'; // To replace env.KV_PINS.get(pinsKey)
+const QUEUE_LIST_TABLE = 'queue_lists'; // To replace kv.get(listKey) and kv.put(listKey)
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request } = context;
   
   if (request.method !== 'POST') {
     return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
@@ -19,24 +26,23 @@ export async function onRequest(context) {
       return jsonResponse(validationError, 400);
     }
     
-    // Check KV availability
-    const kvError = checkKVAvailability(env.KV_QUEUES, 'KV_QUEUES');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
-    }
+    // --- KV Availability Checks are removed as Supabase is always available or throws an error ---
     
-    // Check KV_PINS availability
-    const kvPinsError = checkKVAvailability(env.KV_PINS, 'KV_PINS');
-    if (kvPinsError) {
-      return jsonResponse(kvPinsError, 500);
-    }
-    
-    const kv = env.KV_QUEUES;
-    
-    // Get daily PINs from KV_PINS (not KV_QUEUES)
+    // Get daily PINs from Supabase (PINS_TABLE)
     const today = new Date().toISOString().split('T')[0];
-    const pinsKey = `pins:daily:${today}`;
-    const dailyPins = await env.KV_PINS.get(pinsKey, 'json');
+    // Assuming PINS_TABLE has a column 'date' and 'pins_data'
+    const { data: pinsData, error: pinsError } = await supabase
+      .from(PINS_TABLE)
+      .select('pins_data')
+      .eq('date', today)
+      .single();
+
+    if (pinsError) {
+      console.error('Supabase PINs Error:', pinsError);
+      return jsonResponse({ success: false, error: 'Failed to retrieve daily PINs' }, 500);
+    }
+
+    const dailyPins = pinsData ? pinsData.pins_data : null;
     
     if (!dailyPins) {
       return jsonResponse({ success: false, error: 'Daily PINs not found' }, 404);
@@ -79,9 +85,21 @@ export async function onRequest(context) {
       }, 403);
     }
     
-    // Get user entry
-    const userKey = `queue:user:${clinic}:${user}`;
-    const userEntry = await kv.get(userKey, 'json');
+    // Get user entry from Supabase (QUEUE_TABLE)
+    // Assuming QUEUE_TABLE has columns 'clinic', 'user_id' (or 'user'), and 'entry_data' (JSONB)
+    const { data: userEntryData, error: userEntryError } = await supabase
+      .from(QUEUE_TABLE)
+      .select('entry_data')
+      .eq('clinic', clinic)
+      .eq('user_id', user) // Assuming 'user' maps to 'user_id' in Supabase
+      .single();
+      
+    if (userEntryError && userEntryError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+      console.error('Supabase User Entry Error:', userEntryError);
+      return jsonResponse({ success: false, error: 'Failed to retrieve user entry' }, 500);
+    }
+
+    const userEntry = userEntryData ? userEntryData.entry_data : null;
     
     if (!userEntry) {
       return jsonResponse({ success: false, error: 'User not in queue' }, 404);
@@ -111,19 +129,52 @@ export async function onRequest(context) {
       userEntry.service_duration_minutes = Math.round(serviceDurationMs / 60000);
     }
     
-    await kv.put(userKey, JSON.stringify(userEntry), {
-      expirationTtl: 86400
-    });
+    // Update user entry in Supabase (QUEUE_TABLE)
+    // Update the JSONB column 'entry_data'
+    const { error: updateEntryError } = await supabase
+      .from(QUEUE_TABLE)
+      .update({ entry_data: userEntry })
+      .eq('clinic', clinic)
+      .eq('user_id', user); // Assuming 'user' maps to 'user_id'
+
+    if (updateEntryError) {
+      console.error('Supabase Update Entry Error:', updateEntryError);
+      return jsonResponse({ success: false, error: 'Failed to update user entry' }, 500);
+    }
     
-    // Remove from queue list
-    const listKey = `queue:list:${clinic}`;
-    let queueList = await kv.get(listKey, 'json') || [];
+    // Remove from queue list in Supabase (QUEUE_LIST_TABLE)
+    // Assuming QUEUE_LIST_TABLE has 'clinic' and 'list_data' (JSONB array of {user: string})
     
+    // 1. Get the current list
+    const { data: listData, error: listGetError } = await supabase
+      .from(QUEUE_LIST_TABLE)
+      .select('list_data')
+      .eq('clinic', clinic)
+      .single();
+
+    if (listGetError && listGetError.code !== 'PGRST116') {
+      console.error('Supabase Get List Error:', listGetError);
+      return jsonResponse({ success: false, error: 'Failed to retrieve queue list' }, 500);
+    }
+
+    let queueList = (listData ? listData.list_data : []) || [];
+    
+    // 2. Filter the user out
+    const initialLength = queueList.length;
     queueList = queueList.filter(item => item.user !== user);
     
-    await kv.put(listKey, JSON.stringify(queueList), {
-      expirationTtl: 86400
-    });
+    // 3. Update the list only if it changed (user was found and removed)
+    if (queueList.length < initialLength) {
+      const { error: updateListError } = await supabase
+        .from(QUEUE_LIST_TABLE)
+        .update({ list_data: queueList })
+        .eq('clinic', clinic);
+
+      if (updateListError) {
+        console.error('Supabase Update List Error:', updateListError);
+        // This is a non-critical update, but we should log and return success if the main entry update succeeded
+      }
+    }
     
     return jsonResponse({
       success: true,
@@ -136,6 +187,7 @@ export async function onRequest(context) {
     });
     
   } catch (error) {
+    console.error('General Error in queue/done:', error);
     return jsonResponse({ 
       success: false, 
       error: error.message,

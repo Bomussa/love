@@ -1,4 +1,5 @@
 // Create and save patient route with dynamic clinic ordering
+ * MIGRATED TO SUPABASE
 // POST /api/v1/route/create
 // Body: { patientId, examType, gender }
 

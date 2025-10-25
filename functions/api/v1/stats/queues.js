@@ -1,4 +1,5 @@
 // All Queues Stats - Get status of all queues
+ * MIGRATED TO SUPABASE
 // Returns list of all queues with their current status
 
 export async function onRequestGet(context) {

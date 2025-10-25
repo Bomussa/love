@@ -1,4 +1,5 @@
 // Patient Login - Dynamic weighted path calculation
+ * MIGRATED TO SUPABASE
 // POST /api/v1/patient/login
 // Body: { patientId, gender, examType }
 

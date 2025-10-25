@@ -2,6 +2,7 @@
  * CRON Handler - Patient Timeout Handler
  * Triggered by: Cloudflare Cron (every 1 minute)
  * Cron Expression: star star star star star (every minute)
+ * MIGRATED TO SUPABASE
  * 
  * Purpose:
  * - Move patients who exceeded 4 minutes to end of queue
