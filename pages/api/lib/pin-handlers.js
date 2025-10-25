@@ -1,50 +1,11 @@
 /**
- * PIN API - Unified Endpoint
- * Handles: /api/v1/pin/generate, /status, /verify
+ * PIN Handlers - Shared functions for PIN endpoints
  */
 
-import { createEnv } from '../lib/storage.js';
-import { generatePIN, validateClinic, getValidClinics } from '../lib/helpers.js';
+import { createEnv } from './storage.js';
+import { generatePIN, validateClinic, getValidClinics } from './helpers.js';
 
-export default async function handler(req, res) {
-  // Handle CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  try {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const action = pathParts[pathParts.length - 1];
-
-    switch (action) {
-      case 'generate':
-        return await handleGenerate(req, res);
-      case 'status':
-        return await handleStatus(req, res);
-      case 'verify':
-        return await handleVerify(req, res);
-      default:
-        return res.status(404).json({
-          success: false,
-          error: 'Endpoint not found'
-        });
-    }
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: error.message
-    });
-  }
-}
-
-// Handler: POST /api/v1/pin/generate
-async function handleGenerate(req, res) {
+export async function handleGenerate(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
@@ -92,8 +53,7 @@ async function handleGenerate(req, res) {
   });
 }
 
-// Handler: GET /api/v1/pin/status
-async function handleStatus(req, res) {
+export async function handleStatus(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
@@ -134,8 +94,7 @@ async function handleStatus(req, res) {
   });
 }
 
-// Handler: POST /api/v1/pin/verify
-async function handleVerify(req, res) {
+export async function handleVerify(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
