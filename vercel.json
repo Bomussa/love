@@ -6,7 +6,17 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" }
+  "rewrites": [
+    { "source": "/api/v1/queue/:action", "destination": "/api/v1/queue" },
+    { "source": "/api/v1/pin/:action", "destination": "/api/v1/pin" },
+    { "source": "/api/v1/reports/:type", "destination": "/api/v1/reports" },
+    { "source": "/api/v1/route/:action", "destination": "/api/v1/route" },
+    { "source": "/api/v1/stats/:type", "destination": "/api/v1/stats" },
+    { "source": "/api/v1/patient/:action", "destination": "/api/v1/patient" },
+    { "source": "/api/v1/admin/:action", "destination": "/api/v1/admin" },
+    { "source": "/api/v1/path/:action", "destination": "/api/v1/path" },
+    { "source": "/api/v1/clinic/:action", "destination": "/api/v1/clinic" },
+    { "source": "/api/v1/events/:action", "destination": "/api/v1/events" }
   ]
 }
+
