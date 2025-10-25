@@ -1,0 +1,203 @@
+{
+  "totalFiles": 21,
+  "migratedComplete": [],
+  "migratedButUsesKV": [],
+  "notMigrated": [
+    {
+      "file": "api/v1/admin/status.js",
+      "kvCalls": 3
+    },
+    {
+      "file": "api/v1/clinic/exit.js",
+      "kvCalls": 2
+    },
+    {
+      "file": "api/v1/events/stream.js",
+      "kvCalls": 5
+    },
+    {
+      "file": "api/v1/path/choose.js",
+      "kvCalls": 2
+    },
+    {
+      "file": "api/v1/patient/login.js",
+      "kvCalls": 1
+    },
+    {
+      "file": "api/v1/pin/generate.js",
+      "kvCalls": 1
+    },
+    {
+      "file": "api/v1/pin/status.js",
+      "kvCalls": 2
+    },
+    {
+      "file": "api/v1/pin/verify.js",
+      "kvCalls": 1
+    },
+    {
+      "file": "api/v1/queue/call.js",
+      "kvCalls": 3
+    },
+    {
+      "file": "api/v1/queue/done.js",
+      "kvCalls": 5
+    },
+    {
+      "file": "api/v1/queue/enter.js",
+      "kvCalls": 3
+    },
+    {
+      "file": "api/v1/queue/status.js",
+      "kvCalls": 2
+    },
+    {
+      "file": "api/v1/reports/annual.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/reports/daily.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/reports/monthly.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/reports/weekly.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/route/create.js",
+      "kvCalls": 1
+    },
+    {
+      "file": "api/v1/route/get.js",
+      "kvCalls": 1
+    },
+    {
+      "file": "api/v1/stats/dashboard.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/stats/queues.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    },
+    {
+      "file": "api/v1/status.js",
+      "kvCalls": 0,
+      "note": "No KV usage detected"
+    }
+  ],
+  "kvUsage": {
+    "api/v1/admin/status.js": {
+      "count": 3,
+      "calls": [
+        "env.KV_PINS.get",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get"
+      ]
+    },
+    "api/v1/clinic/exit.js": {
+      "count": 2,
+      "calls": [
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.put"
+      ]
+    },
+    "api/v1/events/stream.js": {
+      "count": 5,
+      "calls": [
+        "env.KV_QUEUES.list",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get"
+      ]
+    },
+    "api/v1/path/choose.js": {
+      "count": 2,
+      "calls": [
+        "env.KV_CACHE.get",
+        "env.KV_CACHE.put"
+      ]
+    },
+    "api/v1/patient/login.js": {
+      "count": 1,
+      "calls": [
+        "env.KV_CACHE.put"
+      ]
+    },
+    "api/v1/pin/generate.js": {
+      "count": 1,
+      "calls": [
+        "env.KV_PINS.put"
+      ]
+    },
+    "api/v1/pin/status.js": {
+      "count": 2,
+      "calls": [
+        "env.KV_PINS.get",
+        "env.KV_PINS.put"
+      ]
+    },
+    "api/v1/pin/verify.js": {
+      "count": 1,
+      "calls": [
+        "env.KV_PINS.get"
+      ]
+    },
+    "api/v1/queue/call.js": {
+      "count": 3,
+      "calls": [
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.put"
+      ]
+    },
+    "api/v1/queue/done.js": {
+      "count": 5,
+      "calls": [
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.put",
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.put",
+        "env.KV_QUEUES.delete"
+      ]
+    },
+    "api/v1/queue/enter.js": {
+      "count": 3,
+      "calls": [
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.put",
+        "env.KV_QUEUES.put"
+      ]
+    },
+    "api/v1/queue/status.js": {
+      "count": 2,
+      "calls": [
+        "env.KV_QUEUES.get",
+        "env.KV_QUEUES.get"
+      ]
+    },
+    "api/v1/route/create.js": {
+      "count": 1,
+      "calls": [
+        "env.KV_QUEUES.put"
+      ]
+    },
+    "api/v1/route/get.js": {
+      "count": 1,
+      "calls": [
+        "env.KV_QUEUES.get"
+      ]
+    }
+  },
+  "errors": []
+}

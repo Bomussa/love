@@ -1,108 +1,276 @@
 {
-  "report_metadata": {
-    "report_id": "INSP-20251024-01",
-    "generated_at": "2025-10-24T14:30:00Z",
-    "project": "love",
-    "goal": "فحص شامل ونقل Backend إلى Supabase"
+  "header": {
+    "organization": "المركز الطبي التخصصي العسكري",
+    "report_type": "تقرير فحص وتحليل",
+    "generated_by": "Manus AI",
+    "supervised_by": "المهندس إياد",
+    "logo_path": "/assets/logo-mmc.png",
+    "timestamp": "2025-10-25T18:06:16.195Z",
+    "project_name": "love - Medical Committee System"
   },
-  "summary": {
-    "frontend_status": "✅ سليم",
-    "backend_status": "✅ سليم (بحاجة نقل)",
-    "database_connection": "✅ ناجح (قاعدة جديدة)",
-    "overall_recommendation": "البدء في عملية النقل بعد موافقة المستخدم"
+  "frontend": {
+    "path": "src/",
+    "files": [
+      "App.jsx",
+      "api/index.ts",
+      "components/AdminPINMonitor.jsx",
+      "components/AdminPage.jsx",
+      "components/AdminQrManager.jsx",
+      "components/AdminQueueMonitor.jsx",
+      "components/Button.jsx",
+      "components/Card.jsx",
+      "components/ClinicsConfiguration.jsx",
+      "components/CompletePage.jsx",
+      "components/CountdownTimer.jsx",
+      "components/EnhancedAdminDashboard.jsx",
+      "components/EnhancedThemeSelector.jsx",
+      "components/ExamSelectionPage.jsx",
+      "components/Header.jsx",
+      "components/Input.jsx",
+      "components/LoginPage.jsx",
+      "components/NotificationPanel.jsx",
+      "components/NotificationSystem.jsx",
+      "components/NotificationsPage.jsx",
+      "components/PatientPage.jsx",
+      "components/PatientsManagement.jsx",
+      "components/QrScanPage.jsx",
+      "components/SystemSettingsPanel.jsx",
+      "components/ZFDTicketDisplay.jsx",
+      "config/admin-credentials.js",
+      "core/config/refresh.constants.js",
+      "core/event-bus.js",
+      "core/notification-engine.js",
+      "core/path-engine.js",
+      "core/pin-engine.js",
+      "core/pinService.ts",
+      "core/queue-engine.backup.js",
+      "core/queue-engine.js",
+      "core/queueManager.ts",
+      "core/routing/routeMapService.ts",
+      "core/routing/routeService.ts",
+      "hooks/useQueueWatcher.js",
+      "hooks/useSmartUpdater.js",
+      "lib/api-adapter.js",
+      "lib/api-unified.js",
+      "lib/api.js",
+      "lib/db.js",
+      "lib/dynamic-pathways.js",
+      "lib/enhanced-api.js",
+      "lib/enhanced-themes.js",
+      "lib/i18n.js",
+      "lib/local-api.js",
+      "lib/mms-core-api.js",
+      "lib/offline-storage.js",
+      "lib/queueManager.js",
+      "lib/routingManager.js",
+      "lib/settings.js",
+      "lib/unified-storage.js",
+      "lib/utils.js",
+      "lib/workflow.js",
+      "main.jsx",
+      "pages/api/admin/settings.js",
+      "pages/api/patient/enqueue.js",
+      "pages/api/queue/call-next.js",
+      "pages/api/queue/complete.js",
+      "pages/api/queue/status.js",
+      "pages/api/system/tick.js",
+      "types/config.d.ts",
+      "utils/fs-atomic.ts",
+      "utils/logger.ts",
+      "utils/time.ts"
+    ],
+    "total_files": 67,
+    "has_backend_logic": true,
+    "backend_logic_files": [
+      "lib/db.js",
+      "lib/local-api.js"
+    ]
   },
-  "supabase_connection": {
-    "status": "✅ ناجح",
-    "details": {
-      "connection": true,
-      "tables": [],
-      "errors": [
-        {
-          "step": "connection",
-          "error": "Could not find the table 'public._test_connection' in the schema cache"
-        },
-        {
-          "step": "tables",
-          "error": "Could not find the table 'public.test_crud' in the schema cache"
-        }
-      ]
-    },
-    "notes": "الاتصال ناجح، لكن القاعدة فارغة. هذا متوقع لأنها قاعدة بيانات جديدة."
-  },
-  "project_structure": {
-    "status": "✅ سليم",
-    "frontend_files": 67,
-    "backend_files": 37,
-    "duplicates": 0,
-    "issues": [],
-    "notes": "هيكل المشروع منظم بشكل جيد. لا توجد ملفات مكررة أو متعارضة."
-  },
-  "endpoints_analysis": {
-    "status": "✅ تعمل منطقياً (بحاجة نقل)",
-    "total_endpoints": 37,
+  "backend": {
+    "path": "api/",
+    "files": [
+      "hello.js",
+      "index-new.js",
+      "index.js",
+      "lib/helpers-enhanced.js",
+      "lib/helpers.js",
+      "lib/reports.js",
+      "lib/routing.js",
+      "lib/storage.js",
+      "v1/admin/status.js",
+      "v1/clinic/exit.js",
+      "v1/events/stream.js",
+      "v1/path/choose.js",
+      "v1/patient/login.js",
+      "v1/pin/generate.js",
+      "v1/pin/status.js",
+      "v1/pin/verify.js",
+      "v1/queue/call.js",
+      "v1/queue/done.js",
+      "v1/queue/enter.js",
+      "v1/queue/status.js",
+      "v1/reports/annual.js",
+      "v1/reports/daily.js",
+      "v1/reports/monthly.js",
+      "v1/reports/weekly.js",
+      "v1/route/create.js",
+      "v1/route/get.js",
+      "v1/stats/dashboard.js",
+      "v1/stats/queues.js",
+      "v1/status.js"
+    ],
+    "total_files": 29,
     "endpoints": [
       {
-        "path": "/api/v1/admin/clinic-stats",
-        "status": "يعمل",
-        "needs_migration": true
+        "path": "v1/admin/status.js",
+        "kv_calls": 3,
+        "uses_supabase": false,
+        "status": "needs_migration"
       },
       {
-        "path": "/api/v1/queue/enter",
-        "status": "يعمل",
-        "needs_migration": true
+        "path": "v1/clinic/exit.js",
+        "kv_calls": 2,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/events/stream.js",
+        "kv_calls": 5,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/path/choose.js",
+        "kv_calls": 2,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/patient/login.js",
+        "kv_calls": 1,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/pin/generate.js",
+        "kv_calls": 1,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/pin/status.js",
+        "kv_calls": 2,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/pin/verify.js",
+        "kv_calls": 1,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/queue/call.js",
+        "kv_calls": 3,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/queue/done.js",
+        "kv_calls": 5,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/queue/enter.js",
+        "kv_calls": 3,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/queue/status.js",
+        "kv_calls": 2,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/reports/annual.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/reports/daily.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/reports/monthly.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/reports/weekly.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/route/create.js",
+        "kv_calls": 1,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/route/get.js",
+        "kv_calls": 1,
+        "uses_supabase": false,
+        "status": "needs_migration"
+      },
+      {
+        "path": "v1/stats/dashboard.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/stats/queues.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
+      },
+      {
+        "path": "v1/status.js",
+        "kv_calls": 0,
+        "uses_supabase": false,
+        "status": "no_storage"
       }
-    ],
-    "notes": "جميع الـ 37 endpoint تعمل منطقياً وتعتمد على Cloudflare KV. يجب نقلها جميعاً إلى Supabase."
+    ]
   },
-  "backend_in_frontend": {
-    "status": "✅ لا يوجد",
-    "issues": [],
-    "notes": "لا توجد أي وظائف Backend مدمجة داخل الواجهة الأمامية. الفصل بين الواجهة والباك إند ممتاز."
-  },
-  "migration_plan": {
-    "status": " جاهز",
-    "database": "Supabase PostgreSQL",
-    "tables_to_create": [
-      "users",
-      "sessions",
-      "clinics",
-      "queue",
-      "notifications",
-      "reports",
-      "settings",
-      "cache_logs",
-      "routes"
-    ],
-    "sql_schema_file": "/diagnostics/schema-plan.json",
-    "migration_steps_count": 6,
-    "estimated_total_time": "4-6 ساعات"
-  },
-  "recommendations_before_migration": [
+  "duplicates": [
     {
-      "id": 1,
-      "recommendation": "أخذ نسخة احتياطية كاملة من Cloudflare KV",
-      "priority": "حرجة"
+      "filename": "settings.js",
+      "locations": [
+        "lib/settings.js",
+        "pages/api/admin/settings.js"
+      ]
     },
     {
-      "id": 2,
-      "recommendation": "إنشاء الجداول في Supabase باستخدام السكريبت المقترح",
-      "priority": "عالية"
-    },
-    {
-      "id": 3,
-      "recommendation": "تفعيل Row Level Security (RLS) على جميع الجداول الحساسة",
-      "priority": "عالية"
-    },
-    {
-      "id": 4,
-      "recommendation": "إعداد بيئة اختبار (Staging) لتجربة النقل قبل الإنتاج",
-      "priority": "متوسطة"
-    },
-    {
-      "id": 5,
-      "recommendation": "تحديث متغيرات البيئة (Environment Variables) في Vercel لتشمل Supabase keys",
-      "priority": "عالية"
+      "filename": "status.js",
+      "locations": [
+        "pages/api/queue/status.js",
+        "v1/admin/status.js",
+        "v1/pin/status.js",
+        "v1/queue/status.js",
+        "v1/status.js"
+      ]
     }
+  ],
+  "conflicts": [],
+  "notes": [
+    "⚠️ Backend logic detected in frontend files - needs separation",
+    "📊 Migration status: 0 migrated, 14 need migration"
   ]
 }
-
