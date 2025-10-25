@@ -27,7 +27,6 @@
     { "src": "^/api/v1/stats/dashboard$", "dest": "/api/v1/stats/dashboard.js" },
     { "src": "^/api/v1/stats/queues$", "dest": "/api/v1/stats/queues.js" },
     { "src": "^/api/v1/events/stream$", "dest": "/api/v1/events/stream.js" },
-    { "src": "^/api/hello$", "dest": "/api/hello.js" },
     { "src": "^/api/(.*)$", "dest": "/api/$1" }
   ],
   "headers": [
