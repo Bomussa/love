@@ -1,30 +1,27 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/api/v1/status", "destination": "/api/v1/status.js" },
+    { "source": "/api/v1/patient/login", "destination": "/api/v1/patient/login.js" },
+    { "source": "/api/v1/queue/enter", "destination": "/api/v1/queue/enter.js" },
+    { "source": "/api/v1/queue/status", "destination": "/api/v1/queue/status.js" },
+    { "source": "/api/v1/queue/done", "destination": "/api/v1/queue/done.js" },
+    { "source": "/api/v1/queue/call", "destination": "/api/v1/queue/call.js" },
+    { "source": "/api/v1/pin/generate", "destination": "/api/v1/pin/generate.js" },
+    { "source": "/api/v1/pin/status", "destination": "/api/v1/pin/status.js" },
+    { "source": "/api/v1/pin/verify", "destination": "/api/v1/pin/verify.js" },
+    { "source": "/api/v1/path/choose", "destination": "/api/v1/path/choose.js" },
+    { "source": "/api/v1/route/create", "destination": "/api/v1/route/create.js" },
+    { "source": "/api/v1/route/get", "destination": "/api/v1/route/get.js" },
+    { "source": "/api/v1/clinic/exit", "destination": "/api/v1/clinic/exit.js" },
+    { "source": "/api/v1/reports/daily", "destination": "/api/v1/reports/daily.js" },
+    { "source": "/api/v1/reports/weekly", "destination": "/api/v1/reports/weekly.js" },
+    { "source": "/api/v1/reports/monthly", "destination": "/api/v1/reports/monthly.js" },
+    { "source": "/api/v1/reports/annual", "destination": "/api/v1/reports/annual.js" },
+    { "source": "/api/v1/stats/dashboard", "destination": "/api/v1/stats/dashboard.js" },
+    { "source": "/api/v1/stats/queues", "destination": "/api/v1/stats/queues.js" },
+    { "source": "/api/v1/events/stream", "destination": "/api/v1/events/stream.js" },
+    { "source": "/api/v1/admin/status", "destination": "/api/v1/admin/status.js" }
   ],
   "headers": [
     {
@@ -34,12 +31,8 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "no-referrer" },
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-ancestors 'self';"
-        }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-ancestors 'self';" }
       ]
     }
   ]
 }
-
