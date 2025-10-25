@@ -69,7 +69,7 @@ export default function NotificationSystem({
         oscillator.stop(audioContext.currentTime + 0.4);
       }
     } catch (err) {
-      console.error('Sound error:', err);
+      // console.error('Sound error:', err);
     }
   }, []);
 

@@ -60,7 +60,7 @@ export function QrScanPage({ language, toggleLanguage }) {
   useEffect(() => {
     const detectedDevice = detectDevice()
     setDevice(detectedDevice)
-    console.log('🔍 تم كشف الجهاز:', detectedDevice)
+
   }, [])
 
   // قراءة token من URL
@@ -103,7 +103,7 @@ export function QrScanPage({ language, toggleLanguage }) {
           device: detectedDevice
         }).catch(() => {
           // تجاهل الأخطاء - غير حرج
-          console.warn('فشل حفظ معلومات الجهاز')
+
         })
 
         // نجح التحقق
@@ -115,7 +115,7 @@ export function QrScanPage({ language, toggleLanguage }) {
         }, 1000)
       }
     } catch (error) {
-      console.error('❌ خطأ في التحقق:', error)
+      // console.error('❌ خطأ في التحقق:', error)
       setStatus('error')
       
       const errorCode = error.response?.data?.error || 'UNKNOWN_ERROR'
@@ -163,9 +163,7 @@ export function QrScanPage({ language, toggleLanguage }) {
       // Desktop → فتح عادي
       appURL = 'https://www.mmc-mms.com'
     }
-    
-    console.log(`🚀 التوجيه إلى: ${appURL}`)
-    
+
     setTimeout(() => {
       window.location.href = appURL
     }, 500)

@@ -101,12 +101,11 @@ class EnhancedApiClient {
             
             if (attempt < this.retryConfig.maxRetries) {
                 const delay = this.getRetryDelay(attempt)
-                console.warn(`Request failed, retrying in ${delay}ms (${attempt + 1}/${this.retryConfig.maxRetries})`, error)
                 await this.sleep(delay)
                 return this.requestWithRetry(endpoint, options, attempt + 1)
             }
             
-            console.error(`API Error [${endpoint}]:`, error)
+            // console.error(`API Error [${endpoint}]:`, error)
             throw error
         }
     }
@@ -332,9 +331,7 @@ class EnhancedApiClient {
         const unsubscribe1 = eventBus.on('queue:update', handleQueueUpdate);
         const unsubscribe2 = eventBus.on('heartbeat', handleHeartbeat);
         const unsubscribe3 = eventBus.on('notice', handleNotice);
-        
-        console.log('SSE Connected via eventBus:', clinic || 'all');
-        
+
         // إرجاع كائن يحاكي EventSource
         return {
             close: () => {
@@ -422,7 +419,7 @@ class EnhancedApiClient {
                 }, delay)
             })
         } catch (error) {
-            console.log('Audio notification failed:', error)
+
         }
     }
     

@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Error in queue status API:', error);
+    // console.error('Error in queue status API:', error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error',

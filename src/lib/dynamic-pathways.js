@@ -7,7 +7,7 @@ function mapClinicCodes(codes) {
   return codes.map(code => {
     const clinic = clinicsData[code]
     if (!clinic) {
-      console.warn(`Clinic code ${code} not found in clinics.json`)
+
       return null
     }
     
@@ -44,7 +44,7 @@ async function fetchClinicWeights(clinicIds) {
     
     await Promise.all(promises)
   } catch (err) {
-    console.error('Failed to fetch clinic weights:', err)
+    // console.error('Failed to fetch clinic weights:', err)
   }
   
   return weights
@@ -93,7 +93,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
   const route = routeMap[arabicExamType]
   
   if (!route) {
-    console.warn(`No route found for exam type: ${examType} (${arabicExamType})`)
     return []
   }
   

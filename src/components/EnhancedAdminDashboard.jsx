@@ -70,7 +70,7 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
           })
         }
       } catch (e) {
-        console.warn('Stats API unavailable, using defaults:', e.message)
+
         setStats({
           currentPatients: 0,
           completedToday: 0,
@@ -84,7 +84,7 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
         const clinicsData = await api.getClinicOccupancy()
         setClinics(Array.isArray(clinicsData) ? clinicsData : [])
       } catch (e) {
-        console.warn('Clinics API unavailable, using empty array:', e.message)
+
         setClinics([])
       }
 
@@ -93,14 +93,14 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
         const queueData = await api.getActiveQueue()
         setQueue(Array.isArray(queueData) ? queueData : [])
       } catch (e) {
-        console.warn('Queue API unavailable, using empty array:', e.message)
+
         setQueue([])
       }
 
       setLastUpdate(new Date())
       setError(null) // Clear any previous errors
     } catch (err) {
-      console.error('خطأ في جلب البيانات:', err)
+      // console.error('خطأ في جلب البيانات:', err)
       // Always set default stats to prevent blank screen
       if (!stats) {
         setStats({

@@ -61,7 +61,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     
     // Adaptive Polling: يعمل فقط إذا SSE غير نشط
     const handleSSEConnected = () => {
-      console.log('[AdminPage] ✅ SSE Active - Polling disabled');
+
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -69,7 +69,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     };
     
     const handleSSEError = () => {
-      console.log('[AdminPage] ⚠️ SSE Inactive - Polling enabled');
+
       if (!pollingIntervalRef.current) {
         pollingIntervalRef.current = setInterval(() => {
           loadStats()
@@ -133,7 +133,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         setQueues(queuesArray)
       }
     } catch (error) {
-      console.error('Failed to load queues:', error)
+      // console.error('Failed to load queues:', error)
       setQueues([])
     }
   }
@@ -143,7 +143,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       const data = await api.getQueueStats()
       setStats(data)
     } catch (error) {
-      console.error('Failed to load stats:', error)
+      // console.error('Failed to load stats:', error)
     }
   }
 
@@ -152,7 +152,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       const data = await api.getActivePins(adminCode)
       setActivePins(data.pins || [])
     } catch (error) {
-      console.error('Failed to load pins:', error)
+      // console.error('Failed to load pins:', error)
     }
   }
 
@@ -161,7 +161,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       const data = await api.getRecentReports(adminCode)
       setRecentReports(data.reports || [])
     } catch (error) {
-      console.error('Failed to load recent reports:', error)
+      // console.error('Failed to load recent reports:', error)
       setRecentReports([])
     }
   }
@@ -172,7 +172,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       await api.callNextPatient(queueType, adminCode)
       await loadStats()
     } catch (error) {
-      console.error('Failed to call next patient:', error)
+      // console.error('Failed to call next patient:', error)
     } finally {
       setLoading(false)
     }
@@ -184,7 +184,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       await api.pauseQueue(queueType, adminCode)
       await loadStats()
     } catch (error) {
-      console.error('Failed to pause queue:', error)
+      // console.error('Failed to pause queue:', error)
     } finally {
       setLoading(false)
     }
@@ -196,7 +196,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       await api.generatePIN(stationId, adminCode)
       await loadActivePins()
     } catch (error) {
-      console.error('Failed to generate PIN:', error)
+      // console.error('Failed to generate PIN:', error)
     } finally {
       setLoading(false)
     }
@@ -208,7 +208,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       await api.deactivatePIN(pinId, adminCode)
       await loadActivePins()
     } catch (error) {
-      console.error('Failed to deactivate PIN:', error)
+      // console.error('Failed to deactivate PIN:', error)
     } finally {
       setLoading(false)
     }

@@ -24,7 +24,7 @@ class ApiService {
     // Auto-sync offline queue when online
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
-        console.log('🌐 Connection restored - syncing offline queue...')
+
         this.syncOfflineQueue()
       })
       
@@ -67,7 +67,7 @@ class ApiService {
     const offline = this.offlineFallback(endpoint, options)
     if (offline.ok) return offline.data
 
-    console.error('API Error:', lastError)
+    // console.error('API Error:', lastError)
     throw lastError || new Error('تعذر الوصول إلى الخادم')
   }
 
@@ -114,7 +114,7 @@ class ApiService {
       })
       localStorage.setItem('mms.offlineQueue', JSON.stringify(queue))
     } catch (e) {
-      console.error('Failed to queue offline operation:', e)
+      // console.error('Failed to queue offline operation:', e)
     }
   }
 
@@ -123,15 +123,13 @@ class ApiService {
       const queue = JSON.parse(localStorage.getItem('mms.offlineQueue') || '[]')
       if (queue.length === 0) return
 
-      console.log(`🔄 Syncing ${queue.length} offline operations...`)
-      
       const remaining = []
       for (const op of queue) {
         try {
           await this.request(op.endpoint, op.options)
-          console.log(`✅ Synced: ${op.endpoint}`)
+
         } catch (e) {
-          console.error(`❌ Failed to sync: ${op.endpoint}`, e)
+          // console.error(`❌ Failed to sync: ${op.endpoint}`, e)
           remaining.push(op)
         }
       }
@@ -139,12 +137,12 @@ class ApiService {
       localStorage.setItem('mms.offlineQueue', JSON.stringify(remaining))
       
       if (remaining.length === 0) {
-        console.log('✅ All offline operations synced successfully')
+
       } else {
-        console.log(`⚠️ ${remaining.length} operations still pending`)
+
       }
     } catch (e) {
-      console.error('Sync error:', e)
+      // console.error('Sync error:', e)
     }
   }
 
@@ -194,7 +192,7 @@ class ApiService {
       return data
       
     } catch (error) {
-      console.error(`Enter queue failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
+      // console.error(`Enter queue failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
       
       if (retryCount < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 100))
@@ -243,7 +241,7 @@ class ApiService {
       return data
       
     } catch (error) {
-      console.error(`Queue position fetch failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
+      // console.error(`Queue position fetch failed (attempt ${retryCount + 1}/${maxRetries}):`, error)
       
       // إعادة المحاولة إذا لم نصل للحد الأقصى
       if (retryCount < maxRetries) {
@@ -566,16 +564,16 @@ class ApiService {
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log('WebSocket connected')
+
     }
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected')
+
       setTimeout(() => this.connectWebSocket(), 3000)
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error)
+      // console.error('WebSocket error:', error)
     }
 
     return ws
