@@ -1,0 +1,341 @@
+.
+├── ADAPTIVE_POLLING_REPORT.md
+├── CHANGELOG.md
+├── CHANGES.md
+├── CLOUDFLARE_COMPLETE_SETTINGS.md
+├── CLOUDFLARE_FINAL_SETTINGS.md
+├── CLOUDFLARE_FREE_SETTINGS_GUIDE.md
+├── CLOUDFLARE_KV_ISSUES.md
+├── COMPLETE_PROJECT_REPORT.md
+├── COMPREHENSIVE_FINAL_REPORT.md
+├── DATABASE_VERIFICATION_REPORT.md
+├── DEPLOY_API_CLOUDFLARE.md
+├── DYNAMIC_ROUTES_FIX.md
+├── FINAL_COMPLETE_REPORT.md
+├── FINAL_FIX_REPORT.md
+├── FINAL_REPORT.md
+├── FINAL_SUMMARY.md
+├── FINAL_SYSTEM_VERIFICATION.md
+├── FINAL_TEST_REPORT.md
+├── FIXES_REPORT.md
+├── GITHUB_SECRETS_SETUP.md
+├── IMPLEMENTATION_GUIDE.md
+├── IMPROVEMENTS_REPORT.md
+├── INTEGRATION_GUIDE.md
+├── ISSUES_ANALYSIS.md
+├── MAINTENANCE_REPORT_2025-10-23.md
+├── MERGE_REPORT.md
+├── MIGRATION-TO-VERCEL.md
+├── MISSING_COMPONENTS.md
+├── PIN_VALIDATION_FIX.md
+├── PROJECT_REPORT.md
+├── README.md
+├── SECURITY.md
+├── TEST_RESULTS_FINAL.md
+├── VERCEL_API_ISSUE.md
+├── _routes.json
+├── api
+│   ├── README.md
+│   ├── hello.js
+│   ├── index.js
+│   ├── lib
+│   │   ├── helpers.js
+│   │   ├── reports.js
+│   │   ├── routing.js
+│   │   └── storage.js
+│   ├── package.json
+│   └── v1
+│       ├── admin
+│       ├── clinic
+│       ├── events
+│       ├── path
+│       ├── patient
+│       ├── pin
+│       ├── queue
+│       ├── reports
+│       ├── route
+│       ├── stats
+│       └── status.js
+├── archive
+│   ├── README.md
+│   ├── old_docs
+│   │   ├── DELIVERY_README.md
+│   │   ├── README-STRUCTURE.md
+│   │   ├── README-deploy.md
+│   │   ├── README.old.md
+│   │   ├── README_NEW.md
+│   │   └── README_OLD.md
+│   └── old_reports
+│       ├── CODE_CLEANUP_REPORT.md
+│       ├── FINAL_COMPREHENSIVE_REPORT.md
+│       ├── FINAL_PROJECT_REPORT.md
+│       ├── FINAL_REPORT.md
+│       ├── FINAL_REPORT_MMC_MMS.md
+│       ├── FINAL_STATUS_REPORT.md
+│       ├── FINAL_VERIFICATION_CHECKLIST.md
+│       ├── FIXES_PHASE2_SUMMARY.md
+│       ├── FIXES_REPORT_14490.md
+│       ├── FIXES_SUMMARY.md
+│       ├── FRONTEND_MIGRATION_SUMMARY.md
+│       ├── MERGE_RESOLUTION_SUMMARY.md
+│       ├── TASK_COMPLETION_SUMMARY.md
+│       ├── TASK_REPORT_01.md
+│       ├── TEST_REPORT.md
+│       └── UPDATES_SUMMARY.txt
+├── assets
+│   ├── index-B5EFwVVG.js
+│   ├── index-BFzWrOTo.css
+│   └── index-pfJrGh3J.js
+├── augment.js
+├── auto-deploy.ps1
+├── auto-repair-and-start.ps1
+├── clinics_config.json
+├── comprehensive-test.sh
+├── config
+│   ├── clinics.json
+│   ├── constants.json
+│   └── routeMap.json
+├── data
+│   ├── admin
+│   │   ├── features.draft.json
+│   │   ├── features.json
+│   │   ├── features.wal
+│   │   └── navigation.json
+│   ├── pins
+│   │   └── 2025-10-17.json
+│   ├── pins.json
+│   ├── settings
+│   │   ├── settings.json
+│   │   └── settings.snapshot.json
+│   └── settings.json
+├── db
+│   └── init
+│       └── 001_init.sql
+├── deploy
+│   ├── cloudflared
+│   │   └── config.yml
+│   └── systemd
+│       ├── cloudflared.service
+│       └── mmc-server.service
+├── deploy-shortcuts.ps1
+├── docker-compose.yml
+├── docs
+│   ├── ACTION_PLAN_TO_100.md
+│   ├── API_DOCUMENTATION.md
+│   ├── API_INTEGRATION_COMPLETE.md
+│   ├── AUTO_DEPLOY_GUIDE.md
+│   ├── CLOUDFLARE_PAGES_DEPLOYMENT.md
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── FRONTEND_BACKEND_INTEGRATION_UPDATE.md
+│   ├── GITHUB_UPDATE_SUCCESS.md
+│   ├── NEXT_STEPS.md
+│   ├── PROFESSIONAL_ENHANCEMENTS.md
+│   ├── PROJECT_MEMORY.md
+│   ├── QUICK_START.md
+│   ├── RACE_CONDITION_FIX.md
+│   ├── REQUIREMENTS_CHECKLIST.md
+│   ├── REVERT.md
+│   ├── TESTING_CHECKLIST.md
+│   ├── TEST_RESULTS.md
+│   └── THEME_AND_ADMIN_UPDATES.md
+├── final-integration-test.js
+├── fix_env_and_deploy.sh
+├── img
+│   └── logo.svg
+├── index.html
+├── infra
+│   ├── auto-origin-switcher.js
+│   ├── generate-health-status.js
+│   ├── mms-api
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   └── src
+│   └── worker-api
+│       ├── README.ar.md
+│       ├── package-lock.json
+│       ├── package.json
+│       ├── src
+│       └── tsconfig.json
+├── js
+│   ├── notifications-enhanced.js
+│   └── notifications.js
+├── legacy.css
+├── logo.jpeg
+├── manifest.webmanifest
+├── manus-testing
+│   └── cloudflare-backup
+│       ├── functions
+│       ├── wrangler-updated.toml
+│       └── wrangler.toml
+├── medical-committee-logo.jpeg
+├── medical-services-logo.jpeg
+├── mms-core
+│   ├── README.md
+│   ├── config
+│   │   ├── clinics.json
+│   │   ├── constants.json
+│   │   └── routeMap.json
+│   ├── data
+│   │   ├── pins
+│   │   ├── queues
+│   │   ├── routes
+│   │   └── status
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── src
+│   │   ├── api
+│   │   ├── core
+│   │   ├── index.ts
+│   │   └── utils
+│   ├── test-all-features.sh
+│   └── tsconfig.json
+├── notification.mp3
+├── offline.html
+├── package-lock.json
+├── package.json
+├── package.json.backup
+├── pnpm-lock.yaml
+├── postcss.config.js
+├── project_structure.txt
+├── public
+│   ├── _routes.json
+│   ├── augment.js
+│   ├── img
+│   │   └── logo.svg
+│   ├── js
+│   │   ├── notifications-enhanced.js
+│   │   └── notifications.js
+│   ├── legacy.css
+│   ├── logo.jpeg
+│   ├── manifest.webmanifest
+│   ├── medical-committee-logo.jpeg
+│   ├── medical-services-logo.jpeg
+│   ├── notification.mp3
+│   ├── offline.html
+│   ├── standalone.html
+│   └── test-admin-login.html
+├── scripts
+│   └── init-clinics.js
+├── server.js
+├── src
+│   ├── App.jsx
+│   ├── api
+│   │   └── index.ts
+│   ├── components
+│   │   ├── AdminPINMonitor.jsx
+│   │   ├── AdminPage.jsx
+│   │   ├── AdminQrManager.jsx
+│   │   ├── AdminQueueMonitor.jsx
+│   │   ├── Button.jsx
+│   │   ├── Card.jsx
+│   │   ├── ClinicsConfiguration.jsx
+│   │   ├── CompletePage.jsx
+│   │   ├── CountdownTimer.jsx
+│   │   ├── EnhancedAdminDashboard.jsx
+│   │   ├── EnhancedThemeSelector.jsx
+│   │   ├── ExamSelectionPage.jsx
+│   │   ├── Header.jsx
+│   │   ├── Input.jsx
+│   │   ├── LoginPage.jsx
+│   │   ├── NotificationPanel.jsx
+│   │   ├── NotificationSystem.jsx
+│   │   ├── NotificationsPage.jsx
+│   │   ├── PatientPage.jsx
+│   │   ├── PatientsManagement.jsx
+│   │   ├── QrScanPage.jsx
+│   │   ├── SystemSettingsPanel.jsx
+│   │   └── ZFDTicketDisplay.jsx
+│   ├── config
+│   │   └── admin-credentials.js
+│   ├── core
+│   │   ├── config
+│   │   ├── event-bus.js
+│   │   ├── notification-engine.js
+│   │   ├── path-engine.js
+│   │   ├── pin-engine.js
+│   │   ├── pinService.ts
+│   │   ├── queue-engine.backup.js
+│   │   ├── queue-engine.js
+│   │   ├── queueManager.ts
+│   │   └── routing
+│   ├── hooks
+│   │   ├── useQueueWatcher.js
+│   │   └── useSmartUpdater.js
+│   ├── index.css
+│   ├── lib
+│   │   ├── api-adapter.js
+│   │   ├── api-unified.js
+│   │   ├── api.js
+│   │   ├── db.js
+│   │   ├── dynamic-pathways.js
+│   │   ├── enhanced-api.js
+│   │   ├── enhanced-themes.js
+│   │   ├── i18n.js
+│   │   ├── integration-status.json
+│   │   ├── local-api.js
+│   │   ├── mms-core-api.js
+│   │   ├── offline-storage.js
+│   │   ├── queueManager.js
+│   │   ├── routingManager.js
+│   │   ├── settings.js
+│   │   ├── unified-storage.js
+│   │   ├── utils.js
+│   │   └── workflow.js
+│   ├── main.jsx
+│   ├── pages
+│   │   └── api
+│   ├── responsive-fixes.css
+│   ├── types
+│   │   └── config.d.ts
+│   └── utils
+│       ├── fs-atomic.ts
+│       ├── logger.ts
+│       └── time.ts
+├── standalone.html
+├── start-mms.ps1
+├── tailwind.config.js
+├── test-5-patients.js
+├── test-admin-login.html
+├── test-all-endpoints.js
+├── test-api-integration.js
+├── test-api.js
+├── theme
+│   ├── palette.json
+│   └── tokens.css
+├── tools
+│   ├── audit
+│   │   ├── apiRoutesCheck.js
+│   │   ├── functionsCheck.js
+│   │   ├── integrationCheck.js
+│   │   ├── structureCheck.js
+│   │   └── unusedFilesCheck.js
+│   ├── auto-health.ps1
+│   ├── auto-pwsh-fix.ps1
+│   ├── cleanup
+│   │   ├── cleanProject.js
+│   │   └── removeImportedRepos.js
+│   ├── deploy
+│   │   ├── capture-screens.js
+│   │   ├── cloudflare.ps1
+│   │   ├── official-setup.ps1
+│   │   ├── print-qr.js
+│   │   ├── qr.ps1
+│   │   ├── remove-scheduled-task.ps1
+│   │   ├── setup-scheduled-task.ps1
+│   │   └── tunnel.js
+│   ├── lockdown
+│   │   └── finalize.js
+│   ├── restart-on-failure.js
+│   ├── run-health.ps1
+│   ├── set-worker-secrets.ps1
+│   ├── system-check.ps1
+│   ├── test-pin-queue.js
+│   ├── tools-cleanup.ps1
+│   ├── verify
+│   │   └── preReleaseCheck.js
+│   └── watchdog.js
+├── tsconfig.json
+├── vercel.json
+└── vite.config.js
+
+73 directories, 265 files
