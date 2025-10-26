@@ -46,7 +46,7 @@ function joinUrl(base, path) {
   const results = [];
 
   for (const ep of endpoints) {
-    const url = ep === '/' ? (base.endsWith('/') ? base : base + '/') : joinUrl(base, ep);
+    const url = joinUrl(base, ep);
     const label = ep;
     try {
       const res = await fetchWithTimeout(url, { timeout: 10000 });
