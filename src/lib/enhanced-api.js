@@ -1,22 +1,23 @@
 // Enhanced API Client - متطابق 100% مع Backend /api/v1/*
 // تحديث المسارات فقط - بدون تغيير في Backend
 
-const API_VERSION = '/api/v1'
+import { getApiBase } from './api-base';
 
-function resolveApiBase() {
-  const envBase = import.meta.env.VITE_API_BASE
-  if (envBase) return envBase
-  
-  // في التطوير
-  if (import.meta.env.DEV) return 'http://localhost:3000'
-  
-  // في الإنتاج
-  return window.location.origin
+const API_BASE = getApiBase();
+const API_VERSION = '/api/v1'; // For backwards compatibility in method calls
+
+// Normalize endpoint to prevent double /api/v1
+function normalizePath(endpoint) {
+  const p = String(endpoint || '');
+  // Remove any leading /api/v1 or api/v1
+  const withoutVersion = p.replace(/^\/?api\/v1/, '');
+  // Ensure it starts with /
+  return withoutVersion.startsWith('/') ? withoutVersion : `/${withoutVersion}`;
 }
 
 class EnhancedApiClient {
     constructor() {
-        this.baseUrl = resolveApiBase()
+        this.baseUrl = API_BASE;
         this.cache = new Map()
         this.pendingRequests = new Map()
         this.retryConfig = { maxRetries: 3, baseDelay: 1000, maxDelay: 10000 }
@@ -72,7 +73,7 @@ class EnhancedApiClient {
 
     async requestWithRetry(endpoint, options = {}, attempt = 0) {
         this.metrics.requests++
-        const url = `${this.baseUrl}${endpoint}`
+        const url = `${API_BASE}${normalizePath(endpoint)}`
         const config = {
             headers: {
                 'Content-Type': 'application/json',
