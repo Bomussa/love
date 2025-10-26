@@ -17,8 +17,8 @@
     "deploy": "npm run build && wrangler pages publish dist",
     "test:api": "node test-api-integration.js",
     "test:final": "node final-integration-test.js",
-    "test:vercel": "node scripts/test/vercel-health-check.js",
-    "health:check": "node scripts/test/vercel-health-check.js"
+    "test:vercel": "node scripts/test/vercel-health-check.cjs",
+    "health:check": "node scripts/test/vercel-health-check.cjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
