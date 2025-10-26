@@ -1,23 +1,19 @@
 // API Service للتكامل مع Backend
 // المسارات محدثة لتتطابق مع /api/v1/*
 
-const API_VERSION = '/api/v1'
+import { getApiBase } from './api-base';
 
-function resolveApiBases() {
-  const bases = []
-  const envBase = (import.meta.env.VITE_API_BASE || '').trim()
-  if (envBase) bases.push(envBase)
+const API_BASE = getApiBase();
+const API_VERSION = '/api/v1'; // For backwards compatibility in method calls
 
-  // أثناء التطوير
-  if (import.meta.env.DEV) bases.push('http://localhost:3000')
-
-  // نفس الأصل (الإنتاج)
-  bases.push(window.location.origin)
-
-  return Array.from(new Set(bases))
+// Normalize endpoint to prevent double /api/v1
+function normalizePath(endpoint) {
+  const p = String(endpoint || '');
+  // Remove any leading /api/v1 or api/v1
+  const withoutVersion = p.replace(/^\/?api\/v1/, '');
+  // Ensure it starts with /
+  return withoutVersion.startsWith('/') ? withoutVersion : `/${withoutVersion}`;
 }
-
-const API_BASES = resolveApiBases()
 
 class ApiService {
   constructor() {
@@ -43,32 +39,26 @@ class ApiService {
       ...options
     }
 
-    let lastError = null
-    for (const base of API_BASES) {
-      const url = `${base}${endpoint}`
-      try {
-        const response = await fetch(url, config)
-        const text = await response.text()
-        let data
-        try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
+    const url = `${API_BASE}${normalizePath(endpoint)}`
+    
+    try {
+      const response = await fetch(url, config)
+      const text = await response.text()
+      let data
+      try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
 
-        if (!response.ok) {
-          lastError = new Error(data?.error || `HTTP ${response.status}`)
-          continue
-        }
-        return data
-      } catch (err) {
-        lastError = err
-        continue
+      if (!response.ok) {
+        throw new Error(data?.error || `HTTP ${response.status}`)
       }
+      return data
+    } catch (err) {
+      // Offline fallback
+      const offline = this.offlineFallback(endpoint, options)
+      if (offline.ok) return offline.data
+
+      // console.error('API Error:', err)
+      throw err || new Error('تعذر الوصول إلى الخادم')
     }
-
-    // Offline fallback
-    const offline = this.offlineFallback(endpoint, options)
-    if (offline.ok) return offline.data
-
-    // console.error('API Error:', lastError)
-    throw lastError || new Error('تعذر الوصول إلى الخادم')
   }
 
   offlineFallback(endpoint, options = {}) {

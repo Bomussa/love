@@ -84,6 +84,8 @@ export { EventBus }
 // === اتصال SSE المركزي (من 2027) ===
 // يتم إنشاء اتصال واحد فقط بـ Backend ويغذي eventBus
 
+import { getApiBase } from '../lib/api-base';
+
 let sseConnection = null;
 let reconnectTimer = null;
 const RECONNECT_DELAY = 5000;
@@ -96,9 +98,9 @@ function connectToSSE() {
   }
 
   try {
-        // استخدم VITE_API_BASE إن كان معرّفاً، وإلا نفس الأصل (بدون شرطة ختامية)
-    const API_BASE = (import.meta?.env?.VITE_API_BASE || window.location.origin).toString().replace(/\/$/, '')
-    const url = `${API_BASE}/api/v1/events/stream`
+    // Use getApiBase() which returns origin + /api/v1
+    const API_BASE = getApiBase();
+    const url = `${API_BASE}/events/stream`;
 
     sseConnection = new EventSource(url);
 
