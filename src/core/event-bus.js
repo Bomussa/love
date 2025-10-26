@@ -96,7 +96,9 @@ function connectToSSE() {
   }
 
   try {
-    const url = `${window.location.origin}/api/v1/events/stream`;
+        // استخدم VITE_API_BASE إن كان معرّفاً، وإلا نفس الأصل (بدون شرطة ختامية)
+    const API_BASE = (import.meta?.env?.VITE_API_BASE || window.location.origin).toString().replace(/\/$/, '')
+    const url = `${API_BASE}/api/v1/events/stream`
 
     sseConnection = new EventSource(url);
 
