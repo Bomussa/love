@@ -1,5 +1,4 @@
 // Dynamic Path Choose - Sticky per exam
- * MIGRATED TO SUPABASE
 // Supports both GET and POST methods
 // POST /api/v1/path/choose with body: { patientId, examType, gender }
 

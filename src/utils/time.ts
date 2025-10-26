@@ -1,6 +1,6 @@
 import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
 
-import CONST from "../../config/constants.json" with { type: "json" };
+import CONST from "../../config/constants.json" assert { type: "json" };
 export const tz = CONST.TIMEZONE as string;
 const pivot = CONST.SERVICE_DAY_PIVOT as string;
 

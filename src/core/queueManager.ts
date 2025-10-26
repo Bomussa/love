@@ -3,7 +3,7 @@ import { writeAtomicJSON, readJSON } from '../utils/fs-atomic.js';
 import { localDateKeyAsiaQatar, nowISO } from '../utils/time.js';
 import { appendAudit } from '../utils/logger.js';
 
-import CONST from "../../config/constants.json" with { type: "json" };
+import CONST from "../../config/constants.json" assert { type: "json" };
 
 type QueueFile = {
   meta: { clinicId:string; dateKey:string; version:number; };

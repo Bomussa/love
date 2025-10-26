@@ -1,5 +1,4 @@
 // Patient Verify PIN V2 - Counter-based exit
- * MIGRATED TO SUPABASE
 // POST /api/v1/patient/verify-pin
 // Body: { patientId, clinic, pin, queueNumber }
 // Increments exited counter

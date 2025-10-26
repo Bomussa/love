@@ -1,7 +1,6 @@
 /**
  * CRON Handler - Notify Poller (every minute)
  * Triggered by: every 1 minute (CRON format: star-slash-1 star star star star)
- * MIGRATED TO SUPABASE
  * 
  * Tasks:
  * - Check for patients near their turn

@@ -1,5 +1,4 @@
 // Generate new daily PINs manually (Admin only)
- * MIGRATED TO SUPABASE
 // POST /api/v1/pin/generate
 // Body: { adminCode }
 

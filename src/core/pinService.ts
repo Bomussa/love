@@ -3,7 +3,7 @@ import { writeAtomicJSON, readJSON } from '../utils/fs-atomic.js';
 import { localDateKeyAsiaQatar } from '../utils/time.js';
 import { appendAudit } from '../utils/logger.js';
 
-import CONST from "../../config/constants.json" with { type: "json" };
+import CONST from "../../config/constants.json" assert { type: "json" };
 
 type PinStore = {
   meta: { tz: string; version: number; };

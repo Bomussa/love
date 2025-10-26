@@ -1,5 +1,4 @@
 /**
- * MIGRATED TO SUPABASE
  * Notification Status Endpoint
  * GET /api/v1/notify/status?pin=XX&clinic=YY
  * Retrieves recent notifications for a patient

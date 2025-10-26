@@ -1,5 +1,4 @@
 /**
- * MIGRATED TO SUPABASE
  * Health Status Endpoint
  * GET /api/v1/health/status
  */
