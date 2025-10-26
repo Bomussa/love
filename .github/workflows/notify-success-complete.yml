@@ -36,8 +36,8 @@ jobs:
           DEPLOY_URL: ${{ github.event.inputs.url || secrets.DEPLOY_URL || '' }}
         run: |
           if [ -z "$DEPLOY_URL" ]; then
-            echo "No DEPLOY_URL provided; skipping healthcheck and marking as failed.";
-            exit 1;
+            echo "No DEPLOY_URL provided; skipping healthcheck and marking as failed."
+            exit 1
           fi
           node scripts/test/vercel-health-check.ts
 
@@ -66,13 +66,12 @@ jobs:
         with:
           github-token: ${{ secrets.G_token }}
           script: |
-            // Build body safely using concatenation (avoids YAML/quote parsing issues)
             const title = 'نجاح النشر — تم إنجاز المشروع 100%';
             const repoLine = '- Repository: ' + context.repo.owner + '/' + context.repo.repo;
             const branchLine = '- Branch: main';
             const deployed = process.env.DEPLOY_URL || github.event.inputs.url || 'لم يتم توفير DEPLOY_URL';
             const deployedLine = '- Deployed URL: ' + deployed;
-            const body = '**تم إنجاز المشروع بنجاح بنسبة 100%**' + '\n\n' +
+            const body = '**تم إنجاز المشروع بنجاح بنسبة 100%**\n\n' +
                          repoLine + '\n' +
                          branchLine + '\n' +
                          deployedLine + '\n\n' +
@@ -93,5 +92,5 @@ jobs:
       - name: Fail job when healthcheck failed
         if: failure()
         run: |
-          echo "Healthcheck or tests failed; no success notification sent.";
-          exit 1;
+          echo "Healthcheck or tests failed; no success notification sent."
+          exit 1
