@@ -58,8 +58,8 @@ function joinUrl(base, path) {
       // polite pacing
       await sleep(150);
     } catch (e) {
-      results.push({ endpoint: label, ok: false, status: 0, error: e && e.message });
-      console.log(`❌ ${label} -> error: ${e && e.message}`);
+      results.push({ endpoint: label, ok: false, status: 0, error: e.message });
+      console.log(`❌ ${label} -> error: ${e.message}`);
     }
   }
 
