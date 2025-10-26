@@ -18,7 +18,9 @@
     "test:api": "node test-api-integration.js",
     "test:final": "node final-integration-test.js",
     "test:vercel": "node scripts/test/vercel-health-check.js",
-    "health:check": "node scripts/test/vercel-health-check.js"
+    "health:check": "node scripts/test/vercel-health-check.js",
+    "maintenance:find-unused": "node scripts/maintenance/find-unused.js",
+    "maintenance:archive-unused": "node scripts/maintenance/archive-unused.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",

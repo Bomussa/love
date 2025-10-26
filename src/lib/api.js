@@ -1,18 +1,20 @@
 // API Service للتكامل مع Backend
 // المسارات محدثة لتتطابق مع /api/v1/*
 
+import { getApiBase } from './api-base';
+
 const API_VERSION = '/api/v1'
 
 function resolveApiBases() {
   const bases = []
-  const envBase = (import.meta.env.VITE_API_BASE || '').trim()
+  const envBase = getApiBase()
   if (envBase) bases.push(envBase)
 
   // أثناء التطوير
   if (import.meta.env.DEV) bases.push('http://localhost:3000')
 
   // نفس الأصل (الإنتاج)
-  bases.push(window.location.origin)
+  if (typeof window !== 'undefined') bases.push(window.location.origin)
 
   return Array.from(new Set(bases))
 }

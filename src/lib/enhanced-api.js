@@ -1,17 +1,16 @@
 // Enhanced API Client - متطابق 100% مع Backend /api/v1/*
 // تحديث المسارات فقط - بدون تغيير في Backend
 
+import { getApiBase } from './api-base';
+
 const API_VERSION = '/api/v1'
 
 function resolveApiBase() {
-  const envBase = import.meta.env.VITE_API_BASE
-  if (envBase) return envBase
-  
-  // في التطوير
+  const b = getApiBase()
+  if (b) return b
   if (import.meta.env.DEV) return 'http://localhost:3000'
-  
-  // في الإنتاج
-  return window.location.origin
+  if (typeof window !== 'undefined') return window.location.origin
+  return ''
 }
 
 class EnhancedApiClient {
