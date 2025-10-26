@@ -1,5 +1,6 @@
 name: Guard - Allowed Paths Only
 on: [pull_request]
+permissions: { contents: read }
 jobs:
   scope:
     runs-on: ubuntu-latest
