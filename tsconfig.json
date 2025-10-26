@@ -1,33 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist_server",
+  "module": "NodeNext",
+  "moduleResolution": "NodeNext",
+  "outDir": "dist_server",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": [
-      "node"
-    ],
-    "lib": [
-      "ES2020",
-      "DOM"
-    ],
-    "forceConsistentCasingInFileNames": true,
-    "allowJs": true,
-    "noEmit": true,
-    "incremental": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx"
+  "types": ["node"],
+    "lib": ["ES2020", "DOM"],
+    "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "src",
-    "src/types/**/*.d.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src", "src/types/**/*.d.ts"]
 }
