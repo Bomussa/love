@@ -15,7 +15,7 @@ jobs:
       - name: Test API access with provided token
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.G_token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // This script will create a one-off issue (or update if exists) to confirm token works.
             const title = 'G_token smoke test';
