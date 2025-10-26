@@ -3,8 +3,8 @@
  * POST /api/v1/patient/login
  */
 
-import { createEnv } from '../lib/storage.js';
-import { validatePatientId, validateGender } from '../lib/helpers.js';
+import { createEnv } from '../../lib/storage.js';
+import { validatePatientId, validateGender } from '../../lib/helpers.js';
 
 export default async function handler(req, res) {
   // Handle CORS

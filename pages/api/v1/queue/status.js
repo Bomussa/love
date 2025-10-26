@@ -3,7 +3,7 @@
  * GET /api/v1/queue/status?clinic=lab
  */
 
-import { createEnv } from '../lib/storage.js';
+import { createEnv } from '../../lib/storage.js';
 
 export default async function handler(req, res) {
   // Handle CORS

@@ -1,5 +1,5 @@
-import { createEnv } from '../lib/storage.js';
-import { updateClinicStatus, getNextClinic } from '../lib/routing.js';
+import { createEnv } from '../../lib/storage.js';
+import { updateClinicStatus, getNextClinic } from '../../lib/routing.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

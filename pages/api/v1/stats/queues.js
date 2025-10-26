@@ -1,4 +1,4 @@
-import { getRouteStatistics } from '../lib/routing.js';
+import { getRouteStatistics } from '../../lib/routing.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
