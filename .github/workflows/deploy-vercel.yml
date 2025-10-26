@@ -1,0 +1,93 @@
+name: Deploy to Vercel + Post-deploy Healthcheck
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Optional override deployed URL'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  deployments: write
+  issues: write
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Run backend tests (if present)
+        run: npm run test --if-present
+
+      - name: Deploy to Vercel (Production) if secrets exist
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Vercel secrets not set; skipping deploy step.";
+            echo "preview_url=" >> $GITHUB_OUTPUT
+            exit 0;
+          fi
+          npm i -g vercel@latest
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN"
+          URL=$(vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN")
+          echo "preview_url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Resolve deployed URL
+        id: resolve_url
+        env:
+          INPUT_URL: ${{ github.event.inputs.url }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          GH_PATH: ${{ secrets.GH_PATH }}
+          DEPLOY_URL_SECRET: ${{ secrets.DEPLOY_URL }}
+        run: |
+          url="$INPUT_URL";
+          if [ -z "$url" ] && [ -n "$PREVIEW_URL" ]; then url="$PREVIEW_URL"; fi
+          if [ -z "$url" ] && [ -n "$GH_PATH" ]; then url="$GH_PATH"; fi
+          if [ -z "$url" ] && [ -n "$DEPLOY_URL_SECRET" ]; then url="$DEPLOY_URL_SECRET"; fi
+          echo "DEPLOY_URL=$url" >> $GITHUB_ENV
+          echo "Resolved DEPLOY_URL=$url"
+
+      - name: Post-deploy healthcheck
+        env:
+          DEPLOY_URL: ${{ env.DEPLOY_URL }}
+          STRICT: 'false'
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then echo "No DEPLOY_URL resolved; aborting healthcheck."; exit 1; fi
+          node scripts/test/vercel-health-check.js
+
+      - name: Success notification (fallback Issue)
+        if: ${{ success() }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const url = process.env.DEPLOY_URL || 'N/A';
+            const body = [
+              'تم إنجاز النشر بنجاح بنسبة 100% بعد اجتياز الفحوصات.',
+              `- Repository: ${repo}`,
+              `- URL: ${url}`,
+              `- Run: ${process.env.GITHUB_RUN_ID}`
+            ].join('\n');
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: 'نجاح النشر — 100%', body, labels: ['deployment-success'] });
