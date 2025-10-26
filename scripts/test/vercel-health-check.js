@@ -158,9 +158,9 @@ async function runHealthChecks() {
   const passed = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   const total = results.length;
-  const avgDuration = Math.round(
+  const avgDuration = total > 0 ? Math.round(
     results.reduce((sum, r) => sum + r.duration, 0) / total
-  );
+  ) : 0;
 
   log(`✅ Passed: ${passed}/${total}`, passed === total ? 'green' : 'yellow');
   log(`❌ Failed: ${failed}/${total}`, failed > 0 ? 'red' : 'green');
