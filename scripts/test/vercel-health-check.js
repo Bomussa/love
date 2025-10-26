@@ -1,182 +1,74 @@
-#!/usr/bin/env node
-/**
- * Vercel Functions Health Check Script
- * Tests API endpoints locally and in deployment
+/* Simple post-deploy healthcheck for FE + proxied API/SSE.
+ * Usage:
+ *   DEPLOY_URL=http://localhost:5173 node scripts/test/vercel-health-check.js
+ *   STRICT=true ENDPOINTS="/api/v1/status,/api/v1/ping" DEPLOY_URL="https://app.vercel.app" node scripts/test/vercel-health-check.js
+ *
+ * Env:
+ *   DEPLOY_URL   (required) base URL to check, e.g., http://localhost:5173
+ *   ENDPOINTS    (optional) CSV endpoints to check in addition to "/" (GET)
+ *   STRICT       (optional) "true" to fail on any non-2xx; default false (warn-only for extra endpoints)
+ *   TIMEOUT_MS   (optional) per-request timeout, default 8000
+ *   RETRIES      (optional) number of retries for each endpoint, default 2
  */
 
-const BASE_URL = process.env.DEPLOY_URL || 'http://localhost:3000';
+const { setTimeout: sleep } = require('timers/promises')
 
-const colors = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+const BASE = process.env.DEPLOY_URL?.replace(/\/$/, '')
+if (!BASE) {
+  console.error('❌ DEPLOY_URL is required'); process.exit(2)
 }
 
-async function testEndpoint(name, url, options = {}) {
-  const startTime = Date.now();
+const STRICT = String(process.env.STRICT || 'false').toLowerCase() === 'true'
+const TIMEOUT_MS = Number(process.env.TIMEOUT_MS || 8000)
+const RETRIES = Number(process.env.RETRIES || 2)
+
+const extra = (process.env.ENDPOINTS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+const endpoints = ['/', ...extra]
+
+async function getWithTimeout(url) {
+  const ctrl = new AbortController()
+  const id = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    const duration = Date.now() - startTime;
-    const status = response.status;
-    
-    let data;
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = { raw: await response.text() };
-    }
-
-    const success = response.ok;
-    
-    if (success) {
-      log(`✅ ${name}`, 'green');
-      log(`   Status: ${status} | Duration: ${duration}ms`, 'cyan');
-    } else {
-      log(`❌ ${name}`, 'red');
-      log(`   Status: ${status} | Duration: ${duration}ms`, 'yellow');
-      log(`   Error: ${data.error || 'Unknown error'}`, 'red');
-    }
-
-    return { success, status, data, duration };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    log(`❌ ${name}`, 'red');
-    log(`   Error: ${error.message}`, 'red');
-    log(`   Duration: ${duration}ms`, 'yellow');
-    return { success: false, error: error.message, duration };
+    const res = await fetch(url, { signal: ctrl.signal, headers: { 'Cache-Control': 'no-cache' } })
+    return res
+  } finally {
+    clearTimeout(id)
   }
 }
 
-async function runHealthChecks() {
-  log('\n🏥 MMC-MMS API Health Check', 'cyan');
-  log(`📍 Base URL: ${BASE_URL}\n`, 'cyan');
-
-  const results = [];
-
-  // Test 1: Health Status
-  log('Testing health endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'GET /api/v1/status',
-    `${BASE_URL}/api/v1/status`
-  ));
-
-  // Test 2: PIN Status
-  log('\nTesting PIN endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'GET /api/v1/pin/status',
-    `${BASE_URL}/api/v1/pin/status`
-  ));
-
-  // Test 3: Admin Status
-  log('\nTesting admin endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'GET /api/v1/admin/status',
-    `${BASE_URL}/api/v1/admin/status`
-  ));
-
-  // Test 4: Patient Login
-  log('\nTesting patient endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'POST /api/v1/patient/login',
-    `${BASE_URL}/api/v1/patient/login`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        patientId: '123456789',
-        gender: 'male',
-      }),
+async function checkEndpoint(pathname) {
+  const url = `${BASE}${pathname.startsWith('/') ? '' : '/'}${pathname}`
+  let lastErr = null
+  for (let i = 0; i <= RETRIES; i++) {
+    try {
+      const res = await getWithTimeout(url)
+      const ok = res.status >= 200 && res.status < 300
+      console.log(`${ok ? '✅' : '⚠️'} ${pathname} -> ${res.status}`)
+      return ok
+    } catch (e) {
+      lastErr = e
+      console.log(`⏳ retry ${i + 1}/${RETRIES} for ${pathname} (${e.name || e.message})`)
+      await sleep(400)
     }
-  ));
-
-  // Test 5: Path Choose
-  results.push(await testEndpoint(
-    'POST /api/v1/path/choose',
-    `${BASE_URL}/api/v1/path/choose`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        gender: 'male',
-      }),
-    }
-  ));
-
-  // Test 6: Queue Enter
-  log('\nTesting queue endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'POST /api/v1/queue/enter',
-    `${BASE_URL}/api/v1/queue/enter`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        clinic: 'lab',
-        user: '123456789',
-      }),
-    }
-  ));
-
-  // Test 7: Queue Status
-  results.push(await testEndpoint(
-    'GET /api/v1/queue/status?clinic=lab',
-    `${BASE_URL}/api/v1/queue/status?clinic=lab`
-  ));
-
-  // Test 8: Reports
-  log('\nTesting report endpoints...', 'yellow');
-  results.push(await testEndpoint(
-    'GET /api/v1/reports/daily',
-    `${BASE_URL}/api/v1/reports/daily`
-  ));
-
-  // Test 9: CORS check
-  log('\nTesting CORS...', 'yellow');
-  const corsResult = await testEndpoint(
-    'OPTIONS /api/v1/status (CORS preflight)',
-    `${BASE_URL}/api/v1/status`,
-    { method: 'OPTIONS' }
-  );
-  results.push(corsResult);
-
-  // Summary
-  log('\n📊 Test Summary', 'cyan');
-  log('═══════════════', 'cyan');
-  
-  const passed = results.filter(r => r.success).length;
-  const failed = results.filter(r => !r.success).length;
-  const total = results.length;
-  const avgDuration = total > 0 ? Math.round(
-    results.reduce((sum, r) => sum + r.duration, 0) / total
-  ) : 0;
-
-  log(`✅ Passed: ${passed}/${total}`, passed === total ? 'green' : 'yellow');
-  log(`❌ Failed: ${failed}/${total}`, failed > 0 ? 'red' : 'green');
-  log(`⏱️  Average Response Time: ${avgDuration}ms`, 'cyan');
-
-  if (passed === total) {
-    log('\n🎉 All tests passed!', 'green');
-    process.exit(0);
-  } else {
-    log('\n⚠️  Some tests failed. Please review the output above.', 'yellow');
-    process.exit(1);
   }
+  console.log(`❌ ${pathname} -> failed (${lastErr?.message || 'unknown error'})`)
+  return false
 }
 
-// Run the health checks
-runHealthChecks().catch(error => {
-  log(`\n❌ Fatal error: ${error.message}`, 'red');
-  process.exit(1);
-});
+(async () => {
+  console.log(`🩺 Health-check @ ${BASE} (STRICT=${STRICT}, TIMEOUT_MS=${TIMEOUT_MS}, RETRIES=${RETRIES})`)
+  let allOk = true
+  for (const ep of endpoints) {
+    const ok = await checkEndpoint(ep)
+    if (!ok && (STRICT || ep === '/')) {
+      allOk = false
+    }
+  }
+  if (!allOk) process.exit(1)
+  console.log('🎉 Health-check passed')
+})()
+

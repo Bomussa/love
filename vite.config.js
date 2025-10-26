@@ -1,29 +1,32 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Determine base path based on environment
-const isGitHubPages = process.env.VITE_DEPLOY_ENV === 'github';
+const backend = (process.env.VITE_API_BASE || 'http://localhost:3000').replace(/\/$/, '')
 
 export default defineConfig({
-  base: isGitHubPages ? '/love/' : '/',
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+  server: {
+    proxy: {
+      // تمرير REST
+      '/api': {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+      // تمرير SSE (EventSource)
+      '/api/v1/events/stream': {
+        target: backend,
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        headers: { 'Cache-Control': 'no-cache' },
+      },
     },
   },
-  server: {
-    port: 5173,
-    host: true,
-    strictPort: false,
-    allowedHosts: 'all'
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
   },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: false,
-    minify: 'terser'
-  }
 })
 
