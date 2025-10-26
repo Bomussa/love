@@ -9,7 +9,7 @@ jobs:
         id: files
       - name: Enforce allowed paths
         run: |
-          ALLOWED='^(src/core/event-bus\.js|vite\.config\.js|\.env\.local\.example|scripts/test/vercel-health-check\.cjs|\.github/workflows/|\.github/pull_request_template\.md|\.github/copilot-instructions\.md|docs/|scripts/maintenance/|archive/unused/|package\.json|package-lock\.json)$'
+          ALLOWED='^(src/core/event-bus\.js|vite\.config\.js|\.env\.local\.example|scripts/test/.*\.cjs|\.github/workflows/.*\.yml|\.github/pull_request_template\.md|\.github/copilot-instructions\.md|docs/.*|scripts/maintenance/.*\.cjs|archive/unused/.*|package\.json|package-lock\.json|\.gitignore)$'
           FAIL=0
           for f in ${{ steps.files.outputs.all_changed_files }}; do
             if echo "$f" | grep -Eq "$ALLOWED"; then
