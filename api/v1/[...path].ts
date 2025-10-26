@@ -32,6 +32,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // Prepare headers for upstream request (exclude hop-by-hop headers)
+  // Note: This proxy forwards requests as-is. Authentication and authorization
+  // should be handled by the upstream backend API, not at the proxy level.
   const hopByHop = new Set([
     'connection', 'keep-alive', 'proxy-connection', 
     'transfer-encoding', 'upgrade', 'http2-settings', 'te', 'trailers'
@@ -90,7 +92,9 @@ export default async function handler(req: Request): Promise<Response> {
 
 function withCORS(resp: Response, req: Request): Response {
   const origin = (req.headers.get('origin') || '').toString();
-  const allowOrigin = process.env.FRONTEND_ORIGIN || origin || '*';
+  // Only use configured FRONTEND_ORIGIN or the request origin if it exists
+  // Never default to '*' for security reasons
+  const allowOrigin = process.env.FRONTEND_ORIGIN || (origin || null);
   
   const h = new Headers(resp.headers);
   

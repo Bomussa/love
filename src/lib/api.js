@@ -52,7 +52,9 @@ class ApiService {
       }
       return data
     } catch (err) {
-      // Offline fallback
+      // Offline fallback with queue system for write operations
+      // Note: In production, the Vercel Edge proxy handles upstream forwarding,
+      // and network-level retries are handled by the enhanced-api client when needed
       const offline = this.offlineFallback(endpoint, options)
       if (offline.ok) return offline.data
 
