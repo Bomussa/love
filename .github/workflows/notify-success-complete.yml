@@ -2,7 +2,7 @@ name: Notify - Project Completed 100%
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       url:
@@ -42,7 +42,9 @@ jobs:
           node scripts/test/vercel-health-check.ts
 
       - name: Send email notification (if SMTP configured)
-        if: ${{ success() && secrets.SMTP_SERVER && secrets.SMTP_USERNAME && secrets.SMTP_PASSWORD && secrets.NOTIFY_TO_EMAIL }}
+        id: send_email
+        if: ${{ success() }}
+        continue-on-error: true
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -61,7 +63,7 @@ jobs:
             <p>إذا كنت تريد مزيدًا من التفاصيل، راجع سجلات Actions أو اطلب ملخصًا مفصلاً.</p>
 
       - name: Create success issue as fallback notification
-        if: ${{ success() && !(secrets.SMTP_SERVER && secrets.SMTP_USERNAME && secrets.SMTP_PASSWORD && secrets.NOTIFY_TO_EMAIL) }}
+        if: ${{ success() && steps.send_email.outcome != 'success' }}
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.G_token }}
@@ -87,7 +89,7 @@ jobs:
       - name: Log success
         if: success()
         run: |
-          echo "PROJECT COMPLETION: 100% - Notification sent (email or issue)."
+          echo "PROJECT COMPLETION: 100% - Notification attempted (email or fallback issue)."
 
       - name: Fail job when healthcheck failed
         if: failure()
