@@ -10,12 +10,15 @@
   "scripts": {
     "dev": "wrangler pages dev --compatibility-date=2025-10-22",
     "dev:vite": "vite",
+    "vercel:dev": "vercel dev",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
     "deploy": "npm run build && wrangler pages publish dist",
     "test:api": "node test-api-integration.js",
-    "test:final": "node final-integration-test.js"
+    "test:final": "node final-integration-test.js",
+    "test:vercel": "node scripts/test/vercel-health-check.js",
+    "health:check": "node scripts/test/vercel-health-check.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
@@ -52,7 +55,11 @@
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "terser": "^5.44.0",
+    "vercel": "^48.6.0",
     "vite": "^5.4.11",
     "wrangler": "^3.80.4"
+  },
+  "optionalDependencies": {
+    "@vercel/kv": "^3.0.0"
   }
 }
