@@ -1,4 +1,5 @@
 // Patient Record - Get patient journey and statistics
+ * MIGRATED TO SUPABASE
 // GET /api/v1/patient/record?patientId=12345678
 
 import { jsonResponse } from '../../../_shared/utils.js';

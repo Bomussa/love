@@ -1,4 +1,5 @@
 // Patient My Position - Get waiting count from database
+ * MIGRATED TO SUPABASE
 // GET /api/v1/patient/my-position?patientId=12345678&clinic=lab
 
 import { jsonResponse } from '../../../_shared/utils.js';

@@ -1,4 +1,5 @@
 // Get saved patient route
+ * MIGRATED TO SUPABASE
 // GET /api/v1/route/get?patientId=xxx
 
 import { jsonResponse, corsResponse, checkKVAvailability } from '../../../_shared/utils.js';

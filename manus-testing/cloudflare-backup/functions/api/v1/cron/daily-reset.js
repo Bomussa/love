@@ -1,6 +1,7 @@
 /**
  * CRON Handler - Daily Reset at 00:00 Asia/Qatar
  * Triggered by: 0 0 * * * (midnight)
+ * MIGRATED TO SUPABASE
  * 
  * Tasks:
  * - Reset all PINs for new day

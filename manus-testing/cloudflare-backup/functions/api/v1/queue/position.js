@@ -1,8 +1,10 @@
+// MIGRATED TO SUPABASE
 // Real-time Queue Position Verification
 // GET /api/v1/queue/position?clinic=xxx&user=yyy
 // Returns accurate, real-time position in queue
 
-import { jsonResponse, corsResponse, checkKVAvailability } from '../../../_shared/utils.js';
+import { jsonResponse, corsResponse } from '../../../_shared/utils.js';
+import supabase from '../../../lib/supabase.js';
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -19,18 +21,26 @@ export async function onRequestGet(context) {
       }, 400);
     }
     
-    // Check KV availability
-    const kvError = checkKVAvailability(env.KV_QUEUES, 'KV_QUEUES');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
+    // 1. Get Supabase client
+    const client = supabase.getSupabaseClient(env);
+
+    // 2. Get user's queue entry
+    // The original logic used a separate KV key for the user's entry (userQueue).
+    // The new logic will use the 'queue' table with filters.
+    // The 'user' parameter in the URL is likely the patient_id in the 'queue' table.
+    const { data: userQueue, error: userError } = await client
+      .from('queue')
+      .select('status')
+      .eq('clinic_id', clinic)
+      .eq('patient_id', user)
+      .limit(1)
+      .single();
+
+    if (userError && userError.code !== 'PGRST116') { // PGRST116 means no rows found
+      console.error('Supabase Error (userQueue):', userError);
+      throw new Error('Database query failed for user entry.');
     }
-    
-    const kv = env.KV_QUEUES;
-    
-    // Get user's queue entry
-    const userKey = `queue:user:${clinic}:${user}`;
-    const userQueue = await kv.get(userKey, 'json');
-    
+
     if (!userQueue) {
       return jsonResponse({
         success: false,
@@ -39,7 +49,7 @@ export async function onRequestGet(context) {
     }
     
     // If already done, return completed status
-    if (userQueue.status === 'DONE') {
+    if (userQueue.status === 'completed') { // Assuming 'DONE' maps to 'completed'
       return jsonResponse({
         success: true,
         status: 'DONE',
@@ -50,26 +60,37 @@ export async function onRequestGet(context) {
       });
     }
     
-    // Get queue list
-    const listKey = `queue:list:${clinic}`;
-    const queueList = await kv.get(listKey, 'json') || [];
+    // 3. Get queue list for the clinic
+    // The original logic fetched a single KV value which was an array of all entries.
+    // The new logic fetches all 'waiting' and 'called' entries from the 'queue' table.
+    const { data: queueList, error: listError } = await client
+      .from('queue')
+      .select('patient_id, status, entered_at')
+      .eq('clinic_id', clinic)
+      .in('status', ['waiting', 'called']) // Assuming 'WAITING'/'IN_SERVICE' map to 'waiting'/'called'
+      .order('entered_at', { ascending: true }); // Sorting by entered_at (entry time) as in original KV logic
+
+    if (listError) {
+      console.error('Supabase Error (queueList):', listError);
+      throw new Error('Database query failed for queue list.');
+    }
     
     // Get only WAITING patients
-    const waitingPatients = queueList.filter(item => item.status === 'WAITING');
-    
-    // Sort by entry time to ensure correct order
-    waitingPatients.sort((a, b) => {
-      const timeA = new Date(a.entered_at).getTime();
-      const timeB = new Date(b.entered_at).getTime();
-      return timeA - timeB;
-    });
+    // The original logic filtered for 'WAITING'. Since the DB query already filters for 'waiting' and 'called',
+    // we need to replicate the original logic's intent which was to find position among WAITING.
+    // The original KV list was sorted by entered_at implicitly by the KV key/list structure, then explicitly sorted.
+    // The DB query is sorted by entered_at.
+
+    // Filter to get only 'waiting' status (equivalent to original 'WAITING' status)
+    const waitingPatients = queueList.filter(item => item.status === 'waiting');
     
     // Find user position in waiting list
-    const myIndex = waitingPatients.findIndex(item => item.user === user);
+    const myIndex = waitingPatients.findIndex(item => item.patient_id === user);
     
     // If not found in waiting list, check if in service
     if (myIndex === -1) {
-      if (userQueue.status === 'IN_SERVICE') {
+      // Check if the user is currently 'called' (equivalent to original 'IN_SERVICE')
+      if (userQueue.status === 'called') {
         return jsonResponse({
           success: true,
           status: 'IN_SERVICE',
@@ -80,6 +101,8 @@ export async function onRequestGet(context) {
         });
       }
       
+      // If not waiting, not in service, and not done (checked earlier), something is wrong.
+      // The original code returned 'DONE' here, which is a safe fallback.
       return jsonResponse({
         success: true,
         status: 'DONE',
@@ -122,7 +145,7 @@ export async function onRequestGet(context) {
       total_waiting: waitingPatients.length,
       estimated_wait_minutes: estimatedMinutes,
       verified_at: new Date().toISOString(),
-      verification_method: 'real_time_kv_check'
+      verification_method: 'real_time_supabase_check'
     });
     
   } catch (error) {
