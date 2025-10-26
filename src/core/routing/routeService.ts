@@ -3,8 +3,8 @@ import { writeAtomicJSON, readJSON } from '../../utils/fs-atomic.js';
 import { localDateKeyAsiaQatar, nowISO } from '../../utils/time.js';
 import { appendAudit } from '../../utils/logger.js';
 
-import ROUTE_MAP from "../../../config/routeMap.json" assert { type: "json" };
-import CLINICS from "../../../config/clinics.json" assert { type: "json" };
+import ROUTE_MAP from "../../../config/routeMap.json" with { type: "json" };
+import CLINICS from "../../../config/clinics.json" with { type: "json" };
 
 type RouteFile = {
   visitId: string;
