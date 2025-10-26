@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
 
       - name: Install dependencies (no scripts)
         run: npm ci --ignore-scripts
@@ -65,13 +65,15 @@ jobs:
       - name: Create success issue as fallback notification
         if: ${{ success() && steps.send_email.outcome != 'success' }}
         uses: actions/github-script@v6
+        env:
+          DEPLOY_URL: ${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH || '' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const title = 'نجاح النشر — تم إنجاز المشروع 100%';
             const repoLine = '- Repository: ' + context.repo.owner + '/' + context.repo.repo;
             const branchLine = '- Branch: main';
-            const deployed = process.env.DEPLOY_URL || '${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH }}' || 'لم يتم توفير DEPLOY_URL';
+            const deployed = process.env.DEPLOY_URL || 'لم يتم توفير DEPLOY_URL';
             const deployedLine = '- Deployed URL: ' + deployed;
             const body = '**تم إنجاز المشروع بنجاح بنسبة 100%**\n\n' +
                          repoLine + '\n' +
