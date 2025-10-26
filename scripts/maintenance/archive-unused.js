@@ -14,8 +14,17 @@ const REPORT = path.join(ROOT, 'scripts', 'maintenance', 'unused-report.json');
 const DEST = path.join(ROOT, 'archive', 'unused');
 const CONFIRM = String(process.env.ARCHIVE_CONFIRM || 'false').toLowerCase() === 'true';
 
-function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
-function moveSafe(src, destRoot) { const rel = src.replace(ROOT + path.sep, ''); const dest = path.join(destRoot, rel); ensureDir(path.dirname(dest)); fs.renameSync(src, dest); return { src, dest }; }
+function ensureDir(p) {
+  fs.mkdirSync(p, { recursive: true });
+}
+
+function moveSafe(src, destRoot) {
+  const rel = src.replace(ROOT + path.sep, '');
+  const dest = path.join(destRoot, rel);
+  ensureDir(path.dirname(dest));
+  fs.renameSync(src, dest);
+  return { src, dest };
+}
 
 function run() {
   if (!fs.existsSync(REPORT)) { console.error('unused-report.json not found. Run find-unused.js first.'); process.exit(1); }
@@ -36,8 +45,13 @@ function run() {
   ensureDir(DEST);
   let moved = 0;
   for (const p of plan) {
-    try { const res = moveSafe(p, DEST); console.log(`Moved: ${res.src} -> ${res.dest}`); moved++; }
-    catch (e) { console.error(`Failed to move ${p}: ${e.message}`); }
+    try {
+      const res = moveSafe(p, DEST);
+      console.log(`Moved: ${res.src} -> ${res.dest}`);
+      moved++;
+    } catch (e) {
+      console.error(`Failed to move ${p}: ${e.message}`);
+    }
   }
   console.log(`Done. Moved ${moved} files.`);
 }
