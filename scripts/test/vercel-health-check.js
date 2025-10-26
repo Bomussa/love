@@ -4,7 +4,7 @@
  * - Optional ENDPOINTS (CSV) for extra checks.
  * - STRICT=true to fail on any endpoint failure. Default: false.
  */
-import { setTimeout as sleep } from 'timers/promises';
+const { setTimeout: sleep } = require('timers/promises');
 
 function env(name, def = '') { return process.env[name] || def; }
 
