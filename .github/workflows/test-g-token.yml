@@ -15,11 +15,11 @@ jobs:
       - name: Test API access with provided token
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.G_token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // This script will create a one-off issue (or update if exists) to confirm token works.
-            const title = 'G_token smoke test';
-            const body = `This issue was created by the test-g-token workflow to confirm that secrets.G_token is valid.\n\nRepository: ${context.repo.owner}/${context.repo.repo}\nWorkflow run: ${process.env.GITHUB_RUN_ID || 'N/A'}`;
+            const title = 'GITHUB_TOKEN smoke test';
+            const body = `This issue was created by the test-g-token workflow to confirm that secrets.GITHUB_TOKEN is valid.\n\nRepository: ${context.repo.owner}/${context.repo.repo}\nWorkflow run: ${process.env.GITHUB_RUN_ID || 'N/A'}`;
             // Create the issue
             await github.rest.issues.create({
               owner: context.repo.owner,
