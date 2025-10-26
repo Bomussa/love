@@ -1,5 +1,4 @@
 // SSE endpoint for real-time notifications
- * MIGRATED TO SUPABASE
 // Cloudflare Pages Functions format
 // Updated to work with unified queue structure
 

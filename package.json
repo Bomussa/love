@@ -8,10 +8,14 @@
     "node": ">=18.17 <21"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "preview": "next start"
+    "dev": "wrangler pages dev --compatibility-date=2025-10-22",
+    "dev:vite": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "deploy": "npm run build && wrangler pages publish dist",
+    "test:api": "node test-api-integration.js",
+    "test:final": "node final-integration-test.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
@@ -24,13 +28,11 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cors": "^2.8.5",
-    "date-fns": "^3.0.0",
-    "date-fns-tz": "^3.2.0",
+    "date-fns": "^2.30.0",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "lucide-react": "^0.294.0",
-    "next": "^16.0.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -40,7 +42,6 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.76.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.8.1",
@@ -51,7 +52,6 @@
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "terser": "^5.44.0",
-    "typescript": "^5.9.3",
     "vite": "^5.4.11",
     "wrangler": "^3.80.4"
   }

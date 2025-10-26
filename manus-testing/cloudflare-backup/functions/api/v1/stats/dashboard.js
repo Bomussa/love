@@ -1,5 +1,4 @@
 // Dashboard Stats - Get comprehensive statistics for admin dashboard
- * MIGRATED TO SUPABASE
 // Returns real-time stats from all queues
 
 export async function onRequestGet(context) {

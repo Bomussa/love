@@ -1,5 +1,4 @@
 // Patient Status - Complete patient status with all clinics
- * MIGRATED TO SUPABASE
 // GET /api/v1/patient/status?patientId=12345678
 
 import { jsonResponse } from '../../../_shared/utils.js';

@@ -1,5 +1,4 @@
 // Get daily PINs for all clinics
- * MIGRATED TO SUPABASE
 // PINs are static per clinic and change daily at 05:00 Asia/Qatar
 
 import { jsonResponse } from '../../../_shared/utils.js';
