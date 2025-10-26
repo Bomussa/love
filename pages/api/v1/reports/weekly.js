@@ -1,4 +1,4 @@
-import { generateWeeklyReport } from '../../lib/reports.js';
+import { generateWeeklyReport } from '../lib/reports.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

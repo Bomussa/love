@@ -3,8 +3,8 @@
  * POST /api/v1/queue/done
  */
 
-import { createEnv } from '../../lib/storage.js';
-import { withLock, emitQueueEvent } from '../../lib/helpers.js';
+import { createEnv } from '../lib/storage.js';
+import { withLock, emitQueueEvent } from '../lib/helpers.js';
 
 export default async function handler(req, res) {
   // Handle CORS

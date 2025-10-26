@@ -3,8 +3,8 @@
  * POST /api/v1/path/choose
  */
 
-import { createEnv } from '../../lib/storage.js';
-import { validateGender } from '../../lib/helpers.js';
+import { createEnv } from '../lib/storage.js';
+import { validateGender } from '../lib/helpers.js';
 
 // Define exam paths
 const EXAM_PATHS = {

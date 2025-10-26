@@ -3,8 +3,8 @@
  * GET /api/v1/pin/status
  */
 
-import { createEnv } from '../../lib/storage.js';
-import { getValidClinics, generatePIN } from '../../lib/helpers.js';
+import { createEnv } from '../lib/storage.js';
+import { getValidClinics, generatePIN } from '../lib/helpers.js';
 
 export default async function handler(req, res) {
   // Handle CORS
