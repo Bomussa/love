@@ -1,0 +1,36 @@
+name: Post Deploy Healthcheck
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Deployed URL to test (e.g., https://your-app.vercel.app)"
+        required: false
+  push:
+    branches: [ "main" ]
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (read only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run API smoke tests against deployment
+        env:
+          DEPLOY_URL: ${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH || '' }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "No DEPLOY_URL provided (input url or secrets.DEPLOY_URL or secrets.GH_PATH)."; exit 1;
+          fi
+          node scripts/test/vercel-health-check.js

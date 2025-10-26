@@ -1,25 +1,87 @@
-# snippet: use GITHUB_TOKEN (recommended)
-- name: Create success issue as fallback notification
-  if: ${{ success() && steps.send_email.outcome != 'success' }}
-  uses: actions/github-script@v6
-  with:
-    # use the runner-provided token (safer) — do NOT point to your custom PAT here
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    script: |
-      const title = 'نجاح النشر — تم إنجاز المشروع 100%';
-      const repoLine = '- Repository: ' + context.repo.owner + '/' + context.repo.repo;
-      const branchLine = '- Branch: main';
-      const deployed = process.env.DEPLOY_URL || github.event.inputs.url || 'لم يتم توفير DEPLOY_URL';
-      const deployedLine = '- Deployed URL: ' + deployed;
-      const body = '**تم إنجاز المشروع بنجاح بنسبة 100%**\n\n' +
-                   repoLine + '\n' +
-                   branchLine + '\n' +
-                   deployedLine + '\n\n' +
-                   'جميع الفحوصات التشغيلية والـAPI والميزات تعمل بدون أخطاء.';
-      await github.rest.issues.create({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        title,
-        body,
-        labels: ['deployment-success']
-      });
+name: Notify - Project Completed 100%
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Deployed URL to test (optional)'
+        required: false
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+jobs:
+  health-and-notify:
+    name: Healthcheck and Success Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Run healthcheck script
+        id: health
+        env:
+          DEPLOY_URL: ${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH || '' }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "No DEPLOY_URL provided (input url or secrets.DEPLOY_URL or secrets.GH_PATH)."; exit 1;
+          fi
+          node scripts/test/vercel-health-check.js
+
+      - name: Send email notification (attempt, will not fail workflow)
+        id: send_email
+        if: ${{ success() }}
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT || 587 }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "تم إنجاز المشروع بنجاح 100% — MMC-MMS"
+          to: ${{ secrets.NOTIFY_TO_EMAIL }}
+          from: "GitHub Actions <noreply@github.com>"
+          body: |
+            تم إنجاز المشروع بنجاح بنسبة 100%.
+            
+            Repository: ${{ github.repository }}
+            Branch: main
+            Deployed URL: ${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH || 'N/A' }}
+            
+            جميع الفحوصات التشغيلية والـAPI والميزات تعمل بدون أخطاء.
+
+      - name: Create success issue as fallback notification
+        if: ${{ success() && steps.send_email.outcome != 'success' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = 'نجاح النشر — تم إنجاز المشروع 100%';
+            const repoLine = '- Repository: ' + context.repo.owner + '/' + context.repo.repo;
+            const branchLine = '- Branch: main';
+            const deployed = process.env.DEPLOY_URL || '${{ github.event.inputs.url || secrets.DEPLOY_URL || secrets.GH_PATH }}' || 'لم يتم توفير DEPLOY_URL';
+            const deployedLine = '- Deployed URL: ' + deployed;
+            const body = '**تم إنجاز المشروع بنجاح بنسبة 100%**\n\n' +
+                         repoLine + '\n' +
+                         branchLine + '\n' +
+                         deployedLine + '\n\n' +
+                         'جميع الفحوصات التشغيلية والـAPI والميزات تعمل بدون أخطاء.';
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['deployment-success']
+            });

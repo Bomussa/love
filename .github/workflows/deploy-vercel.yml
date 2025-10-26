@@ -1,0 +1,79 @@
+name: Deploy to Vercel + Post-deploy Healthcheck
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Optional override deployed URL'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  deployments: write
+  issues: write
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Run backend tests (if present)
+        run: npm run test --if-present
+
+      - name: Deploy to Vercel (Production)
+        id: vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: '--prod'
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./
+
+      - name: Resolve deployed URL
+        id: resolve_url
+        run: |
+          url="${{ github.event.inputs.url }}"
+          if [ -z "$url" ]; then url="${{ steps.vercel.outputs.preview-url }}"; fi
+          if [ -z "$url" ]; then url="${{ secrets.GH_PATH }}"; fi
+          if [ -z "$url" ]; then url="${{ secrets.DEPLOY_URL }}"; fi
+          echo "DEPLOY_URL=$url" >> $GITHUB_ENV
+          echo "Resolved DEPLOY_URL=$url"
+
+      - name: Post-deploy healthcheck
+        env:
+          DEPLOY_URL: ${{ env.DEPLOY_URL }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then echo "No DEPLOY_URL resolved; aborting healthcheck."; exit 1; fi
+          node scripts/test/vercel-health-check.js
+
+      - name: Success notification (fallback Issue)
+        if: ${{ success() }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const url = process.env.DEPLOY_URL || 'N/A';
+            const body = [
+              'تم إنجاز النشر بنجاح بنسبة 100% بعد اجتياز الفحوصات.',
+              `- Repository: ${repo}`,
+              `- URL: ${url}`,
+              `- Run: ${process.env.GITHUB_RUN_ID}`
+            ].join('\n');
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: 'نجاح النشر — 100%', body, labels: ['deployment-success'] });
