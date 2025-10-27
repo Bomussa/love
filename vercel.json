@@ -7,11 +7,12 @@
     {
       "source": "/api/v1/(.*)",
       "headers": [
-        {
-          "key": "X-Accel-Buffering",
-          "value": "no"
-        }
+        { "key": "X-Accel-Buffering", "value": "no" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
