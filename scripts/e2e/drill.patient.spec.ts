@@ -42,7 +42,7 @@ test.describe('Live Drill - Patient Flow', () => {
     console.log(`  BASE_URL: ${BASE_URL}`);
     console.log(`  DRILL_CLINIC_ID: ${DRILL_CLINIC_ID}`);
     console.log(`  DRILL_EXAM_TYPE: ${DRILL_EXAM_TYPE}`);
-    console.log(`  DRILL_GENDER: ${DRILL_GENDER}`);
+    console.log('  DRILL_GENDER: ***'); // Masked to avoid clear-text logging of env variable
     console.log(`  DRILL_CLINIC_PIN: ${DRILL_CLINIC_PIN ? '***' : 'not set'}`);
   });
 
