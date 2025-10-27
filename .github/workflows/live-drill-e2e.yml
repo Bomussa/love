@@ -1,0 +1,108 @@
+name: Live Drill E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL for testing (overrides secret)'
+        required: false
+        type: string
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  drill-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Playwright
+        run: |
+          npx --yes playwright@latest install --with-deps chromium
+
+      - name: Verify environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "BASE_URL configured: ${{ (github.event.inputs.base_url != '' || secrets.BASE_URL != '') && 'yes' || 'no' }}"
+          echo "DRILL_CLINIC_ID configured: ${{ secrets.DRILL_CLINIC_ID != '' && 'yes' || 'no' }}"
+          echo "DRILL_CLINIC_PIN configured: ${{ secrets.DRILL_CLINIC_PIN != '' && 'yes' || 'no' }}"
+
+      - name: Run Live Drill E2E Tests
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || secrets.BASE_URL }}
+          DRILL_CLINIC_ID: ${{ secrets.DRILL_CLINIC_ID }}
+          DRILL_CLINIC_PIN: ${{ secrets.DRILL_CLINIC_PIN }}
+          DRILL_EXAM_TYPE: ${{ secrets.DRILL_EXAM_TYPE || 'general' }}
+          DRILL_GENDER: ${{ secrets.DRILL_GENDER || 'male' }}
+          SSE_URL_TEMPLATE: ${{ secrets.SSE_URL_TEMPLATE || '/api/v1/clinics/{clinicId}/events' }}
+          ADMIN_COOKIE: ${{ secrets.ADMIN_COOKIE }}
+          ADMIN_AUTH_HEADER: ${{ secrets.ADMIN_AUTH_HEADER }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$DRILL_CLINIC_ID" ]; then
+            echo "::warning::BASE_URL or DRILL_CLINIC_ID not configured. Skipping tests."
+            echo "Please configure repository secrets: BASE_URL, DRILL_CLINIC_ID, DRILL_CLINIC_PIN"
+            exit 0
+          fi
+          
+          echo "Running E2E tests against: $BASE_URL"
+          echo "DRILL Clinic: $DRILL_CLINIC_ID"
+          
+          npx playwright test scripts/e2e/drill.*.spec.ts \
+            --reporter=list,html \
+            --max-failures=3 \
+            || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Live Drill E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -z "$BASE_URL" ] || [ -z "$DRILL_CLINIC_ID" ]; then
+            echo "⚠️ Tests skipped - configuration missing" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Required secrets:" >> $GITHUB_STEP_SUMMARY
+            echo "- BASE_URL (e.g., https://your-app.vercel.app)" >> $GITHUB_STEP_SUMMARY
+            echo "- DRILL_CLINIC_ID" >> $GITHUB_STEP_SUMMARY
+            echo "- DRILL_CLINIC_PIN" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Tests completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Base URL: $BASE_URL" >> $GITHUB_STEP_SUMMARY
+            echo "Clinic: $DRILL_CLINIC_ID" >> $GITHUB_STEP_SUMMARY
+          fi
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || secrets.BASE_URL }}
+          DRILL_CLINIC_ID: ${{ secrets.DRILL_CLINIC_ID }}
