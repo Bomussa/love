@@ -1,0 +1,136 @@
+name: Live Drill E2E
+
+on:
+  # Manual trigger with optional inputs
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to test (overrides BASE_URL secret)'
+        required: false
+        type: string
+      skip_admin:
+        description: 'Skip admin tests'
+        required: false
+        type: boolean
+        default: false
+  
+  # Optional: Uncomment for nightly schedule (runs at 2 AM UTC)
+  # schedule:
+  #   - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  live-drill:
+    name: Run Live Drill Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Validate required secrets
+        run: |
+          echo "🔍 Validating configuration..."
+          if [ -z "${{ secrets.BASE_URL }}" ] && [ -z "${{ inputs.base_url }}" ]; then
+            echo "❌ ERROR: BASE_URL secret or base_url input is required"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DRILL_CLINIC_ID }}" ]; then
+            echo "⚠️  WARNING: DRILL_CLINIC_ID not set, using default 'DRILL'"
+          fi
+          
+          if [ -z "${{ secrets.DRILL_CLINIC_PIN }}" ]; then
+            echo "⚠️  WARNING: DRILL_CLINIC_PIN not set, using default '9999'"
+          fi
+          
+          if [ -z "${{ secrets.ADMIN_COOKIE }}" ] && [ -z "${{ secrets.ADMIN_AUTH_HEADER }}" ]; then
+            echo "⚠️  WARNING: No admin credentials provided - admin tests will be skipped"
+          fi
+          
+          echo "✅ Configuration validation complete"
+      
+      - name: Install Playwright
+        run: |
+          echo "📦 Installing Playwright via npx..."
+          npx -y playwright@latest install --with-deps chromium
+          echo "✅ Playwright installed"
+      
+      - name: Run Patient Drill Tests
+        env:
+          BASE_URL: ${{ inputs.base_url || secrets.BASE_URL }}
+          DRILL_CLINIC_ID: ${{ secrets.DRILL_CLINIC_ID || 'DRILL' }}
+          DRILL_CLINIC_PIN: ${{ secrets.DRILL_CLINIC_PIN || '9999' }}
+          DRILL_EXAM_TYPE: ${{ secrets.DRILL_EXAM_TYPE || 'تجنيد' }}
+          DRILL_GENDER: ${{ secrets.DRILL_GENDER || 'male' }}
+          CI: true
+        run: |
+          echo "🧪 Running patient drill tests..."
+          cd scripts/e2e
+          npx playwright test drill.patient.spec.ts --config=playwright.config.ts --reporter=list
+          echo "✅ Patient tests completed"
+      
+      - name: Run Admin Drill Tests
+        if: ${{ !inputs.skip_admin }}
+        env:
+          BASE_URL: ${{ inputs.base_url || secrets.BASE_URL }}
+          DRILL_CLINIC_ID: ${{ secrets.DRILL_CLINIC_ID || 'DRILL' }}
+          DRILL_CLINIC_PIN: ${{ secrets.DRILL_CLINIC_PIN || '9999' }}
+          DRILL_EXAM_TYPE: ${{ secrets.DRILL_EXAM_TYPE || 'تجنيد' }}
+          DRILL_GENDER: ${{ secrets.DRILL_GENDER || 'male' }}
+          ADMIN_COOKIE: ${{ secrets.ADMIN_COOKIE }}
+          ADMIN_AUTH_HEADER: ${{ secrets.ADMIN_AUTH_HEADER }}
+          CI: true
+        run: |
+          echo "🧪 Running admin drill tests..."
+          cd scripts/e2e
+          npx playwright test drill.admin.spec.ts --config=playwright.config.ts --reporter=list
+          echo "✅ Admin tests completed"
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drill-test-results
+          path: |
+            scripts/e2e/playwright-report/
+            scripts/e2e/test-results/
+          retention-days: 7
+      
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## 🎯 Live Drill E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Base URL: \`${{ inputs.base_url || secrets.BASE_URL }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Clinic ID: \`${{ secrets.DRILL_CLINIC_ID || 'DRILL' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Exam Type: \`${{ secrets.DRILL_EXAM_TYPE || 'تجنيد' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "### ✅ All drill tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The live drill successfully validated:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Patient flow (status → route → enter → extend → exit)" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ inputs.skip_admin }}" != "true" ]; then
+              echo "- ✅ Admin flow (call next → queue state)" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "- ✅ Queue cleanup" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Some drill tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the test artifacts for detailed logs." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Note:** No real patients were affected. All operations used the dedicated DRILL clinic." >> $GITHUB_STEP_SUMMARY
