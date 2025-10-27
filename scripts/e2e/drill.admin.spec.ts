@@ -43,6 +43,7 @@ test.describe('Live Drill - Admin Flow', () => {
     console.log('🔍 Test Configuration:');
     console.log(`  BASE_URL: ${BASE_URL}`);
     console.log(`  DRILL_CLINIC_ID: ${DRILL_CLINIC_ID}`);
+    console.log(`  DRILL_CLINIC_PIN: ${DRILL_CLINIC_PIN ? '***' : 'not set'}`);
     console.log(`  ADMIN_COOKIE: ${ADMIN_COOKIE ? '✓ provided' : '✗ not provided'}`);
     console.log(`  ADMIN_AUTH_HEADER: ${ADMIN_AUTH_HEADER ? '✓ provided' : '✗ not provided'}`);
   });
