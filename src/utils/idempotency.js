@@ -29,7 +29,7 @@ function stableStringify(obj) {
   }
   // Sort object keys
   const keys = Object.keys(obj).sort();
-  const pairs = keys.map(key => `"${key}":${stableStringify(obj[key])}`);
+  const pairs = keys.map(key => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
   return '{' + pairs.join(',') + '}';
 }
 
