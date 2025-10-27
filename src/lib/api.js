@@ -2,6 +2,7 @@
 // المسارات محدثة لتتطابق مع /api/v1/*
 
 import { getApiBase } from './api-base';
+import { generateIdempotencyKey, sentKeysRegistry } from '../utils/idempotency';
 
 const API_BASE = getApiBase();
 const API_VERSION = '/api/v1'; // For backwards compatibility in method calls
@@ -31,9 +32,28 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    
+    // Generate and attach idempotency key for mutating requests
+    let idempotencyKey = options.idempotencyKey; // Allow override
+    if (!idempotencyKey && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      idempotencyKey = generateIdempotencyKey(method, endpoint, options.body);
+      
+      // Check if already sent successfully
+      if (sentKeysRegistry.isSent(idempotencyKey)) {
+        // Skip resend - return cached success
+        return {
+          success: true,
+          cached: true,
+          message: 'Request already sent successfully'
+        };
+      }
+    }
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(idempotencyKey && { 'X-Idempotency-Key': idempotencyKey }),
         ...options.headers
       },
       ...options
@@ -50,6 +70,12 @@ class ApiService {
       if (!response.ok) {
         throw new Error(data?.error || `HTTP ${response.status}`)
       }
+      
+      // Mark idempotency key as sent on success
+      if (idempotencyKey && response.ok) {
+        sentKeysRegistry.markSent(idempotencyKey);
+      }
+      
       return data
     } catch (err) {
       // Offline fallback with queue system for write operations
@@ -74,7 +100,7 @@ class ApiService {
       const method = (options.method || 'GET').toUpperCase()
       
       // For write operations, queue them for later sync
-      if (method === 'POST' || method === 'PUT' || method === 'DELETE') {
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
         this.queueOfflineOperation(endpoint, options)
         return {
           ok: true,
@@ -97,11 +123,22 @@ class ApiService {
 
   queueOfflineOperation(endpoint, options) {
     try {
+      const method = (options.method || 'GET').toUpperCase();
+      
+      // Generate idempotency key if not already present
+      let idempotencyKey = options.idempotencyKey;
+      if (!idempotencyKey && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        idempotencyKey = generateIdempotencyKey(method, endpoint, options.body);
+      }
+      
       const queue = JSON.parse(localStorage.getItem('mms.offlineQueue') || '[]')
       queue.push({
         id: Date.now() + Math.random(),
         endpoint,
-        options,
+        options: {
+          ...options,
+          idempotencyKey // Persist for replay
+        },
         timestamp: new Date().toISOString()
       })
       localStorage.setItem('mms.offlineQueue', JSON.stringify(queue))
