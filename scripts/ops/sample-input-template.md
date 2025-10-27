@@ -1,4 +1,4 @@
-# Sample Input Template for replay-requests.js
+# Sample Input Template for replay-requests.cjs
 
 ## JSONL Format (Recommended)
 Save as `requests.jsonl`:
@@ -28,17 +28,17 @@ POST,/queue/done,"{""clinic"":""lab"",""user"":""P001"",""pin"":""1234""}"
 
 2. Run the script:
    ```bash
-   COOKIE="session=your-session-cookie-here" node scripts/ops/replay-requests.js requests.jsonl
+   COOKIE="session=your-session-cookie-here" node scripts/ops/replay-requests.cjs requests.jsonl
    ```
 
 3. With additional options:
    ```bash
-   COOKIE="session=xyz" THROTTLE=500 BASE_URL="https://mmc-mms.com/api/v1" node scripts/ops/replay-requests.js requests.jsonl
+   COOKIE="session=xyz" THROTTLE=500 BASE_URL="https://mmc-mms.com/api/v1" node scripts/ops/replay-requests.cjs requests.jsonl
    ```
 
 4. Dry run (preview without sending):
    ```bash
-   COOKIE="session=xyz" DRY_RUN=true node scripts/ops/replay-requests.js requests.jsonl
+   COOKIE="session=xyz" DRY_RUN=true node scripts/ops/replay-requests.cjs requests.jsonl
    ```
 
 ## Notes

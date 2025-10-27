@@ -103,7 +103,7 @@ POST,/queue/done,"{""clinic"":""lab"",""user"":""P001"",""pin"":""1234""}"
 
 ```bash
 COOKIE="session=your-session-cookie-here" \
-  node scripts/ops/replay-requests.js failed-requests.jsonl
+  node scripts/ops/replay-requests.cjs failed-requests.jsonl
 ```
 
 #### With Custom Options
@@ -112,7 +112,7 @@ COOKIE="session=your-session-cookie-here" \
 COOKIE="session=abc123..." \
   BASE_URL="https://mmc-mms.com/api/v1" \
   THROTTLE=500 \
-  node scripts/ops/replay-requests.js failed-requests.jsonl
+  node scripts/ops/replay-requests.cjs failed-requests.jsonl
 ```
 
 #### Dry Run (Preview Mode)
@@ -122,7 +122,7 @@ Test without actually sending requests:
 ```bash
 COOKIE="session=abc123..." \
   DRY_RUN=true \
-  node scripts/ops/replay-requests.js failed-requests.jsonl
+  node scripts/ops/replay-requests.cjs failed-requests.jsonl
 ```
 
 ### Environment Variables
@@ -249,7 +249,7 @@ Total requests: 3
 
 Make sure you're providing the session cookie:
 ```bash
-COOKIE="session=..." node scripts/ops/replay-requests.js input.jsonl
+COOKIE="session=..." node scripts/ops/replay-requests.cjs input.jsonl
 ```
 
 #### "Authentication failed" or "HTTP 401"
@@ -268,7 +268,7 @@ COOKIE="session=..." node scripts/ops/replay-requests.js input.jsonl
 
 Increase timeout:
 ```bash
-TIMEOUT=30000 COOKIE="..." node scripts/ops/replay-requests.js input.jsonl
+TIMEOUT=30000 COOKIE="..." node scripts/ops/replay-requests.cjs input.jsonl
 ```
 
 ### Monitoring

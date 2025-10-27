@@ -1,0 +1,2 @@
+{"method":"POST","endpoint":"/queue/enter","body":{"clinic":"lab","user":"P001"}}
+{"method":"POST","endpoint":"/queue/enter","body":{"clinic":"xray","user":"P002"}}
