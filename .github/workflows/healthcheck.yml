@@ -24,4 +24,4 @@ jobs:
             echo "Please set secrets.GH_PATH or pass url input."
             exit 78  # neutral
           fi
-          node scripts/test/vercel-health-check.cjs
+          node scripts/test/vercel-health-check.js
