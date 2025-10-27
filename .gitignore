@@ -132,3 +132,4 @@ dist_server/
 
 # Generated maintenance reports
 scripts/maintenance/unused-report.json
+scripts/ops/test-input.jsonl
