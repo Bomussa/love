@@ -6,8 +6,8 @@
  * using a normal session cookie (no API keys required).
  * 
  * Usage:
- *   COOKIE="session=xyz..." node scripts/ops/replay-requests.js input.jsonl
- *   COOKIE="session=xyz..." THROTTLE=500 node scripts/ops/replay-requests.js input.csv
+ *   COOKIE="session=xyz..." node scripts/ops/replay-requests.cjs input.jsonl
+ *   COOKIE="session=xyz..." THROTTLE=500 node scripts/ops/replay-requests.cjs input.csv
  * 
  * Environment Variables:
  *   COOKIE        - Required. Session cookie for authentication (e.g., "session=abc123")
