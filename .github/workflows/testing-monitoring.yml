@@ -1,0 +1,51 @@
+name: Testing & Monitoring CI
+permissions:
+  contents: read
+on:
+  push:
+    branches: [ main, 'feature/*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit & Regression Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: npm ci
+      - name: Run tests (Jest)
+        run: npm run test -- --ci --runInBand
+        env:
+          BASE_URL: ${{ secrets.DEPLOY_URL }}
+
+  zap-scan:
+    name: OWASP ZAP Baseline (PR)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.4.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          cmd_options: '-t ${{ secrets.PREVIEW_URL }} -r zap-report.html'
+        env:
+          ZAP_API_KEY: ''
+
+  k6-load:
+    name: k6 Load Test (manual)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.5.0
+        with:
+          args: run tests/load/k6-script.js
+        env:
+          TARGET_URL: ${{ secrets.DEPLOY_URL }}
