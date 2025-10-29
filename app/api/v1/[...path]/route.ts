@@ -1,11 +1,9 @@
 // app/api/v1/[...path]/route.ts
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
-const ORIGINS = (process.env.FRONTEND_ORIGIN ?? '').split(',').map(s => s.trim()).filter(Boolean);
-const UPSTREAM = process.env.UPSTREAM_API_BASE!; // مثال: https://api.mmc-mms.com/api/v1
-
 function cors(req: Request) {
+  const ORIGINS = (process.env.FRONTEND_ORIGIN ?? '').split(',').map(s => s.trim()).filter(Boolean);
   const origin = req.headers.get('origin');
   const h = new Headers();
   if (!ORIGINS.length || (origin && ORIGINS.includes(origin))) h.set('Access-Control-Allow-Origin', origin || '*');
@@ -17,6 +15,7 @@ function cors(req: Request) {
 }
 
 async function proxy(req: Request, ctx: { params: { path?: string[] } }) {
+  const UPSTREAM = process.env.UPSTREAM_API_BASE || '';
   const segs = (ctx.params.path ?? []).join('/');
   const url = `${UPSTREAM.replace(/\/$/, '')}/${segs}${new URL(req.url).search}`;
   const init: RequestInit = {
