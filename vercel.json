@@ -2,6 +2,10 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "env": {
+    "FRONTEND_ORIGIN": "https://mmc-mms.com",
+    "UPSTREAM_API_BASE": "https://api.mmc-mms.com/api/v1"
+  },
   "redirects": [
     { "source": "/api/:path*", "destination": "/api/v1/:path*", "permanent": true }
   ]
