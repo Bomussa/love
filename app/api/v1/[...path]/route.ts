@@ -2,39 +2,92 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 const ORIGINS = (process.env.FRONTEND_ORIGIN ?? '').split(',').map(s => s.trim()).filter(Boolean);
-const UPSTREAM = process.env.UPSTREAM_API_BASE!; // مثال: https://api.mmc-mms.com/api/v1
+const UPSTREAM = process.env.UPSTREAM_API_BASE || 'https://api.mmc-mms.com/api/v1';
 
-function cors(req: Request) {
+function getCorsHeaders(req: NextRequest) {
   const origin = req.headers.get('origin');
-  const h = new Headers();
-  if (!ORIGINS.length || (origin && ORIGINS.includes(origin))) h.set('Access-Control-Allow-Origin', origin || '*');
-  h.set('Vary', 'Origin');
-  h.set('Access-Control-Allow-Credentials', 'true');
-  h.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
-  h.set('Access-Control-Allow-Headers', req.headers.get('access-control-request-headers') || 'content-type,authorization');
-  return h;
+  const headers = new Headers();
+  
+  if (!ORIGINS.length || (origin && ORIGINS.includes(origin))) {
+    headers.set('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  headers.set('Vary', 'Origin');
+  headers.set('Access-Control-Allow-Credentials', 'true');
+  headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD');
+  headers.set('Access-Control-Allow-Headers', req.headers.get('access-control-request-headers') || 'content-type,authorization');
+  
+  return headers;
 }
 
-async function proxy(req: Request, ctx: { params: { path?: string[] } }) {
-  const segs = (ctx.params.path ?? []).join('/');
-  const url = `${UPSTREAM.replace(/\/$/, '')}/${segs}${new URL(req.url).search}`;
-  const init: RequestInit = {
-    method: req.method,
-    headers: new Headers(req.headers),
-    redirect: 'manual'
-  };
-  if (!['GET','HEAD','OPTIONS'].includes(req.method)) init.body = await req.arrayBuffer();
-  const r = await fetch(url, init);
-  const headers = new Headers(r.headers);
-  cors(req).forEach((v,k)=>headers.set(k,v));
-  return new Response(r.body, { status: r.status, headers });
+async function proxyRequest(req: NextRequest, context: { params: { path?: string[] } }) {
+  try {
+    const pathSegments = (context.params.path ?? []).join('/');
+    const searchParams = new URL(req.url).search;
+    const upstreamUrl = `${UPSTREAM.replace(/\/$/, '')}/${pathSegments}${searchParams}`;
+    
+    const requestInit: RequestInit = {
+      method: req.method,
+      headers: new Headers(req.headers),
+      redirect: 'manual'
+    };
+    
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      requestInit.body = await req.arrayBuffer();
+    }
+    
+    const response = await fetch(upstreamUrl, requestInit);
+    const responseHeaders = new Headers(response.headers);
+    const corsHeaders = getCorsHeaders(req);
+    
+    corsHeaders.forEach((value, key) => {
+      responseHeaders.set(key, value);
+    });
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders
+    });
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new Response(JSON.stringify({ error: 'Proxy failed', message: String(error) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
-export function OPTIONS(req: Request) { return new Response(null, { status: 204, headers: cors(req) }); }
-export function GET(req: Request, ctx: any) { return proxy(req, ctx); }
-export function HEAD(req: Request, ctx: any) { return proxy(req, ctx); }
-export function POST(req: Request, ctx: any) { return proxy(req, ctx); }
-export function PUT(req: Request, ctx: any) { return proxy(req, ctx); }
-export function PATCH(req: Request, ctx: any) { return proxy(req, ctx); }
-export function DELETE(req: Request, ctx: any) { return proxy(req, ctx); }
+export async function OPTIONS(req: NextRequest) {
+  return new Response(null, {
+    status: 204,
+    headers: getCorsHeaders(req)
+  });
+}
+
+export async function GET(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
+
+export async function HEAD(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
+
+export async function POST(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
+
+export async function PUT(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
+
+export async function PATCH(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
+
+export async function DELETE(req: NextRequest, context: any) {
+  return proxyRequest(req, context);
+}
