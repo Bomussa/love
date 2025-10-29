@@ -1,0 +1,23 @@
+name: repo-structure-doc
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
+jobs:
+  struct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/gen-structure.mjs
+      - name: Commit structure doc
+        run: |
+          git config user.name "mmc-bot"
+          git config user.email "mmc-bot@users.noreply.github.com"
+          git add docs/repo-structure.md
+          git commit -m "docs: update repo structure (auto)" || echo "no changes"
+          git push
