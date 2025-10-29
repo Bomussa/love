@@ -1,8 +1,7 @@
-export async function GET(){
-  return Response.json({ total:0, waiting:0, serving:null });
+import { NextResponse } from "next/server";
+export async function GET() {
+  return NextResponse.json({ ok: true, queue: [] });
 }
-export async function POST(){
-  // generate demo ticket
-  const ticket = "A" + String(Math.floor(Math.random()*900)+100);
-  return Response.json({ ticket }, { status:201 });
+export async function POST() {
+  return NextResponse.json({ ok: true, created: true }, { status: 201 });
 }
