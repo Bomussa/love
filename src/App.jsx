@@ -7,7 +7,7 @@ import { PatientPage } from './components/PatientPage'
 import { AdminPage } from './components/AdminPage'
 import { QrScanPage } from './components/QrScanPage'
 import EnhancedThemeSelector from './components/EnhancedThemeSelector'
-import api from './lib/api'
+import api from './lib/api-unified'
 import enhancedApi from './lib/enhanced-api'
 
 import { themes, medicalPathways } from './lib/utils'
