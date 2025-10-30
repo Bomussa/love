@@ -1,0 +1,16 @@
+{
+  "دورات": ["lab", "eyes", "surgery", "internal"],
+  "تجنيد": ["lab", "xray", "vitals", "eyes", "internal", "surgery", "ent", "psychiatry", "dental", "derma"],
+  "ترفيع": ["lab", "xray", "vitals", "eyes", "internal", "surgery", "ent", "psychiatry", "dental", "derma"],
+  "نقل": ["lab", "xray", "vitals", "eyes", "internal", "surgery", "ent", "psychiatry", "dental", "derma"],
+  "تحويل": ["lab", "xray", "vitals", "eyes", "internal", "surgery", "ent", "psychiatry", "dental", "derma"],
+  "تجديد التعاقد": ["lab", "xray", "vitals", "eyes", "internal", "surgery", "ent", "psychiatry", "dental", "derma"],
+  "طيران سنوي": ["lab", "eyes", "internal", "ent", "ecg", "audio"],
+  "طباخين": ["lab", "internal", "ent", "surgery"],
+  "نساء/عام": {
+    "prefix": "الاستقبال الرئيسي - الطابق الأرضي (العطار)",
+    "M": ["lab", "xray", "vitals", "ent", "surgery", "dental"],
+    "F": ["internal", "eyes", "derma"]
+  }
+}
+

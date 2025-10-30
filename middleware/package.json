@@ -1,0 +1,12 @@
+{
+  "name": "middleware-v2.1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node index.js --port=8080",
+    "start": "node index.js --port=${PORT:-8080}",
+    "test": "node tests/run.js"
+  },
+  "dependencies": {}
+}
