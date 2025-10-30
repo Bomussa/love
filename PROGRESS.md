@@ -1,60 +1,52 @@
-# سجل التقدم - Rollback مكتمل ✅
+# سجل التقدم - الربط الكامل مع Supabase
 
 **التاريخ**: 2025-10-30  
-**الحالة**: ✅ **Rollback مكتمل بنجاح**
+**الحالة**: ✅ **جاري الإكمال**
 
 ---
 
-## ✅ Rollback مكتمل
+## ✅ المعلومات المستخرجة من الصور
 
-### تم التنفيذ:
-1. ✅ **git revert 385833a** - تراجع عن آخر commit
-2. ✅ **git push origin main** - نشر التراجع
-3. ✅ **Commit hash**: `d6f699b`
+### Environment Variables على Vercel:
+- ✅ `SUPABASE_ANON_KEY` - موجود
+- ❌ `VITE_API_BASE` = `https://api.mmc-mms.com` (خطأ - يجب تغييره!)
+- ✅ `POSTGRES_URL` - موجود
+- ✅ `FRONTEND_ORIGIN` = `https://mmc-mms.com`
+- ✅ `UPSTREAM_API_BASE` = `https://www.mmc-mms.com/api/v1`
 
-### التغييرات التي تم التراجع عنها:
-- ❌ حذف .env.production
-- ❌ إلغاء تحديثات src/lib/api.js (Authorization header)
-- ❌ إلغاء تحديثات src/App.jsx
-- ❌ حذف archive/deprecated_2025-10-30/
-- ❌ استعادة جميع ملفات API القديمة
-
-### الحالة الحالية:
-- ✅ النظام عاد إلى حالة `14ef6e2`
-- ✅ "Restore to state before 1 hour - revert all changes"
-- ✅ Vercel سيعيد النشر تلقائياً
+### Supabase Info:
+- ✅ URL: `https://rujwuruuosffcxazymit.supabase.co`
+- ✅ ANON_KEY: موجود
+- ✅ 21 Edge Functions منشورة
 
 ---
 
-## 📋 الخطوات القادمة (حسب الأمر التنفيذي)
+## ✅ التعديلات المنفذة
 
-### 1. تفعيل Circuit Breaker
-- [ ] إضافة Circuit Breaker pattern للخدمات الخارجية
-- [ ] منع انهيار النظام الكلي عند فشل جزء واحد
+### 1. إعادة التعديلات السابقة
+- ✅ Revert الـ Rollback
+- ✅ استعادة .env.production
+- ✅ استعادة Authorization header في api.js
 
-### 2. تناسق البيانات
-- [ ] تطبيق آلية Redis key deletion
-- [ ] منع ظهور بيانات قديمة أو متناقضة
-
-### 3. إثبات المراقبة
-- [ ] إعداد Prometheus/Grafana
-- [ ] ضبط Alert على 5xx Status Codes
-- [ ] تقديم Screenshot كدليل
-
-### 4. اختبار الانحدار
-- [ ] تشغيل Regression Tests
-- [ ] التأكد من نجاح جميع الاختبارات
-- [ ] توثيق النتائج
+### 2. تحديث .env.production
+```env
+VITE_API_BASE=https://rujwuruuosffcxazymit.supabase.co/functions/v1
+VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
+VITE_FRONTEND_ORIGIN=https://mmc-mms.com
+```
 
 ---
 
-## 🚫 ممنوع إعادة النشر قبل:
+## 🔄 الخطوة القادمة
 
-1. ❌ تطبيق Circuit Breaker
-2. ❌ إثبات المراقبة (Screenshot)
-3. ❌ نجاح Regression Tests
-4. ❌ تحقيق R > 0.98
+### Push التعديلات إلى GitHub
+```bash
+git add .env.production PROGRESS.md
+git commit -m "fix: تحديث VITE_API_BASE للإشارة إلى Supabase"
+git push origin main
+```
 
 ---
 
-**آخر تحديث**: Rollback مكتمل - في انتظار تطبيق المتطلبات
+**آخر تحديث**: جاري Push التعديلات
