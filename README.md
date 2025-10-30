@@ -74,24 +74,25 @@
 ┌─────────────────────────────────────────────────────────┐
 │              BACKEND (Supabase)                         │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Edge Functions (21 functions)                   │   │
-│  │  • health, admin-login, patient-login            │   │
+│  │  Edge Functions (24 functions)                   │   │
+│  │  • health, admin-login, admin-status             │   │
+│  │  • patient-login                                 │   │
 │  │  • queue-enter, queue-status, queue-call         │   │
 │  │  • queue-done, queue-position, queue-cancel      │   │
-│  │  • pin-generate, pin-status                      │   │
+│  │  • pin-generate, pin-status, pin-verify          │   │
 │  │  • route-create, route-get, path-choose          │   │
-│  │  • clinic-exit, admin-status                     │   │
-│  │  • admin-set-call-interval                       │   │
+│  │  • clinic-exit                                   │   │
 │  │  • stats-dashboard, stats-queues                 │   │
-│  │  • events-stream, notify-status                  │   │
+│  │  • reports-daily, reports-weekly                 │   │
+│  │  • reports-monthly, reports-annual               │   │
+│  │  • events-stream                                 │   │
 │  └──────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  PostgreSQL Database (17 tables)                 │   │
-│  │  • admins, patients, clinics, queue              │   │
-│  │  • pins, events, routes, settings                │   │
-│  │  • reports, rate_limits, users, sessions         │   │
-│  │  • notifications, audit_logs, cache_logs         │   │
-│  │  • chart_data, organization                      │   │
+│  │  PostgreSQL Database (12 tables)                 │   │
+│  │  • patients, clinics, queue, pins                │   │
+│  │  • admins, sessions, routes, events              │   │
+│  │  • settings, notifications, audit_logs           │   │
+│  │  • reports                                       │   │
 │  │  • RLS Policies enabled                          │   │
 │  └──────────────────────────────────────────────────┘   │
 │  Project ID: rujwuruuosffcxazymit                       │
@@ -942,10 +943,10 @@ curl -X POST https://mmc-mms.com/api/v1/queue/enter \
 ║              إحصائيات المشروع                           ║
 ╠══════════════════════════════════════════════════════════╣
 ║  Frontend Files:           66 ملف                       ║
-║  Backend Functions:        21 function (Supabase)       ║
-║  Database Tables:          17 جدول (PostgreSQL)         ║
+║  Backend Functions:        24 function (Supabase)       ║
+║  Database Tables:          12 جدول (PostgreSQL)         ║
 ║  Config Files:             3 ملفات                      ║
-║  Documentation:            21+ ملف                      ║
+║  Documentation:            23+ ملف                      ║
 ║  Total Lines of Code:      ~15,000 سطر                  ║
 ╠══════════════════════════════════════════════════════════╣
 ║  Build Time:               ~30 ثانية                    ║
@@ -1078,6 +1079,8 @@ supabase db push
 - **API Docs:** `/docs/API_DOCUMENTATION.md`
 - **Migration Reports:** `/docs/migration-reports/`
 - **Deployment Guide:** `/docs/DEPLOYMENT_GUIDE.md`
+- **Endpoint Mapping Guide:** `/docs/ENDPOINT_MAPPING_GUIDE.md` ⭐️ جديد
+- **Deployment Checklist:** `/docs/DEPLOYMENT_CHECKLIST.md` ⭐️ جديد
 
 ### Dashboards
 
@@ -1107,10 +1110,10 @@ supabase db push
 ║  الموقع:              https://mmc-mms.com                ║
 ║  Frontend:            Vercel + Vite + React 18           ║
 ║  Backend:             Supabase + PostgreSQL 15           ║
-║  API Endpoints:       21 endpoint                        ║
-║  Database Tables:     17 جدول                            ║
-║  Edge Functions:      21 function                        ║
-║  Documentation:       شامل ومفصل (21+ ملف)              ║
+║  API Endpoints:       24 endpoint                        ║
+║  Database Tables:     12 جدول                            ║
+║  Edge Functions:      24 function                        ║
+║  Documentation:       شامل ومفصل (23+ ملف)              ║
 ║  Testing:             ✅ مُختبر فعلياً                   ║
 ║  Performance:         ⚡ ممتاز (~230ms)                  ║
 ║  Security:            🔒 مؤمن (JWT + RLS + HTTPS)        ║
