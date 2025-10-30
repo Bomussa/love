@@ -1,52 +1,68 @@
-# سجل التقدم - الربط الكامل مع Supabase
+# سجل التقدم - إصلاح مسارات API
 
 **التاريخ**: 2025-10-30  
-**الحالة**: ✅ **جاري الإكمال**
+**الحالة**: 🔧 **إصلاح مسارات Supabase Functions**
 
 ---
 
-## ✅ المعلومات المستخرجة من الصور
+## 🚨 المشكلة المكتشفة
 
-### Environment Variables على Vercel:
-- ✅ `SUPABASE_ANON_KEY` - موجود
-- ❌ `VITE_API_BASE` = `https://api.mmc-mms.com` (خطأ - يجب تغييره!)
-- ✅ `POSTGRES_URL` - موجود
-- ✅ `FRONTEND_ORIGIN` = `https://mmc-mms.com`
-- ✅ `UPSTREAM_API_BASE` = `https://www.mmc-mms.com/api/v1`
-
-### Supabase Info:
-- ✅ URL: `https://rujwuruuosffcxazymit.supabase.co`
-- ✅ ANON_KEY: موجود
-- ✅ 21 Edge Functions منشورة
-
----
-
-## ✅ التعديلات المنفذة
-
-### 1. إعادة التعديلات السابقة
-- ✅ Revert الـ Rollback
-- ✅ استعادة .env.production
-- ✅ استعادة Authorization header في api.js
-
-### 2. تحديث .env.production
-```env
-VITE_API_BASE=https://rujwuruuosffcxazymit.supabase.co/functions/v1
-VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGci...
-VITE_FRONTEND_ORIGIN=https://mmc-mms.com
+### الخطأ في Console:
 ```
+https://rujwuruuosffcxazymit.supabase.co/functions/v1/api/v1/patient/login
+                                                      ^^^^^^^^ خطأ!
+```
+
+**المشكلة**:
+- الكود يضيف `/api/v1/` قبل المسار
+- ثم يضيف `/patient/login`
+- النتيجة: `/api/v1/patient/login` ❌
+
+**الصحيح**:
+```
+https://rujwuruuosffcxazymit.supabase.co/functions/v1/patient-login
+```
+
+---
+
+## ✅ الحل المنفذ
+
+### 1. تحديث API_VERSION
+```javascript
+// قبل
+const API_VERSION = '/api/v1'
+
+// بعد
+const API_VERSION = ''
+```
+
+### 2. تحديث دالة request
+```javascript
+// تحويل المسار تلقائياً:
+// /patient/login → patient-login
+// /queue/enter → queue-enter
+const functionName = endpoint.replace(/^\//, '').replace(/\//, '-')
+
+// استخدام المسار الصحيح حسب البيئة
+const isSupabase = base.includes('supabase.co')
+const path = isSupabase ? `/${functionName}` : endpoint
+```
+
+### 3. إنشاء api-routes-map.js
+- Mapping كامل لجميع المسارات
+- 21 function مدعومة
 
 ---
 
 ## 🔄 الخطوة القادمة
 
-### Push التعديلات إلى GitHub
+### Push التعديلات
 ```bash
-git add .env.production PROGRESS.md
-git commit -m "fix: تحديث VITE_API_BASE للإشارة إلى Supabase"
+git add src/lib/api.js src/lib/api-routes-map.js PROGRESS.md
+git commit -m "fix: إصلاح مسارات Supabase Functions"
 git push origin main
 ```
 
 ---
 
-**آخر تحديث**: جاري Push التعديلات
+**آخر تحديث**: جاري Push الإصلاح

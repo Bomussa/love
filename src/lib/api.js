@@ -1,7 +1,8 @@
 // API Service للتكامل مع Backend
-// المسارات محدثة لتتطابق مع /api/v1/*
+// المسارات محدثة للعمل مع Supabase Edge Functions
+// Supabase Functions لا تحتاج /api/v1 prefix
 
-const API_VERSION = '/api/v1'
+const API_VERSION = ''
 
 function resolveApiBases() {
   const bases = []
@@ -35,6 +36,10 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
+    // تحويل المسار القديم إلى Supabase Function name
+    // /patient/login → patient-login
+    const functionName = endpoint.replace(/^\//, '').replace(/\//, '-')
+    
     // إضافة Supabase Authorization header
     const authHeaders = {}
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -53,7 +58,11 @@ class ApiService {
 
     let lastError = null
     for (const base of API_BASES) {
-      const url = `${base}${endpoint}`
+      // للـ Supabase: استخدام function name مباشرة
+      // للـ local/production: استخدام endpoint الأصلي
+      const isSupabase = base.includes('supabase.co')
+      const path = isSupabase ? `/${functionName}` : endpoint
+      const url = `${base}${path}`
       try {
         const response = await fetch(url, config)
         const text = await response.text()
