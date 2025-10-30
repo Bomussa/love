@@ -3,17 +3,5 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache" },
-        { "key": "Connection", "value": "keep-alive" }
-      ]
-    }
-  ],
   "regions": ["iad1"]
 }
