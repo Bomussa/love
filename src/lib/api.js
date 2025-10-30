@@ -38,7 +38,7 @@ class ApiService {
   async request(endpoint, options = {}) {
     // تحويل المسار القديم إلى Supabase Function name
     // /patient/login → patient-login
-    const functionName = endpoint.replace(/^\//, '').replace(/\//, '-')
+    const functionName = endpoint.replace(/^\//, '').replace(/\//g, '-')
     
     // إضافة Supabase Authorization header
     const authHeaders = {}
