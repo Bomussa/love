@@ -1,7 +1,7 @@
 // API Service للتكامل مع Backend
 // المسارات محدثة لتتطابق مع /api/v1/*
 
-const API_VERSION = '' // Force rebuild
+const API_VERSION = '/api/v1'
 
 function resolveApiBases() {
   const bases = []
@@ -35,14 +35,9 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        ...(anonKey && {
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey
-        }),
         ...options.headers
       },
       ...options

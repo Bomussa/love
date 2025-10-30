@@ -29,7 +29,7 @@ async function fetchClinicWeights(clinicIds) {
   try {
     const promises = clinicIds.map(async (clinicId) => {
       try {
-        const response = await fetch(`/queue/status?clinic=${clinicId}`)
+        const response = await fetch(`/api/v1/queue/status?clinic=${clinicId}`)
         const data = await response.json()
         
         if (data.success) {

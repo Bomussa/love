@@ -1,7 +1,7 @@
 // Enhanced API Client - متطابق 100% مع Backend /api/v1/*
 // تحديث المسارات فقط - بدون تغيير في Backend
 
-const API_VERSION = ''
+const API_VERSION = '/api/v1'
 
 function resolveApiBase() {
   const envBase = import.meta.env.VITE_API_BASE
