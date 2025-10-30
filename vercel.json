@@ -4,11 +4,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1" }
+    { "source": "/(.*)", "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1" }
   ],
   "headers": [
     {
-      "source": "/api/v1/(.*)",
+      "source": "/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" },
         { "key": "Connection", "value": "keep-alive" }
