@@ -1,0 +1,46 @@
+# Prometheus Configuration for MMC-MMS
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'mmc-mms-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'localhost:9093'
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # MMC-MMS Backend (Supabase Edge Functions)
+  - job_name: 'mmc-backend'
+    metrics_path: '/functions/v1/metrics'
+    scheme: 'https'
+    static_configs:
+      - targets:
+          - 'rujwuruuosffcxazymit.supabase.co'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # MMC-MMS Frontend (Vercel)
+  - job_name: 'mmc-frontend'
+    metrics_path: '/api/metrics'
+    scheme: 'https'
+    static_configs:
+      - targets:
+          - 'mmc-mms.com'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+          - 'localhost:9090'

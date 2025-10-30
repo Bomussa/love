@@ -1,0 +1,113 @@
+# Alert Rules for MMC-MMS
+# تطبيق قانون الموثوقية الشبه مؤكدة (R > 0.98)
+
+groups:
+  - name: mmc_reliability
+    interval: 30s
+    rules:
+      # تنبيه عند انخفاض الموثوقية عن 98%
+      - alert: LowReliability
+        expr: mmc_reliability < 0.98
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "System reliability below 98%"
+          description: "Current reliability: {{ $value | humanizePercentage }}"
+
+      # تنبيه عند توقف النظام
+      - alert: SystemDown
+        expr: mmc_system_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "System is down"
+          description: "MMC-MMS backend is not responding"
+
+  - name: mmc_errors
+    interval: 30s
+    rules:
+      # تنبيه عند معدل أخطاء 5xx > 2%
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m])
+            /
+            rate(http_requests_total[5m])
+          ) > 0.02
+        for: 2m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: "Error rate: {{ $value | humanizePercentage }} (threshold: 2%)"
+
+      # تنبيه عند معدل أخطاء 5xx > 5%
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m])
+            /
+            rate(http_requests_total[5m])
+          ) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "CRITICAL: Very high 5xx error rate"
+          description: "Error rate: {{ $value | humanizePercentage }} (threshold: 5%)"
+
+  - name: mmc_queue
+    interval: 30s
+    rules:
+      # تنبيه عند تراكم الطوابير
+      - alert: QueueBacklog
+        expr: mmc_queue_waiting > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: queue
+        annotations:
+          summary: "Large queue backlog detected"
+          description: "{{ $value }} patients waiting in queue"
+
+      # تنبيه عند توقف معالجة الطوابير
+      - alert: QueueStalled
+        expr: rate(mmc_queue_done[10m]) == 0 and mmc_queue_waiting > 0
+        for: 10m
+        labels:
+          severity: critical
+          component: queue
+        annotations:
+          summary: "Queue processing has stalled"
+          description: "No patients processed in last 10 minutes"
+
+  - name: mmc_pins
+    interval: 30s
+    rules:
+      # تنبيه عند نفاد أكواد PIN
+      - alert: LowPINs
+        expr: mmc_pins_active < 5
+        for: 5m
+        labels:
+          severity: warning
+          component: pins
+        annotations:
+          summary: "Low number of active PIN codes"
+          description: "Only {{ $value }} active PINs remaining"
+
+      # تنبيه عند عدم وجود أكواد PIN نشطة
+      - alert: NoPINs
+        expr: mmc_pins_active == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: pins
+        annotations:
+          summary: "No active PIN codes available"
+          description: "System cannot generate new PINs"
