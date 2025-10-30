@@ -1,7 +1,7 @@
 // Unified API Service - Auto-fallback to local storage
 import localApi from './local-api';
 
-const API_VERSION = '/api/v1';
+const API_VERSION = '';
 
 class UnifiedApiService {
   constructor() {

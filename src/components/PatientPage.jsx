@@ -288,7 +288,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           
           // تسجيل حالة الإصلاح الذاتي
           try {
-            await fetch('/api/v1/events/recovery', {
+            await fetch('/events/recovery', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -345,7 +345,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   useEffect(() => {
     if (!patientData?.id) return;
     
-    const url = `/api/v1/events/stream?user=${patientData.id}`;
+    const url = `/events/stream?user=${patientData.id}`;
     const eventSource = new EventSource(url);
     
     eventSource.addEventListener('queue_update', (e) => {

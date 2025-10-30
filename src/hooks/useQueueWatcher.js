@@ -57,7 +57,7 @@ export default function useQueueWatcher({
           
           // تسجيل حالة الإصلاح الذاتي
           try {
-            await fetch('/api/v1/events/recovery', {
+            await fetch('/events/recovery', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
