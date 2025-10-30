@@ -1,1 +1,0 @@
-TODO: add integration test: session→enter→pin.verify→queue.issue→admin notify
