@@ -127,3 +127,66 @@
 
 **تاريخ التقرير:** 30 أكتوبر 2025 - 08:17 UTC  
 **المصدر:** Vercel API + GitHub + Live Systems
+
+---
+
+## 5. بيانات Supabase الحالية (من Management API)
+
+### معلومات المشروع
+```json
+{
+  "project_id": "rujwuruuosffcxazymit",
+  "organization_id": "wkjhsmalzkikvaosxvib",
+  "name": "MMC-MMS",
+  "region": "ap-southeast-1",
+  "status": "ACTIVE_HEALTHY",
+  "database": {
+    "host": "db.rujwuruuosffcxazymit.supabase.co",
+    "version": "17.6.1.025",
+    "postgres_engine": "17",
+    "release_channel": "ga"
+  },
+  "created_at": "2025-10-25T10:14:25.79233Z"
+}
+```
+
+### Edge Functions المنشورة (22 دالة)
+1. `health` - فحص صحة النظام
+2. `queue-enter` - دخول الطابور
+3. `queue-status` - حالة الطابور
+4. `queue-call` - استدعاء المريض
+5. `pin-status` - حالة الرقم السري
+6. `admin-login` - تسجيل دخول المشرف
+7. `patient-login` - تسجيل دخول المريض
+8. `admin-status` - حالة المشرف
+9. `admin-set-call-interval` - تعيين فترة الاستدعاء
+10. `queue-done` - إنهاء الطابور
+11. `queue-position` - موقع في الطابور
+12. `queue-cancel` - إلغاء من الطابور
+13. `pin-generate` - توليد رقم سري
+14. `route-create` - إنشاء مسار
+15. `route-get` - الحصول على مسار
+16. `path-choose` - اختيار مسار
+17. `clinic-exit` - خروج من العيادة
+18. `stats-dashboard` - إحصائيات لوحة التحكم
+19. `stats-queues` - إحصائيات الطوابير
+20. `events-stream` - بث الأحداث
+21. `notify-status` - حالة الإشعارات
+22. `metrics` - المقاييس
+
+### نقاط النهاية (Endpoints)
+- **API URL:** `https://rujwuruuosffcxazymit.supabase.co`
+- **Database Host:** `db.rujwuruuosffcxazymit.supabase.co`
+- **Storage:** `https://rujwuruuosffcxazymit.storage.supabase.co`
+- **Functions:** `https://rujwuruuosffcxazymit.supabase.co/functions/v1/`
+
+### الحالة
+- ✅ Status: `ACTIVE_HEALTHY`
+- ✅ Database: PostgreSQL 17.6.1
+- ✅ Region: `ap-southeast-1` (Singapore)
+- ✅ Total Edge Functions: 22
+
+---
+
+**آخر تحديث:** 30 أكتوبر 2025 - 08:30 UTC  
+**المصدر:** Supabase Management API (Live Data)
