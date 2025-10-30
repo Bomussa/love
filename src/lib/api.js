@@ -2,17 +2,22 @@
 // المسارات محدثة لتتطابق مع /api/v1/*
 
 const API_VERSION = '/api/v1'
+const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co/functions/v1'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk5NTczNDQsImV4cCI6MjA0NTUzMzM0NH0.nYvD8vLwjdmZqfHrTKFBvQONqDKLqx8jKXTLr3WfpVc'
 
 function resolveApiBases() {
   const bases = []
   const envBase = (import.meta.env.VITE_API_BASE || '').trim()
   if (envBase) bases.push(envBase)
+  
+  // Supabase Backend (Production)
+  bases.push(SUPABASE_URL)
 
   // أثناء التطوير
   if (import.meta.env.DEV) bases.push('http://localhost:3000')
 
-  // نفس الأصل (الإنتاج)
-  bases.push(window.location.origin)
+  // نفس الأصل (الإنتاج) - Disabled, using Supabase
+  // bases.push(window.location.origin)
 
   return Array.from(new Set(bases))
 }
