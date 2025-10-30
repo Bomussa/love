@@ -1,7 +1,7 @@
 // API Service للتكامل مع Backend
 // المسارات محدثة لتتطابق مع /api/v1/*
 
-const API_VERSION = ''
+const API_VERSION = '' // Force rebuild
 
 function resolveApiBases() {
   const bases = []
