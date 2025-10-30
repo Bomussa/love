@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "start": "node server.js",
     "deploy": "npm run build && wrangler pages publish dist",
+    "test": "echo 'No tests configured yet' && exit 0",
     "test:api": "node test-api-integration.js",
     "test:final": "node final-integration-test.js"
   },
