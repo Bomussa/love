@@ -943,7 +943,7 @@ curl -X POST https://mmc-mms.com/api/v1/queue/enter \
 ║              إحصائيات المشروع                           ║
 ╠══════════════════════════════════════════════════════════╣
 ║  Frontend Files:           66 ملف                       ║
-║  Backend Functions:        24 function (Supabase)       ║
+║  Backend Functions:        27 function (Supabase)       ║
 ║  Database Tables:          12 جدول (PostgreSQL)         ║
 ║  Config Files:             3 ملفات                      ║
 ║  Documentation:            23+ ملف                      ║
@@ -1110,10 +1110,10 @@ supabase db push
 ║  الموقع:              https://mmc-mms.com                ║
 ║  Frontend:            Vercel + Vite + React 18           ║
 ║  Backend:             Supabase + PostgreSQL 15           ║
-║  API Endpoints:       24 endpoint                        ║
+║  API Endpoints:       27 endpoint                        ║
 ║  Database Tables:     12 جدول                            ║
-║  Edge Functions:      24 function                        ║
-║  Documentation:       شامل ومفصل (23+ ملف)              ║
+║  Edge Functions:      27 function                        ║
+║  Documentation:       شامل ومفصل (24+ ملف)              ║
 ║  Testing:             ✅ مُختبر فعلياً                   ║
 ║  Performance:         ⚡ ممتاز (~230ms)                  ║
 ║  Security:            🔒 مؤمن (JWT + RLS + HTTPS)        ║
