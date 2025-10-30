@@ -35,9 +35,14 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(anonKey && {
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey
+        }),
         ...options.headers
       },
       ...options
