@@ -1,1 +1,0 @@
-TODO: add unit tests for validation (session.start, clinic.enter, pin.verify, queue.issue)
