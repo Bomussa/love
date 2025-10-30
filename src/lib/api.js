@@ -35,9 +35,17 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
+    // إضافة Supabase Authorization header
+    const authHeaders = {}
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    if (supabaseKey) {
+      authHeaders['Authorization'] = `Bearer ${supabaseKey}`
+    }
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers
       },
       ...options
