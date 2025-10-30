@@ -8,7 +8,6 @@ import { AdminPage } from './components/AdminPage'
 import { QrScanPage } from './components/QrScanPage'
 import EnhancedThemeSelector from './components/EnhancedThemeSelector'
 import api from './lib/api'
-import enhancedApi from './lib/enhanced-api'
 
 import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'

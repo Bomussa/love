@@ -8,7 +8,6 @@ import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api'
-import enhancedApi from '../lib/enhanced-api'
 import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
 import NotificationSystem from './NotificationSystem'
 import eventBus from '../core/event-bus'
@@ -182,7 +181,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   // Fetch route with ZFD validation
   useEffect(() => {
     if (patientData?.id) {
-      enhancedApi.getRoute(patientData.id)
+      api.getRoute(patientData.id)
         .then(data => {
           if (data?.route) {
             setRouteWithZFD(data)
@@ -360,7 +359,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           clinic: data.clinic
         });
         
-        enhancedApi.playNotificationSound();
+        api.playNotificationSound();
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
         console.error('SSE parse error:', err);

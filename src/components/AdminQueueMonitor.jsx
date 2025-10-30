@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { GENERAL_REFRESH_INTERVAL } from '../core/config/refresh.constants'
 import { t } from '../lib/i18n'
-import enhancedApi from '../lib/enhanced-api'
+import api from '../lib/api'
 
 /**
  * Admin Queue Monitor Component
@@ -19,7 +19,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
             setLoading(true)
             setError(null)
 
-            const data = await enhancedApi.getQueueStatus(clinicId)
+            const data = await api.getQueueStatus(clinicId)
             setQueueData(data)
             setLastRefresh(new Date())
         } catch (err) {
