@@ -1,9 +1,6 @@
 // API Service للتكامل مع Backend
 // المسارات محدثة لتتطابق مع /api/v1/*
 
-import CircuitBreaker from './api-circuit-breaker.js'
-import dataConsistency from './data-consistency.js'
-
 const API_VERSION = '/api/v1'
 
 function resolveApiBases() {
@@ -24,21 +21,10 @@ const API_BASES = resolveApiBases()
 
 class ApiService {
   constructor() {
-    // Circuit Breaker لحماية النظام من فشل APIs
-    this.circuitBreaker = new CircuitBreaker({
-      failureThreshold: 5,
-      successThreshold: 2,
-      timeout: 60000
-    })
-
-    // Data Consistency لضمان تناسق البيانات
-    this.dataConsistency = dataConsistency
-
     // Auto-sync offline queue when online
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
         console.log('🌐 Connection restored - syncing offline queue...')
-        this.circuitBreaker.reset()
         this.syncOfflineQueue()
       })
       
@@ -49,29 +35,9 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
-    // استخدام Circuit Breaker لحماية النظام
-    try {
-      return await this.circuitBreaker.execute(async () => {
-        return await this._executeRequest(endpoint, options)
-      })
-    } catch (error) {
-      // إذا فشل Circuit Breaker، استخدم Offline Fallback
-      if (error.message.includes('Circuit breaker is OPEN')) {
-        console.warn('⚠️ Circuit breaker is OPEN - using offline fallback')
-        const offline = this.offlineFallback(endpoint, options)
-        if (offline.ok) return offline.data
-      }
-      throw error
-    }
-  }
-
-  async _executeRequest(endpoint, options = {}) {
-    // إضافة Authorization header لـ Supabase
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        ...(supabaseKey ? { 'Authorization': `Bearer ${supabaseKey}` } : {}),
         ...options.headers
       },
       ...options
@@ -103,10 +69,6 @@ class ApiService {
 
     console.error('API Error:', lastError)
     throw lastError || new Error('تعذر الوصول إلى الخادم')
-  }
-
-  getCircuitBreakerState() {
-    return this.circuitBreaker.getState()
   }
 
   offlineFallback(endpoint, options = {}) {
