@@ -35,9 +35,13 @@ class ApiService {
     }
   }
   async request(endpoint, options = {}) {
+    // إضافة Supabase Anon Key لجميع الطلبات
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(supabaseKey ? { 'Authorization': `Bearer ${supabaseKey}` } : {}),
         ...options.headers
       },
       ...options
