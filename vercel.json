@@ -5,7 +5,8 @@
   "outputDirectory": ".vercel/output",
   "framework": "nextjs",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD package.json yarn.lock pnpm-lock.yaml || echo 'changed'",
-  "env": {
-    "NODE_ENV": "production"
+  "env": { "NODE_ENV": "production" },
+  "functions": {
+    "api/v1/[...path].js": { "memory": 1024, "maxDuration": 10 }
   }
 }
