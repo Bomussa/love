@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "functions": {
-    "api/v1/[...path].js": { "memory": 1024, "maxDuration": 10 }
-  }
-}
