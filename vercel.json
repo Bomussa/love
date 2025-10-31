@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
-    {
-      "source": "/api/v1/(.*)",
-      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
+  "functions": {
+    "api/v1/[...path].js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ]
+  }
 }
