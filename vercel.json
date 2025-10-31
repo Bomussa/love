@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bash vercel-build.sh",
-  "installCommand": "bash vercel-build.sh"
+  "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1" }
+  ]
 }
