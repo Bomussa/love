@@ -1,18 +1,5 @@
 {
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "headers": [
-    {
-      "source": "/api/v1/(.*)",
-      "headers": [
-        { "key": "X-Accel-Buffering", "value": "no" }
-      ]
-    }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bash vercel-build.sh",
+  "installCommand": "bash vercel-build.sh"
 }
