@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     }
   ]
 }
