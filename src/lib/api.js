@@ -493,9 +493,29 @@ class ApiService {
     return this.request(`${API_VERSION}/stats/dashboard`)
   }
 
-  async adminLogin(code) {
-    // لا يوجد endpoint - استخدم validation بسيط
-    return { success: code === 'admin123', token: 'mock-token' }
+  async adminLogin(username, password) {
+    // قائمة المستخدمين المصرح لهم (يمكن توسيعها لاحقاً)
+    const authorizedUsers = [
+      { username: 'Bomussa', password: '14490', role: 'super_admin' }
+      // يمكن إضافة مستخدمين آخرين هنا
+    ]
+
+    // البحث عن المستخدم
+    const user = authorizedUsers.find(
+      u => u.username === username && u.password === password
+    )
+
+    if (user) {
+      return {
+        success: true,
+        user: {
+          username: user.username,
+          role: user.role
+        }
+      }
+    } else {
+      return { success: false, error: 'Invalid credentials' }
+    }
   }
 
   async pauseQueue(queueType, adminCode) {

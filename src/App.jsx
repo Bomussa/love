@@ -244,34 +244,31 @@ function App() {
     // credentials format: "username:password"
     const [username, password] = credentials.split(':')
 
+    // التحقق من أن الحقول ليست فارغة
+    if (!username || !password || username.trim() === '' || password.trim() === '') {
+      alert(language === 'ar' ? 'الرجاء إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password')
+      return
+    }
+
     try {
-      const formData = new URLSearchParams()
-      formData.append('username', username)
-      formData.append('password', password)
-
-      const response = await fetch('/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString(),
-        credentials: 'include',
-        redirect: 'follow'
-      })
-
-      // التحقق من النجاح: إذا وصل للـ dashboard أو status 200
-      const finalUrl = response.url
-      if (response.ok || finalUrl.includes('/admin/dashboard') || finalUrl.includes('/admin')) {
+      // استدعاء Edge Function للتحقق من بيانات الإدارة
+      const response = await api.adminLogin(username.trim(), password.trim())
+      
+      if (response && response.success) {
+        // تسجيل الدخول ناجح
         setIsAdmin(true)
         setCurrentView('admin')
-        return
+        showNotification(
+          language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
+          'success'
+        )
+      } else {
+        // بيانات خاطئة
+        alert(language === 'ar' ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials')
       }
-
-      // إذا فشل
-      alert(language === 'ar' ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials')
     } catch (error) {
-      // Admin login error
-      alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
+      console.error('Admin login error:', error)
+      alert(language === 'ar' ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials')
     }
   }
 
