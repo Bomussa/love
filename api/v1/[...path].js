@@ -1,89 +1,39 @@
-/**
- * Vercel Serverless Function - API Proxy
- * Proxies all /api/v1/* requests to Supabase Edge Functions
- * Converts path separators: /queue/enter → queue-enter
- */
+// Robust Vercel proxy: forwards headers, query, and body; preserves status
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+  const base = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key  = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!base || !key) return res.status(500).json({ error: 'Missing Supabase env' });
 
-export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  )
+  const p = req.query?.path || [];
+  const fn = Array.isArray(p) ? p.join('-') : String(p||'').replace(/\/g,'-').replace(///g,'-');
 
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
+  const url = new URL(`${base}/functions/v1/${fn}`);
+  // pass-thru query params from original request (excluding the catch-all param)
+  Object.entries(req.query||{}).forEach(([k,v])=>{ if(k!=='path'){ if(Array.isArray(v)){ v.forEach(x=>url.searchParams.append(k,String(x))); } else { url.searchParams.set(k,String(v)); } } });
+
+  // copy headers (limited allow-list)
+  const fwd = new Headers({ 'Authorization': `Bearer ${key}` });
+  if (req.headers['content-type']) fwd.set('Content-Type', req.headers['content-type']);
+  if (req.headers['x-request-id']) fwd.set('x-request-id', req.headers['x-request-id']);
+
+  const method = (req.method||'GET').toUpperCase();
+  let body;
+  if (method==='POST' || method==='PUT' || method==='PATCH') {
+    body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {});
   }
 
   try {
-    // Get the path from query params
-    const { path } = req.query
-    
-    if (!path || path.length === 0) {
-      return res.status(400).json({ error: 'Missing path' })
-    }
-
-    // Convert path array to function name
-    // Example: ['queue', 'enter'] → 'queue-enter'
-    const functionName = path.join('-')
-
-    // Build Supabase Function URL
-    const supabaseUrl = `${SUPABASE_URL}/functions/v1/${functionName}`
-
-    console.log(`[Proxy] ${req.method} /api/v1/${path.join('/')} → ${functionName}`)
-
-    // Prepare headers
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    }
-
-    // Copy relevant headers from original request
-    if (req.headers.authorization) {
-      headers.Authorization = req.headers.authorization
-    }
-
-    // Prepare fetch options
-    const fetchOptions = {
-      method: req.method,
-      headers,
-    }
-
-    // Add body for POST/PUT/PATCH requests
-    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-      fetchOptions.body = JSON.stringify(req.body)
-    }
-
-    // Make request to Supabase
-    const response = await fetch(supabaseUrl, fetchOptions)
-    
-    // Get response data
-    const data = await response.text()
-    
-    // Try to parse as JSON
-    let jsonData
-    try {
-      jsonData = JSON.parse(data)
-    } catch (e) {
-      jsonData = { message: data }
-    }
-
-    // Return response
-    res.status(response.status).json(jsonData)
-
-  } catch (error) {
-    console.error('[Proxy Error]', error)
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: error.message 
-    })
+    const r = await fetch(url.toString(), { method, headers: fwd, body });
+    // mirror response headers minimally
+    res.setHeader('Content-Type', r.headers.get('content-type')||'application/json');
+    const buf = await r.arrayBuffer();
+    res.status(r.status).send(Buffer.from(buf));
+  } catch(e){
+    res.status(502).json({ error:'Proxy failed', message: e?.message||String(e) });
   }
-}
+};
