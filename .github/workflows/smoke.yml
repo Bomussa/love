@@ -6,9 +6,11 @@ on:
       base_url:
         description: 'Production base URL'
         required: true
+        default: https://mmc-mms.com
       api_base:
         description: 'API base'
         required: false
+        default: https://mmc-mms.com/api/v1
 
 jobs:
   smoke:
