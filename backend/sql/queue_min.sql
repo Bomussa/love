@@ -1,5 +1,5 @@
 -- Minimal Queue backend hardening (safe to run once)
-DO $$ BEGIN CREATE TYPE queue_status AS ENUM ('waiting','called','done','cancelled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE TYPE IF NOT EXISTS queue_status AS ENUM ('waiting','called','done','cancelled');
 ALTER TABLE IF EXISTS public.queue
   ALTER COLUMN status TYPE queue_status USING status::queue_status,
   ALTER COLUMN clinic_id SET NOT NULL,
