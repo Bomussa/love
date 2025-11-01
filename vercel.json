@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/v1/[...path].js": { "runtime": "nodejs18.x" }
-  },
   "installCommand": "echo skip-install",
   "buildCommand": "echo skip-build"
 }
