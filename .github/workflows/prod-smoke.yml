@@ -11,11 +11,8 @@ jobs:
       API_BASE: https://mmc-mms.com/api/v1
     steps:
       - name: Front
-        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
-' "$BASE_URL"
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "$BASE_URL"
       - name: Healthz
-        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
-' "$API_BASE/healthz"
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "$API_BASE/healthz"
       - name: Ping
-        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
-' "$API_BASE/ping?x=1"
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "$API_BASE/ping?x=1"
