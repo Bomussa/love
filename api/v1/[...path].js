@@ -1,3 +1,4 @@
+// v2: add x-forwarded headers
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -12,6 +13,8 @@ module.exports = async (req, res) => {
   Object.entries(req.query||{}).forEach(([k,v])=>{ if(k!=='path'){ if(Array.isArray(v)){ v.forEach(x=>url.searchParams.append(k,String(x))); } else { url.searchParams.set(k,String(v)); } } });
   const fwd = new Headers({ 'Authorization': `Bearer ${key}` });
   if (req.headers['content-type']) fwd.set('Content-Type', req.headers['content-type']);
+  if (req.headers['x-forwarded-for']) fwd.set('x-forwarded-for', req.headers['x-forwarded-for']);
+  if (req.headers['x-real-ip']) fwd.set('x-real-ip', req.headers['x-real-ip']);
   const method = (req.method||'GET').toUpperCase();
   let body;
   if (method==='POST'||method==='PUT'||method==='PATCH') { body = typeof req.body==='string'?req.body:JSON.stringify(req.body??{}); }
