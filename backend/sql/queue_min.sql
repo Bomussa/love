@@ -18,6 +18,6 @@ CREATE TABLE IF NOT EXISTS public.clinic_staff (
   FOREIGN KEY (user_id) REFERENCES public.users(id),
   FOREIGN KEY (clinic_id) REFERENCES public.clinics(id)
 );
-CREATE POLICY IF NOT EXISTS queue_read_auth ON public.queue FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.clinic_staff s WHERE s.user_id = auth.uid() AND s.clinic_id = clinic_id) OR patient_id::text = auth.uid()::text);
+CREATE POLICY IF NOT EXISTS queue_read_auth ON public.queue FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.clinic_staff s WHERE s.user_id = auth.uid() AND s.clinic_id = clinic_id));
 CREATE POLICY IF NOT EXISTS queue_insert_staff ON public.queue FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.clinic_staff s WHERE s.user_id = auth.uid() AND s.clinic_id = clinic_id));
 CREATE POLICY IF NOT EXISTS queue_update_staff ON public.queue FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.clinic_staff s WHERE s.user_id = auth.uid() AND s.clinic_id = clinic_id)) WITH CHECK (EXISTS (SELECT 1 FROM public.clinic_staff s WHERE s.user_id = auth.uid() AND s.clinic_id = clinic_id));
