@@ -1,39 +1,42 @@
-// proxy v4 — extract path from URL
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  
-  const base = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const key  = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  if (!base || !key) return res.status(500).json({ error: 'Missing Supabase env' });
-  
-  // Extract path from URL: /api/v1/status -> status
-  const urlPath = req.url.split('?')[0]; // Remove query params
-  const pathMatch = urlPath.match(/\/api\/v1\/(.+)/);
-  const pathSegment = pathMatch ? pathMatch[1] : '';
-  
-  if (!pathSegment) return res.status(400).json({ error: 'Missing path' });
-  
-  // Convert path to function name: status/queue -> status-queue
-  const fn = pathSegment.replace(/\//g, '-');
-  const url = `${base}/functions/v1/${fn}`;
-  
-  const headers = { Authorization: `Bearer ${key}` };
-  if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
-  
-  const init = { method: req.method, headers };
-  if (['POST','PUT','PATCH'].includes(req.method)) {
-    init.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {});
+export const config = { runtime: 'edge' };
+
+function cors(origin) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+export default async function handler(req) {
+  const url = new URL(req.url);
+  const origin = req.headers.get('Origin') || '*';
+  const base = (process.env.UPSTREAM_API_BASE || '').replace(/\/$/, ''); // ends without /
+  const subPath = url.pathname.replace(/^\/api\/v1\/?/, '');              // strip /api/v1/
+  const target = `${base}/${subPath}${url.search}`;
+
+  // Preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: cors(origin) });
   }
-  
-  try {
-    const r = await fetch(url, init);
-    const buf = await r.arrayBuffer();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'application/json');
-    res.status(r.status).send(Buffer.from(buf));
-  } catch (e) {
-    res.status(502).json({ error: 'Proxy failed', message: e?.message || String(e) });
+
+  // Proxy
+  const hopByHop = new Set(['connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailers','transfer-encoding','upgrade','host','content-length']);
+  const fwdHeaders = new Headers();
+  for (const [k, v] of req.headers.entries()) {
+    if (!hopByHop.has(k.toLowerCase())) fwdHeaders.set(k, v);
   }
-};
+
+  const body = (req.method === 'GET' || req.method === 'HEAD') ? undefined : await req.arrayBuffer();
+  const resp = await fetch(target, { method: req.method, headers: fwdHeaders, body, redirect: 'manual' });
+
+  const outHeaders = new Headers(cors(origin));
+  for (const [k, v] of resp.headers.entries()) {
+    if (!['content-encoding','content-length','transfer-encoding','connection'].includes(k.toLowerCase())) {
+      outHeaders.set(k, v);
+    }
+  }
+
+  return new Response(resp.body, { status: resp.status, headers: outHeaders });
+}
