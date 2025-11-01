@@ -1,9 +1,8 @@
 {
-  "name": "love-proxy",
-  "version": "1.0.0",
-  "description": "Vercel proxy for MMC-MMS API",
+  "name": "mmc-mms",
   "private": true,
+  "version": "0.0.1",
   "scripts": {
-    "build": "echo 'No build needed for serverless functions'"
+    "build": "mkdir -p dist && cp -f index.html dist/index.html"
   }
 }
