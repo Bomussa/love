@@ -1,7 +1,21 @@
 {
   "version": 2,
-  "routes": [
-    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "framework": "vite",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "https://mmc-mms.com/api/v1/:path*" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ],
+  "redirects": [
+    { "source": "https://www.mmc-mms.com/:path*", "destination": "https://mmc-mms.com/:path*", "permanent": true }
   ]
 }
