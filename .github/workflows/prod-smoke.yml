@@ -1,0 +1,21 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://mmc-mms.com
+      API_BASE: https://mmc-mms.com/api/v1
+    steps:
+      - name: Front
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
+' "$BASE_URL"
+      - name: Healthz
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
+' "$API_BASE/healthz"
+      - name: Ping
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}
+' "$API_BASE/ping?x=1"

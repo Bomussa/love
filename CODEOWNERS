@@ -1,0 +1,4 @@
+# أي تعديل على الواجهة يحتاج موافقة إياد
+/index.html @Bomussa
+/public/**  @Bomussa
+/src/**     @Bomussa
