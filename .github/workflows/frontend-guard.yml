@@ -1,0 +1,13 @@
+name: Frontend Guard (TEMP DISABLED)
+
+# Temporarily disabled as requested by Iyad.
+# To re-enable, restore the previous pull_request trigger and guard job.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'frontend-guard disabled temporarily'
