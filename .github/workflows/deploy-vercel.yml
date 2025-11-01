@@ -36,7 +36,7 @@ jobs:
       - name: Ensure pnpm (via Corepack)
         run: corepack prepare pnpm@10.19.0 --activate
       - name: Install deps
-        run: pnpm install --no-frozen-lockfile || npm ci || npm install
+        run: pnpm install --no-frozen-lockfile
       - name: Build
         run: pnpm build || npm run build --if-present
       - name: Install Vercel CLI
