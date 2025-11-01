@@ -18,14 +18,14 @@ class UnifiedApiService {
       
       if (response.ok) {
         this.useLocal = false;
-
+        console.log('✅ Backend API is available');
       } else {
         this.useLocal = true;
-
+        console.log('⚠️ Backend API not available, using local storage');
       }
     } catch (e) {
       this.useLocal = true;
-
+      console.log('⚠️ Backend API not available, using local storage');
     }
   }
 
@@ -59,7 +59,7 @@ class UnifiedApiService {
       }
       return data;
     } catch (err) {
-      // console.error('Backend error, falling back to local:', err);
+      console.error('Backend error, falling back to local:', err);
       this.useLocal = true;
       return this.routeToLocal(endpoint, options);
     }
@@ -262,7 +262,7 @@ class UnifiedApiService {
           callback({ type: 'queue_update', data: status });
         }
       } catch (e) {
-        // console.error('Polling error:', e);
+        console.error('Polling error:', e);
       }
     }, 5000);
 

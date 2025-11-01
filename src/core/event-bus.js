@@ -40,7 +40,7 @@ class EventBus {
         try {
           callback(data, payload)
         } catch (error) {
-          // console.error(`[EventBus] Error in listener for ${event}:`, error)
+          console.error(`[EventBus] Error in listener for ${event}:`, error)
         }
       }
     }
@@ -51,14 +51,14 @@ class EventBus {
         try {
           callback(data, payload)
         } catch (error) {
-          // console.error(`[EventBus] Error in wildcard listener:`, error)
+          console.error(`[EventBus] Error in wildcard listener:`, error)
         }
       }
     }
 
     // تسجيل في console للتطوير
     if (import.meta.env.DEV) {
-
+      console.log(`[EventBus] ${event}:`, data)
     }
   }
 
@@ -84,8 +84,6 @@ export { EventBus }
 // === اتصال SSE المركزي (من 2027) ===
 // يتم إنشاء اتصال واحد فقط بـ Backend ويغذي eventBus
 
-import { getApiBase } from '../lib/api-base';
-
 let sseConnection = null;
 let reconnectTimer = null;
 const RECONNECT_DELAY = 5000;
@@ -93,19 +91,18 @@ const RECONNECT_DELAY = 5000;
 function connectToSSE() {
   // تجنب اتصالات متعددة
   if (sseConnection) {
-
+    console.log('[EventBus] SSE already connected');
     return;
   }
 
   try {
-    // Use getApiBase() which returns origin + /api/v1
-    const API_BASE = getApiBase();
-    const url = `${API_BASE}/events/stream`;
-
+    const url = `${window.location.origin}/api/v1/events/stream`;
+    console.log('[EventBus] Connecting to SSE:', url);
+    
     sseConnection = new EventSource(url);
 
     sseConnection.onopen = () => {
-
+      console.log('[EventBus] ✅ SSE Connected');
       eventBus.emit('sse:connected', { timestamp: new Date().toISOString() });
     };
 
@@ -115,7 +112,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('queue:update', data);
       } catch (err) {
-        // console.error('[EventBus] Error parsing queue_update:', err);
+        console.error('[EventBus] Error parsing queue_update:', err);
       }
     });
 
@@ -124,7 +121,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('queue:call', data);
       } catch (err) {
-        // console.error('[EventBus] Error parsing queue_call:', err);
+        console.error('[EventBus] Error parsing queue_call:', err);
       }
     });
 
@@ -137,7 +134,7 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('notice', data);
       } catch (err) {
-        // console.error('[EventBus] Error parsing notice:', err);
+        console.error('[EventBus] Error parsing notice:', err);
       }
     });
 
@@ -146,12 +143,12 @@ function connectToSSE() {
         const data = JSON.parse(e.data);
         eventBus.emit('stats:update', data);
       } catch (err) {
-        // console.error('[EventBus] Error parsing stats_update:', err);
+        console.error('[EventBus] Error parsing stats_update:', err);
       }
     });
 
     sseConnection.onerror = (err) => {
-      // console.error('[EventBus] ❌ SSE Error:', err);
+      console.error('[EventBus] ❌ SSE Error:', err);
       eventBus.emit('sse:error', { error: err });
       
       // إغلاق الاتصال الحالي
@@ -163,7 +160,7 @@ function connectToSSE() {
       // إعادة الاتصال بعد تأخير
       if (!reconnectTimer) {
         reconnectTimer = setTimeout(() => {
-
+          console.log('[EventBus] 🔄 Reconnecting to SSE...');
           reconnectTimer = null;
           connectToSSE();
         }, RECONNECT_DELAY);
@@ -171,7 +168,7 @@ function connectToSSE() {
     };
 
   } catch (err) {
-    // console.error('[EventBus] Failed to create SSE connection:', err);
+    console.error('[EventBus] Failed to create SSE connection:', err);
   }
 }
 
@@ -179,7 +176,7 @@ function disconnectSSE() {
   if (sseConnection) {
     sseConnection.close();
     sseConnection = null;
-
+    console.log('[EventBus] SSE Disconnected');
   }
   
   if (reconnectTimer) {
@@ -198,7 +195,7 @@ if (typeof window !== 'undefined') {
   // إعادة الاتصال عند عودة الصفحة من hidden
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !sseConnection) {
-
+      console.log('[EventBus] Page visible, reconnecting SSE...');
       connectToSSE();
     }
   });

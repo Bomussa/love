@@ -33,7 +33,7 @@ export function AdminQrManager({ language = 'ar' }) {
   //       setStats(response.data.stats)
   //     }
   //   } catch (error) {
-  //     // console.error('خطأ في جلب الإحصائيات:', error)
+  //     console.error('خطأ في جلب الإحصائيات:', error)
   //   }
   // }
 
@@ -81,7 +81,7 @@ export function AdminQrManager({ language = 'ar' }) {
         alert(language === 'ar' ? 'تم إنشاء QR Code بنجاح!' : 'QR Code created successfully!')
       }
     } catch (error) {
-      // console.error('❌ خطأ في إنشاء QR:', error)
+      console.error('❌ خطأ في إنشاء QR:', error)
       alert(language === 'ar' ? 'فشل إنشاء QR Code' : 'Failed to create QR Code')
     } finally {
       setLoading(false)
@@ -113,7 +113,7 @@ export function AdminQrManager({ language = 'ar' }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      // console.error('فشل النسخ:', error)
+      console.error('فشل النسخ:', error)
     }
   }
 

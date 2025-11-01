@@ -23,19 +23,19 @@ class UnifiedStorage {
 
   handleOnline() {
     this.isOnline = true
-
+    console.log('[Unified Storage] Online mode activated')
     // مزامنة البيانات المحلية مع الخادم
     this.syncWithServer()
   }
 
   handleOffline() {
     this.isOnline = false
-
+    console.log('[Unified Storage] Offline mode activated')
   }
 
   async syncWithServer() {
     // TODO: مزامنة البيانات المحلية مع الخادم
-
+    console.log('[Unified Storage] Syncing with server...')
   }
 
   // ========== إدارة المرضى ==========
@@ -56,7 +56,7 @@ class UnifiedStorage {
     
     // إشعار البداية
     notificationEngine.subscribe(patient.id, (notification) => {
-
+      console.log('[Notification]', notification)
       // يمكن إضافة toast notification هنا
     })
     
@@ -98,7 +98,7 @@ class UnifiedStorage {
       
       return entry
     } catch (error) {
-      // console.error('[Queue] Error:', error)
+      console.error('[Queue] Error:', error)
       throw error
     }
   }
@@ -118,7 +118,7 @@ class UnifiedStorage {
       
       return next
     } catch (error) {
-      // console.error('[Queue] Error:', error)
+      console.error('[Queue] Error:', error)
       throw error
     }
   }
@@ -152,7 +152,7 @@ class UnifiedStorage {
       
       return pinData
     } catch (error) {
-      // console.error('[PIN] Error:', error)
+      console.error('[PIN] Error:', error)
       throw error
     }
   }
