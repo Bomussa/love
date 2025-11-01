@@ -24,7 +24,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
             setLastRefresh(new Date())
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to fetch queue status:', err)
+            console.error('Failed to fetch queue status:', err)
         } finally {
             setLoading(false)
         }

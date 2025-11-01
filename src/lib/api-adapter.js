@@ -19,13 +19,13 @@ class APIAdapter {
     this.useCore = await this.mmsCore.checkAvailability();
     
     if (!this.useCore) {
-
+      console.warn('⚠️ MMS Core unavailable, using local fallback');
       // Import LocalApiService only if needed
       if (typeof window !== 'undefined' && window.LocalApiService) {
         this.localApi = new window.LocalApiService();
       }
     } else {
-
+      console.log('✅ MMS Core connected successfully');
     }
   }
 
@@ -36,7 +36,7 @@ class APIAdapter {
         const result = await this.mmsCore.issuePin(clinicId, visitId);
         return result;
       } catch (error) {
-        // console.error('MMS Core PIN issue failed, falling back to local');
+        console.error('MMS Core PIN issue failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -59,7 +59,7 @@ class APIAdapter {
         );
         return result;
       } catch (error) {
-        // console.error('MMS Core PIN validation failed, falling back to local');
+        console.error('MMS Core PIN validation failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -79,7 +79,7 @@ class APIAdapter {
         const result = await this.mmsCore.enterQueue(clinicId, visitId);
         return result;
       } catch (error) {
-        // console.error('MMS Core queue enter failed, falling back to local');
+        console.error('MMS Core queue enter failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -98,7 +98,7 @@ class APIAdapter {
         const result = await this.mmsCore.completeQueue(clinicId, visitId, ticket);
         return result;
       } catch (error) {
-        // console.error('MMS Core queue complete failed, falling back to local');
+        console.error('MMS Core queue complete failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -117,7 +117,7 @@ class APIAdapter {
         const result = await this.mmsCore.getQueueStatus(clinicId);
         return result;
       } catch (error) {
-        // console.error('MMS Core queue status failed, falling back to local');
+        console.error('MMS Core queue status failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -137,7 +137,7 @@ class APIAdapter {
         const result = await this.mmsCore.assignRoute(visitId, examType, gender);
         return result;
       } catch (error) {
-        // console.error('MMS Core route assign failed, falling back to local');
+        console.error('MMS Core route assign failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -156,7 +156,7 @@ class APIAdapter {
         const result = await this.mmsCore.getRoute(visitId);
         return result;
       } catch (error) {
-        // console.error('MMS Core get route failed, falling back to local');
+        console.error('MMS Core get route failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -175,7 +175,7 @@ class APIAdapter {
         const result = await this.mmsCore.unlockNextStep(visitId, currentClinicId);
         return result;
       } catch (error) {
-        // console.error('MMS Core unlock next failed, falling back to local');
+        console.error('MMS Core unlock next failed, falling back to local');
         this.useCore = false;
       }
     }
@@ -195,7 +195,7 @@ class APIAdapter {
         const result = await this.mmsCore.getClinics();
         return result;
       } catch (error) {
-        // console.error('MMS Core get clinics failed, falling back to local');
+        console.error('MMS Core get clinics failed, falling back to local');
         this.useCore = false;
       }
     }
