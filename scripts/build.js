@@ -7,7 +7,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// Create dist directory if it doesn't exist
+// Remove dist directory if it exists, then recreate it
+if (fs.existsSync('dist')) {
+  fs.rmSync('dist', { recursive: true, force: true });
+}
 fs.mkdirSync('dist', { recursive: true });
 
 // Copy index.html to dist
