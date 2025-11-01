@@ -33,8 +33,8 @@ jobs:
             echo "Error: corepack not found in PATH. Please ensure Node.js 16+ is installed."
             exit 1
           fi
-      - name: Ensure pnpm
-        run: pnpm -v || npm i -g pnpm
+      - name: Ensure pnpm (via Corepack)
+        run: corepack prepare pnpm@10.19.0 --activate
       - name: Install deps
         run: pnpm install --no-frozen-lockfile || npm ci || npm install
       - name: Build
