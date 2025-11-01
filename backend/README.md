@@ -14,3 +14,9 @@ This folder contains the **only backend you asked for**: queue hardening + polic
 Security notes:
 - Do **not** open anon write access.
 - For public read, expose a VIEW without PII (not included by default).
+
+  **Example:**
+  ```sql
+  CREATE VIEW public.queue_public_read AS
+    SELECT id, status, created_at
+    FROM public.queue;
