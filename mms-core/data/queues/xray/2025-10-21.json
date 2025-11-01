@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "clinicId": "xray",
+    "dateKey": "2025-10-21",
+    "version": 1
+  },
+  "nextCallTicket": 3,
+  "waiting": [],
+  "in": [
+    {
+      "ticket": 1,
+      "visitId": "V001",
+      "calledAt": "2025-10-22T01:32:41.288Z"
+    },
+    {
+      "ticket": 2,
+      "visitId": "TEST001",
+      "calledAt": "2025-10-22T01:34:41.317Z"
+    }
+  ],
+  "done": []
+}

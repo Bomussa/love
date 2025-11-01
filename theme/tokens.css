@@ -1,0 +1,20 @@
+:root {
+  --color-primary: #1E5BAA;
+  --color-background: #F4F5F7;
+  --color-success: #27AE60;
+  --color-danger: #E63946;
+  --text-color: #1f2937;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--text-color);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.status-success { color: var(--color-success); }
+.status-danger { color: var(--color-danger); }
