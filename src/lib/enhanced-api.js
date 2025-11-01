@@ -1,24 +1,22 @@
 // Enhanced API Client - متطابق 100% مع Backend /api/v1/*
 // تحديث المسارات فقط - بدون تغيير في Backend
 
-import { getApiBase } from './api-base';
-import { generateIdempotencyKey, sentKeysRegistry } from '../utils/idempotency';
+const API_VERSION = '/api/v1'
 
-const API_BASE = getApiBase();
-const API_VERSION = '/api/v1'; // For backwards compatibility in method calls
-
-// Normalize endpoint to prevent double /api/v1
-function normalizePath(endpoint) {
-  const p = String(endpoint || '');
-  // Remove any leading /api/v1 or api/v1
-  const withoutVersion = p.replace(/^\/?api\/v1/, '');
-  // Ensure it starts with /
-  return withoutVersion.startsWith('/') ? withoutVersion : `/${withoutVersion}`;
+function resolveApiBase() {
+  const envBase = import.meta.env.VITE_API_BASE
+  if (envBase) return envBase
+  
+  // في التطوير
+  if (import.meta.env.DEV) return 'http://localhost:3000'
+  
+  // في الإنتاج
+  return window.location.origin
 }
 
 class EnhancedApiClient {
     constructor() {
-        this.baseUrl = API_BASE;
+        this.baseUrl = resolveApiBase()
         this.cache = new Map()
         this.pendingRequests = new Map()
         this.retryConfig = { maxRetries: 3, baseDelay: 1000, maxDelay: 10000 }
@@ -74,29 +72,10 @@ class EnhancedApiClient {
 
     async requestWithRetry(endpoint, options = {}, attempt = 0) {
         this.metrics.requests++
-        const method = (options.method || 'GET').toUpperCase();
-        
-        // Generate and attach idempotency key for mutating requests
-        let idempotencyKey = options.idempotencyKey; // Allow override
-        if (!idempotencyKey && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-            idempotencyKey = generateIdempotencyKey(method, endpoint, options.body);
-            
-            // Check if already sent successfully
-            if (sentKeysRegistry.isSent(idempotencyKey)) {
-                // Skip resend - return cached success
-                return {
-                    success: true,
-                    cached: true,
-                    message: 'Request already sent successfully'
-                };
-            }
-        }
-        
-        const url = `${API_BASE}${normalizePath(endpoint)}`
+        const url = `${this.baseUrl}${endpoint}`
         const config = {
             headers: {
                 'Content-Type': 'application/json',
-                ...(idempotencyKey && { 'X-Idempotency-Key': idempotencyKey }),
                 ...options.headers
             },
             ...options
@@ -116,22 +95,18 @@ class EnhancedApiClient {
                 throw new Error(data?.error || `HTTP ${response.status}`)
             }
 
-            // Mark idempotency key as sent on success
-            if (idempotencyKey && response.ok) {
-                sentKeysRegistry.markSent(idempotencyKey);
-            }
-
             return data
         } catch (error) {
             this.metrics.errors++
             
             if (attempt < this.retryConfig.maxRetries) {
                 const delay = this.getRetryDelay(attempt)
+                console.warn(`Request failed, retrying in ${delay}ms (${attempt + 1}/${this.retryConfig.maxRetries})`, error)
                 await this.sleep(delay)
                 return this.requestWithRetry(endpoint, options, attempt + 1)
             }
             
-            // console.error(`API Error [${endpoint}]:`, error)
+            console.error(`API Error [${endpoint}]:`, error)
             throw error
         }
     }
@@ -357,7 +332,9 @@ class EnhancedApiClient {
         const unsubscribe1 = eventBus.on('queue:update', handleQueueUpdate);
         const unsubscribe2 = eventBus.on('heartbeat', handleHeartbeat);
         const unsubscribe3 = eventBus.on('notice', handleNotice);
-
+        
+        console.log('SSE Connected via eventBus:', clinic || 'all');
+        
         // إرجاع كائن يحاكي EventSource
         return {
             close: () => {
@@ -445,7 +422,7 @@ class EnhancedApiClient {
                 }, delay)
             })
         } catch (error) {
-
+            console.log('Audio notification failed:', error)
         }
     }
     

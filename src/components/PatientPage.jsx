@@ -47,9 +47,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
       }
     } catch (e) {
-      // console.error('Auto-enter first clinic failed:', e)
+      console.error('Auto-enter first clinic failed:', e)
       // في حالة الفشل، لا نعطي أي رقم افتراضي
-      // console.error('Cannot enter clinic without backend connection')
+      console.error('Cannot enter clinic without backend connection')
     }
   }
 
@@ -78,7 +78,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       setLoading(false)
     } catch (e) {
-      // console.error('Enter clinic failed:', e)
+      console.error('Enter clinic failed:', e)
       alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
       setLoading(false)
     }
@@ -99,10 +99,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             pinsMap[key] = typeof pinData === 'object' ? pinData.pin : pinData
           })
           setClinicPins(pinsMap)
-
+          console.log('Daily PINs loaded:', pinsMap)
         }
       } catch (err) {
-        // console.error('Failed to fetch daily PINs:', err)
+        console.error('Failed to fetch daily PINs:', err)
       }
     }
     
@@ -123,10 +123,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           const savedRoute = await api.getRoute(patientData.id)
           if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
             examStations = savedRoute.route.stations
-
+            console.log('✅ Loaded saved route from backend')
           }
         } catch (err) {
-
+          console.log('ℹ️ No saved route found, creating new one')
         }
         
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
@@ -141,9 +141,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               patientData.gender,
               examStations
             )
-
+            console.log('✅ Saved new route to backend')
           } catch (err) {
-            // console.error('❌ Failed to save route:', err)
+            console.error('❌ Failed to save route:', err)
           }
         }
         
@@ -175,7 +175,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         }
       } catch (err) {
-        // console.error('Failed to load pathway:', err)
+        console.error('Failed to load pathway:', err)
       }
     }
     
@@ -211,7 +211,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     // مراقبة حالة SSE
     const handleSSEConnected = () => {
       isSSEActive = true;
-
+      console.log('[PatientPage] ✅ SSE Active - Polling disabled');
       // إيقاف Polling عند اتصال SSE
       if (pollingInterval) {
         clearInterval(pollingInterval);
@@ -221,7 +221,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     
     const handleSSEError = () => {
       isSSEActive = false;
-
+      console.log('[PatientPage] ⚠️ SSE Inactive - Polling enabled');
       // تفعيل Polling عند فشل SSE
       if (!pollingInterval) {
         pollingInterval = setInterval(() => {
@@ -315,7 +315,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         // تعديل فترات التحديث ديناميكيًا حسب وقت الاستجابة
         dynamicInterval = Math.max(5000, GENERAL_REFRESH_INTERVAL + duration);
       } catch (err) {
-
+        console.warn('⚠️ فشل في تحديث الدور:', err.message);
         retryCount++;
         dynamicInterval = Math.min(60000, dynamicInterval * 1.5);
         
@@ -323,7 +323,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           // إعادة المحاولة بعد تأخير
           setTimeout(updateQueueStatus, RECOVERY_DELAY);
         } else {
-          // console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
+          console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
           // إعادة تعيين العداد والانتظار على SSE
           retryCount = 0;
         }
@@ -340,7 +340,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const heartbeatInterval = setInterval(() => {
       const now = Date.now();
       if (now - lastResponseTime > 120000) { // دقيقتان بدلاً من دقيقة
-
+        console.warn('⚠️ لا توجد استجابة منذ دقيقتين - الاعتماد على SSE');
         // إعادة تعيين الوقت لتجنب التحذيرات المتكررة
         lastResponseTime = Date.now();
       }
@@ -372,7 +372,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
-        // console.error('Event bus parse error:', err);
+        console.error('Event bus parse error:', err);
       }
     };
     
@@ -412,7 +412,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       // Log duration for analytics
       if (exitResult && exitResult.duration_minutes) {
-
+        console.log(`✅ Clinic ${station.id} completed in ${exitResult.duration_minutes} minutes`)
       }
 
       // تحديد العيادة التالية
@@ -456,7 +456,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
       alert(msg)
     } catch (e) {
-      // console.error('Complete clinic failed', e)
+      console.error('Complete clinic failed', e)
       const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
       alert(msg)
     } finally {
@@ -693,7 +693,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             show={true}
                             language={language}
                             onTimeout={() => {
-
+                              console.log('Timeout for station:', station.id)
                             }}
                           />
                         </div>

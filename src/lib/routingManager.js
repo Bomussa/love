@@ -38,7 +38,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
     `, [examType, gender, currentStep]);
 
     if (availableClinics.length === 0) {
-
+      console.warn(`No available clinics for ${examType}, ${gender}, step ${currentStep}`);
       return null;
     }
 
@@ -107,6 +107,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
 
     const selectedClinic = scoredClinics[0];
     
+    console.log(`Selected clinic ${selectedClinic.name} (ID: ${selectedClinic.id}) for ${examType}/${gender}/step${currentStep}`, {
       loadRatio: selectedClinic.loadRatio.toFixed(2),
       distributedToday: selectedClinic.distributedToday,
       score: selectedClinic.score.toFixed(3)
@@ -115,7 +116,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
     return selectedClinic.id;
 
   } catch (error) {
-    // console.error('Error picking clinic for next step:', error);
+    console.error('Error picking clinic for next step:', error);
     return null;
   }
 }
@@ -145,7 +146,7 @@ export async function markDistributed(clinicId) {
 
     return true;
   } catch (error) {
-    // console.error(`Error marking distributed for clinic ${clinicId}:`, error);
+    console.error(`Error marking distributed for clinic ${clinicId}:`, error);
     return false;
   }
 }
@@ -181,7 +182,7 @@ export async function getExamRoute(examType, gender) {
       estimatedDuration: row.estimated_duration_minutes
     }));
   } catch (error) {
-    // console.error(`Error getting exam route for ${examType}/${gender}:`, error);
+    console.error(`Error getting exam route for ${examType}/${gender}:`, error);
     return [];
   }
 }
@@ -229,7 +230,7 @@ export async function createPatientRoute(patientId, examType, gender) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // console.error(`Error creating patient route for ${patientId}:`, error);
+    console.error(`Error creating patient route for ${patientId}:`, error);
     return false;
   } finally {
     client.release();
@@ -322,7 +323,7 @@ export async function moveToNextStep(patientId) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // console.error(`Error moving to next step for patient ${patientId}:`, error);
+    console.error(`Error moving to next step for patient ${patientId}:`, error);
     return null;
   } finally {
     client.release();
@@ -384,7 +385,7 @@ export async function getPatientRouteStatus(patientId) {
       isComplete: completedSteps === totalSteps
     };
   } catch (error) {
-    // console.error(`Error getting route status for patient ${patientId}:`, error);
+    console.error(`Error getting route status for patient ${patientId}:`, error);
     return { exists: false, steps: [], error: error.message };
   }
 }
@@ -427,7 +428,7 @@ export async function getDistributionStats() {
       lastUpdated: row.updated_at
     }));
   } catch (error) {
-    // console.error('Error getting distribution stats:', error);
+    console.error('Error getting distribution stats:', error);
     return [];
   }
 }

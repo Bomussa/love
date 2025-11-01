@@ -24,7 +24,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setLastRefresh(new Date())
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to fetch PIN:', err)
+            console.error('Failed to fetch PIN:', err)
         } finally {
             setLoading(false)
         }
@@ -44,7 +44,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             await fetchCurrentPin()
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to issue PIN:', err)
+            console.error('Failed to issue PIN:', err)
         } finally {
             setIssuing(false)
         }

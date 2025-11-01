@@ -62,7 +62,7 @@ export function EnhancedThemeSelector({
         }
       }
     } catch (error) {
-      // console.error('Error fetching theme settings:', error);
+      console.error('Error fetching theme settings:', error);
     }
   };
 
@@ -93,7 +93,7 @@ export function EnhancedThemeSelector({
         showNotification('فشل في حفظ الثيم', 'error');
       }
     } catch (error) {
-      // console.error('Error updating theme:', error);
+      console.error('Error updating theme:', error);
       showNotification('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setIsLoading(false);
@@ -258,7 +258,8 @@ export function EnhancedThemeSelector({
                 <div className="absolute top-3 left-3 bg-theme-accent text-white rounded-full p-2 shadow-lg">
                   <Eye className="w-5 h-5" />
                 </div>
-              )}              {/* Loading Indicator */}
+              )}
+              {/* Loading Indicator */}
               {isLoading && currentTheme === theme.id && (
                 <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
                   <RefreshCw className="w-8 h-8 text-[var(--theme-primary)] animate-spin" />
