@@ -1,5 +1,8 @@
 name: Deploy (Vercel: main + backup)
 
+# NOTE: Automated deployments on push to main have been intentionally removed.
+# This workflow must be triggered manually via workflow_dispatch.
+# Please document any changes to deployment triggers here.
 on:
   workflow_dispatch:
     inputs:
