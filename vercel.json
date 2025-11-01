@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "functions": {
+    "api/v1/[...path].js": { "runtime": "edge" }
+  },
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
