@@ -3,10 +3,10 @@ name: Smoke (prod)
 on:
   workflow_dispatch:
     inputs:
-      base_url:
+      base_url: https://mmc-mms.com
         description: 'Production base URL'
         required: true
-      api_base:
+      api_base: http://mmc-mms.com/api/v1
         description: 'API base'
         required: false
 
