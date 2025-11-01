@@ -1,0 +1,27 @@
+name: Smoke (prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Production base URL'
+        required: true
+      api_base:
+        description: 'API base'
+        required: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit front
+        run: |
+          curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "${{ github.event.inputs.base_url }}"
+      - name: Hit healthz
+        if: ${{ github.event.inputs.api_base != '' }}
+        run: |
+          curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "${{ github.event.inputs.api_base }}/healthz"
+      - name: Ping
+        if: ${{ github.event.inputs.api_base != '' }}
+        run: |
+          curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' "${{ github.event.inputs.api_base }}/ping?x=1"
