@@ -38,7 +38,7 @@ jobs:
       - name: Install deps
         run: pnpm install --no-frozen-lockfile
       - name: Build
-        run: pnpm build || npm run build --if-present
+        run: pnpm build
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
       - name: Vercel pull (prod)
