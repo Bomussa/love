@@ -1,104 +1,103 @@
-name: Deploy to Vercel + Post-deploy Healthcheck
+name: Deploy (Vercel: main + backup)
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
-      url:
-        description: 'Optional override deployed URL'
+      backup_branch:
+        description: 'Backup branch to deploy as preview'
+        required: true
+        default: lock/frontend-guard-ci
+      alias:
+        description: 'Optional alias for backup (e.g., backup.mmc-mms.com)'
         required: false
-        default: ''
-
-permissions:
-  contents: read
-  deployments: write
-  issues: write
 
 jobs:
-  build-test-deploy:
+  deploy_main:
+    name: Deploy main → Production
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          ref: main
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Check if Vercel secrets are present
-        id: check_secrets
-        run: |
-          if [ -n "${{ secrets.VERCEL_TOKEN }}" ] && [ -n "${{ secrets.VERCEL_ORG_ID }}" ] && [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
-            echo "secrets_present=true" >> $GITHUB_OUTPUT
-            echo "✅ All Vercel secrets are present"
-          else
-            echo "secrets_present=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Vercel secrets are missing - will skip deploy"
-          fi
-
-      - name: Deploy to Vercel (Production)
-        id: vercel
-        if: steps.check_secrets.outputs.secrets_present == 'true'
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-args: '--prod'
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
-
-      - name: Resolve deployed URL
-        id: resolve_url
-        run: |
-          # Priority: workflow_dispatch input > vercel preview URL > GH_PATH > DEPLOY_URL
-          url="${{ github.event.inputs.url }}"
-          if [ -z "$url" ]; then url="${{ steps.vercel.outputs.preview-url }}"; fi
-          if [ -z "$url" ]; then url="${{ secrets.GH_PATH }}"; fi
-          if [ -z "$url" ]; then url="${{ secrets.DEPLOY_URL }}"; fi
-          
-          if [ -z "$url" ]; then
-            echo "❌ No DEPLOY_URL could be resolved"
-            exit 1
-          fi
-          
-          echo "DEPLOY_URL=$url" >> $GITHUB_ENV
-          echo "✅ Resolved DEPLOY_URL=$url"
-
-      - name: Post-deploy healthcheck
+      - name: Enable corepack
+        run: corepack enable || true
+      - name: Ensure pnpm
+        run: pnpm -v || npm i -g pnpm
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile || npm ci || npm install
+      - name: Build
+        run: pnpm build || npm run build --if-present
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Vercel pull (prod)
+        run: vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
         env:
-          DEPLOY_URL: ${{ env.DEPLOY_URL }}
-        run: |
-          echo "Running healthcheck against: $DEPLOY_URL"
-          node scripts/test/vercel-health-check.js
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Vercel build (prod)
+        run: vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Vercel deploy (prod)
+        id: deploy_main
+        run: echo "url=$(vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }})" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Success notification (fallback Issue)
-        if: success()
-        uses: actions/github-script@v7
+  deploy_backup:
+    name: Deploy backup → Preview
+    runs-on: ubuntu-latest
+    needs: deploy_main
+    steps:
+      - uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const repo = `${context.repo.owner}/${context.repo.repo}`;
-            const url = process.env.DEPLOY_URL || 'N/A';
-            const deployStatus = '${{ steps.check_secrets.outputs.secrets_present }}' === 'true' ? 'deployed' : 'skipped (no secrets)';
-            const body = [
-              'تم إنجاز النشر بنجاح بنسبة 100% بعد اجتياز الفحوصات.',
-              `- Repository: ${repo}`,
-              `- URL: ${url}`,
-              `- Deploy Status: ${deployStatus}`,
-              `- Run: ${context.runId}`
-            ].join('\n');
-            await github.rest.issues.create({ 
-              owner: context.repo.owner, 
-              repo: context.repo.repo, 
-              title: 'نجاح النشر — 100%', 
-              body, 
-              labels: ['deployment-success'] 
-            });
+          ref: ${{ github.event.inputs.backup_branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enable corepack
+        run: corepack enable || true
+      - name: Ensure pnpm
+        run: pnpm -v || npm i -g pnpm
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile || npm ci || npm install
+      - name: Build
+        run: pnpm build || npm run build --if-present
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Vercel pull (preview)
+        run: vercel pull --yes --environment=preview --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Vercel build (preview)
+        run: vercel build --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Vercel deploy (preview)
+        id: deploy_backup
+        run: echo "url=$(vercel deploy --prebuilt --token ${{ secrets.VERCEL_TOKEN }})" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Optional alias
+        if: ${{ github.event.inputs.alias != '' }}
+        run: vercel alias set ${{ steps.deploy_backup.outputs.url }} ${{ github.event.inputs.alias }} --token ${{ secrets.VERCEL_TOKEN }}
 
+  smoke:
+    name: Smoke (front + health + ping)
+    runs-on: ubuntu-latest
+    needs: deploy_main
+    steps:
+      - name: Front
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' https://mmc-mms.com
+      - name: Healthz
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' https://mmc-mms.com/api/v1/healthz
+      - name: Ping
+        run: curl -fsSL -o /dev/null -w '%{http_code} %{time_total}\n' 'https://mmc-mms.com/api/v1/ping?x=1'
