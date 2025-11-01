@@ -6,7 +6,7 @@
   "main": "server.js",
   "packageManager": "pnpm@10.19.0",
   "engines": {
-    "node": ">=18.17 <21"
+    "node": ">=18.17 <=20"
   },
   "scripts": {
     "dev": "wrangler pages dev --compatibility-date=2025-10-22",
