@@ -26,7 +26,13 @@ jobs:
         with:
           node-version: '20'
       - name: Enable corepack
-        run: corepack enable || true
+        run: |
+          if command -v corepack >/dev/null 2>&1; then
+            corepack enable
+          else
+            echo "Error: corepack not found in PATH. Please ensure Node.js 16+ is installed."
+            exit 1
+          fi
       - name: Ensure pnpm
         run: pnpm -v || npm i -g pnpm
       - name: Install deps
