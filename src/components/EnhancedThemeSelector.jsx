@@ -62,7 +62,7 @@ export function EnhancedThemeSelector({
         }
       }
     } catch (error) {
-      // console.error('Error fetching theme settings:', error);
+      console.error('Error fetching theme settings:', error);
     }
   };
 
@@ -93,7 +93,7 @@ export function EnhancedThemeSelector({
         showNotification('فشل في حفظ الثيم', 'error');
       }
     } catch (error) {
-      // console.error('Error updating theme:', error);
+      console.error('Error updating theme:', error);
       showNotification('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setIsLoading(false);

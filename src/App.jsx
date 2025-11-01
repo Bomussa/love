@@ -32,19 +32,6 @@ function App() {
     // Set initial language and direction
     setCurrentLanguage(language)
 
-    // Check for resync trigger (?resync=1 or #resync=1)
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-    if (urlParams.get('resync') === '1' || hashParams.get('resync') === '1') {
-      // Trigger immediate resync of offline queue
-      console.log('🔄 Resync trigger detected - syncing offline queue...');
-      api.syncOfflineQueue().then(() => {
-        console.log('✅ Offline queue sync completed');
-      }).catch(err => {
-        console.error('❌ Offline queue sync failed:', err);
-      });
-    }
-
     // Check URL for QR scan
     if (window.location.pathname.includes('/qr') || window.location.search.includes('token=')) {
       setCurrentView('qrscan')
@@ -246,7 +233,7 @@ function App() {
         'success'
       )
     } catch (error) {
-      // console.error('Exam selection failed:', error)
+      console.error('Exam selection failed:', error)
       showNotification(
         language === 'ar' ? 'فشل التسجيل في قائمة الانتظار' : 'Failed to register in queue',
         'error'
@@ -341,7 +328,7 @@ function App() {
         )
       }
     } catch (error) {
-      // console.error('Admin login error:', error)
+      console.error('Admin login error:', error)
       showNotification(
         language === 'ar' ? '⚠️ لا يمكن الاتصال بالخادم - يرجى التحقق من الاتصال' : '⚠️ Cannot connect to server - please check connection',
         'error'

@@ -129,7 +129,3 @@ logs/screenshots/*
 # Build artifacts
 dist_server/
 .lock
-
-# Generated maintenance reports
-scripts/maintenance/unused-report.json
-scripts/ops/test-input.jsonl

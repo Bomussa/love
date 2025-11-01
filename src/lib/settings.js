@@ -15,7 +15,7 @@ export async function getSetting(key, fallback = '') {
     );
     return rows[0]?.value ?? fallback;
   } catch (error) {
-    // console.error(`Error getting setting ${key}:`, error);
+    console.error(`Error getting setting ${key}:`, error);
     return fallback;
   }
 }
@@ -37,7 +37,7 @@ export async function setSetting(key, value) {
     `, [key, value]);
     return true;
   } catch (error) {
-    // console.error(`Error setting ${key}:`, error);
+    console.error(`Error setting ${key}:`, error);
     return false;
   }
 }
@@ -62,7 +62,7 @@ export async function getAllSettings() {
     
     return settings;
   } catch (error) {
-    // console.error('Error getting all settings:', error);
+    console.error('Error getting all settings:', error);
     return {};
   }
 }
@@ -95,7 +95,7 @@ export async function getSystemConfig() {
       emergencyPin
     };
   } catch (error) {
-    // console.error('Error getting system config:', error);
+    console.error('Error getting system config:', error);
     return {
       graceMinutes: 5,
       cadenceMinutes: 1,
@@ -136,7 +136,7 @@ export async function updateSettings(settings) {
     return true;
   } catch (error) {
     await client.query('ROLLBACK');
-    // console.error('Error updating settings:', error);
+    console.error('Error updating settings:', error);
     return false;
   } finally {
     client.release();
@@ -156,7 +156,7 @@ export async function isWorkingHours() {
     return currentTime >= config.workingHours.start && 
            currentTime <= config.workingHours.end;
   } catch (error) {
-    // console.error('Error checking working hours:', error);
+    console.error('Error checking working hours:', error);
     return true; // افتراضياً نعتبر أنه وقت عمل
   }
 }
@@ -177,7 +177,7 @@ export async function getThemeSettings() {
       showThemePreview: showThemePreview === 'true'
     };
   } catch (error) {
-    // console.error('Error getting theme settings:', error);
+    console.error('Error getting theme settings:', error);
     return {
       currentTheme: 'medical-professional',
       enableThemeSelector: true,
@@ -209,7 +209,7 @@ export async function updateThemeSettings(themeSettings) {
     
     return await updateSettings(updates);
   } catch (error) {
-    // console.error('Error updating theme settings:', error);
+    console.error('Error updating theme settings:', error);
     return false;
   }
 }
