@@ -1,0 +1,3 @@
+# .github/CODEOWNERS
+/src/** @Bomussa
+/public/** @Bomussa
