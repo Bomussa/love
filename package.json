@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.1.1",
   "scripts": {
-    "build": "node -e "const fs=require('fs'),p=require('path');fs.mkdirSync('dist',{recursive:true});fs.copyFileSync('index.html',p.join('dist','index.html')); if(fs.existsSync('assets')) fs.cpSync('assets',p.join('dist','assets'),{recursive:true}); if(fs.existsSync('public')) fs.cpSync('public',p.join('dist','public'),{recursive:true}); console.log('Static build prepared with assets');""
+    "build": "node scripts/build.js"
   }
 }
