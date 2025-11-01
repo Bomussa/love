@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "nodeVersion": 20
+    "nodeVersion": "20.x"
   },
   "installCommand": "corepack enable && pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm build",
