@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   const key  = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   if (!base || !key) return res.status(500).json({ error: 'Missing Supabase env' });
   const p = req.query?.path || [];
-  const fn = Array.isArray(p) ? p.join('-') : String(p||'').replace(/\//g,'-');
+  const fn = Array.isArray(p) ? p.join('-') : String(p||'').replace(/\/g,'-').replace(///g,'-');
   const url = `${base}/functions/v1/${fn}`;
   const headers = { Authorization: `Bearer ${key}` };
   if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
