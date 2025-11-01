@@ -8,10 +8,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
       "source": "/api/v1/health/status",
       "destination": "/api/v1/healthz"
     },
@@ -32,7 +28,7 @@
     }
   ],
   "routes": [
-    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].js" },
+    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].ts" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
