@@ -52,7 +52,6 @@ jobs:
   deploy_backup:
     name: Deploy backup → Preview
     runs-on: ubuntu-latest
-    needs: deploy_main
     steps:
       - uses: actions/checkout@v4
         with:
