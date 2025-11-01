@@ -12,5 +12,8 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only HEAD origin/${{ github.base_ref }})
-          echo "$CHANGED" | egrep -q '^(index\.html|public/|src/)' && 
-            echo 'UI paths changed without label ui:allowed' && exit 1 || echo 'OK'
+          if echo "$CHANGED" | egrep -q '^(index\.html|public/|src/)'; then
+            echo 'UI paths changed without label ui:allowed' && exit 1
+          else
+            echo 'OK'
+          fi
