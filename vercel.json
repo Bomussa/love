@@ -28,7 +28,7 @@
     }
   ],
   "routes": [
-    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].js" },
+    { "src": "^/api/v1/(.*)$", "dest": "api/v1/[...path].ts" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
