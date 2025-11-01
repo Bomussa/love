@@ -14,7 +14,16 @@ if (fs.existsSync('dist')) {
 fs.mkdirSync('dist', { recursive: true });
 
 // Copy index.html to dist
-fs.copyFileSync('index.html', path.join('dist', 'index.html'));
+try {
+  fs.copyFileSync('index.html', path.join('dist', 'index.html'));
+} catch (err) {
+  if (err.code === 'ENOENT') {
+    console.error("Error: 'index.html' not found. Please ensure the file exists before running the build script.");
+  } else {
+    console.error("Error copying 'index.html':", err.message);
+  }
+  process.exit(1);
+}
 
 // Copy assets folder if it exists
 if (fs.existsSync('assets')) {
