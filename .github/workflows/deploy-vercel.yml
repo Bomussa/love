@@ -1,0 +1,120 @@
+name: Deploy to Vercel and Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Project Artifacts
+        run: vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          DEPLOY_OUTPUT=$(vercel deploy ${{ github.ref == 'refs/heads/main' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[^\s]+' | tail -1)
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Failed to extract deployment URL from Vercel output"
+            exit 1
+          fi
+          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $DEPLOY_URL"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 10
+          # Additional wait with retry for edge cases
+          for i in {1..3}; do
+            if curl -sSf "${{ steps.deploy.outputs.DEPLOY_URL }}/.well-known/healthz.json" > /dev/null 2>&1; then
+              echo "Deployment is ready!"
+              break
+            fi
+            echo "Attempt $i: Deployment not ready yet, waiting 5 more seconds..."
+            sleep 5
+          done
+
+      - name: Smoke Test - Frontend Health
+        run: |
+          echo "Testing frontend health endpoint..."
+          RESPONSE=$(curl -sSf "${{ steps.deploy.outputs.DEPLOY_URL }}/.well-known/healthz.json")
+          echo "Frontend health response: $RESPONSE"
+          OK_VALUE=$(echo "$RESPONSE" | grep -oP '"ok":\s*\K(true|false)')
+          if [ "$OK_VALUE" != "true" ]; then
+            echo "Frontend health check failed: ok is not true"
+            exit 1
+          fi
+          echo "✓ Frontend health check passed"
+
+      - name: Smoke Test - API Health via Proxy
+        run: |
+          echo "Testing API health endpoint via /api/v1 proxy..."
+          HTTP_CODE=$(curl -sSI -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.DEPLOY_URL }}/api/v1/healthz")
+          echo "API health HTTP status: $HTTP_CODE"
+          
+          # Accept 200, 401, 403 (auth protected), but not 404 or 5xx
+          if [ "$HTTP_CODE" -eq 404 ]; then
+            echo "API health check failed: 404 Not Found (rewrite not working)"
+            exit 1
+          elif [ "$HTTP_CODE" -ge 500 ]; then
+            echo "API health check failed: 5xx server error"
+            exit 1
+          fi
+          echo "✓ API health check passed (status: $HTTP_CODE)"
+
+      - name: Smoke Test - CORS Preflight
+        run: |
+          echo "Testing CORS preflight OPTIONS request..."
+          HTTP_CODE=$(curl -sSI -X OPTIONS -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.DEPLOY_URL }}/api/v1/healthz")
+          echo "CORS preflight HTTP status: $HTTP_CODE"
+          
+          # Accept any non-5xx response for OPTIONS
+          if [ "$HTTP_CODE" -ge 500 ]; then
+            echo "CORS preflight failed: 5xx server error"
+            exit 1
+          fi
+          echo "✓ CORS preflight check passed (status: $HTTP_CODE)"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Deployment Summary"
+          echo "=========================================="
+          echo "Deployment URL: ${{ steps.deploy.outputs.DEPLOY_URL }}"
+          echo "Environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "=========================================="
