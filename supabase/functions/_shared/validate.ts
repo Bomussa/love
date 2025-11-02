@@ -69,55 +69,5 @@ export function sanitizeString(input: string): string {
   return input.trim().replace(/[<>]/g, '');
 }
 
-/**
- * Rate limiting check (simple in-memory implementation)
- * 
- * ⚠️  WARNING: This in-memory implementation is NOT suitable for production!
- * - Does not persist across function invocations (serverless resets)
- * - Does not scale across multiple instances
- * - Will not provide effective rate limiting in production
- * 
- * For production, replace with:
- * - Redis (Upstash, Redis Cloud)
- * - Supabase Edge Functions KV store
- * - Distributed cache (CloudFlare KV)
- */
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-export function checkRateLimit(
-  identifier: string,
-  maxRequests: number,
-  windowMs: number
-): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(identifier);
-
-  if (!record || now > record.resetAt) {
-    // Create new window
-    rateLimitMap.set(identifier, {
-      count: 1,
-      resetAt: now + windowMs,
-    });
-    return true;
-  }
-
-  if (record.count >= maxRequests) {
-    return false;
-  }
-
-  // Increment count
-  record.count++;
-  return true;
-}
-
-/**
- * Cleans up expired rate limit entries
- */
-export function cleanupRateLimits(): void {
-  const now = Date.now();
-  for (const [key, record] of rateLimitMap.entries()) {
-    if (now > record.resetAt) {
-      rateLimitMap.delete(key);
-    }
-  }
 }
