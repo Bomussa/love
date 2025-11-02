@@ -1,10 +1,9 @@
 name: Uptime Smoke Test
 
-# Run hourly to continuously verify production healthz endpoints
-# Note: Can be adjusted to */30 for every 30 minutes if high-frequency monitoring is required
+# Run every 30 minutes to continuously verify production healthz endpoints
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour
+    - cron: '*/30 * * * *'  # Every 30 minutes
   workflow_dispatch: {}  # Allow manual trigger
 
 permissions:
