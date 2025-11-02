@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders, handleCorsRequest } from '../_shared/cors.ts';
-import { validateLoginRequest, sanitizeError } from '../_shared/validate.ts';
+import { validateLoginRequest } from '../_shared/validate.ts';
 
 // Get Supabase client from environment
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -126,11 +126,14 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    // Log full error details server-side for debugging
     console.error('Login error:', error);
+    
+    // Never expose internal error details to clients for security
     return new Response(
       JSON.stringify({ 
         error: 'Internal Server Error', 
-        message: sanitizeError(error) 
+        message: 'An unexpected error occurred. Please try again later.' 
       }),
       {
         status: 500,
