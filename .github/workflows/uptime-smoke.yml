@@ -1,0 +1,73 @@
+name: Uptime Smoke Test
+
+# Run every 30 minutes to continuously verify production healthz endpoints
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  workflow_dispatch: {}  # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  uptime-check:
+    name: Production Uptime Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Frontend Healthz
+        run: |
+          set -e
+          echo "Checking frontend healthz..."
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/.well-known/healthz.json)
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Frontend healthz failed with status $STATUS"
+            exit 1
+          fi
+          echo "✓ Frontend healthz returned $STATUS"
+
+      - name: Check API Healthz (via rewrite)
+        run: |
+          set -e
+          echo "Checking API healthz..."
+          # Accept 200 (success), 401 (auth required), or 403 (forbidden) as valid
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/healthz)
+          if [ "$API_STATUS" != "200" ] && [ "$API_STATUS" != "401" ] && [ "$API_STATUS" != "403" ]; then
+            echo "❌ API healthz expected 200/401/403, got $API_STATUS"
+            exit 1
+          fi
+          echo "✓ API healthz returned $API_STATUS"
+
+      - name: Check CORS Preflight OPTIONS
+        run: |
+          set -e
+          echo "Checking CORS preflight..."
+          # OPTIONS should not return 5xx (server errors)
+          OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS \
+            https://mmc-mms.com/api/v1/healthz \
+            -H 'Origin: https://mmc-mms.com' \
+            -H 'Access-Control-Request-Method: GET')
+          
+          # Check if status is NOT 5xx
+          case "$OPT_STATUS" in
+            2*|3*|4*) 
+              echo "✓ OPTIONS returned $OPT_STATUS (non-5xx)"
+              ;;
+            5*)
+              echo "❌ OPTIONS returned 5xx error: $OPT_STATUS"
+              exit 1
+              ;;
+            *)
+              echo "⚠️  OPTIONS returned unexpected status: $OPT_STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "✓ All uptime checks passed successfully"
+          echo "  - Frontend healthz: OK"
+          echo "  - API healthz: OK (200/401/403)"
+          echo "  - CORS preflight: OK (non-5xx)"
+          echo "=========================================="

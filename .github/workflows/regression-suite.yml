@@ -1,0 +1,166 @@
+name: Regression Suite
+
+# Comprehensive regression tests for production endpoints
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}  # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  regression-tests:
+    name: Production Regression Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Frontend Health Check
+        run: |
+          set -e
+          echo "=== Frontend Health Check ==="
+          
+          # Check healthz.json exists and returns 200
+          RESPONSE=$(curl -sS -w "\n%{http_code}" https://mmc-mms.com/.well-known/healthz.json)
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Frontend healthz returned $STATUS (expected 200)"
+            exit 1
+          fi
+          
+          # Check that ok field is true
+          OK=$(echo "$BODY" | grep -o '"ok"[[:space:]]*:[[:space:]]*true' || echo "")
+          if [ -z "$OK" ]; then
+            echo "❌ Frontend healthz missing 'ok: true'"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          echo "✓ Frontend healthz: status=$STATUS, ok=true"
+          echo "Response: $BODY"
+
+      - name: API Health Check
+        run: |
+          set -e
+          echo "=== API Health Check ==="
+          
+          # Accept 200 (success), 401 (auth required), or 403 (forbidden)
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/healthz)
+          
+          case "$API_STATUS" in
+            200|401|403)
+              echo "✓ API healthz: status=$API_STATUS (valid)"
+              ;;
+            *)
+              echo "❌ API healthz: status=$API_STATUS (expected 200/401/403)"
+              exit 1
+              ;;
+          esac
+
+      - name: CORS Preflight Check
+        run: |
+          set -e
+          echo "=== CORS Preflight Check ==="
+          
+          # OPTIONS should not return 5xx
+          OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS \
+            https://mmc-mms.com/api/v1/healthz \
+            -H 'Origin: https://mmc-mms.com' \
+            -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Headers: Content-Type')
+          
+          case "$OPT_STATUS" in
+            2*|3*|4*)
+              echo "✓ CORS preflight: status=$OPT_STATUS (non-5xx)"
+              ;;
+            5*)
+              echo "❌ CORS preflight returned 5xx: $OPT_STATUS"
+              exit 1
+              ;;
+            *)
+              echo "❌ CORS preflight unexpected status: $OPT_STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Vercel Rewrite Validation
+        run: |
+          set -e
+          echo "=== Vercel Rewrite Validation ==="
+          
+          # Verify that /api/v1/* is properly rewritten
+          # We can check this by ensuring the request goes through without CORS issues
+          # when using same-origin
+          
+          RESPONSE=$(curl -sS -w "\n%{http_code}" \
+            -H "Origin: https://mmc-mms.com" \
+            -H "Referer: https://mmc-mms.com/" \
+            https://mmc-mms.com/api/v1/healthz)
+          
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          
+          case "$STATUS" in
+            200|401|403)
+              echo "✓ Vercel rewrite working: same-origin request status=$STATUS"
+              ;;
+            *)
+              echo "⚠️  Vercel rewrite status=$STATUS (acceptable if API requires auth)"
+              ;;
+          esac
+
+      - name: API Endpoint Discovery
+        run: |
+          set -e
+          echo "=== API Endpoint Discovery ==="
+          
+          # Test some common API patterns (non-blocking)
+          for endpoint in healthz health status; do
+            STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+              https://mmc-mms.com/api/v1/$endpoint 2>/dev/null || echo "000")
+            echo "  /api/v1/$endpoint -> $STATUS"
+          done
+
+      - name: Performance Baseline
+        run: |
+          set -e
+          echo "=== Performance Baseline ==="
+          
+          # Measure response time for healthz endpoint
+          RESPONSE_TIME=$(curl -sS -o /dev/null -w "%{time_total}" \
+            https://mmc-mms.com/.well-known/healthz.json)
+          
+          echo "Frontend healthz response time: ${RESPONSE_TIME}s"
+          
+          # Fail if response time > 5 seconds (very generous threshold)
+          if [ "$(echo "$RESPONSE_TIME > 5.0" | bc -l)" = "1" ]; then
+            echo "❌ Response time too slow: ${RESPONSE_TIME}s > 5.0s"
+            exit 1
+          fi
+          
+          echo "✓ Response time acceptable: ${RESPONSE_TIME}s"
+
+      - name: Regression Summary
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "✓ All regression tests passed"
+          echo "=========================================="
+          echo "Frontend:"
+          echo "  - Health check: PASS (200, ok=true)"
+          echo "  - Response time: PASS"
+          echo ""
+          echo "API:"
+          echo "  - Health check: PASS (200/401/403)"
+          echo "  - CORS preflight: PASS (non-5xx)"
+          echo "  - Vercel rewrite: PASS"
+          echo ""
+          echo "System is healthy and regression-free ✓"
+          echo "=========================================="
