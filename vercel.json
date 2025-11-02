@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "trailingSlash": false
+}
