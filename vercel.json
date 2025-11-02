@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/:path" }
+    { "source": "/api/v1/:path*", "destination": "${SUPABASE_URL}/functions/v1/:path" }
   ]
 }
