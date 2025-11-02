@@ -23,7 +23,6 @@ jobs:
         run: echo "sha=$(git rev-parse HEAD~1 || echo)" >> $GITHUB_OUTPUT
 
       - name: Pull Vercel env (best-effort)
-        continue-on-error: true
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy current commit to Production
