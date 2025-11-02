@@ -1,0 +1,20 @@
+name: Uptime Smoke
+on:
+  workflow_run:
+    workflows: [ "Deploy to Vercel" ]
+    types: [ completed ]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Check 200 OK
+        env:
+          URL: ${{ secrets.GH_PATH }}
+        run: |
+          echo "Checking $URL"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+          echo "HTTP $code"
+          test "$code" = "200"
