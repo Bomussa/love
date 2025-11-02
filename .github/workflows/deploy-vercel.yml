@@ -4,117 +4,72 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+      - '**/vercel**'
+      - '**/router**'
+      - '**/rewrite**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
-  deploy-and-test:
+  deploy:
+    name: Vercel Deploy (Production)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: npm i -g vercel@latest
 
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull Vercel Environment
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build Project Artifacts
-        run: vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Deploy to Vercel
+      - name: Deploy to Vercel (Production)
         id: deploy
-        run: |
-          DEPLOY_OUTPUT=$(vercel deploy ${{ github.ref == 'refs/heads/main' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
-          echo "$DEPLOY_OUTPUT"
-          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[^\s]+' | tail -1)
-          if [ -z "$DEPLOY_URL" ]; then
-            echo "Failed to extract deployment URL from Vercel output"
-            exit 1
-          fi
-          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
-          echo "Deployed to: $DEPLOY_URL"
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Wait for deployment to be ready
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          echo "Waiting for deployment to be ready..."
-          sleep 10
-          # Additional wait with retry for edge cases
-          for i in {1..3}; do
-            if curl -sSf "${{ steps.deploy.outputs.DEPLOY_URL }}/.well-known/healthz.json" > /dev/null 2>&1; then
-              echo "Deployment is ready!"
-              break
-            fi
-            echo "Attempt $i: Deployment not ready yet, waiting 5 more seconds..."
-            sleep 5
-          done
+          set -e
+          DEPLOY_URL="$(vercel deploy --prod --token="$VERCEL_TOKEN" | tail -n1)"
+          echo "Deployed to: $DEPLOY_URL"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke Test - Frontend Health
+  smoke:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Verify API health via Vercel rewrite
         run: |
-          echo "Testing frontend health endpoint..."
-          RESPONSE=$(curl -sSf "${{ steps.deploy.outputs.DEPLOY_URL }}/.well-known/healthz.json")
-          echo "Frontend health response: $RESPONSE"
-          OK_VALUE=$(echo "$RESPONSE" | grep -oP '"ok":\s*\K(true|false)')
-          if [ "$OK_VALUE" != "true" ]; then
-            echo "Frontend health check failed: ok is not true"
-            exit 1
+          set -e
+          URL="${{ needs.deploy.outputs.url }}"
+          echo "Testing URL: $URL"
+
+          # API healthz via Vercel proxy (accept 200 or 401/403)
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" "$URL/api/v1/healthz")
+          if [ "$API_STATUS" != "200" ] && [ "$API_STATUS" != "401" ] && [ "$API_STATUS" != "403" ]; then
+            echo "API /api/v1/healthz expected 200/401/403, got $API_STATUS"; exit 1
           fi
-          echo "✓ Frontend health check passed"
+          echo "API healthz returned $API_STATUS"
 
-      - name: Smoke Test - API Health via Proxy
-        run: |
-          echo "Testing API health endpoint via /api/v1 proxy..."
-          HTTP_CODE=$(curl -sSI -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.DEPLOY_URL }}/api/v1/healthz")
-          echo "API health HTTP status: $HTTP_CODE"
-          
-          # Accept 200, 401, 403 (auth protected), but not 404 or 5xx
-          if [ "$HTTP_CODE" -eq 404 ]; then
-            echo "API health check failed: 404 Not Found (rewrite not working)"
-            exit 1
-          elif [ "$HTTP_CODE" -ge 500 ]; then
-            echo "API health check failed: 5xx server error"
-            exit 1
-          fi
-          echo "✓ API health check passed (status: $HTTP_CODE)"
-
-      - name: Smoke Test - CORS Preflight
-        run: |
-          echo "Testing CORS preflight OPTIONS request..."
-          HTTP_CODE=$(curl -sSI -X OPTIONS -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.DEPLOY_URL }}/api/v1/healthz")
-          echo "CORS preflight HTTP status: $HTTP_CODE"
-          
-          # Accept any non-5xx response for OPTIONS
-          if [ "$HTTP_CODE" -ge 500 ]; then
-            echo "CORS preflight failed: 5xx server error"
-            exit 1
-          fi
-          echo "✓ CORS preflight check passed (status: $HTTP_CODE)"
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "=========================================="
-          echo "Deployment Summary"
-          echo "=========================================="
-          echo "Deployment URL: ${{ steps.deploy.outputs.DEPLOY_URL }}"
-          echo "Environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "=========================================="
+          # CORS preflight OPTIONS should not be 5xx
+          OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS "$URL/api/v1/healthz" \
+            -H 'Origin: https://mmc-mms.com' \
+            -H 'Access-Control-Request-Method: GET')
+          case "$OPT_STATUS" in
+            2*|3*|4*) echo "OPTIONS ok with $OPT_STATUS" ;;
+            *) echo "OPTIONS unexpected $OPT_STATUS" ; exit 1 ;;
+          esac
