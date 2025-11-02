@@ -1,21 +1,68 @@
-name: Deploy NOW (Vercel)
+name: Deploy NOW + Post-Deploy Fix
 on:
   push:
     branches: [ ops/vercel-setup ]
+  workflow_dispatch:
 
 jobs:
-  deploy-now:
+  deploy_and_fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install Vercel CLI
         run: npm i -g vercel
+
+      - name: Remember previous commit
+        id: prev
+        run: echo "sha=$(git rev-parse HEAD~1 || echo)" >> $GITHUB_OUTPUT
+
       - name: Pull Vercel env (best-effort)
         continue-on-error: true
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Deploy to Production
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy current commit to Production
+        id: deploy
+        run: |
+          set -e
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null | tail -n1 || true)
+          if [ -z "$url" ]; then
+            url=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null | tail -n1)
+          fi
+          echo "url=$url" >> $GITHUB_OUTPUT
+          echo "Deployed: $url"
+
+      - name: Post-deploy smoke + auto-correct
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          PREV_SHA: ${{ steps.prev.outputs.sha }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -e
+          echo "Checking $URL"
+          check() { curl -s -o /dev/null -w "%{http_code}" "$1"; }
+          # quick retries (no delay) then very short backoff
+          for i in 1 2 3 4 5; do
+            code=$(check "$URL"); echo "Attempt $i => HTTP $code"; [ "$code" = "200" ] && pass=1 && break;
+          done
+          if [ -z "$pass" ]; then
+            echo 'Smoke failed — attempting immediate auto-fix (rollback to previous commit).';
+            if [ -n "$PREV_SHA" ]; then
+              git checkout "$PREV_SHA"
+              vercel pull --yes --environment=production --token="$VERCEL_TOKEN" || true
+              url2=$(vercel deploy --prod --token="$VERCEL_TOKEN" 2>/dev/null | tail -n1)
+              echo "Rolled back to: $url2"
+              for i in 1 2 3; do
+                code=$(check "$url2"); echo "Rollback check $i => HTTP $code"; [ "$code" = "200" ] && exit 0;
+              done
+              echo 'Rollback did not restore 200'; exit 1
+            else
+              echo 'No previous commit available for rollback'; exit 1
+            fi
+          fi
+          echo 'Post-deploy smoke passed';
