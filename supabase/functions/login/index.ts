@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
 
     if (error) {
       // Log failed attempt (in production, save to audit table)
-      console.error('Login failed:', { email, error: error.message });
+      // Mask email for privacy: show first 2 chars and domain
+      const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+      console.error('Login failed:', { email: maskedEmail, error: error.message });
 
       return corsErrorResponse(
         'Authentication Failed',
@@ -112,7 +114,8 @@ Deno.serve(async (req) => {
     }
 
     // Log successful login (in production, save to audit table)
-    console.log('Login successful:', { email, userId: data.user?.id });
+    // Only log user ID for privacy compliance (GDPR, etc.)
+    console.log('Login successful:', { userId: data.user?.id });
 
     // Return success response
     const response: LoginResponse = {

@@ -5,6 +5,8 @@
  */
 
 // Allowed origins for CORS
+// Note: This list is also maintained in api/_lib/cors.ts
+// Keep both lists synchronized or consider using environment variables
 const ALLOWED_ORIGINS = [
   'https://mmc-mms.com',
   'http://localhost:3000',

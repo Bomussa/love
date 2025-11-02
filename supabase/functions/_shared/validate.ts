@@ -71,7 +71,16 @@ export function sanitizeString(input: string): string {
 
 /**
  * Rate limiting check (simple in-memory implementation)
- * For production, use Redis or similar
+ * 
+ * ⚠️  WARNING: This in-memory implementation is NOT suitable for production!
+ * - Does not persist across function invocations (serverless resets)
+ * - Does not scale across multiple instances
+ * - Will not provide effective rate limiting in production
+ * 
+ * For production, replace with:
+ * - Redis (Upstash, Redis Cloud)
+ * - Supabase Edge Functions KV store
+ * - Distributed cache (CloudFlare KV)
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 

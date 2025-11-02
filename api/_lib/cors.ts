@@ -7,6 +7,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Allowed origins for CORS
+// Note: This list is also maintained in supabase/functions/_shared/cors.ts
+// Keep both lists synchronized or consider using environment variables
 export const ALLOWED_ORIGINS = [
   'https://mmc-mms.com',
   'http://localhost:3000',
