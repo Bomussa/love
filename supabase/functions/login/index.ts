@@ -62,7 +62,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Log successful login attempt (for audit)
-    console.log('Login successful:', { email, timestamp: new Date().toISOString() });
+    // Note: Email is not logged to protect user privacy
+    console.log('Login successful:', { timestamp: new Date().toISOString() });
 
     // Return success with session data
     return corsJsonResponse(

@@ -3,6 +3,11 @@
 # Tests login endpoints to ensure they return expected status codes
 # Usage: ./scripts/e2e/login-smoke.sh [URL]
 # Example: ./scripts/e2e/login-smoke.sh https://mmc-mms.com
+#
+# IMPORTANT: This script uses test credentials to verify endpoint functionality.
+# Default credentials (test@example.com / testpassword123) are for testing only.
+# Set TEST_EMAIL and TEST_PASSWORD environment variables to use different test accounts.
+# NEVER use production credentials with this script - it's for smoke testing only.
 
 set -e
 

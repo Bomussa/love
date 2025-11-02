@@ -7,7 +7,7 @@
 
 import { handleOptions, corsJsonResponse } from '../_shared/cors.ts';
 
-Deno.serve(async (req: Request) => {
+Deno.serve((req: Request) => {
   // Handle CORS preflight
   const optionsResponse = handleOptions(req);
   if (optionsResponse) {
