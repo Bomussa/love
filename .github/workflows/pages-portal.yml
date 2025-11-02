@@ -1,0 +1,15 @@
+name: Deploy Pages Preview Portal
+on:
+  push:
+    branches: [ gh-pages ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Done
+        run: echo 'Static Pages served from gh-pages'
