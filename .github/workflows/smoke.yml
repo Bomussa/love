@@ -1,0 +1,7 @@
+name: Smoke
+on: { push: { branches: [hotfix/restore-static] } }
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
