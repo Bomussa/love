@@ -16,10 +16,13 @@ export interface ValidationError {
 
 /**
  * Validate email format
+ * Uses a more comprehensive regex that handles most valid email formats
+ * while still being practical (not fully RFC 5322 compliant to avoid complexity)
  */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  // More robust email validation pattern
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return emailRegex.test(email) && email.length <= 254; // RFC 5321 max length
 }
 
 /**

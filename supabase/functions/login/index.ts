@@ -74,8 +74,22 @@ Deno.serve(async (req: Request) => {
     });
 
     if (error) {
-      // Return appropriate status based on error type
-      const status = error.message.includes('Invalid') ? 401 : 500;
+      // Return appropriate status based on error properties
+      // Supabase Auth errors for invalid credentials typically have status 400
+      // Map common authentication errors to 401 Unauthorized
+      let status = 500; // Default to server error
+      
+      // Check for authentication/credential errors (case-insensitive)
+      const errorMsg = error.message?.toLowerCase() || '';
+      const isAuthError = errorMsg.includes('invalid') || 
+                         errorMsg.includes('credentials') || 
+                         errorMsg.includes('password') ||
+                         errorMsg.includes('email not');
+      
+      if (isAuthError || error.status === 400) {
+        status = 401; // Unauthorized
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: 'Authentication failed', 
