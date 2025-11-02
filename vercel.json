@@ -1,18 +1,8 @@
 {
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "headers": [
-    {
-      "source": "/api/v1/(.*)",
-      "headers": [
-        { "key": "X-Accel-Buffering", "value": "no" }
-      ]
-    }
-  ],
+  "version": 2,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/v1/:path*", "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/:path" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "trailingSlash": false
 }
