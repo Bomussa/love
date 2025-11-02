@@ -1,6 +1,0 @@
-# Frontend is locked. Any change to these paths requires explicit approval by @Bomussa.
-/index.html       @Bomussa
-/src/              @Bomussa
-/assets/           @Bomussa
-/public/           @Bomussa
-/package.json      @Bomussa

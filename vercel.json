@@ -1,21 +1,22 @@
 {
   "version": 2,
-  "framework": "vite",
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
+  "functions": {
+    "api/**/*.js": { "runtime": "nodejs20.x" },
+    "api/**/*.ts": { "runtime": "nodejs20.x" }
+  },
   "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "https://mmc-mms.com/api/v1/:path*" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
       ]
     }
   ],
-  "redirects": [
-    { "source": "https://www.mmc-mms.com/:path*", "destination": "https://mmc-mms.com/:path*", "permanent": true }
-  ]
+  "trailingSlash": false
 }
