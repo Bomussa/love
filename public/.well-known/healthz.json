@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "service": "love-api",
+  "version": "1.0.0",
+  "endpoints": {
+    "login": "/api/login",
+    "signin": "/api/signin",
+    "health": "/api/healthz"
+  },
+  "documentation": "https://github.com/Bomussa/love",
+  "contact": "support@mmc-mms.com"
+}
