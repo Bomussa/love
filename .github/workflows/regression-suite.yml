@@ -13,6 +13,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PRODUCTION_URL: https://mmc-mms.com
+
 jobs:
   regression-tests:
     name: Production Regression Tests
@@ -27,7 +30,7 @@ jobs:
           echo "=== Frontend Health Check ==="
           
           # Check healthz.json exists and returns 200
-          RESPONSE=$(curl -sS -w "\n%{http_code}" https://mmc-mms.com/.well-known/healthz.json)
+          RESPONSE=$(curl -sS -w "\n%{http_code}" $PRODUCTION_URL/.well-known/healthz.json)
           STATUS=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
           
@@ -53,7 +56,7 @@ jobs:
           echo "=== API Health Check ==="
           
           # Accept 200 (success), 401 (auth required), or 403 (forbidden)
-          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/healthz)
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" $PRODUCTION_URL/api/v1/healthz)
           
           case "$API_STATUS" in
             200|401|403)
@@ -72,8 +75,8 @@ jobs:
           
           # OPTIONS should not return 5xx
           OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS \
-            https://mmc-mms.com/api/v1/healthz \
-            -H 'Origin: https://mmc-mms.com' \
+            $PRODUCTION_URL/api/v1/healthz \
+            -H "Origin: $PRODUCTION_URL" \
             -H 'Access-Control-Request-Method: GET' \
             -H 'Access-Control-Request-Headers: Content-Type')
           
@@ -101,9 +104,9 @@ jobs:
           # when using same-origin
           
           RESPONSE=$(curl -sS -w "\n%{http_code}" \
-            -H "Origin: https://mmc-mms.com" \
-            -H "Referer: https://mmc-mms.com/" \
-            https://mmc-mms.com/api/v1/healthz)
+            -H "Origin: $PRODUCTION_URL" \
+            -H "Referer: $PRODUCTION_URL/" \
+            $PRODUCTION_URL/api/v1/healthz)
           
           STATUS=$(echo "$RESPONSE" | tail -n1)
           
@@ -124,7 +127,7 @@ jobs:
           # Test some common API patterns (non-blocking)
           for endpoint in healthz health status; do
             STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
-              https://mmc-mms.com/api/v1/$endpoint 2>/dev/null || echo "000")
+              $PRODUCTION_URL/api/v1/$endpoint 2>/dev/null || echo "000")
             echo "  /api/v1/$endpoint -> $STATUS"
           done
 
@@ -135,12 +138,13 @@ jobs:
           
           # Measure response time for healthz endpoint
           RESPONSE_TIME=$(curl -sS -o /dev/null -w "%{time_total}" \
-            https://mmc-mms.com/.well-known/healthz.json)
+            $PRODUCTION_URL/.well-known/healthz.json)
           
           echo "Frontend healthz response time: ${RESPONSE_TIME}s"
           
           # Fail if response time > 5 seconds (very generous threshold)
-          if [ "$(echo "$RESPONSE_TIME > 5.0" | bc -l)" = "1" ]; then
+          # Using awk for portability instead of bc
+          if awk "BEGIN {exit !($RESPONSE_TIME > 5.0)}"; then
             echo "❌ Response time too slow: ${RESPONSE_TIME}s > 5.0s"
             exit 1
           fi

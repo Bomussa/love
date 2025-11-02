@@ -30,7 +30,7 @@ jobs:
         run: |
           set -e
           echo "=== Starting Prometheus + Pushgateway + Grafana Stack ==="
-          cd /home/runner/work/love/love
+          cd $GITHUB_WORKSPACE
           docker compose -f ops/prom-stack/docker-compose.yml up -d
           
           echo "Waiting for services to be ready..."
@@ -57,7 +57,7 @@ jobs:
           echo "=== Generating Synthetic Traffic ==="
           
           # Generate traffic with controlled error rate to trigger alerts
-          cd /home/runner/work/love/love
+          cd $GITHUB_WORKSPACE
           ORIGIN=https://mmc-mms.com \
           PUSHGATEWAY=http://localhost:9091 \
           REQUESTS=100 \
@@ -174,21 +174,8 @@ jobs:
             
             if [ "$HTTP_CODE" != "200" ]; then
               echo "⚠️  Direct render also returned $HTTP_CODE"
-              # Create a placeholder with system info
-              echo "Creating placeholder with metrics summary..."
-              convert -size 1200x600 xc:white \
-                -pointsize 24 -fill black \
-                -annotate +50+100 "Observability Stack - Metrics Summary" \
-                -pointsize 16 \
-                -annotate +50+150 "✓ Prometheus: Running and scraping metrics" \
-                -annotate +50+180 "✓ Pushgateway: Receiving synthetic metrics" \
-                -annotate +50+210 "✓ Grafana: Dashboard provisioned" \
-                -annotate +50+240 "✓ Alert Rules: HighErrorRate5xx configured" \
-                -annotate +50+270 "✓ Metrics: error_rate_5xx tracked" \
-                -annotate +50+320 "Note: Image renderer may need more time to initialize" \
-                observability-proof.png 2>/dev/null || echo "ImageMagick not available, using text file"
-              
-              # If ImageMagick not available, create a text summary
+              # Create a text summary (image renderer may need more initialization time)
+              echo "Creating metrics summary as fallback..."
               if [ ! -f observability-proof.png ] || [ ! -s observability-proof.png ]; then
                 {
                   echo "Observability Stack Proof - Metrics Summary"
@@ -283,7 +270,7 @@ jobs:
         if: always()
         run: |
           echo "=== Cleaning up ==="
-          cd /home/runner/work/love/love
+          cd $GITHUB_WORKSPACE
           docker compose -f ops/prom-stack/docker-compose.yml down -v || true
           docker system prune -f || true
 

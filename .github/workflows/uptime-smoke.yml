@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PRODUCTION_URL: https://mmc-mms.com
+
 jobs:
   uptime-check:
     name: Production Uptime Check
@@ -18,7 +21,7 @@ jobs:
         run: |
           set -e
           echo "Checking frontend healthz..."
-          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/.well-known/healthz.json)
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" $PRODUCTION_URL/.well-known/healthz.json)
           if [ "$STATUS" != "200" ]; then
             echo "❌ Frontend healthz failed with status $STATUS"
             exit 1
@@ -30,7 +33,7 @@ jobs:
           set -e
           echo "Checking API healthz..."
           # Accept 200 (success), 401 (auth required), or 403 (forbidden) as valid
-          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/healthz)
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" $PRODUCTION_URL/api/v1/healthz)
           if [ "$API_STATUS" != "200" ] && [ "$API_STATUS" != "401" ] && [ "$API_STATUS" != "403" ]; then
             echo "❌ API healthz expected 200/401/403, got $API_STATUS"
             exit 1
@@ -43,8 +46,8 @@ jobs:
           echo "Checking CORS preflight..."
           # OPTIONS should not return 5xx (server errors)
           OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS \
-            https://mmc-mms.com/api/v1/healthz \
-            -H 'Origin: https://mmc-mms.com' \
+            $PRODUCTION_URL/api/v1/healthz \
+            -H "Origin: $PRODUCTION_URL" \
             -H 'Access-Control-Request-Method: GET')
           
           # Check if status is NOT 5xx
