@@ -1,7 +1,7 @@
 name: Deploy NOW + Post-Deploy Fix
 on:
   push:
-    branches: [ ops/vercel-setup ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
