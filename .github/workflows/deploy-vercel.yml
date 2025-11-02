@@ -38,7 +38,13 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          DEPLOY_URL=$(vercel deploy ${{ github.ref == 'refs/heads/main' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | grep -oP 'https://[^\s]+' | tail -1)
+          DEPLOY_OUTPUT=$(vercel deploy ${{ github.ref == 'refs/heads/main' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[^\s]+' | tail -1)
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Failed to extract deployment URL from Vercel output"
+            exit 1
+          fi
           echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
           echo "Deployed to: $DEPLOY_URL"
         env:
@@ -46,7 +52,18 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Wait for deployment to be ready
-        run: sleep 10
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 10
+          # Additional wait with retry for edge cases
+          for i in {1..3}; do
+            if curl -sSf "${{ steps.deploy.outputs.DEPLOY_URL }}/.well-known/healthz.json" > /dev/null 2>&1; then
+              echo "Deployment is ready!"
+              break
+            fi
+            echo "Attempt $i: Deployment not ready yet, waiting 5 more seconds..."
+            sleep 5
+          done
 
       - name: Smoke Test - Frontend Health
         run: |

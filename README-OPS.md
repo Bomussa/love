@@ -9,6 +9,7 @@
 - No Build / No Install / Output: root
 - vercel.json: rewrite `/api/v1/*` -> `https://rujwuruuosffcazymit.supabase.co/functions/v1/*`
 - This enables same-domain API calls eliminating CORS issues
+- Note: If Supabase project URL changes, update the destination in vercel.json
 
 ## 3) Env
 - VITE_API_BASE_URL = `/api/v1` (recommended, uses same-origin via rewrite)
