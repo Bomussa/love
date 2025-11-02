@@ -1,0 +1,21 @@
+name: Deploy NOW (Vercel)
+on:
+  push:
+    branches: [ ops/vercel-setup ]
+
+jobs:
+  deploy-now:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+      - name: Pull Vercel env (best-effort)
+        continue-on-error: true
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy to Production
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
