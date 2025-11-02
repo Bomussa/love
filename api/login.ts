@@ -1,99 +1,38 @@
-/**
- * Vercel Serverless Function: /api/login
- * 
- * Purpose: Safety net proxy for login requests to Supabase Edge Functions
- * Forwards POST/OPTIONS to UPSTREAM_API_BASE/login with strict CORS and timeouts
- */
-
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// Timeout for upstream requests (30 seconds)
-const UPSTREAM_TIMEOUT_MS = 30000;
-
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://mmc-mms.com',
-  'http://localhost:3000',
-  'http://localhost:5173',
-];
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const origin = req.headers.origin as string;
-  const upstreamBase = process.env.UPSTREAM_API_BASE || 'https://rujwuruuosffcazymit.supabase.co/functions/v1';
-  const upstreamUrl = `${upstreamBase}/login`;
-
-  // CORS: Set headers if origin is allowed
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-  }
-
-  // Handle OPTIONS preflight
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info');
-    res.setHeader('Access-Control-Max-Age', '86400');
-    return res.status(204).end();
-  }
-
-  // Only allow POST for actual login requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed', allowed: ['POST', 'OPTIONS'] });
-  }
-
-  // Forward request to upstream with timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-
+import { handlePreflight, sendJson, setCors } from './_lib/cors';
+const UPSTREAM = (process.env.UPSTREAM_API_BASE || 'https://rujwuruuosffcazymit.supabase.co/functions/v1').replace(/\/$/, '');
+const TARGET = `${UPSTREAM}/login`;
+export default async function handler(req: any, res: any) {
+  if (handlePreflight(req, res)) return;
+  if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: 'method_not_allowed' });
   try {
-    const upstreamHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    // Forward important headers
-    if (req.headers.authorization) {
-      upstreamHeaders['Authorization'] = req.headers.authorization as string;
-    }
-    if (req.headers.apikey) {
-      upstreamHeaders['apikey'] = req.headers.apikey as string;
-    }
-    if (req.headers['x-client-info']) {
-      upstreamHeaders['x-client-info'] = req.headers['x-client-info'] as string;
-    }
-
-    const response = await fetch(upstreamUrl, {
+    const raw = await readBody(req);
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(TARGET, {
       method: 'POST',
-      headers: upstreamHeaders,
-      body: JSON.stringify(req.body),
-      signal: controller.signal,
-    });
-
-    // Forward response status and body
-    const data = await response.text();
-    res.status(response.status);
-
-    // Forward relevant response headers
-    const contentType = response.headers.get('content-type');
-    if (contentType) {
-      res.setHeader('Content-Type', contentType);
-    }
-
-    return res.send(data);
-  } catch (error: unknown) {
-    // Handle timeout or network errors
-    if (error instanceof Error && error.name === 'AbortError') {
-      return res.status(504).json({ 
-        error: 'Gateway Timeout', 
-        message: 'Upstream request timed out' 
-      });
-    }
-
-    console.error('Login proxy error:', error);
-    return res.status(502).json({ 
-      error: 'Bad Gateway', 
-      message: 'Failed to reach upstream login service' 
-    });
-  } finally {
-    clearTimeout(timeoutId);
+      headers: {
+        'Content-Type': req.headers['content-type'] || 'application/json',
+        'Authorization': req.headers['authorization'] || '',
+        'X-Forwarded-For': (req.headers['x-forwarded-for'] || '') as string
+      },
+      body: raw,
+      signal: controller.signal
+    }).catch((err) => { if (err.name === 'AbortError') throw new Error('upstream_timeout'); throw err; });
+    clearTimeout(t);
+    const text = await r.text();
+    setCors(res);
+    res.statusCode = r.status;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(text);
+  } catch (e: any) {
+    return sendJson(res, 502, { ok: false, error: 'bad_upstream', detail: e?.message || 'proxy_error' });
   }
+}
+function readBody(req: any): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (c: Buffer) => (data += c.toString()));
+    req.on('end', () => resolve(data || '{}'));
+    req.on('error', reject);
+  });
 }
