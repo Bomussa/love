@@ -114,6 +114,8 @@ jobs:
           echo "✓ Alert rule 'HighErrorRate5xx' is loaded"
 
       - name: Wait for Dashboard to Initialize
+        env:
+          DASHBOARD_UID: api-error-rate
         run: |
           set -e
           echo "=== Waiting for Grafana Dashboard ==="
@@ -128,14 +130,15 @@ jobs:
           echo "Dashboard search result:"
           echo "$DASHBOARD_CHECK"
           
-          DASHBOARD_UID=$(echo "$DASHBOARD_CHECK" | jq -r '.[0].uid')
-          if [ "$DASHBOARD_UID" = "null" ] || [ -z "$DASHBOARD_UID" ]; then
-            echo "⚠️  Dashboard not found via search, checking by UID..."
-            DASHBOARD_UID="api-error-rate"
+          FOUND_UID=$(echo "$DASHBOARD_CHECK" | jq -r '.[0].uid')
+          if [ "$FOUND_UID" = "null" ] || [ -z "$FOUND_UID" ]; then
+            echo "⚠️  Dashboard not found via search, using configured UID..."
+          else
+            echo "✓ Dashboard found with UID: $FOUND_UID"
+            echo "DASHBOARD_UID=$FOUND_UID" >> $GITHUB_ENV
           fi
           
-          echo "Using dashboard UID: $DASHBOARD_UID"
-          echo "DASHBOARD_UID=$DASHBOARD_UID" >> $GITHUB_ENV
+          echo "Using dashboard UID: ${FOUND_UID:-$DASHBOARD_UID}"
 
       - name: Render Dashboard to PNG
         run: |
@@ -194,10 +197,10 @@ jobs:
                   echo "- Alert threshold: 2% error rate"
                   echo ""
                   echo "Stack Components:"
-                  echo "- Prometheus v2.47.2"
-                  echo "- Pushgateway v1.6.2"
-                  echo "- Grafana v10.2.0"
-                  echo "- Grafana Image Renderer v3.8.3"
+                  echo "- Prometheus (from ops/prom-stack/docker-compose.yml)"
+                  echo "- Pushgateway (from ops/prom-stack/docker-compose.yml)"
+                  echo "- Grafana (from ops/prom-stack/docker-compose.yml)"
+                  echo "- Grafana Image Renderer (from ops/prom-stack/docker-compose.yml)"
                   echo ""
                   echo "Note: Full PNG rendering requires image renderer initialization time."
                   echo "This text summary proves the observability stack is functional."
@@ -272,7 +275,9 @@ jobs:
           echo "=== Cleaning up ==="
           cd $GITHUB_WORKSPACE
           docker compose -f ops/prom-stack/docker-compose.yml down -v || true
-          docker system prune -f || true
+          # Targeted cleanup to avoid removing unrelated Docker resources
+          docker container prune -f || true
+          docker volume prune -f || true
 
       - name: Summary
         if: success()

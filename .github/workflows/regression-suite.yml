@@ -39,10 +39,10 @@ jobs:
             exit 1
           fi
           
-          # Check that ok field is true
-          OK=$(echo "$BODY" | grep -o '"ok"[[:space:]]*:[[:space:]]*true' || echo "")
-          if [ -z "$OK" ]; then
-            echo "❌ Frontend healthz missing 'ok: true'"
+          # Check that ok field is true using jq for robust JSON parsing
+          OK=$(echo "$BODY" | jq -r '.ok // false')
+          if [ "$OK" != "true" ]; then
+            echo "❌ Frontend healthz ok field is not true (got: $OK)"
             echo "Response: $BODY"
             exit 1
           fi
