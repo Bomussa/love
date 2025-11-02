@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Observability Stack for Local CI Proof (Add-only)
 # 
 # This stack provides:

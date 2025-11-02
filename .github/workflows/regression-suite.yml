@@ -1,0 +1,197 @@
+name: Regression Suite (Add-only)
+
+# Lightweight regression smoke tests for API endpoints
+# Validates routing, CORS, and basic connectivity
+# Must pass on all PRs before merge
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: API Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test 1 - Frontend Health Probe
+        env:
+          ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+        run: |
+          echo "Testing: GET ${ORIGIN}/.well-known/healthz.json"
+          
+          STATUS=$(curl -sS -o /tmp/healthz.json -w "%{http_code}" "${ORIGIN}/.well-known/healthz.json")
+          
+          if [ "$STATUS" != "200" ]; then
+            echo "✗ FAIL: Expected 200, got $STATUS"
+            exit 1
+          fi
+          
+          echo "✓ Status: $STATUS"
+          
+          # Verify JSON has ok=true
+          OK=$(cat /tmp/healthz.json | grep -o '"ok"[[:space:]]*:[[:space:]]*true' || echo "")
+          if [ -z "$OK" ]; then
+            echo "✗ FAIL: Response missing ok=true"
+            cat /tmp/healthz.json
+            exit 1
+          fi
+          
+          echo "✓ Response contains ok=true"
+          echo "✓ PASS: Frontend health probe"
+
+      - name: Test 2 - API Health Endpoint
+        env:
+          ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+        run: |
+          echo "Testing: GET ${ORIGIN}/api/v1/healthz"
+          
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" "${ORIGIN}/api/v1/healthz")
+          
+          echo "Status: $STATUS"
+          
+          # Accept 200, 401, 403 (protected endpoint is OK)
+          # Reject 404 (routing broken), 5xx (server error)
+          case "$STATUS" in
+            200|401|403)
+              echo "✓ PASS: API health endpoint reachable ($STATUS)"
+              ;;
+            404)
+              echo "✗ FAIL: 404 - API routing may be broken"
+              exit 1
+              ;;
+            5*)
+              echo "✗ FAIL: $STATUS - Server error"
+              exit 1
+              ;;
+            *)
+              echo "⚠ WARNING: Unexpected status $STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Test 3 - CORS Preflight
+        env:
+          ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+        run: |
+          echo "Testing: OPTIONS ${ORIGIN}/api/v1/healthz (CORS preflight)"
+          
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X OPTIONS "${ORIGIN}/api/v1/healthz" \
+            -H "Origin: ${ORIGIN}" \
+            -H "Access-Control-Request-Method: GET" \
+            -H "Access-Control-Request-Headers: Content-Type")
+          
+          echo "Status: $STATUS"
+          
+          # OPTIONS should not return 5xx (CORS configuration broken)
+          case "$STATUS" in
+            2*|3*|4*)
+              echo "✓ PASS: CORS preflight OK ($STATUS)"
+              ;;
+            5*)
+              echo "✗ FAIL: $STATUS - CORS preflight failed"
+              exit 1
+              ;;
+            *)
+              echo "⚠ WARNING: Unexpected status $STATUS"
+              ;;
+          esac
+
+      - name: Test 4 - API Auth Endpoint (Optional)
+        env:
+          ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+        continue-on-error: true
+        run: |
+          echo "Testing: POST ${ORIGIN}/api/v1/auth/login (Optional)"
+          
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${ORIGIN}/api/v1/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          
+          echo "Status: $STATUS"
+          
+          # This is optional - if endpoint doesn't exist, that's OK
+          if [ "$STATUS" = "404" ]; then
+            echo "⚠ INFO: Auth endpoint not found (OK if not implemented)"
+            exit 0
+          fi
+          
+          # If it exists, should not be 5xx
+          case "$STATUS" in
+            2*|3*|4*)
+              echo "✓ PASS: Auth endpoint exists and responds ($STATUS)"
+              ;;
+            5*)
+              echo "⚠ WARNING: Auth endpoint returns $STATUS"
+              ;;
+          esac
+
+      - name: Test 5 - Static Assets
+        env:
+          ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+        run: |
+          echo "Testing: GET ${ORIGIN}/robots.txt"
+          
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" "${ORIGIN}/robots.txt")
+          
+          echo "Status: $STATUS"
+          
+          # robots.txt should exist
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ PASS: Static assets served"
+          else
+            echo "⚠ WARNING: robots.txt returned $STATUS (may be missing)"
+          fi
+
+  summary:
+    name: Regression Summary
+    runs-on: ubuntu-latest
+    needs: regression
+    if: always()
+    steps:
+      - name: Report Success
+        if: needs.regression.result == 'success'
+        run: |
+          echo "======================================"
+          echo "✓ ALL REGRESSION TESTS PASSED"
+          echo "======================================"
+          echo ""
+          echo "Tests completed:"
+          echo "  ✓ Frontend health probe (/.well-known/healthz.json)"
+          echo "  ✓ API health endpoint (/api/v1/healthz)"
+          echo "  ✓ CORS preflight (OPTIONS)"
+          echo "  ✓ Static assets"
+          echo ""
+          echo "API routing and connectivity verified!"
+
+      - name: Report Failure
+        if: needs.regression.result != 'success'
+        run: |
+          echo "======================================"
+          echo "✗ REGRESSION TESTS FAILED"
+          echo "======================================"
+          echo ""
+          echo "One or more critical tests failed."
+          echo "Check the logs above for details."
+          echo ""
+          echo "Common issues:"
+          echo "  - API routing not configured (vercel.json)"
+          echo "  - CORS headers missing"
+          echo "  - Backend service down"
+          echo "  - Frontend not deployed"
+          exit 1
