@@ -1,3 +1,4 @@
+// api/v1/[...path].js
 export const config = { api: { bodyParser: false } };
 const HOP = new Set(['connection','keep-alive','proxy-authenticate','proxy-authorization','te','trailers','transfer-encoding','upgrade']);
 function stripHopHeaders(h){const o={};for(const k in h){if(!h[k])continue;if(HOP.has(k.toLowerCase()))continue;o[k]=Array.isArray(h[k])?h[k].join(','):h[k];}return o;}
