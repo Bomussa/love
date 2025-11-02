@@ -6,6 +6,9 @@
 # Tests both /api/login and /login paths with POST and OPTIONS
 # Accepts 200/401/403 as valid responses, ensures OPTIONS never returns 5xx
 #
+# Setup:
+#   chmod +x scripts/e2e/login-smoke.sh   # Ensure executable permissions
+#
 # Usage:
 #   ./scripts/e2e/login-smoke.sh                  # Test production
 #   ./scripts/e2e/login-smoke.sh localhost:3000   # Test local dev

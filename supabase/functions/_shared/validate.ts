@@ -15,14 +15,27 @@ export interface ValidationError {
 }
 
 /**
+ * RFC 5322-inspired email validation regex
+ * Pattern breakdown:
+ * - Local part: alphanumeric + allowed special chars (!#$%&'*+/=?^_`{|}~-)
+ * - @ symbol
+ * - Domain: alphanumeric segments separated by dots, with hyphens allowed within segments
+ * - Practical validation that handles most valid emails without full RFC 5322 complexity
+ */
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+/**
+ * Maximum email length per RFC 5321
+ */
+const MAX_EMAIL_LENGTH = 254;
+
+/**
  * Validate email format
- * Uses a more comprehensive regex that handles most valid email formats
+ * Uses a comprehensive regex that handles most valid email formats
  * while still being practical (not fully RFC 5322 compliant to avoid complexity)
  */
 export function isValidEmail(email: string): boolean {
-  // More robust email validation pattern
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  return emailRegex.test(email) && email.length <= 254; // RFC 5321 max length
+  return EMAIL_REGEX.test(email) && email.length <= MAX_EMAIL_LENGTH;
 }
 
 /**
