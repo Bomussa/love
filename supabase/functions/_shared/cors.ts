@@ -1,65 +1,32 @@
-/**
- * CORS Utility for Supabase Edge Functions
- * 
- * Provides consistent CORS handling across all Edge Functions
- */
-
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://mmc-mms.com',
-  'http://localhost:3000',
-  'http://localhost:5173',
-];
-
-/**
- * Create CORS headers for response
- */
-export function getCorsHeaders(origin?: string): Record<string, string> {
-  const headers: Record<string, string> = {};
-  
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Credentials'] = 'true';
-  }
-  
-  return headers;
+export function allow(req: Request): string {
+  const reqOrigin = req.headers.get('Origin') ?? '';
+  const cfg = (typeof Deno !== 'undefined' && Deno.env?.get) ? Deno.env.get('FRONTEND_ORIGIN') : undefined;
+  const allowed = cfg || 'https://mmc-mms.com';
+  return reqOrigin && reqOrigin === allowed ? reqOrigin : allowed;
 }
-
-/**
- * Handle OPTIONS preflight requests
- * Returns Response if request is OPTIONS, null otherwise
- */
-export function handleCorsPrelight(req: Request): Response | null {
+export function corsHeaders(origin: string): Headers {
+  const h = new Headers();
+  h.set('Access-Control-Allow-Origin', origin);
+  h.set('Vary', 'Origin');
+  h.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  h.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  h.set('Access-Control-Max-Age', '600');
+  h.set('Cache-Control', 'no-store');
+  return h;
+}
+function withJson(h: Headers) { const x = new Headers(h); x.set('Content-Type','application/json; charset=utf-8'); return x; }
+export function preflight(req: Request) {
   if (req.method === 'OPTIONS') {
-    const origin = req.headers.get('origin') || '';
-    const headers = {
-      ...getCorsHeaders(origin),
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, x-client-info',
-      'Access-Control-Max-Age': '86400',
-    };
-    
-    return new Response(null, { status: 204, headers });
+    const origin = allow(req);
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
-  
   return null;
 }
-
-/**
- * Create Response with CORS headers
- */
-export function corsResponse(
-  body: string | null,
-  options: { status?: number; headers?: Record<string, string>; origin?: string } = {}
-): Response {
-  const { status = 200, headers = {}, origin } = options;
-  
-  const corsHeaders = getCorsHeaders(origin);
-  const allHeaders = {
-    ...corsHeaders,
-    'Content-Type': 'application/json',
-    ...headers,
-  };
-  
-  return new Response(body, { status, headers: allHeaders });
+export function ok(data: unknown, req: Request, status = 200) {
+  const origin = allow(req);
+  return new Response(JSON.stringify(data), { status, headers: withJson(corsHeaders(origin)) });
+}
+export function err(message: string, req: Request, status = 400, code?: string) {
+  const origin = allow(req);
+  return new Response(JSON.stringify({ ok: false, error: message, code }), { status, headers: withJson(corsHeaders(origin)) });
 }
