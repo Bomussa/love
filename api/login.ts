@@ -41,11 +41,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed', allowed: ['POST', 'OPTIONS'] });
   }
 
-  try {
-    // Forward request to upstream with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  // Forward request to upstream with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
+  try {
     const upstreamHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -68,8 +68,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     // Forward response status and body
     const data = await response.text();
     res.status(response.status);
@@ -81,9 +79,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.send(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle timeout or network errors
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       return res.status(504).json({ 
         error: 'Gateway Timeout', 
         message: 'Upstream request timed out' 
@@ -95,5 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       error: 'Bad Gateway', 
       message: 'Failed to reach upstream login service' 
     });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
