@@ -19,7 +19,16 @@ const ALLOWED_ORIGINS = [
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin as string;
-  const upstreamBase = process.env.UPSTREAM_API_BASE || 'https://rujwuruuosffcazymit.supabase.co/functions/v1';
+  
+  // Require UPSTREAM_API_BASE to be set to avoid configuration drift
+  const upstreamBase = process.env.UPSTREAM_API_BASE;
+  if (!upstreamBase) {
+    return res.status(500).json({
+      error: 'Configuration Error',
+      message: 'UPSTREAM_API_BASE environment variable is not set'
+    });
+  }
+  
   const upstreamUrl = `${upstreamBase}/login`;
 
   // CORS: Set headers if origin is allowed
