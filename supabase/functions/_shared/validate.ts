@@ -67,8 +67,8 @@ export function validateLoginRequest(body: unknown): {
   // Validate password
   if (!data.password || typeof data.password !== 'string') {
     errors.push({ field: 'password', message: 'Password is required and must be a string' });
-  } else if (data.password.length < 6) {
-    errors.push({ field: 'password', message: 'Password must be at least 6 characters' });
+  } else if (data.password.length < 8) {
+    errors.push({ field: 'password', message: 'Password must be at least 8 characters' });
   }
 
   if (errors.length > 0) {
