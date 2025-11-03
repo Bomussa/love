@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Only allow POST for actual signin requests
-  if (!validateMethod(req, res, ['POST', 'OPTIONS'])) {
+  if (!validateMethod(req, res, ['POST'])) {
     return;
   }
 
