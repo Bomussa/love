@@ -2,13 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1" },
+    { "source": "/api/v1/(.*)", "destination": "https://rujwuruosffcxazymit.supabase.co/functions/v1/$1?apikey=<SUPABASE_ANON_KEY>" },
     { "source": "/login", "destination": "/api/login" },
     { "source": "/signin", "destination": "/api/signin" }
   ],
   "headers": [
     { "source": "/assets/(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800, immutable" } ] },
-    { "source": "/(.+\\.(?:css|js|svg|png|jpg|jpeg|gif|webp|ico|woff2?))", "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800, immutable" } ] },
+    { "source": "/(.+\.(?:css|js|svg|png|jpg|jpeg|gif|webp|ico|woff2?))", "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800, immutable" } ] },
     { "source": "/(.*)", "headers": [ { "key": "Cache-Control", "value": "no-store" } ] }
   ]
 }
