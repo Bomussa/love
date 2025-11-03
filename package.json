@@ -1,0 +1,13 @@
+{
+  "name": "medical-committee-app",
+  "version": "1.0.0",
+  "description": "Medical committee integrated application with middleware layer and dynamic queue",
+  "main": "api/app.js",
+  "scripts": {
+    "start": "node api/app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
