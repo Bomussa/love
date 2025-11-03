@@ -44,7 +44,9 @@ jobs:
           check() { curl -s -o /dev/null -w "%{http_code}" "$1"; }
           # quick retries (no delay) then very short backoff
           for i in 1 2 3 4 5; do
-            code=$(check "$URL"); echo "Attempt $i => HTTP $code"; [ "$code" = "200" ] && pass=1 && break; sleep 2
+            code=$(check "$URL"); echo "Attempt $i => HTTP $code"
+            if [ "$code" = "200" ]; then pass=1; break; fi
+            sleep 2
           done
           if [ -z "$pass" ]; then
             echo 'Smoke failed — attempting immediate auto-fix (rollback to previous commit).';
