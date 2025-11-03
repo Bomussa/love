@@ -45,7 +45,10 @@ export function handleOptions(req: VercelRequest, res: VercelResponse): boolean 
  * Get upstream API base URL from environment
  */
 export function getUpstreamBase(): string {
-  return process.env.UPSTREAM_API_BASE || 'https://rujwuruuosffcazymit.supabase.co/functions/v1';
+  if (!process.env.UPSTREAM_API_BASE) {
+    throw new Error('Environment variable UPSTREAM_API_BASE is required but not set.');
+  }
+  return process.env.UPSTREAM_API_BASE;
 }
 
 /**
