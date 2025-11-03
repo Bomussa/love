@@ -1,0 +1,55 @@
+name: Deploy to Vercel (Prod)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'vercel.json'
+      - '.github/workflows/vercel-deploy.yml'
+      - '.github/ci-bump.txt'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Vercel pull (link project)
+        run: vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build (force, no cache)
+        run: vercel build --prod --token ${{ secrets.VERCEL_TOKEN }} --force
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy (prebuilt prod)
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
+          echo "url=$url" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke test /api/v1/health
+        run: |
+          TARGET="${{ secrets.GH_PATH }}/api/v1/health"
+          echo "Testing $TARGET"
+          code=$(curl -s -o /tmp/h.txt -w "%{http_code}" "$TARGET")
+          echo "HTTP $code"
+          cat /tmp/h.txt || true
+          test "$code" = "200"
