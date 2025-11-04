@@ -54,6 +54,10 @@
       "source": "/signin",
       "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/login"
     },
+    {
+      "source": "/healthz",
+      "destination": "/index.html"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
