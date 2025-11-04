@@ -26,6 +26,11 @@ function mapClinicCodes(codes) {
 async function fetchClinicWeights(clinicIds) {
   const weights = {}
   
+  // Initialize all weights to 0 first
+  clinicIds.forEach(id => {
+    weights[id] = 0
+  })
+  
   try {
     const promises = clinicIds.map(async (clinicId) => {
       try {
@@ -34,17 +39,16 @@ async function fetchClinicWeights(clinicIds) {
         
         if (data.success) {
           weights[clinicId] = data.total_waiting || data.waiting || 0
-        } else {
-          weights[clinicId] = 0
         }
       } catch (err) {
-        weights[clinicId] = 0
+        // Keep default weight of 0
+        console.log(`Using default weight for clinic ${clinicId}`)
       }
     })
     
     await Promise.all(promises)
   } catch (err) {
-    console.error('Failed to fetch clinic weights:', err)
+    console.log('Using default weights for all clinics')
   }
   
   return weights
