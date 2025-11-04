@@ -234,3 +234,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Starting comprehensive testing of medical queue management system. Will test all user scenarios including patient login, exam selection, PIN codes, queue management, admin dashboard, language switching, and themes."
+  - agent: "testing"
+    message: "COMPREHENSIVE TESTING COMPLETED - Medical Queue Management System tested successfully with some API connectivity issues identified. Frontend UI/UX working perfectly, backend integration has CORS issues with external API."
