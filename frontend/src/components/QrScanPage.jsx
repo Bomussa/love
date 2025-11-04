@@ -152,7 +152,7 @@ export function QrScanPage({ language, toggleLanguage }) {
     setRedirecting(true)
     
     // استخدام environment variable بدلاً من hardcoded URL
-    const baseAppURL = import.meta.env.VITE_APP_URL || window.location.origin || 'https://www.mmc-mms.com'
+    const baseAppURL = import.meta.env.VITE_APP_URL || window.location.origin
     let appURL
     
     if (deviceType === 'iOS') {
