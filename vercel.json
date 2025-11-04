@@ -1,0 +1,8 @@
+{
+  "redirects": [
+    { "source": "/", "destination": "https://www.mmc-mms.com/", "permanent": true },
+    { "source": "/:path*", "destination": "https://www.mmc-mms.com/:path*", "permanent": false }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
+}
