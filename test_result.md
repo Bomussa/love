@@ -263,3 +263,5 @@ agent_communication:
     message: "Starting comprehensive testing of medical queue management system. Will test all user scenarios including patient login, exam selection, PIN codes, queue management, admin dashboard, language switching, and themes."
   - agent: "testing"
     message: "COMPREHENSIVE TESTING COMPLETED - Medical Queue Management System tested successfully with some API connectivity issues identified. Frontend UI/UX working perfectly, backend integration has CORS issues with external API."
+  - agent: "testing"
+    message: "LOCAL STORAGE MODE TESTING COMPLETED - Conducted deep testing of local storage mode as requested in review. Local API works perfectly but UI integration has issues. The application is not properly falling back to local storage mode when external API fails."
