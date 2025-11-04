@@ -744,7 +744,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
               <Home className="icon icon-md me-2" />
               Home
             </Button>
-            <Button variant="gradientSecondary" size="sm" onClick={onLogout}>
+            <Button variant="gradientSecondary" size="sm" onClick={handleLogout}>
               <LogOut className="icon icon-md me-2" />
               Logout
             </Button>
