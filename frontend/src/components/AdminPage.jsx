@@ -38,6 +38,8 @@ import { AdminLoginPage } from './admin/AdminLoginPage'
 import { AdvancedDashboard } from './admin/AdvancedDashboard'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [session, setSession] = useState(null)
   const [currentView, setCurrentView] = useState('dashboard')
   const [stats, setStats] = useState(null)
   const [activePins, setActivePins] = useState([])
@@ -49,6 +51,32 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   // مرجع للاحتفاظ بكائن SSE
   const sseRef = useRef(null)
   const pollingIntervalRef = useRef(null)
+
+  // التحقق من Session عند التحميل
+  useEffect(() => {
+    const existingSession = authService.getSession()
+    if (existingSession) {
+      setSession(existingSession)
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  const handleLogin = (newSession) => {
+    setSession(newSession)
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = () => {
+    authService.logout()
+    setSession(null)
+    setIsAuthenticated(false)
+    if (onLogout) onLogout()
+  }
+
+  // إذا لم يكن مسجل دخول، اعرض صفحة تسجيل الدخول
+  if (!isAuthenticated) {
+    return <AdminLoginPage onLogin={handleLogin} language={language} />
+  }
   
   useEffect(() => {
     loadStats()
