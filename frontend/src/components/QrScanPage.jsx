@@ -151,17 +151,20 @@ export function QrScanPage({ language, toggleLanguage }) {
   const handleSmartRedirect = (deviceType) => {
     setRedirecting(true)
     
+    // استخدام environment variable بدلاً من hardcoded URL
+    const baseAppURL = import.meta.env.VITE_APP_URL || window.location.origin || 'https://www.mmc-mms.com'
     let appURL
     
     if (deviceType === 'iOS') {
       // iPhone/iPad → يفتح في Safari تلقائياً
-      appURL = 'https://www.mmc-mms.com'
+      appURL = baseAppURL
     } else if (deviceType === 'Android') {
       // Android → يفتح في Chrome مباشرة
-      appURL = 'intent://www.mmc-mms.com#Intent;scheme=https;package=com.android.chrome;end'
+      const domain = baseAppURL.replace('https://', '').replace('http://', '')
+      appURL = `intent://${domain}#Intent;scheme=https;package=com.android.chrome;end`
     } else {
       // Desktop → فتح عادي
-      appURL = 'https://www.mmc-mms.com'
+      appURL = baseAppURL
     }
     
     console.log(`🚀 التوجيه إلى: ${appURL}`)
