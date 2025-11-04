@@ -137,15 +137,18 @@ frontend:
 
   - task: "PIN Code System"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/components/PatientPage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing PIN code entry with values 75, 68, 41, 98"
+      - working: false
+        agent: "testing"
+        comment: "❌ FAILED - PIN code system has backend connectivity issues. Frontend UI shows PIN input fields but API calls to queue/enter endpoint fail with CORS errors and 404s. Backend API endpoints not properly configured for queue management."
 
   - task: "Queue Management System"
     implemented: true
