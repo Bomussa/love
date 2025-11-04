@@ -123,7 +123,18 @@ export async function getDynamicMedicalPathway(examType, gender) {
   
   // جلب أوزان العيادات وترتيبها
   const clinicIds = clinics.map(c => c.id)
-  const weights = await fetchClinicWeights(clinicIds)
+  let weights = {}
+  
+  try {
+    weights = await fetchClinicWeights(clinicIds)
+  } catch (err) {
+    console.log('Failed to fetch weights, using default order')
+    // Use default weights (all 0)
+    clinicIds.forEach(id => {
+      weights[id] = 0
+    })
+  }
+  
   const sortedClinics = sortClinicsByWeight(clinics, weights)
   
   return sortedClinics
