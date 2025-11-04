@@ -5,16 +5,6 @@
   "framework": "vite",
   "installCommand": "cd frontend && yarn install",
   "devCommand": "cd frontend && yarn dev",
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
