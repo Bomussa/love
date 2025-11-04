@@ -234,6 +234,18 @@ frontend:
         agent: "testing"
         comment: "❌ FAILED - SSE notifications not working. EventSource connections to /api/v1/events/stream failing with 404 errors. Frontend has fallback polling mechanism but real-time notifications unavailable. Audio notification system implemented but not functional due to SSE issues."
 
+  - task: "UI Integration with Local Storage Mode"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/components/PatientPage.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE - UI not properly integrating with local storage mode. Local API works perfectly (tested all functions), but PatientPage component is not using the local API fallback when external API fails. Application tries to use https://mmc-mms.com API instead of falling back to local storage. This prevents the medical pathway from loading in the UI despite local storage having all necessary data."
+
 backend:
   - task: "API Endpoints"
     implemented: true
