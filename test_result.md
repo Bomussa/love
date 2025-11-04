@@ -167,15 +167,18 @@ frontend:
 
   - task: "Admin Dashboard"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/components/AdminPage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing admin login with credentials admin:BOMUSSA14490 and dashboard functionality"
+      - working: false
+        agent: "testing"
+        comment: "❌ FAILED - Admin login form works (credentials accepted) but dashboard crashes with 'eventBus is not defined' error. Admin API calls to https://mmc-mms.com/api/v1/admin/* endpoints blocked by CORS. Local admin credentials validation working but full dashboard functionality broken."
 
   - task: "Language Switching"
     implemented: true
