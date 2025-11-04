@@ -30,8 +30,17 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Build (force, no cache)
-        run: vercel build --prod --token ${{ secrets.VERCEL_TOKEN }} --force
+      - name: Build (prod)
+        run: vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy (prebuilt prod)
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --yes --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
+          echo "url=$url" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
