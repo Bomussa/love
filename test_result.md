@@ -152,15 +152,18 @@ frontend:
 
   - task: "Queue Management System"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/core/queue-engine.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing queue display, current number, waiting count, clinic transitions"
+      - working: false
+        agent: "testing"
+        comment: "❌ FAILED - Queue management UI is implemented but backend integration failing. Found queue info elements (Current: 10, Your: 10, Ahead: 10) but API calls to https://mmc-mms.com/api/v1/queue/* endpoints blocked by CORS. SSE notifications also failing with 404 errors."
 
   - task: "Admin Dashboard"
     implemented: true
