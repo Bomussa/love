@@ -2,7 +2,17 @@
  * Local API Service - Works 100% Client-Side
  * No backend required - uses localStorage for persistence
  * Perfect fallback when Cloudflare Functions are not available
+ * 
+ * التحديث: يستخدم Advanced Queue Engine للطوابير المتقدمة
  */
+
+// استيراد Advanced Queue Engine
+let advancedQueueEngine = null;
+if (typeof window !== 'undefined') {
+  import('../core/advanced-queue-engine.js').then(module => {
+    advancedQueueEngine = module.default;
+  });
+}
 
 class LocalApiService {
   constructor() {
