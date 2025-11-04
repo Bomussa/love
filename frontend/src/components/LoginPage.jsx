@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { User, Globe, Shield } from 'lucide-react'
+import { User, Globe, Shield, QrCode } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
+import { QRScanner } from './QRScanner'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -13,6 +14,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
+  const [showQRScanner, setShowQRScanner] = useState(false)
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
