@@ -755,7 +755,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       <div className="flex relative">
         {renderSidebar()}
         <main className="flex-1 p-6">
-          {currentView === 'dashboard' && renderDashboard()}
+          {currentView === 'dashboard' && <AdvancedDashboard language={language} />}
           {currentView === 'enhanced' && (
             <EnhancedAdminDashboard
               language={language}
