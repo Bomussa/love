@@ -122,15 +122,18 @@ frontend:
 
   - task: "Dynamic Pathways and Exam Selection"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/components/ExamSelectionPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing exam type selection and pathway navigation"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Exam selection working perfectly. Found 8 exam options including recruitment exam (فحص التجنيد). Successfully navigated to patient pathway page with 10 clinic cards displayed. Dynamic pathway generation functional."
 
   - task: "PIN Code System"
     implemented: true
