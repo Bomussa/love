@@ -201,41 +201,26 @@ function App() {
 
   const handleExamSelection = async (examType) => {
     try {
-      // Get first clinic from medical pathway based on exam type and gender
-      const pathway = medicalPathways[examType]?.[patientData.gender] || []
-      if (pathway.length === 0) {
-        throw new Error('No clinics found for this exam type')
-      }
+      console.log('Exam selection:', examType, 'Gender:', patientData.gender)
       
-      const firstClinic = pathway[0].id
-      
-      // Enter queue for the first clinic
-      const queueData = await api.enterQueue(firstClinic, patientData.id, false)
-      
-      if (!queueData.success) {
-        throw new Error(queueData.error || 'Failed to enter queue')
-      }
-      
-      // Update patient data with queue information
+      // Update patient data with exam type and navigate to patient page
+      // The PatientPage will handle pathway loading using dynamic pathways
       setPatientData({
         ...patientData,
-        queueType: examType,
-        currentClinic: firstClinic,
-        queueNumber: queueData.display_number || queueData.number,
-        ahead: queueData.ahead || 0,
-        pathway: pathway
+        examType: examType,
+        queueType: examType
       })
       
       setCurrentView('patient')
       
       showNotification(
-        language === 'ar' ? 'تم التسجيل بنجاح في قائمة الانتظار' : 'Successfully registered in queue',
+        language === 'ar' ? 'تم اختيار نوع الفحص بنجاح' : 'Exam type selected successfully',
         'success'
       )
     } catch (error) {
       console.error('Exam selection failed:', error)
       showNotification(
-        language === 'ar' ? 'فشل التسجيل في قائمة الانتظار' : 'Failed to register in queue',
+        language === 'ar' ? 'فشل اختيار نوع الفحص' : 'Failed to select exam type',
         'error'
       )
     }
