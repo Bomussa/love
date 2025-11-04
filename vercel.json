@@ -1,9 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/data/(.*)", "destination": "/data/$1" },
-    { "source": "/locales/(.*)", "destination": "/locales/$1" },
-    { "source": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|webp|json|map|txt))", "destination": "/$1" },
-    { "source": "/(.*)", "destination": "/" }
-  ]
-}
