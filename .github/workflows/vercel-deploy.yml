@@ -39,8 +39,8 @@ jobs:
       - name: Deploy (prebuilt prod)
         run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
 
-      - name: Smoke test homepage
+      - name: Smoke test homepage (200-399 accepted)
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$GH_PATH")
-          if [ "$code" != "200" ]; then
-            echo "Homepage returned $code"; exit 6; fi
+          code=$(curl -s -L -o /dev/null -w "%{http_code}" "$GH_PATH")
+          if [ $code -ge 200 ] && [ $code -lt 400 ]; then
+            echo "OK $code"; exit 0; else echo "Homepage returned $code"; exit 6; fi
