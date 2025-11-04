@@ -280,6 +280,18 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           </CardContent>
         </Card>
       </div>
+      
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRScanner
+          language={language}
+          onScan={(scannedId) => {
+            setPatientId(scannedId);
+            setShowQRScanner(false);
+          }}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   )
 }
