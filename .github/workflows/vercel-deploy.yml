@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  prod:            # <-- اسم Job مختلف (كان deploy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,18 +37,9 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy (prebuilt prod)
-        id: deploy
+        id: vercel_deploy   # <-- مُعرّف فريد (كان deploy)
         run: |
           url=$(vercel deploy --prebuilt --prod --yes --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
-          echo "url=$url" >> $GITHUB_OUTPUT
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Deploy (prebuilt prod)
-        id: deploy
-        run: |
-          url=$(vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
           echo "url=$url" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
