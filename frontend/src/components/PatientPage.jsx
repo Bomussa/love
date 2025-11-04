@@ -352,7 +352,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       unsubscribeError();
       clearInterval(heartbeatInterval);
     };
-  }, [patientData?.id, language]); // Removed stations from dependencies to prevent infinite loop
+  }, [patientData?.id, language, stations.length]); // Use stations.length instead of stations object
   
   // Listen to real-time notifications via eventBus (no duplicate EventSource)
   useEffect(() => {
