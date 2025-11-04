@@ -1,0 +1,52 @@
+{
+  "visitId": "TEST001",
+  "examType": "تجنيد",
+  "gender": "M",
+  "route": [
+    {
+      "clinicId": "lab",
+      "assigned": {
+        "ticket": 2,
+        "clinicId": "lab",
+        "dateKey": "2025-10-21",
+        "issuedAt": "2025-10-22T01:33:35.076Z"
+      },
+      "assignedAt": "2025-10-22T01:33:35.076Z"
+    },
+    {
+      "clinicId": "xray",
+      "assigned": {
+        "ticket": 2,
+        "clinicId": "xray",
+        "dateKey": "2025-10-21",
+        "issuedAt": "2025-10-22T01:33:35.201Z"
+      },
+      "assignedAt": "2025-10-22T01:33:35.201Z"
+    },
+    {
+      "clinicId": "vitals"
+    },
+    {
+      "clinicId": "eyes"
+    },
+    {
+      "clinicId": "internal"
+    },
+    {
+      "clinicId": "surgery"
+    },
+    {
+      "clinicId": "ent"
+    },
+    {
+      "clinicId": "psychiatry"
+    },
+    {
+      "clinicId": "dental"
+    },
+    {
+      "clinicId": "derma"
+    }
+  ],
+  "createdAt": "2025-10-22T01:33:35.075Z"
+}

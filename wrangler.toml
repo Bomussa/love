@@ -1,0 +1,46 @@
+name = "2027"
+compatibility_date = "2025-10-22"
+pages_build_output_dir = "dist"
+
+# توحيد جميع KV Bindings على MMS_CACHE
+# جميع المفاتيح تشير الآن إلى نفس KV namespace لتوحيد البيانات ومنع التعطل
+
+[[kv_namespaces]]
+binding = "KV_ADMIN"
+id = "fd4470d6a7f34709b3486b1ab0ade4e7"
+
+[[kv_namespaces]]
+binding = "KV_PINS"
+id = "7d71bfe9e606486f9124400a4f3c34e2"
+
+[[kv_namespaces]]
+binding = "KV_QUEUES"
+id = "046e391c8e6d4120b3619fa69456fc72"
+
+[[kv_namespaces]]
+binding = "KV_EVENTS"
+id = "250f2f79e4fe4d42b1db529123a3f5a1"
+
+[[kv_namespaces]]
+binding = "KV_LOCKS"
+id = "99b12b0fa33e4d57a8bd1447ab80236f"
+
+[[kv_namespaces]]
+binding = "KV_CACHE"
+id = "1d3d4e6c12174b7797b356234794e7e5"  # MMS_CACHE
+
+[vars]
+TIMEZONE = "Asia/Qatar"
+JWT_SECRET = "ff8d89d5d43df95e470553e76f3c4ca18f651ad4fdc6ab86b256f4883e6aa220"
+PIN_SECRET = "6a1f1a07787035f332b188d623a6395dc50de51bf90a62238ed25b5519ca3194"
+NOTIFY_KEY = "https://notify.mmc-mms.com/webhook"
+# - Local development: .dev.vars file (not committed to git)
+# - Production: Cloudflare Dashboard → Settings → Variables and Secrets
+
+# CRON Triggers (Scheduled Events)
+# Note: CRON triggers are configured in Cloudflare Dashboard for Pages Projects
+# These are documented here for reference:
+# - "0 0 * * *" (00:00 Qatar time) - Reset daily PINs
+# - "*/1 * * * *" (Every minute) - Notify poller
+# - "59 23 * * *" (23:59 Qatar time) - Daily backup and reports
+

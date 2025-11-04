@@ -3,12 +3,20 @@
 # IDE and editors
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 
 # Dependencies
 node_modules/
-/node_modules
-/.pnp
+dist_server/node_modules/
+.pnp
 .pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
 .yarn/install-state.gz
 .yarn/*
 !.yarn/patches
@@ -18,10 +26,14 @@ node_modules/
 
 # Testing
 /coverage
+coverage/
+.nyc_output
 
 # Next.js
 /.next/
 /out/
+.next
+out
 next-env.d.ts
 *.tsbuildinfo
 
@@ -29,28 +41,113 @@ next-env.d.ts
 /build
 dist/
 dist
+build/
+dist_clean/
 
-# Environment files (comprehensive coverage)
-
-*token.json*
-*credentials.json*
-
-# Logs and debug files
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 dump.rdb
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Environment files (comprehensive coverage)
+*.env
+*.env.*
+.env
+.env.test
+.env.production
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*token.json*
+*credentials.json*
+
+# Cloudflare secrets (local development)
+.dev.vars
+.dev.vars.*
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Gatsby files
+.cache/
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
 
 # System files
 .DS_Store
+Thumbs.db
 *.pem
 
-# Python
-__pycache__/
-*pyc*
-venv/
-.venv/
+# Data directories (runtime only)
+data/audit/*
+data/cache/*
+data/jobs/*
+data/pin-map/*
+data/queues/*
+data/reports/*
+data/routes/*
+data/sessions/*
+data/snapshots/*
+data/sse/*
+data/status/*
+data/tests/*
+data/ui/*
+data/visual/*
+
+# Keep .gitkeep files
+!**/.gitkeep
+
+# Backups
+backups/
+*.bak
+
+# Screenshots
+tests/screenshots/*
+logs/screenshots/*
+
+# Build artifacts
+dist_server/
 
 # Development tools
 chainlit.md
@@ -78,34 +175,12 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/ -e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Python
+__pycache__/
+*pyc*
+venv/
+.venv/
+
+# Lock file
+.lock
