@@ -253,6 +253,35 @@ class UnifiedApiService {
     return { success: true, reports: [] };
   }
 
+  // ==========================================
+  // Route Management Methods
+  // ==========================================
+
+  async getRoute(patientId) {
+    // Return empty route - let the pathway system handle it
+    return { success: false, error: 'No saved route found' };
+  }
+
+  async createRoute(patientId, examType, gender, stations) {
+    // Mock route creation - just return success
+    return { success: true, message: 'Route created successfully' };
+  }
+
+  async getQueuePosition(clinic, user) {
+    // Get queue status and calculate position
+    const queueStatus = await this.getQueueStatus(clinic);
+    if (queueStatus.success) {
+      return {
+        success: true,
+        display_number: queueStatus.your_number || queueStatus.number || 1,
+        ahead: queueStatus.ahead || 0,
+        total_waiting: queueStatus.total_waiting || 1,
+        entered_at: new Date().toISOString()
+      };
+    }
+    return { success: false, error: 'Failed to get queue position' };
+  }
+
   connectSSE(clinic, callback) {
     // Polling fallback for SSE
     const pollInterval = setInterval(async () => {
