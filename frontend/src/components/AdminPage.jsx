@@ -759,7 +759,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           {currentView === 'enhanced' && (
             <EnhancedAdminDashboard
               language={language}
-              onLogout={onLogout}
+              onLogout={handleLogout}
             />
           )}
           {currentView === 'queues' && renderQueues()}
