@@ -1,6 +1,10 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/(api|api/v1|_next|static|assets|public|data|locales|fonts)/(.*)", "destination": "/$1/$2" },
+
+    { "source": "/(.*)\\.(css|js|map|png|jpg|jpeg|gif|svg|ico|webp|json|txt|woff|woff2|ttf)", "destination": "/$1.$2" },
+
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
