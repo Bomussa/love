@@ -142,12 +142,25 @@ class LocalApiService {
         queues[clinic] = {
           list: [],
           current: null,
-          served: []
+          served: [],
+          lastExitTime: null
         };
       }
 
-      // Generate unique number
-      const uniqueNumber = this.generateUniqueQueueNumber();
+      // التحقق من عدم التكرار
+      const existing = queues[clinic].list.find(e => e.user === user);
+      if (existing) {
+        return {
+          success: true,
+          display_number: existing.number,
+          ahead: queues[clinic].list.findIndex(e => e.user === user),
+          total_waiting: queues[clinic].list.length,
+          entered_at: existing.enteredAt
+        };
+      }
+
+      // Generate unique number based on position
+      const uniqueNumber = queues[clinic].list.length + 1;
 
       // Add to queue
       const entry = {
