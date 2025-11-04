@@ -7,7 +7,8 @@
 class MMSCoreAPI {
   constructor() {
     // استخدام environment variable بدلاً من hardcoded URL
-    this.baseURL = import.meta.env.VITE_MMS_API_URL || import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
+    // Emergent backend يعمل على port 8001
+    this.baseURL = import.meta.env.VITE_MMS_API_URL || import.meta.env.VITE_API_BASE || 'http://localhost:8001/api';
     this.isAvailable = false;
     this.checkAvailability();
   }
