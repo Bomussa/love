@@ -62,6 +62,7 @@ jobs:
                 code=$(check "$url2"); echo "Rollback check $i => HTTP $code"; [ "$code" = "200" ] && exit 0;
                 sleep 2
                 sleep 2
+                sleep 2
               done
               echo 'Rollback did not restore 200'; exit 1
             else
