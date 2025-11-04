@@ -6,9 +6,9 @@
  */
 
 export const ADMIN_CREDENTIALS = {
-  // بيانات الدخول الرئيسية
-  username: 'admin',
-  password: 'BOMUSSA14490',
+  // بيانات الدخول الرئيسية - من environment variables
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
+  password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   
   // بيانات إضافية للتحقق
   roles: ['admin', 'super_admin'],
