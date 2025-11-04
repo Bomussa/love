@@ -1,5 +1,27 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
   "rewrites": [
+    {
+      "source": "/api/v1/(.*)",
+      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/$1"
+    },
+    {
+      "source": "/login",
+      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/login"
+    },
+    {
+      "source": "/signin",
+      "destination": "https://rujwuruuosffcazymit.supabase.co/functions/v1/login"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
