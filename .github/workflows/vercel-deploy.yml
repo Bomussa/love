@@ -6,6 +6,8 @@ on:
     paths:
       - 'api/**'
       - 'vercel.json'
+      - 'index.html'
+      - 'tests.html'
       - '.github/workflows/vercel-deploy.yml'
       - '.github/ci-bump.txt'
   workflow_dispatch:
