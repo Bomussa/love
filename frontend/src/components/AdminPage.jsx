@@ -33,6 +33,9 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import eventBus from '../core/event-bus'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
+import authService from '../lib/auth-service'
+import { AdminLoginPage } from './admin/AdminLoginPage'
+import { AdvancedDashboard } from './admin/AdvancedDashboard'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange }) {
   const [currentView, setCurrentView] = useState('dashboard')
