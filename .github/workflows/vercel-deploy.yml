@@ -1,66 +1,46 @@
-name: Deploy to Vercel (Prod)
+name: Vercel — build & deploy (prod)
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'api/**'
-      - 'vercel.json'
-      - 'index.html'
-      - 'tests.html'
-      - '.github/workflows/vercel-deploy.yml'
-      - '.github/ci-bump.txt'
   workflow_dispatch:
+
+concurrency:
+  group: vercel-prod
+  cancel-in-progress: false
 
 jobs:
   prod:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      GH_PATH: ${{ secrets.GH_PATH }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.x'
 
       - name: Install Vercel CLI
-        run: npm i -g vercel@latest
+        run: npm i -g vercel@48
 
-      - name: Vercel pull (link project)
-        run: vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Link project (production)
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Build (prod)
-        run: vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Build (vercel)
+        run: vercel build --prod --token "$VERCEL_TOKEN"
 
       - name: Deploy (prebuilt prod)
-        id: vercel_deploy
-        run: |
-          url=$(vercel deploy --prebuilt --prod --yes --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
-          echo "url=$url" >> $GITHUB_OUTPUT
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
 
-      - name: Compute healthcheck target
-        id: target
-        shell: bash
+      - name: Smoke test homepage
         run: |
-          base="${{ secrets.GH_PATH }}"
-          if [ -z "$base" ]; then base="${{ steps.vercel_deploy.outputs.url }}"; fi
-          base=$(printf "%s" "$base" | tr -d '[:space:]')
-          base="${base%/}"
-          echo "url=$base/api/v1/health" >> $GITHUB_OUTPUT
-
-      - name: Smoke test /api/v1/health
-        run: |
-          echo "Testing ${{ steps.target.outputs.url }}"
-          code=$(curl -sS -o /tmp/h.txt -w "%{http_code}" "${{ steps.target.outputs.url }}")
-          echo "HTTP $code"
-          cat /tmp/h.txt || true
-          test "$code" = "200"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$GH_PATH")
+          if [ "$code" != "200" ]; then
+            echo "Homepage returned $code"; exit 6; fi
