@@ -47,54 +47,34 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     loadQueues()
     loadRecentReports()
     
-    // تفعيل SSE للتحديث اللحظي
-    if (sseRef.current) sseRef.current.close()
-    sseRef.current = api.connectSSE('admin', (event) => {
-      if (event.type === 'queue_update' && event.data) {
-        if (event.data.stats) setStats(event.data)
-        if (event.data.queues) setQueues(event.data.queues)
+    // استخدام Polling فقط (بدون SSE مؤقتاً لتجنب الأخطاء)
+    // تحديث كل دقيقة
+    pollingIntervalRef.current = setInterval(() => {
+      if (!document.hidden) {
+        loadStats()
+        loadActivePins()
+        loadQueues()
+        loadRecentReports()
       }
-      if (event.type === 'stats_update' && event.data) {
-        setStats(event.data)
-      }
-    })
+    }, 60000);
     
-    // Adaptive Polling: يعمل فقط إذا SSE غير نشط
-    const handleSSEConnected = () => {
-      console.log('[AdminPage] ✅ SSE Active - Polling disabled');
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
+    // الاستماع لأحداث eventBus للتحديثات اللحظية من مصادر أخرى
+    const handleQueueUpdate = (data) => {
+      if (data.stats) setStats(data)
+      if (data.queues) setQueues(data.queues)
     };
     
-    const handleSSEError = () => {
-      console.log('[AdminPage] ⚠️ SSE Inactive - Polling enabled');
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(() => {
-          loadStats()
-          loadActivePins()
-          loadQueues()
-          loadRecentReports()
-        }, 60000);
-      }
+    const handleStatsUpdate = (data) => {
+      setStats(data)
     };
     
-    const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
-    const unsubscribeError = eventBus.on('sse:error', handleSSEError);
-    
-    // التحقق من حالة SSE الحالية
-    if (window.eventBusSSE?.isConnected()) {
-      handleSSEConnected();
-    } else {
-      handleSSEError();
-    }
+    const unsubscribeQueueUpdate = eventBus.on('queue:update', handleQueueUpdate);
+    const unsubscribeStatsUpdate = eventBus.on('stats:update', handleStatsUpdate);
     
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
-      unsubscribeConnected();
-      unsubscribeError();
-      if (sseRef.current) sseRef.current.close()
+      unsubscribeQueueUpdate();
+      unsubscribeStatsUpdate();
     }
   }, [])
 
