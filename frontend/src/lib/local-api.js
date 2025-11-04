@@ -285,6 +285,61 @@ class LocalApiService {
       return { success: false, error: error.message };
     }
   }
+  async completeQueue(clinic, user, pin) {
+    try {
+      // Verify PIN أولاً - يجب أن يتطابق PIN مع العيادة المحددة فقط
+      const pins = this.getItem('pins') || {};
+      const clinicPin = pins[clinic];
+      
+      // التحقق من وجود PIN للعيادة
+      if (!clinicPin) {
+        return { success: false, error: 'No PIN configured for this clinic' };
+      }
+      
+      // التحقق من تطابق PIN
+      if (clinicPin.pin !== String(pin).padStart(2, '0')) {
+        return { success: false, error: `Invalid PIN for ${clinic}. PIN must be: ${clinicPin.pin}` };
+      }
+
+      // استخدام Advanced Queue Engine إذا كان متاحاً
+      if (advancedQueueEngine) {
+        const result = await advancedQueueEngine.exitClinic(clinic, user, pin);
+        return result;
+      }
+
+      // Fallback للنظام القديم
+      const queues = this.getItem('queues') || {};
+      
+      if (!queues[clinic]) {
+        return { success: false, error: 'Queue not found' };
+      }
+
+      // Move to served
+      const index = queues[clinic].list.findIndex(e => e.user === user);
+      if (index !== -1) {
+        const entry = queues[clinic].list.splice(index, 1)[0];
+        entry.status = 'SERVED';
+        entry.servedAt = new Date().toISOString();
+        queues[clinic].served.push(entry);
+      }
+
+      // Update current
+      if (queues[clinic].list.length > 0) {
+        queues[clinic].current = queues[clinic].list[0].number;
+      } else {
+        queues[clinic].current = null;
+      }
+
+      this.setItem('queues', queues);
+
+      return {
+        success: true,
+        message: 'Queue completed'
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 
   async callNextPatient(clinic) {
     try {
