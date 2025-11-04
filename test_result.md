@@ -182,15 +182,18 @@ frontend:
 
   - task: "Language Switching"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/lib/i18n.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing Arabic/English language toggle functionality"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Language switching working perfectly. Successfully toggled between Arabic and English. Text content updates correctly, including titles changing from 'قيادة الخدمات الطبية' to 'Medical Services Command'. UI maintains proper RTL/LTR layout."
 
   - task: "Theme System"
     implemented: true
