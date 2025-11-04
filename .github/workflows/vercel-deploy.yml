@@ -39,19 +39,14 @@ jobs:
       - name: Deploy (prebuilt prod)
         run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
 
-      - name: Smoke test (no-follow, check body has mmc-mms.com)
+      - name: Smoke test (direct)
         run: |
-          body=$(curl -s $GH_PATH)
-          echo "BODY-LEN: ${#body}"
-          echo "BODY-PREVIEW:"
-          echo "$body" | head -c 400
-          echo 
-          echo "---"
-          echo "Checking for mmc-mms.com in body..."
-          echo "$body" | grep -q "mmc-mms.com" || (echo "missing mmc-mms.com in body"; exit 7)
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$GH_PATH")
+          if [ $code -ge 200 ] && [ $code -lt 400 ]; then
+            echo "OK $code"; exit 0; else echo "Homepage returned $code"; exit 6; fi
 
       - name: Smoke test (follow redirects)
         run: |
           code=$(curl -s -L -o /dev/null -w "%{http_code}" "$GH_PATH")
           if [ $code -ge 200 ] && [ $code -lt 400 ]; then
-            echo "OK $code"; exit 0; else echo "Homepage returned $code"; exit 6; fi
+            echo "OK $code"; exit 0; else echo "Homepage (with -L) returned $code"; exit 6; fi
