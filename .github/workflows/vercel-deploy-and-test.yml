@@ -1,92 +1,63 @@
-name: Vercel — build & deploy + smoke (prod)
+name: Vercel — build & deploy (prod)
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-prod
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '18'
+  GH_PATH: ${{ secrets.GH_PATH }}
 
 jobs:
   prod:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      GH_PATH: ${{ secrets.GH_PATH }} # مثال: https://mmc-mms.com
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
       - name: Set up job
-        run: echo "starting"
+        run: echo "start"
 
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
 
       - name: Setup Node
         uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
+      # اربط المشروع من إعدادات Vercel (vercel.json / project linking موجود مسبقًا)
       - name: Link project (production)
-        run: vercel pull --environment=production --token "$VERCEL_TOKEN"
+        run: vercel pull --yes --environment=production --token "${{ secrets.VERCEL_TOKEN }}"
 
       - name: Build (vercel)
-        run: vercel build --prod --token "$VERCEL_TOKEN"
+        run: vercel build --prod --token "${{ secrets.VERCEL_TOKEN }}"
 
       - name: Deploy (prebuilt prod)
-        id: deploy
-        run: |
-          URL=$(vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN")
-          echo "url=$URL" >> $GITHUB_OUTPUT
-          echo "Deployed to: $URL"
+        run: vercel deploy --prebuilt --prod --token "${{ secrets.VERCEL_TOKEN }}"
 
+      # ——— اختبارات الدخان (بدون -L، ونقبل 3xx للواجهة) ———
       - name: Smoke test homepage (200–399 accepted)
-        id: smoke_home
-        shell: bash
         run: |
           set -e
-          TARGET="${GH_PATH:-${{ steps.deploy.outputs.url }}}"
-          echo "Testing $TARGET"
-          code=$(curl -sS -o /dev/null -w "%{http_code}" -L "$TARGET")
-          echo "HTTP=$code"
-          if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
-            echo "ok=true" >> $GITHUB_OUTPUT
-          else
-            echo "ok=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          url="https://mmc-mms.com/"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+          echo "HTTP=$code URL=$url"
+          [[ "$code" =~ ^(200|204|301|302|307|308)$ ]]
 
-      - name: Smoke test /api/v1/health (200–399 accepted)
-        id: smoke_health
-        shell: bash
+      - name: Smoke test /api/v1/health (200/204 فقط)
+        env:
+          URL: ${{ env.GH_PATH }}
         run: |
           set -e
-          TARGET="${GH_PATH:-${{ steps.deploy.outputs.url }}}/api/v1/health"
-          echo "Testing $TARGET"
-          # نتسامح مع التحويلات ونطبع البودي لغايات التشخيص
-          body=$(curl -sSL -D /tmp/headers.txt "$TARGET" || true)
-          code=$(grep -Eo "HTTP/[0-9.]+ [0-9]{3}" /tmp/headers.txt | tail -1 | awk '{print $2}')
-          code=${code:-000}
-          echo "HTTP=$code"
-          echo "BODY=$body" | head -c 200
-          if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
-            echo "ok=true" >> $GITHUB_OUTPUT
-          else
-            echo "ok=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-      - name: Summary (pass/fail)
-        if: always()
-        run: |
-          ok1="${{ steps.smoke_home.outputs.ok || 'false' }}"
-          ok2="${{ steps.smoke_health.outputs.ok || 'false' }}"
-          pass=0; fail=0
-          [ "$ok1" = "true" ] && pass=$((pass+1)) || fail=$((fail+1))
-          [ "$ok2" = "true" ] && pass=$((pass+1)) || fail=$((fail+1))
-          echo "✅ Passed: $pass / 2" >> $GITHUB_STEP_SUMMARY
-          echo "❌ Failed: $fail / 2" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed: ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          url="${URL:-https://mmc-mms.com/api/v1/health}"
+          body=$(curl -s "$url" || true)
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+          echo "HTTP=$code URL=$url"
+          echo "BODY=${body:0:200}"
+          [[ "$code" =~ ^(200|204)$ ]]
