@@ -246,12 +246,15 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Patient Login System"
-    - "Dynamic Pathways and Exam Selection"
+    - "PIN Code System"
+    - "Queue Management System" 
+    - "Admin Dashboard"
+    - "SSE Notifications"
+  stuck_tasks:
     - "PIN Code System"
     - "Queue Management System"
     - "Admin Dashboard"
-  stuck_tasks: []
+    - "SSE Notifications"
   test_all: true
   test_priority: "high_first"
 
