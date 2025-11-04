@@ -163,9 +163,19 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
             {!isAdminMode ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {t('personalNumber', language)}
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      {t('personalNumber', language)}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowQRScanner(true)}
+                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      {language === 'ar' ? 'مسح الباركود' : 'Scan QR'}
+                    </button>
+                  </div>
                   <Input
                     type="text"
                     placeholder={t('enterPersonalNumber', language)}
