@@ -212,15 +212,18 @@ frontend:
 
   - task: "SSE Notifications"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/App.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "low"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Testing Server-Sent Events for queue notifications"
+      - working: false
+        agent: "testing"
+        comment: "❌ FAILED - SSE notifications not working. EventSource connections to /api/v1/events/stream failing with 404 errors. Frontend has fallback polling mechanism but real-time notifications unavailable. Audio notification system implemented but not functional due to SSE issues."
 
 backend:
   - task: "API Endpoints"
