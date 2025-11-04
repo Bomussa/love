@@ -20,7 +20,13 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Globe
+  Globe,
+  Shield,
+  Database,
+  Bell,
+  AlertTriangle,
+  TrendingUp,
+  Calendar
 } from 'lucide-react'
 import { themes } from '../lib/utils'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
