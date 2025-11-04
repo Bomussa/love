@@ -202,10 +202,18 @@ class LocalApiService {
         return { success: false, error: 'Queue not found' };
       }
 
-      // Verify PIN
+      // Verify PIN - يجب أن يتطابق PIN مع العيادة المحددة فقط
       const pins = this.getItem('pins') || {};
-      if (pins[clinic] && pins[clinic].pin !== String(pin)) {
-        return { success: false, error: 'Invalid PIN' };
+      const clinicPin = pins[clinic];
+      
+      // التحقق من وجود PIN للعيادة
+      if (!clinicPin) {
+        return { success: false, error: 'No PIN configured for this clinic' };
+      }
+      
+      // التحقق من تطابق PIN
+      if (clinicPin.pin !== String(pin).padStart(2, '0')) {
+        return { success: false, error: `Invalid PIN for ${clinic}. Expected: ${clinicPin.pin}` };
       }
 
       // Move to served
