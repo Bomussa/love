@@ -146,6 +146,26 @@ class LocalApiService {
 
   async enterQueue(clinic, user, isAutoEntry = false) {
     try {
+      // استخدام Advanced Queue Engine إذا كان متاحاً
+      if (advancedQueueEngine) {
+        const result = await advancedQueueEngine.addToQueue(clinic, user, {
+          addedAt: new Date().toISOString(),
+          isAutoEntry
+        });
+        
+        const position = advancedQueueEngine.getPatientPosition(clinic, user);
+        
+        return {
+          success: true,
+          display_number: result.number,
+          ahead: position?.ahead || 0,
+          total_waiting: position?.totalWaiting || 1,
+          entered_at: result.addedAt,
+          time_left: position?.timeLeft || 300
+        };
+      }
+      
+      // Fallback للنظام القديم
       const queues = this.getItem('queues') || {};
       
       if (!queues[clinic]) {
