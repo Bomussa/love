@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  prod:            # <-- اسم Job مختلف (كان deploy)
+  prod:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy (prebuilt prod)
-        id: vercel_deploy   # <-- مُعرّف فريد (كان deploy)
+        id: vercel_deploy
         run: |
           url=$(vercel deploy --prebuilt --prod --yes --token ${{ secrets.VERCEL_TOKEN }} | tail -n1)
           echo "url=$url" >> $GITHUB_OUTPUT
@@ -45,11 +45,20 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      - name: Compute healthcheck target
+        id: target
+        shell: bash
+        run: |
+          base="${{ secrets.GH_PATH }}"
+          if [ -z "$base" ]; then base="${{ steps.vercel_deploy.outputs.url }}"; fi
+          base=$(printf "%s" "$base" | tr -d '[:space:]')
+          base="${base%/}"
+          echo "url=$base/api/v1/health" >> $GITHUB_OUTPUT
+
       - name: Smoke test /api/v1/health
         run: |
-          TARGET="${{ secrets.GH_PATH }}/api/v1/health"
-          echo "Testing $TARGET"
-          code=$(curl -s -o /tmp/h.txt -w "%{http_code}" "$TARGET")
+          echo "Testing ${{ steps.target.outputs.url }}"
+          code=$(curl -sS -o /tmp/h.txt -w "%{http_code}" "${{ steps.target.outputs.url }}")
           echo "HTTP $code"
           cat /tmp/h.txt || true
           test "$code" = "200"
