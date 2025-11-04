@@ -101,3 +101,136 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "اختبار شامل لنظام إدارة الطوابير الطبية - Comprehensive testing of medical queue management system"
+
+frontend:
+  - task: "Patient Login System"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/LoginPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Initial testing required - Patient login with ID 1234567890 and gender selection"
+
+  - task: "Dynamic Pathways and Exam Selection"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/ExamSelectionPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing exam type selection and pathway navigation"
+
+  - task: "PIN Code System"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/PatientPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing PIN code entry with values 75, 68, 41, 98"
+
+  - task: "Queue Management System"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/core/queue-engine.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing queue display, current number, waiting count, clinic transitions"
+
+  - task: "Admin Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/AdminPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing admin login with credentials admin:BOMUSSA14490 and dashboard functionality"
+
+  - task: "Language Switching"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/lib/i18n.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing Arabic/English language toggle functionality"
+
+  - task: "Theme System"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/EnhancedThemeSelector.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing theme switching and visual changes"
+
+  - task: "SSE Notifications"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.jsx"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Testing Server-Sent Events for queue notifications"
+
+backend:
+  - task: "API Endpoints"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Basic FastAPI server with status endpoints - not main focus for medical queue system"
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Patient Login System"
+    - "Dynamic Pathways and Exam Selection"
+    - "PIN Code System"
+    - "Queue Management System"
+    - "Admin Dashboard"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: "Starting comprehensive testing of medical queue management system. Will test all user scenarios including patient login, exam selection, PIN codes, queue management, admin dashboard, language switching, and themes."
