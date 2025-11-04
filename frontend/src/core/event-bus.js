@@ -187,25 +187,27 @@ function disconnectSSE() {
 
 // الاتصال التلقائي عند تحميل الصفحة
 if (typeof window !== 'undefined') {
-  // الانتظار قليلاً للسماح بتحميل التطبيق
-  setTimeout(() => {
-    connectToSSE();
-  }, 1000);
+  // تعطيل SSE مؤقتاً - الاعتماد على polling فقط
+  // setTimeout(() => {
+  //   connectToSSE();
+  // }, 1000);
 
-  // إعادة الاتصال عند عودة الصفحة من hidden
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !sseConnection) {
-      console.log('[EventBus] Page visible, reconnecting SSE...');
-      connectToSSE();
-    }
-  });
+  // // إعادة الاتصال عند عودة الصفحة من hidden
+  // document.addEventListener('visibilitychange', () => {
+  //   if (!document.hidden && !sseConnection) {
+  //     console.log('[EventBus] Page visible, reconnecting SSE...');
+  //     connectToSSE();
+  //   }
+  // });
 
   // تصدير للاستخدام اليدوي
   window.eventBusSSE = {
     connect: connectToSSE,
     disconnect: disconnectSSE,
-    isConnected: () => sseConnection !== null
+    isConnected: () => false // Always return false when SSE disabled
   };
+  
+  console.log('ℹ️ [EventBus] SSE disabled - using polling fallback');
 }
 
 export { connectToSSE, disconnectSSE };
