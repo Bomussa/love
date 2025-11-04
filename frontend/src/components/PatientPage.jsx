@@ -722,7 +722,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         data-test="enter-clinic-btn"
                       >
                         <LogIn className="icon icon-md me-2" />
-                        {language === 'ar' ? 'دخول العيادة' : 'Enter Clinic'}
+                        {t('enterClinic', language)}
                       </Button>
                     </div>
                   )}
