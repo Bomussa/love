@@ -255,13 +255,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "PIN Code System"
-    - "Queue Management System" 
+    - "UI Integration with Local Storage Mode"
     - "Admin Dashboard"
     - "SSE Notifications"
   stuck_tasks:
-    - "PIN Code System"
-    - "Queue Management System"
+    - "UI Integration with Local Storage Mode"
     - "Admin Dashboard"
     - "SSE Notifications"
   test_all: true
