@@ -1,68 +1,102 @@
-// Unified API Service - Auto-fallback to local storage
+// Unified API Service - Auto-fallback: Supabase -> Local Storage
+import supabaseApi from './supabase-api';
 import localApi from './local-api';
 
 const API_VERSION = '/api/v1';
+const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE === 'true';
 
 class UnifiedApiService {
   constructor() {
-    this.useLocal = false;
-    this.checkBackend();
-  }
-
-  async checkBackend() {
-    try {
-      const response = await fetch(`${window.location.origin}${API_VERSION}/health/status`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (response.ok) {
-        this.useLocal = false;
-        console.log('✅ Backend API is available');
-      } else {
-        this.useLocal = true;
-        console.log('⚠️ Backend API not available, using local storage');
-      }
-    } catch (e) {
-      this.useLocal = true;
-      console.log('⚠️ Backend API not available, using local storage');
+    this.useSupabase = USE_SUPABASE;
+    this.useLocal = !USE_SUPABASE;
+    
+    if (this.useSupabase) {
+      console.log('✅ Using Supabase as primary backend');
+    } else {
+      console.log('⚠️  Using Local Storage as backend');
     }
   }
 
   async request(endpoint, options = {}) {
-    // Always try local first for now (since backend is not working)
-    this.useLocal = true;
-    
-    if (this.useLocal) {
-      // Route to local API
-      return this.routeToLocal(endpoint, options);
-    }
-
-    // Try backend
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      ...options
-    };
-
-    try {
-      const url = `${window.location.origin}${endpoint}`;
-      const response = await fetch(url, config);
-      const text = await response.text();
-      let data;
-      try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
-
-      if (!response.ok) {
-        throw new Error(data?.error || `HTTP ${response.status}`);
+    // Try Supabase first if enabled
+    if (this.useSupabase) {
+      try {
+        return await this.routeToSupabase(endpoint, options);
+      } catch (error) {
+        console.error('❌ Supabase error, falling back to local:', error);
+        return await this.routeToLocal(endpoint, options);
       }
-      return data;
-    } catch (err) {
-      console.error('Backend error, falling back to local:', err);
-      this.useLocal = true;
-      return this.routeToLocal(endpoint, options);
     }
+    
+    // Use local storage
+    return await this.routeToLocal(endpoint, options);
+  }
+
+  async routeToSupabase(endpoint, options) {
+    const method = (options.method || 'GET').toUpperCase();
+    const body = options.body ? JSON.parse(options.body) : null;
+
+    // Patient operations
+    if (endpoint.includes('/patient/login') && method === 'POST') {
+      return await supabaseApi.patientLogin(body.patientId, body.gender);
+    }
+    
+    // Queue operations
+    if (endpoint.includes('/queue/enter') && method === 'POST') {
+      return await supabaseApi.enterQueue(body.clinic, body.user, body.examType, body.gender);
+    }
+    
+    if (endpoint.includes('/queue/status')) {
+      const clinic = new URL(window.location.origin + endpoint).searchParams.get('clinic');
+      return await supabaseApi.getQueueStatus(clinic, body?.user);
+    }
+    
+    if (endpoint.includes('/queue/done') && method === 'POST') {
+      return await supabaseApi.queueDone(body.clinic, body.user, body.pin);
+    }
+    
+    if (endpoint.includes('/queue/call') && method === 'POST') {
+      return await supabaseApi.callNextPatient(body.clinic);
+    }
+    
+    // PIN operations
+    if (endpoint.includes('/pin/status')) {
+      return await supabaseApi.getPinStatus();
+    }
+    
+    // Pathway operations
+    if (endpoint.includes('/path/choose')) {
+      return await supabaseApi.choosePath(body.patientId, body.examType, body.gender);
+    }
+    
+    // Clinic operations
+    if (endpoint.includes('/clinics')) {
+      return await supabaseApi.getClinics();
+    }
+    
+    // Notification operations
+    if (endpoint.includes('/notifications') && method === 'GET') {
+      return await supabaseApi.getNotifications(body?.patientId, body?.unreadOnly);
+    }
+    
+    // Admin operations - fallback to local for now
+    if (endpoint.includes('/admin/status')) {
+      return localApi.getAdminStatus();
+    }
+    
+    if (endpoint.includes('/stats/queues')) {
+      return localApi.getQueues();
+    }
+    
+    if (endpoint.includes('/stats/dashboard')) {
+      return localApi.getDashboardStats();
+    }
+    
+    if (endpoint.includes('/health/status')) {
+      return { success: true, status: 'healthy', backend: 'supabase' };
+    }
+
+    throw new Error('Endpoint not implemented in Supabase');
   }
 
   async routeToLocal(endpoint, options) {
@@ -130,14 +164,29 @@ class UnifiedApiService {
   }
 
   async enterQueue(clinic, user, isAutoEntry = false) {
+    // Get patient data from localStorage for Supabase
+    const patientData = JSON.parse(localStorage.getItem('patient') || '{}');
+    const examType = localStorage.getItem('examType') || 'recruitment';
+    const gender = patientData.gender || 'male';
+    
     return this.request(`${API_VERSION}/queue/enter`, {
       method: 'POST',
-      body: JSON.stringify({ clinic, user, isAutoEntry })
+      body: JSON.stringify({ 
+        clinic, 
+        user, 
+        isAutoEntry,
+        examType,
+        gender
+      })
     });
   }
 
   async getQueueStatus(clinic) {
-    return this.request(`${API_VERSION}/queue/status?clinic=${clinic}`);
+    const patientData = JSON.parse(localStorage.getItem('patient') || '{}');
+    return this.request(`${API_VERSION}/queue/status?clinic=${clinic}`, {
+      method: 'GET',
+      body: JSON.stringify({ user: patientData.id })
+    });
   }
 
   async queueDone(clinic, user, pin) {
@@ -159,9 +208,16 @@ class UnifiedApiService {
   }
 
   async choosePath(gender) {
+    const patientData = JSON.parse(localStorage.getItem('patient') || '{}');
+    const examType = localStorage.getItem('examType') || 'recruitment';
+    
     return this.request(`${API_VERSION}/path/choose`, {
       method: 'POST',
-      body: JSON.stringify({ gender })
+      body: JSON.stringify({ 
+        patientId: patientData.id,
+        examType,
+        gender 
+      })
     });
   }
 
@@ -185,6 +241,20 @@ class UnifiedApiService {
     return this.getAdminStatus();
   }
 
+  async getClinics() {
+    if (this.useSupabase) {
+      return supabaseApi.getClinics();
+    }
+    return localApi.getClinics();
+  }
+
+  async getNotifications(patientId, unreadOnly = false) {
+    if (this.useSupabase) {
+      return supabaseApi.getNotifications(patientId, unreadOnly);
+    }
+    return { success: true, notifications: [] };
+  }
+
   // ==========================================
   // Compatibility Methods
   // ==========================================
@@ -199,10 +269,6 @@ class UnifiedApiService {
 
   async selectExam(patientId, examType) {
     return { success: true, patientId, examType, status: 'selected' };
-  }
-
-  async getClinics() {
-    return localApi.getClinics();
   }
 
   async getActiveQueue() {
@@ -273,9 +339,9 @@ class UnifiedApiService {
     if (queueStatus.success) {
       return {
         success: true,
-        display_number: queueStatus.your_number || queueStatus.number || 1,
+        display_number: queueStatus.yourNumber || queueStatus.number || 1,
         ahead: queueStatus.ahead || 0,
-        total_waiting: queueStatus.total_waiting || 1,
+        total_waiting: queueStatus.waiting || 1,
         entered_at: new Date().toISOString()
       };
     }
@@ -314,4 +380,4 @@ const api = new UnifiedApiService();
 export default api;
 export { api };
 
-// Force rebuild Mon Oct 20 15:31:28 EDT 2025
+// Updated with Supabase support - Nov 5, 2025
