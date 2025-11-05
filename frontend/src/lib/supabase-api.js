@@ -51,7 +51,7 @@ export const supabaseApi = {
 
         return {
           success: true,
-          patient: data,
+          data: data,
           message: 'تم تسجيل الدخول بنجاح'
         }
       } else {
@@ -66,7 +66,7 @@ export const supabaseApi = {
 
         return {
           success: true,
-          patient: data,
+          data: data,
           message: 'تم إنشاء حساب جديد بنجاح'
         }
       }
