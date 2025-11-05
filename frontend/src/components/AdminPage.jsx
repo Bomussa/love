@@ -34,7 +34,6 @@ import eventBus from '../core/event-bus'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import authService from '../lib/auth-service'
-import { AdminLoginPage } from './admin/AdminLoginPage'
 import { AdvancedDashboard } from './admin/AdvancedDashboard'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange }) {
@@ -73,9 +72,23 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     if (onLogout) onLogout()
   }
 
-  // إذا لم يكن مسجل دخول، اعرض صفحة تسجيل الدخول
+  // إذا لم يكن مسجل دخول، أعد التوجيه للصفحة الرئيسية
   if (!isAuthenticated) {
-    return <AdminLoginPage onLogin={handleLogin} language={language} />
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {language === 'ar' ? 'يرجى تسجيل الدخول من الصفحة الرئيسية' : 'Please login from the main page'}
+          </h2>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"
+          >
+            {language === 'ar' ? 'العودة للصفحة الرئيسية' : 'Go to Main Page'}
+          </button>
+        </div>
+      </div>
+    )
   }
   
   useEffect(() => {
