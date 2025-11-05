@@ -36,23 +36,23 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/$1"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },
     {
       "source": "/api/(.*)",
-      "destination": "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/$1"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/$1"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },
     {
       "source": "/login",
-      "destination": "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/login"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/login"
     },
     {
       "source": "/signin",
-      "destination": "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/login"
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/login"
     },
     {
       "source": "/healthz",
