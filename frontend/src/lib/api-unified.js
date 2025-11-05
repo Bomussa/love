@@ -37,7 +37,7 @@ class UnifiedApiService {
     const body = options.body ? JSON.parse(options.body) : null;
 
     // Patient operations
-    if (endpoint.includes('/patient/login') && method === 'POST') {
+    if ((endpoint.includes('/patient/login') || endpoint.includes('/patients/login')) && method === 'POST') {
       return await supabaseApi.patientLogin(body.patientId, body.gender);
     }
     
@@ -104,7 +104,7 @@ class UnifiedApiService {
     const body = options.body ? JSON.parse(options.body) : null;
 
     // Route to appropriate local API method
-    if (endpoint.includes('/patient/login') && method === 'POST') {
+    if ((endpoint.includes('/patient/login') || endpoint.includes('/patients/login')) && method === 'POST') {
       return localApi.patientLogin(body.patientId, body.gender);
     }
     
