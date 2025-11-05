@@ -681,34 +681,33 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   </div>
                   
-                  {station.isEntered && (
-                    <>
-                      {/* عرض العد التنازلي */}
-                      {station.entered_at && (
-                        <div className="mt-3">
-                          <CountdownTimer
-                            enteredAt={station.entered_at}
-                            maxSeconds={240}
-                            show={true}
-                            language={language}
-                            onTimeout={() => {
-                              console.log('Timeout for station:', station.id)
-                            }}
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-300">
-                            🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
-                          </span>
-                          <span className="text-blue-400 font-bold">
-                            {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
-                          </span>
-                        </div>
+                  {/* عرض العد التنازلي قبل الدخول */}
+                  {station.status === 'ready' && !station.isEntered && station.entered_at && (
+                    <div className="mt-3">
+                      <CountdownTimer
+                        enteredAt={station.entered_at}
+                        maxSeconds={240}
+                        show={true}
+                        language={language}
+                        onTimeout={() => {
+                          console.log('Countdown timeout for station:', station.id)
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* عرض الوقت المتوقع قبل الدخول */}
+                  {station.status === 'ready' && !station.isEntered && (
+                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">
+                          🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
+                        </span>
+                        <span className="text-blue-400 font-bold">
+                          {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                        </span>
                       </div>
-                    </>
+                    </div>
                   )}
 
                   {station.status === 'ready' && !station.isEntered && (
