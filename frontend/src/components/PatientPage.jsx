@@ -5,6 +5,7 @@ import { Button } from './Button'
 import { Input } from './Input'
 import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
+import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
@@ -705,7 +706,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
                           </span>
                           <span className="text-blue-400 font-bold">
-                            {station.ahead ? `~${station.ahead * 5} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                            {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
                           </span>
                         </div>
                       </div>
