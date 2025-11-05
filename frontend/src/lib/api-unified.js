@@ -3,7 +3,7 @@ import supabaseApi from './supabase-api';
 import localApi from './local-api';
 
 const API_VERSION = '/api/v1';
-const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE === 'true';
+const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE !== 'false'; // Default to true
 
 class UnifiedApiService {
   constructor() {
