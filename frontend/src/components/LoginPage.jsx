@@ -6,6 +6,7 @@ import { User, Globe, Shield, QrCode } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { QRScanner } from './QRScanner'
+import featuresConfig from '../../config/features.json'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -167,14 +168,16 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                     <label className="block text-sm font-medium text-gray-300">
                       {t('personalNumber', language)}
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowQRScanner(true)}
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      <QrCode className="w-4 h-4" />
-                      {language === 'ar' ? 'مسح الباركود' : 'Scan QR'}
-                    </button>
+                    {featuresConfig?.features?.qr_enabled && (
+                      <button
+                        type="button"
+                        onClick={() => setShowQRScanner(true)}
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        <QrCode className="w-4 h-4" />
+                        {language === 'ar' ? 'مسح الباركود' : 'Scan QR'}
+                      </button>
+                    )}
                   </div>
                   <Input
                     type="text"
