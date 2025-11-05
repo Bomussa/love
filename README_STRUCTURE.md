@@ -434,12 +434,31 @@ git push origin main
 
 **الملفات المعدلة (اليوم):**
 - `frontend/src/components/PatientPage.jsx` - إصلاح منطق الدخول
-- `vercel.json` - إصلاح إعدادات البناء
+- `vercel.json` - إصلاح إعدادات البناء + تحديث الباك إند
 - `frontend/src/components/LoginPage.jsx` - إخفاء QR
 - `frontend/src/lib/eta.js` - حساب ETA
 - `frontend/config/features.json` - إعدادات الميزات
 - `tests/unit/eta.test.js` - اختبارات
 - `README_STRUCTURE.md` - توثيق شامل
+
+---
+
+## 🔗 معلومات الباك إند
+
+**Backend URL:** `https://yeyntvrpwkcbihvbaemm.supabase.co`
+
+**النوع:** Supabase Edge Functions
+
+**Endpoints:**
+- `/functions/v1/login` - تسجيل الدخول
+- `/functions/v1/queue/*` - إدارة الدور
+- `/functions/v1/clinic/*` - إدارة العيادات
+- `/functions/v1/healthz` - فحص الصحة
+
+**التوجيه في Vercel:**
+```json
+"/api/v1/*" → "https://yeyntvrpwkcbihvbaemm.supabase.co/functions/v1/*"
+```
 
 ---
 
