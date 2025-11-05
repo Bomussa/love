@@ -26,31 +26,29 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
 
-  // دخول تلقائي للعيادة الأولى
-  const handleAutoEnterFirstClinic = async (station) => {
+  // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
+  const handleGetTicketForFirstClinic = async (station) => {
     try {
-      // دخول الدور
-      await api.enterQueue(station.id, patientData.id, true)
+      // فقط أخذ رقم دور (بدون دخول)
+      await api.enterQueue(station.id, patientData.id, false) // false = لا تدخل تلقائياً
       
-      // جلب الموقع الفعلي من Backend
+      // جلب الرقم فقط
       const positionData = await api.getQueuePosition(station.id, patientData.id)
       
       if (positionData && positionData.success) {
-        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
+        // حفظ الرقم فقط بدون تفعيل isEntered
         setStations(prev => prev.map((s, idx) => idx === 0 ? {
           ...s,
           yourNumber: positionData.display_number,
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
-          isEntered: true,
-          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
+          isEntered: false, // ✅ لم يدخل بعد - يحتاج للضغط على زر "دخول العيادة"
         } : s))
       }
     } catch (e) {
-      console.error('Auto-enter first clinic failed:', e)
-      // في حالة الفشل، لا نعطي أي رقم افتراضي
-      console.error('Cannot enter clinic without backend connection')
+      console.error('Get ticket for first clinic failed:', e)
+      // في حالة الفشل، العيادة تبقى جاهزة بدون رقم
     }
   }
 
@@ -160,10 +158,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         setStations(initialStations)
         
-        // ✅ إلغاء الدخول التلقائي - المريض يدخل يدوياً عبر زر "دخول العيادة"
-        // إشعار الطابق عند البداية
+        // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
         if (examStations.length > 0) {
           const firstClinic = examStations[0]
+          await handleGetTicketForFirstClinic(firstClinic)
+          
+          // إشعار الطابق
           if (firstClinic.floor) {
             setCurrentNotice({
               type: 'floor_guide',
