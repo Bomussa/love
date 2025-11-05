@@ -160,12 +160,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         setStations(initialStations)
         
-        // دخول تلقائي للعيادة الأولى
+        // ✅ إلغاء الدخول التلقائي - المريض يدخل يدوياً عبر زر "دخول العيادة"
+        // إشعار الطابق عند البداية
         if (examStations.length > 0) {
           const firstClinic = examStations[0]
-          await handleAutoEnterFirstClinic(firstClinic)
-          
-          // إشعار الطابق عند البداية
           if (firstClinic.floor) {
             setCurrentNotice({
               type: 'floor_guide',
