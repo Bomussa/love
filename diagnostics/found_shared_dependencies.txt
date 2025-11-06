@@ -1,0 +1,4 @@
+manus-testing/cloudflare-backup/functions/_shared/activity-logger.js
+manus-testing/cloudflare-backup/functions/_shared/db-validator.js
+manus-testing/cloudflare-backup/functions/_shared/utils.js
+manus-testing/cloudflare-backup/functions/_shared/weights.js

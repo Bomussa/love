@@ -1,0 +1,408 @@
+{
+  "timestamp": "2025-10-25T18:34:12.100Z",
+  "summary": {
+    "total_endpoints": 44,
+    "current_endpoints": 21,
+    "backup_endpoints": 37,
+    "missing_in_current": 23,
+    "new_in_current": 7,
+    "duplicates": 0,
+    "frontend_files": 67,
+    "backend_logic_in_frontend": 0,
+    "migration": {
+      "fully_migrated": 0,
+      "partially_migrated": 0,
+      "needs_migration": 32,
+      "no_storage": 12
+    }
+  },
+  "missing_files": [
+    "admin/clinic-stats.js",
+    "admin/edit-patient.js",
+    "admin/export-report.js",
+    "admin/live-feed.js",
+    "admin/regenerate-pins.js",
+    "admin/set-call-interval.js",
+    "admin/system-settings.js",
+    "admin/system-settings/reset.js",
+    "cron/auto-call-next.js",
+    "cron/daily-report.js",
+    "cron/daily-reset.js",
+    "cron/notify-poller.js",
+    "cron/timeout-handler.js",
+    "health/status.js",
+    "notify/status.js",
+    "patient/my-position.js",
+    "patient/record.js",
+    "patient/status.js",
+    "patient/verify-pin.js",
+    "pin/assign.js",
+    "pin/reset.js",
+    "queue/enter-updated.js",
+    "queue/position.js"
+  ],
+  "new_files": [
+    "clinic/exit.js",
+    "pin/verify.js",
+    "reports/annual.js",
+    "reports/daily.js",
+    "reports/monthly.js",
+    "reports/weekly.js",
+    "status.js"
+  ],
+  "duplicates": [],
+  "all_endpoints": [
+    {
+      "path": "admin/clinic-stats.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/edit-patient.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/export-report.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/live-feed.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/regenerate-pins.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/set-call-interval.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "admin/status.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings/reset.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "clinic/exit.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/auto-call-next.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/daily-report.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/daily-reset.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/notify-poller.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/timeout-handler.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 6,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "events/stream.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "health/status.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "notify/status.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "path/choose.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/login.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/my-position.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/record.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/status.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/verify-pin.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/assign.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/generate.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/reset.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/status.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/verify.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/call.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/done.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter-updated.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/position.js",
+      "inCurrent": false,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "queue/status.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "reports/annual.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/daily.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/monthly.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/weekly.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "route/create.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "route/get.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "stats/dashboard.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "stats/queues.js",
+      "inCurrent": true,
+      "inBackup": true,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "status.js",
+      "inCurrent": true,
+      "inBackup": false,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    }
+  ]
+}

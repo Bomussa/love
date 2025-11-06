@@ -39,10 +39,10 @@
     "react-hot-toast": "^2.4.1",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "@supabase/supabase-js": "^2.76.1"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.76.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.8.1",

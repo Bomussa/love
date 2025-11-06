@@ -1,6 +1,7 @@
 import { createEnv } from '../../lib/storage.js';
 
 export default async function handler(req, res) {
+  try {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -42,3 +43,8 @@ export default async function handler(req, res) {
   }
 }
 
+
+  } catch (error) {
+    console.error('Error in api/v1/route/get.js:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }

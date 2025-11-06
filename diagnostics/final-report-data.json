@@ -1,0 +1,808 @@
+{
+  "timestamp": "2025-10-25T18:42:27.616Z",
+  "summary": {
+    "total": 44,
+    "needs_migration": 32,
+    "migrated": 0,
+    "no_storage": 12
+  },
+  "endpoints": [
+    {
+      "path": "admin/clinic-stats.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/clinic-stats.js",
+      "size": 2592,
+      "lines": 93,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/edit-patient.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/edit-patient.js",
+      "size": 6265,
+      "lines": 223,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/export-report.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/export-report.js",
+      "size": 5109,
+      "lines": 175,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/live-feed.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/live-feed.js",
+      "size": 2257,
+      "lines": 78,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/regenerate-pins.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/regenerate-pins.js",
+      "size": 3506,
+      "lines": 143,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/set-call-interval.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/set-call-interval.js",
+      "size": 1607,
+      "lines": 59,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "admin/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/status.js",
+      "size": 1900,
+      "lines": 74,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings.js",
+      "size": 5700,
+      "lines": 180,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings/reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings/reset.js",
+      "size": 2458,
+      "lines": 69,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "clinic/exit.js",
+      "fullPath": "/home/ubuntu/love/api/v1/clinic/exit.js",
+      "size": 1538,
+      "lines": 58,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/auto-call-next.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/auto-call-next.js",
+      "size": 1570,
+      "lines": 64,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/daily-report.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/daily-report.js",
+      "size": 4317,
+      "lines": 147,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/daily-reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/daily-reset.js",
+      "size": 3229,
+      "lines": 115,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/notify-poller.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/notify-poller.js",
+      "size": 3621,
+      "lines": 130,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/timeout-handler.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/timeout-handler.js",
+      "size": 7835,
+      "lines": 239,
+      "kvCalls": 6,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "events/stream.js",
+      "fullPath": "/home/ubuntu/love/api/v1/events/stream.js",
+      "size": 3690,
+      "lines": 112,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "health/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/health/status.js",
+      "size": 2097,
+      "lines": 84,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "notify/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/notify/status.js",
+      "size": 1926,
+      "lines": 69,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "path/choose.js",
+      "fullPath": "/home/ubuntu/love/api/v1/path/choose.js",
+      "size": 3358,
+      "lines": 128,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/login.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/login.js",
+      "size": 1987,
+      "lines": 84,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/my-position.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/my-position.js",
+      "size": 2750,
+      "lines": 104,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/record.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/record.js",
+      "size": 2317,
+      "lines": 88,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/status.js",
+      "size": 4241,
+      "lines": 145,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/verify-pin.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/verify-pin.js",
+      "size": 10414,
+      "lines": 320,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/assign.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/assign.js",
+      "size": 5928,
+      "lines": 219,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/generate.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/generate.js",
+      "size": 1478,
+      "lines": 61,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/reset.js",
+      "size": 3059,
+      "lines": 121,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/status.js",
+      "size": 1654,
+      "lines": 70,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/verify.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/verify.js",
+      "size": 1900,
+      "lines": 83,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/call.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/call.js",
+      "size": 2351,
+      "lines": 97,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/done.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/done.js",
+      "size": 2960,
+      "lines": 115,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter-updated.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/enter-updated.js",
+      "size": 6075,
+      "lines": 211,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/enter.js",
+      "size": 3123,
+      "lines": 122,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/position.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/position.js",
+      "size": 5599,
+      "lines": 165,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "queue/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/status.js",
+      "size": 1463,
+      "lines": 63,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "reports/annual.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/annual.js",
+      "size": 794,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/daily.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/daily.js",
+      "size": 763,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/monthly.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/monthly.js",
+      "size": 858,
+      "lines": 32,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/weekly.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/weekly.js",
+      "size": 765,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "route/create.js",
+      "fullPath": "/home/ubuntu/love/api/v1/route/create.js",
+      "size": 1249,
+      "lines": 47,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "route/get.js",
+      "fullPath": "/home/ubuntu/love/api/v1/route/get.js",
+      "size": 1090,
+      "lines": 45,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "stats/dashboard.js",
+      "fullPath": "/home/ubuntu/love/api/v1/stats/dashboard.js",
+      "size": 764,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "stats/queues.js",
+      "fullPath": "/home/ubuntu/love/api/v1/stats/queues.js",
+      "size": 766,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/status.js",
+      "size": 1220,
+      "lines": 54,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    }
+  ],
+  "needs_migration_list": [
+    {
+      "path": "admin/clinic-stats.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/clinic-stats.js",
+      "size": 2592,
+      "lines": 93,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/edit-patient.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/edit-patient.js",
+      "size": 6265,
+      "lines": 223,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/export-report.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/export-report.js",
+      "size": 5109,
+      "lines": 175,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/live-feed.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/live-feed.js",
+      "size": 2257,
+      "lines": 78,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/regenerate-pins.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/regenerate-pins.js",
+      "size": 3506,
+      "lines": 143,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/status.js",
+      "size": 1900,
+      "lines": 74,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings.js",
+      "size": 5700,
+      "lines": 180,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "admin/system-settings/reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings/reset.js",
+      "size": 2458,
+      "lines": 69,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "clinic/exit.js",
+      "fullPath": "/home/ubuntu/love/api/v1/clinic/exit.js",
+      "size": 1538,
+      "lines": 58,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/daily-reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/daily-reset.js",
+      "size": 3229,
+      "lines": 115,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/notify-poller.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/notify-poller.js",
+      "size": 3621,
+      "lines": 130,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "cron/timeout-handler.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/timeout-handler.js",
+      "size": 7835,
+      "lines": 239,
+      "kvCalls": 6,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "events/stream.js",
+      "fullPath": "/home/ubuntu/love/api/v1/events/stream.js",
+      "size": 3690,
+      "lines": 112,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "notify/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/notify/status.js",
+      "size": 1926,
+      "lines": 69,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "path/choose.js",
+      "fullPath": "/home/ubuntu/love/api/v1/path/choose.js",
+      "size": 3358,
+      "lines": 128,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/login.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/login.js",
+      "size": 1987,
+      "lines": 84,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/my-position.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/my-position.js",
+      "size": 2750,
+      "lines": 104,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/record.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/record.js",
+      "size": 2317,
+      "lines": 88,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/status.js",
+      "size": 4241,
+      "lines": 145,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "patient/verify-pin.js",
+      "fullPath": "/home/ubuntu/love/api/v1/patient/verify-pin.js",
+      "size": 10414,
+      "lines": 320,
+      "kvCalls": 12,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/assign.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/assign.js",
+      "size": 5928,
+      "lines": 219,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/generate.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/generate.js",
+      "size": 1478,
+      "lines": 61,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/reset.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/reset.js",
+      "size": 3059,
+      "lines": 121,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/status.js",
+      "size": 1654,
+      "lines": 70,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "pin/verify.js",
+      "fullPath": "/home/ubuntu/love/api/v1/pin/verify.js",
+      "size": 1900,
+      "lines": 83,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/call.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/call.js",
+      "size": 2351,
+      "lines": 97,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/done.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/done.js",
+      "size": 2960,
+      "lines": 115,
+      "kvCalls": 5,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter-updated.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/enter-updated.js",
+      "size": 6075,
+      "lines": 211,
+      "kvCalls": 4,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/enter.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/enter.js",
+      "size": 3123,
+      "lines": 122,
+      "kvCalls": 3,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "queue/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/status.js",
+      "size": 1463,
+      "lines": 63,
+      "kvCalls": 2,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "route/create.js",
+      "fullPath": "/home/ubuntu/love/api/v1/route/create.js",
+      "size": 1249,
+      "lines": 47,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    },
+    {
+      "path": "route/get.js",
+      "fullPath": "/home/ubuntu/love/api/v1/route/get.js",
+      "size": 1090,
+      "lines": 45,
+      "kvCalls": 1,
+      "supabaseCalls": 0,
+      "status": "needs_migration"
+    }
+  ],
+  "migrated_list": [],
+  "no_storage_list": [
+    {
+      "path": "admin/set-call-interval.js",
+      "fullPath": "/home/ubuntu/love/api/v1/admin/set-call-interval.js",
+      "size": 1607,
+      "lines": 59,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/auto-call-next.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/auto-call-next.js",
+      "size": 1570,
+      "lines": 64,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "cron/daily-report.js",
+      "fullPath": "/home/ubuntu/love/api/v1/cron/daily-report.js",
+      "size": 4317,
+      "lines": 147,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "health/status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/health/status.js",
+      "size": 2097,
+      "lines": 84,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "queue/position.js",
+      "fullPath": "/home/ubuntu/love/api/v1/queue/position.js",
+      "size": 5599,
+      "lines": 165,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/annual.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/annual.js",
+      "size": 794,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/daily.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/daily.js",
+      "size": 763,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/monthly.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/monthly.js",
+      "size": 858,
+      "lines": 32,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "reports/weekly.js",
+      "fullPath": "/home/ubuntu/love/api/v1/reports/weekly.js",
+      "size": 765,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "stats/dashboard.js",
+      "fullPath": "/home/ubuntu/love/api/v1/stats/dashboard.js",
+      "size": 764,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "stats/queues.js",
+      "fullPath": "/home/ubuntu/love/api/v1/stats/queues.js",
+      "size": 766,
+      "lines": 29,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    },
+    {
+      "path": "status.js",
+      "fullPath": "/home/ubuntu/love/api/v1/status.js",
+      "size": 1220,
+      "lines": 54,
+      "kvCalls": 0,
+      "supabaseCalls": 0,
+      "status": "no_storage"
+    }
+  ]
+}

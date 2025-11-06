@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-10-25T18:35:00.369Z",
+  "checks": {
+    "passed": [
+      {
+        "name": "Supabase Client (Source)",
+        "message": "ملف functions/lib/supabase.js موجود"
+      },
+      {
+        "name": "package.json",
+        "message": "ملف package.json موجود"
+      },
+      {
+        "name": "vercel.json",
+        "message": "ملف vercel.json موجود"
+      },
+      {
+        "name": "Frontend نظيف",
+        "message": "Frontend نظيف - لا يحتوي على منطق Backend"
+      }
+    ],
+    "failed": [
+      {
+        "name": "Supabase Client (Target)",
+        "message": "ملف api/lib/supabase.js غير موجود - يجب نسخه"
+      },
+      {
+        "name": "Supabase Dependency",
+        "message": "مكتبة @supabase/supabase-js غير موجودة في dependencies"
+      },
+      {
+        "name": "Endpoints الناقصة",
+        "message": "يوجد 23 endpoint ناقصة في Current"
+      },
+      {
+        "name": "الترحيل الكامل",
+        "message": "يوجد 32 endpoint تحتاج ترحيل من KV إلى Supabase"
+      }
+    ],
+    "warnings": [
+      {
+        "name": "Environment Variables",
+        "message": "يجب التأكد من إضافة SUPABASE_URL و SUPABASE_ANON_KEY في Vercel"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step": 1,
+      "title": "نسخ 23 endpoint مفقودة",
+      "command": "bash safe-copy-missing-files.sh",
+      "description": "نسخ الملفات المفقودة من Backup إلى Current"
+    },
+    {
+      "step": 2,
+      "title": "نسخ Supabase Client",
+      "command": "mkdir -p api/lib && cp functions/lib/supabase.js api/lib/supabase.js",
+      "description": "نسخ ملف Supabase Client إلى مجلد api/lib"
+    },
+    {
+      "step": 3,
+      "title": "ترحيل 32 endpoint",
+      "command": "يدوي - يتطلب تعديل كل ملف",
+      "description": "ترحيل جميع الـ endpoints من KV إلى Supabase"
+    },
+    {
+      "step": 4,
+      "title": "إضافة Environment Variables في Vercel",
+      "command": "يدوي - عبر Vercel Dashboard",
+      "description": "إضافة SUPABASE_URL و SUPABASE_ANON_KEY"
+    },
+    {
+      "step": 5,
+      "title": "النشر على Vercel",
+      "command": "git push origin main",
+      "description": "رفع التغييرات ونشر التطبيق"
+    }
+  ],
+  "summary": {
+    "total_endpoints": 44,
+    "current_endpoints": 21,
+    "missing_endpoints": 23,
+    "needs_migration": 32,
+    "fully_migrated": 0,
+    "ready_to_deploy": false
+  }
+}

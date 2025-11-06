@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-10-25T18:21:48.507Z",
+  "checkpoint": "2.2",
+  "total_unique_names": 37,
+  "conflicts_count": 2,
+  "conflicts": [
+    {
+      "filename": "status.js",
+      "count": 7,
+      "locations": [
+        {
+          "path": "status.js",
+          "source": "current"
+        },
+        {
+          "path": "admin/status.js",
+          "source": "current"
+        },
+        {
+          "path": "pin/status.js",
+          "source": "current"
+        },
+        {
+          "path": "queue/status.js",
+          "source": "current"
+        },
+        {
+          "path": "health/status.js",
+          "source": "missing"
+        },
+        {
+          "path": "notify/status.js",
+          "source": "missing"
+        },
+        {
+          "path": "patient/status.js",
+          "source": "missing"
+        }
+      ]
+    },
+    {
+      "filename": "reset.js",
+      "count": 2,
+      "locations": [
+        {
+          "path": "admin/system-settings/reset.js",
+          "source": "missing"
+        },
+        {
+          "path": "pin/reset.js",
+          "source": "missing"
+        }
+      ]
+    }
+  ]
+}

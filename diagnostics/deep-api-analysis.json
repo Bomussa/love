@@ -1,0 +1,2906 @@
+[
+  {
+    "index": 1,
+    "path": "admin/clinic-stats.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/clinic-stats.js",
+    "size": 2592,
+    "lines": 93,
+    "kvCalls": {
+      "get": 2,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'",
+        "import { getClinicStats } from '../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const url =",
+        "const clinic =",
+        "const clinics =",
+        "const allStats =",
+        "const stats =",
+        "const stats =",
+        "const listKey =",
+        "const queueList =",
+        "const today =",
+        "const todayStatsKey =",
+        "const todayStats =",
+        "function onRequestOptions("
+      ],
+      "count": 13
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 2,
+    "path": "admin/edit-patient.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/edit-patient.js",
+    "size": 6265,
+    "lines": 223,
+    "kvCalls": {
+      "get": 5,
+      "put": 6,
+      "delete": 1,
+      "list": 0,
+      "total": 12
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const body =",
+        "let result =",
+        "const pathKey =",
+        "const userKey =",
+        "const userEntry =",
+        "const counterKey =",
+        "const counters =",
+        "const queueKey =",
+        "const entry =",
+        "const clinicCounterKey =",
+        "const clinicCounters =",
+        "const currentPathKey =",
+        "let currentPath =",
+        "const logEvent =",
+        "function onRequestOptions("
+      ],
+      "count": 16
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 3,
+    "path": "admin/export-report.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/export-report.js",
+    "size": 5109,
+    "lines": 175,
+    "kvCalls": {
+      "get": 4,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 4
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "const CLINICS =",
+        "function onRequest(",
+        "const url =",
+        "const type =",
+        "const date =",
+        "const format =",
+        "let report =",
+        "let totalEntered =",
+        "let totalCompleted =",
+        "let totalDuration =",
+        "const statsKey =",
+        "const stats =",
+        "const statsKey =",
+        "const stats =",
+        "const globalStatsKey =",
+        "const globalStats =",
+        "const counterKey =",
+        "const counters =",
+        "let csv =",
+        "function onRequestOptions("
+      ],
+      "count": 20
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 4,
+    "path": "admin/live-feed.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/live-feed.js",
+    "size": 2257,
+    "lines": 78,
+    "kvCalls": {
+      "get": 1,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'",
+        "import { getActivityFeed, getGlobalStats } from '../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const url =",
+        "const limit =",
+        "const activities =",
+        "const stats =",
+        "const clinics =",
+        "const queuesStatus =",
+        "const listKey =",
+        "const queueList =",
+        "function onRequestOptions("
+      ],
+      "count": 10
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 5,
+    "path": "admin/regenerate-pins.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/regenerate-pins.js",
+    "size": 3506,
+    "lines": 143,
+    "kvCalls": {
+      "get": 0,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "const CLINICS =",
+        "function generatePin(",
+        "const pin =",
+        "function generateDailyPins(",
+        "const pins =",
+        "const used =",
+        "let attempts =",
+        "const maxAttempts =",
+        "const pinValues =",
+        "const uniquePins =",
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const body =",
+        "const kv =",
+        "const today =",
+        "const key =",
+        "const oldPins =",
+        "const newPins =",
+        "const tomorrow =",
+        "const expirationTtl =",
+        "const event =",
+        "function onRequestOptions("
+      ],
+      "count": 24
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 6,
+    "path": "admin/set-call-interval.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/set-call-interval.js",
+    "size": 1607,
+    "lines": 59,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const body =",
+        "const validationError =",
+        "const kvError =",
+        "const kv =",
+        "const intervalKey =",
+        "function onRequestOptions("
+      ],
+      "count": 7
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 7,
+    "path": "admin/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/status.js",
+    "size": 1900,
+    "lines": 74,
+    "kvCalls": {
+      "get": 3,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 3
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { getValidClinics } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const today =",
+        "const validClinics =",
+        "const clinicsData =",
+        "const pinKey =",
+        "const pinData =",
+        "const queueKey =",
+        "const queueData =",
+        "const statusKey =",
+        "const status ="
+      ],
+      "count": 11
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 8,
+    "path": "admin/system-settings.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings.js",
+    "size": 5700,
+    "lines": 180,
+    "kvCalls": {
+      "get": 1,
+      "put": 2,
+      "delete": 0,
+      "list": 0,
+      "total": 3
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js'",
+        "import { logActivity } from '../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "const DEFAULT_SETTINGS =",
+        "function onRequestGet(",
+        "const kvError =",
+        "let settings =",
+        "function onRequestPost(",
+        "const body =",
+        "const kvError =",
+        "const validatedSettings =",
+        "function validateSettings(",
+        "const validated =",
+        "const booleanFields =",
+        "function onRequestOptions("
+      ],
+      "count": 12
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 9,
+    "path": "admin/system-settings/reset.js",
+    "fullPath": "/home/ubuntu/love/api/v1/admin/system-settings/reset.js",
+    "size": 2458,
+    "lines": 69,
+    "kvCalls": {
+      "get": 0,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, checkKVAvailability } from '../../../../_shared/utils.js'",
+        "import { logActivity } from '../../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "const DEFAULT_SETTINGS =",
+        "function onRequestPost(",
+        "const kvError =",
+        "function onRequestOptions("
+      ],
+      "count": 4
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 10,
+    "path": "clinic/exit.js",
+    "fullPath": "/home/ubuntu/love/api/v1/clinic/exit.js",
+    "size": 1538,
+    "lines": 58,
+    "kvCalls": {
+      "get": 1,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { updateClinicStatus, getNextClinic } from '../../lib/routing.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const route =",
+        "const updatedRoute =",
+        "const nextClinic ="
+      ],
+      "count": 5
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 11,
+    "path": "cron/auto-call-next.js",
+    "fullPath": "/home/ubuntu/love/api/v1/cron/auto-call-next.js",
+    "size": 1570,
+    "lines": 64,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": true,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'",
+        "import { getSupabaseClient, callNextPatient, createNotification } from '../../../lib/supabase.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const body =",
+        "const supabase =",
+        "const nextPatient ="
+      ],
+      "count": 4
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 12,
+    "path": "cron/daily-report.js",
+    "fullPath": "/home/ubuntu/love/api/v1/cron/daily-report.js",
+    "size": 4317,
+    "lines": 147,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": true,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'",
+        "import { getSupabaseClient } from '../../../lib/supabase.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const supabase =",
+        "const today =",
+        "const report =",
+        "let totalWaitTime =",
+        "let totalServiceTime =",
+        "let totalPatients =",
+        "const served =",
+        "const waiting =",
+        "const cancelled =",
+        "let clinicWaitTime =",
+        "let clinicServiceTime =",
+        "const wait =",
+        "const service =",
+        "const clinicReport ="
+      ],
+      "count": 18
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 13,
+    "path": "cron/daily-reset.js",
+    "fullPath": "/home/ubuntu/love/api/v1/cron/daily-reset.js",
+    "size": 3229,
+    "lines": 115,
+    "kvCalls": {
+      "get": 0,
+      "put": 2,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const today =",
+        "const results =",
+        "const clinicsConfig =",
+        "const pinKey =",
+        "const pinData =",
+        "const eventKey =",
+        "function onRequestOptions("
+      ],
+      "count": 11
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 14,
+    "path": "cron/notify-poller.js",
+    "fullPath": "/home/ubuntu/love/api/v1/cron/notify-poller.js",
+    "size": 3621,
+    "lines": 130,
+    "kvCalls": {
+      "get": 1,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const today =",
+        "const notifyUrl =",
+        "const clinicsConfig =",
+        "const notifications =",
+        "const queueKey =",
+        "let queueData =",
+        "const inService =",
+        "const waiting =",
+        "const nextPatients =",
+        "let updated =",
+        "function onRequestOptions("
+      ],
+      "count": 15
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 15,
+    "path": "cron/timeout-handler.js",
+    "fullPath": "/home/ubuntu/love/api/v1/cron/timeout-handler.js",
+    "size": 7835,
+    "lines": 239,
+    "kvCalls": {
+      "get": 3,
+      "put": 3,
+      "delete": 0,
+      "list": 0,
+      "total": 6
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, checkKVAvailability } from '../../../_shared/utils.js'",
+        "import { logActivity } from '../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const kvError =",
+        "let settings =",
+        "const today =",
+        "const now =",
+        "const nowISO =",
+        "const maxWaitSeconds =",
+        "const clinicsConfig =",
+        "const results =",
+        "let totalTimedOut =",
+        "const clinicId =",
+        "const listKey =",
+        "let queueList =",
+        "const timedOutPatients =",
+        "let modified =",
+        "const enteredAt =",
+        "const elapsedSeconds =",
+        "const userKey =",
+        "const userData =",
+        "const activePatients =",
+        "const timeoutPatients =",
+        "const reorderedQueue =",
+        "const eventKey =",
+        "function onRequestOptions("
+      ],
+      "count": 27
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 16,
+    "path": "events/stream.js",
+    "fullPath": "/home/ubuntu/love/api/v1/events/stream.js",
+    "size": 3690,
+    "lines": 112,
+    "kvCalls": {
+      "get": 4,
+      "put": 0,
+      "delete": 0,
+      "list": 1,
+      "total": 5
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const intervalId =",
+        "const userQueues =",
+        "const userData =",
+        "const queueKey =",
+        "const queueData =",
+        "const userIndex =",
+        "const position =",
+        "const notification =",
+        "const queueKey =",
+        "const queueData =",
+        "const statusKey =",
+        "const status =",
+        "const update ="
+      ],
+      "count": 15
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 17,
+    "path": "health/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/health/status.js",
+    "size": 2097,
+    "lines": 84,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": false,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [],
+      "count": 0
+    },
+    "functions": {
+      "list": [
+        "function onRequestGet(",
+        "const kvBound =",
+        "const r2Bound =",
+        "const doBound =",
+        "const envOk =",
+        "const url =",
+        "const wwwRedirect =",
+        "const healthStatus ="
+      ],
+      "count": 8
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 18,
+    "path": "notify/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/notify/status.js",
+    "size": 1926,
+    "lines": 69,
+    "kvCalls": {
+      "get": 1,
+      "put": 0,
+      "delete": 0,
+      "list": 1,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [],
+      "count": 0
+    },
+    "functions": {
+      "list": [
+        "function onRequestGet(",
+        "const url =",
+        "const pin =",
+        "const clinic =",
+        "const limit =",
+        "const prefix =",
+        "const notifications =",
+        "const list =",
+        "const notification =",
+        "function jsonResponse("
+      ],
+      "count": 10
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 19,
+    "path": "path/choose.js",
+    "fullPath": "/home/ubuntu/love/api/v1/path/choose.js",
+    "size": 3358,
+    "lines": 128,
+    "kvCalls": {
+      "get": 1,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { validateGender } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "const EXAM_PATHS =",
+        "function handler(",
+        "const env =",
+        "const patientData =",
+        "const genderKey =",
+        "const path ="
+      ],
+      "count": 6
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 20,
+    "path": "patient/login.js",
+    "fullPath": "/home/ubuntu/love/api/v1/patient/login.js",
+    "size": 1987,
+    "lines": 84,
+    "kvCalls": {
+      "get": 0,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { validatePatientId, validateGender } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const sessionId =",
+        "const patientData ="
+      ],
+      "count": 4
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 21,
+    "path": "patient/my-position.js",
+    "fullPath": "/home/ubuntu/love/api/v1/patient/my-position.js",
+    "size": 2750,
+    "lines": 104,
+    "kvCalls": {
+      "get": 2,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const url =",
+        "const patientId =",
+        "const clinic =",
+        "const userKey =",
+        "const userEntry =",
+        "const counterKey =",
+        "const counters =",
+        "const waitingCount =",
+        "function onRequestOptions("
+      ],
+      "count": 10
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 22,
+    "path": "patient/record.js",
+    "fullPath": "/home/ubuntu/love/api/v1/patient/record.js",
+    "size": 2317,
+    "lines": 88,
+    "kvCalls": {
+      "get": 2,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'",
+        "import { getPatientRecord } from '../../../_shared/activity-logger.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const url =",
+        "const patientId =",
+        "const record =",
+        "const pathKey =",
+        "const path =",
+        "const currentPositions =",
+        "const userKey =",
+        "const queueEntry =",
+        "function onRequestOptions("
+      ],
+      "count": 10
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 23,
+    "path": "patient/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/patient/status.js",
+    "size": 4241,
+    "lines": 145,
+    "kvCalls": {
+      "get": 2,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const url =",
+        "const patientId =",
+        "const pathKey =",
+        "const path =",
+        "const clinicsStatus =",
+        "let i =",
+        "const clinic =",
+        "const completed =",
+        "const progressEntry =",
+        "const listKey =",
+        "const queueList =",
+        "const patientIndex =",
+        "const patientEntry =",
+        "const displayPosition =",
+        "const aheadOfMe =",
+        "const isCurrent =",
+        "const completedCount =",
+        "const totalClinics =",
+        "const progressPercentage =",
+        "const currentClinic =",
+        "function onRequestOptions("
+      ],
+      "count": 22
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 24,
+    "path": "patient/verify-pin.js",
+    "fullPath": "/home/ubuntu/love/api/v1/patient/verify-pin.js",
+    "size": 10414,
+    "lines": 320,
+    "kvCalls": {
+      "get": 4,
+      "put": 8,
+      "delete": 0,
+      "list": 0,
+      "total": 12
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js'",
+        "import { logActivity } from '../../../_shared/activity-logger.js'",
+        "import { validateVerifyPIN } from '../../../_shared/db-validator.js'"
+      ],
+      "count": 3
+    },
+    "functions": {
+      "list": [
+        "function onRequest(",
+        "const body =",
+        "const validationError =",
+        "const kvQueuesError =",
+        "const kvPinsError =",
+        "const kvAdminError =",
+        "const kvEventsError =",
+        "const validation =",
+        "const userEntry =",
+        "const patientPath =",
+        "const now =",
+        "const exitTime =",
+        "const entryTime =",
+        "const durationMs =",
+        "const durationMinutes =",
+        "const counterKey =",
+        "let counters =",
+        "const waiting =",
+        "const userKey =",
+        "const today =",
+        "const statsKey =",
+        "let stats =",
+        "const currentIndex =",
+        "const hasNextClinic =",
+        "const pathKey =",
+        "const nextClinic =",
+        "const nextCounterKey =",
+        "let nextCounters =",
+        "const nextUserKey =",
+        "const nextExisting =",
+        "const nextUserEntry =",
+        "const pathKey =",
+        "const notificationEvent =",
+        "const remainingClinics =",
+        "const nextWaiting =",
+        "function onRequestOptions("
+      ],
+      "count": 36
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 25,
+    "path": "pin/assign.js",
+    "fullPath": "/home/ubuntu/love/api/v1/pin/assign.js",
+    "size": 5928,
+    "lines": 219,
+    "kvCalls": {
+      "get": 2,
+      "put": 3,
+      "delete": 0,
+      "list": 0,
+      "total": 5
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, checkKVAvailability } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function initializeDailyPins(",
+        "const available =",
+        "const reserve =",
+        "let i =",
+        "let i =",
+        "function acquireLock(",
+        "const lockValue =",
+        "const existing =",
+        "const verify =",
+        "function releaseLock(",
+        "const current =",
+        "function onRequest(",
+        "const clinic =",
+        "const kvPinsError =",
+        "const kvLocksError =",
+        "const kvEventsError =",
+        "const idempotencyKey =",
+        "const idempKey =",
+        "const cached =",
+        "const today =",
+        "const pinKey =",
+        "const lockKey =",
+        "const lockValue =",
+        "let pinData =",
+        "let assignedPin =",
+        "const eventKey =",
+        "const response =",
+        "const idempKey =",
+        "function onRequestOptions("
+      ],
+      "count": 32
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 26,
+    "path": "pin/generate.js",
+    "fullPath": "/home/ubuntu/love/api/v1/pin/generate.js",
+    "size": 1478,
+    "lines": 61,
+    "kvCalls": {
+      "get": 0,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { generatePIN, validateClinic } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const today =",
+        "const pin =",
+        "const pinKey =",
+        "const pinData ="
+      ],
+      "count": 6
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 27,
+    "path": "pin/reset.js",
+    "fullPath": "/home/ubuntu/love/api/v1/pin/reset.js",
+    "size": 3059,
+    "lines": 121,
+    "kvCalls": {
+      "get": 0,
+      "put": 2,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, checkKVAvailability } from '../../../_shared/utils.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function initializeDailyPins(",
+        "const available =",
+        "const reserve =",
+        "let i =",
+        "let i =",
+        "function onRequest(",
+        "const clinic =",
+        "const kvError =",
+        "const today =",
+        "const pinKey =",
+        "const pinData =",
+        "const clinicsConfig =",
+        "const resetResults =",
+        "const pinKey =",
+        "const pinData =",
+        "function onRequestOptions("
+      ],
+      "count": 19
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 28,
+    "path": "pin/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/pin/status.js",
+    "size": 1654,
+    "lines": 70,
+    "kvCalls": {
+      "get": 1,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { getValidClinics, generatePIN } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const today =",
+        "const validClinics =",
+        "const pins =",
+        "const pinKey =",
+        "let pinData =",
+        "const newPin ="
+      ],
+      "count": 8
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 29,
+    "path": "pin/verify.js",
+    "fullPath": "/home/ubuntu/love/api/v1/pin/verify.js",
+    "size": 1900,
+    "lines": 83,
+    "kvCalls": {
+      "get": 1,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { validateClinic } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const clinicName =",
+        "const env =",
+        "const today =",
+        "const pinKey =",
+        "const pinData =",
+        "const isValid ="
+      ],
+      "count": 7
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 30,
+    "path": "queue/call.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/call.js",
+    "size": 2351,
+    "lines": 97,
+    "kvCalls": {
+      "get": 2,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 3
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { validateClinic, withLock, emitQueueEvent } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const clinicName =",
+        "const env =",
+        "const result =",
+        "const queueKey =",
+        "const queueData =",
+        "const nextPatient =",
+        "const statusKey =",
+        "const status ="
+      ],
+      "count": 9
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 31,
+    "path": "queue/done.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/done.js",
+    "size": 2960,
+    "lines": 115,
+    "kvCalls": {
+      "get": 2,
+      "put": 2,
+      "delete": 1,
+      "list": 0,
+      "total": 5
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { withLock, emitQueueEvent } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const clinicName =",
+        "const userId =",
+        "const env =",
+        "const result =",
+        "const queueKey =",
+        "const queueData =",
+        "const userIndex =",
+        "const removedEntry =",
+        "const statusKey =",
+        "const status ="
+      ],
+      "count": 11
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 32,
+    "path": "queue/enter-updated.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/enter-updated.js",
+    "size": 6075,
+    "lines": 211,
+    "kvCalls": {
+      "get": 2,
+      "put": 2,
+      "delete": 0,
+      "list": 0,
+      "total": 4
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js'",
+        "import { selectBestClinic, getClinicStates, getStickyAssignment, saveStickyAssignment } from '../../../_shared/weights.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function getQatarDate(",
+        "const now =",
+        "const qatarTime =",
+        "function onRequest(",
+        "const body =",
+        "const validationError =",
+        "const kvQueuesError =",
+        "const kvAdminError =",
+        "const today =",
+        "const now =",
+        "const stickyClinic =",
+        "const clinicsConfig =",
+        "const clinicNames =",
+        "const states =",
+        "const selectedClinic =",
+        "let assignedPin =",
+        "const pinResponse =",
+        "const pinData =",
+        "const queueKey =",
+        "let queueData =",
+        "const existingIndex =",
+        "const existing =",
+        "const waitingBefore =",
+        "const queueEntry =",
+        "const eventKey =",
+        "const myPosition =",
+        "const waitingBefore =",
+        "function onRequestOptions("
+      ],
+      "count": 28
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 33,
+    "path": "queue/enter.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/enter.js",
+    "size": 3123,
+    "lines": 122,
+    "kvCalls": {
+      "get": 1,
+      "put": 2,
+      "delete": 0,
+      "list": 0,
+      "total": 3
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { validateClinic, generateUniqueNumber, emitQueueEvent, withLock } from '../../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const result =",
+        "const queueKey =",
+        "const queueData =",
+        "const existingEntry =",
+        "const position =",
+        "const uniqueNumber =",
+        "const entry =",
+        "const ahead =",
+        "const position ="
+      ],
+      "count": 11
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 34,
+    "path": "queue/position.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/position.js",
+    "size": 5599,
+    "lines": 165,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": true,
+      "hasMigrated": true
+    },
+    "structure": {
+      "hasExport": false,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": true,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { jsonResponse, corsResponse } from '../../../_shared/utils.js'",
+        "import supabase from '../../../lib/supabase.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function onRequestGet(",
+        "const url =",
+        "const clinic =",
+        "const user =",
+        "const client =",
+        "const waitingPatients =",
+        "const myIndex =",
+        "const myPosition =",
+        "const ahead =",
+        "const estimatedMinutes =",
+        "function onRequestOptions("
+      ],
+      "count": 11
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [
+      "لا يحتوي على export"
+    ],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 35,
+    "path": "queue/status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/queue/status.js",
+    "size": 1463,
+    "lines": 63,
+    "kvCalls": {
+      "get": 2,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 2
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const queueKey =",
+        "const queueData =",
+        "const statusKey =",
+        "const status ="
+      ],
+      "count": 6
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 36,
+    "path": "reports/annual.js",
+    "fullPath": "/home/ubuntu/love/api/v1/reports/annual.js",
+    "size": 794,
+    "lines": 29,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { generateAnnualReport } from '../../lib/reports.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const report ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 37,
+    "path": "reports/daily.js",
+    "fullPath": "/home/ubuntu/love/api/v1/reports/daily.js",
+    "size": 763,
+    "lines": 29,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { generateDailyReport } from '../../lib/reports.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const report ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 38,
+    "path": "reports/monthly.js",
+    "fullPath": "/home/ubuntu/love/api/v1/reports/monthly.js",
+    "size": 858,
+    "lines": 32,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { generateMonthlyReport } from '../../lib/reports.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const report ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 39,
+    "path": "reports/weekly.js",
+    "fullPath": "/home/ubuntu/love/api/v1/reports/weekly.js",
+    "size": 765,
+    "lines": 29,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { generateWeeklyReport } from '../../lib/reports.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const report ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 40,
+    "path": "route/create.js",
+    "fullPath": "/home/ubuntu/love/api/v1/route/create.js",
+    "size": 1249,
+    "lines": 47,
+    "kvCalls": {
+      "get": 0,
+      "put": 1,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": true
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'",
+        "import { createOptimizedRoute } from '../../lib/routing.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const route =",
+        "const env ="
+      ],
+      "count": 3
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 41,
+    "path": "route/get.js",
+    "fullPath": "/home/ubuntu/love/api/v1/route/get.js",
+    "size": 1090,
+    "lines": 45,
+    "kvCalls": {
+      "get": 1,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 1
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../../lib/storage.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env =",
+        "const route ="
+      ],
+      "count": 3
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [
+      "يستخدم KV ولكن لا يستورد Supabase"
+    ],
+    "status": "needs_migration"
+  },
+  {
+    "index": 42,
+    "path": "stats/dashboard.js",
+    "fullPath": "/home/ubuntu/love/api/v1/stats/dashboard.js",
+    "size": 764,
+    "lines": 29,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { getDashboardStats } from '../../lib/reports.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const stats ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 43,
+    "path": "stats/queues.js",
+    "fullPath": "/home/ubuntu/love/api/v1/stats/queues.js",
+    "size": 766,
+    "lines": 29,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": true,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { getRouteStatistics } from '../../lib/routing.js'"
+      ],
+      "count": 1
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const stats ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  },
+  {
+    "index": 44,
+    "path": "status.js",
+    "fullPath": "/home/ubuntu/love/api/v1/status.js",
+    "size": 1220,
+    "lines": 54,
+    "kvCalls": {
+      "get": 0,
+      "put": 0,
+      "delete": 0,
+      "list": 0,
+      "total": 0
+    },
+    "supabase": {
+      "from": 0,
+      "rpc": 0,
+      "auth": 0,
+      "total": 0,
+      "hasImport": false,
+      "hasMigrated": false
+    },
+    "structure": {
+      "hasExport": true,
+      "hasAsync": true,
+      "hasAwait": false,
+      "hasTryCatch": true,
+      "hasHandler": true,
+      "hasRequest": false,
+      "hasResponse": true,
+      "hasJSON": false
+    },
+    "imports": {
+      "list": [
+        "import { createEnv } from '../lib/storage.js'",
+        "import { CORS_HEADERS } from '../lib/helpers.js'"
+      ],
+      "count": 2
+    },
+    "functions": {
+      "list": [
+        "function handler(",
+        "const env ="
+      ],
+      "count": 2
+    },
+    "httpMethods": {
+      "GET": false,
+      "POST": false,
+      "PUT": false,
+      "DELETE": false
+    },
+    "issues": [],
+    "warnings": [],
+    "status": "no_storage"
+  }
+]

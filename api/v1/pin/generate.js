@@ -2,6 +2,7 @@ import { createEnv } from '../../lib/storage.js';
 import { generatePIN, validateClinic } from '../../lib/helpers.js';
 
 export default async function handler(req, res) {
+  try {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -58,3 +59,8 @@ export default async function handler(req, res) {
   }
 }
 
+
+  } catch (error) {
+    console.error('Error in api/v1/pin/generate.js:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }

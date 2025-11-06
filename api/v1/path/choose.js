@@ -43,6 +43,7 @@ const EXAM_PATHS = {
 };
 
 export default async function handler(req, res) {
+  try {
   // Handle CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -125,3 +126,8 @@ export default async function handler(req, res) {
   }
 }
 
+
+  } catch (error) {
+    console.error('Error in api/v1/path/choose.js:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
