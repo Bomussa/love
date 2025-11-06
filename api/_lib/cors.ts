@@ -1,20 +1,15 @@
 
 
-const ALLOW = (process.env.CORS_ALLOW_ORIGIN || '*')
-  .split(',').map(s => s.trim()).filter(Boolean);
-
-export default async function cors(req, res) {
-  const origin = (req.headers.origin as string) || '';
-  if (ALLOW.includes('*') || ALLOW.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    res.setHeader('Vary', 'Origin');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return true;
-  }
-  return false;
+export function withCors(handler) {
+  return async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-requested-with');
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    return handler(req, res);
+  };
 }
