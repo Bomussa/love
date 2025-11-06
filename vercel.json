@@ -1,12 +1,14 @@
 {
   "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
   "functions": {
     "api/**/*.js": {
       "runtime": "nodejs20.x"
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" }
+    { "src": "^/api/(.*)$", "dest": "/api/$1" }
   ],
   "cleanUrls": true,
   "trailingSlash": false,
@@ -14,4 +16,3 @@
     { "source": "^/api/(.*)$", "destination": "/api/v1/$1" }
   ]
 }
-
