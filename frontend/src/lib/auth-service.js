@@ -47,8 +47,11 @@ class AuthService {
         };
       }
 
-      // التحقق من كلمة المرور
-      if (users.password_hash !== password) {
+      // التحقق من كلمة المرور (hash أو plain text)
+      const crypto = await import('crypto');
+      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      
+      if (users.password_hash !== password && users.password_hash !== passwordHash) {
         this.recordFailedAttempt(username);
         return {
           success: false,
