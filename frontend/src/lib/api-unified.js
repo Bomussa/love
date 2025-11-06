@@ -11,7 +11,7 @@ import supabaseApi from './supabase-backend-api';
 // CONFIGURATION
 // ==========================================
 // Set to 'supabase' to use Supabase backend, 'local' for Local Storage
-const BACKEND_MODE = 'local'; // Changed to local temporarily for testing
+const BACKEND_MODE = 'supabase'; // Using Supabase backend for production
 
 console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
 
