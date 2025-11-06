@@ -5,7 +5,7 @@
  * Forwards POST/OPTIONS to UPSTREAM_API_BASE/login with strict CORS and timeouts
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 
 // Timeout for upstream requests (30 seconds)
 const UPSTREAM_TIMEOUT_MS = 30000;
@@ -17,7 +17,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   const origin = req.headers.origin as string;
   
   // Require UPSTREAM_API_BASE to be set to avoid configuration drift

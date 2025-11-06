@@ -1,9 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 
 const ALLOW = (process.env.CORS_ALLOW_ORIGIN || '*')
   .split(',').map(s => s.trim()).filter(Boolean);
 
-export default async function cors(req: VercelRequest, res: VercelResponse) {
+export default async function cors(req, res) {
   const origin = (req.headers.origin as string) || '';
   if (ALLOW.includes('*') || ALLOW.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
