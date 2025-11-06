@@ -1,11 +1,14 @@
 /**
  * Auth Service - نظام المصادقة والأدوار
+ * Updated to use Supabase for authentication
  * 
  * الأدوار:
  * - SUPER_ADMIN: صلاحية كاملة
  * - ADMIN: مشرف عام
  * - STAFF: عرض فقط
  */
+
+import { supabase } from './supabase-client.js';
 
 class AuthService {
   constructor() {
@@ -29,29 +32,15 @@ class AuthService {
         };
       }
 
-      // المستخدمون الافتراضيون (يمكن نقلها لقاعدة بيانات)
-      const users = {
-        'superadmin': {
-          password: 'super123',
-          role: 'SUPER_ADMIN',
-          name: 'Super Administrator'
-        },
-        'admin': {
-          password: 'admin123',
-          role: 'ADMIN',
-          name: 'Administrator'
-        },
-        'staff': {
-          password: 'staff123',
-          role: 'STAFF',
-          name: 'Staff Member'
-        }
-      };
+      // التحقق من المستخدم في Supabase
+      const { data: users, error: fetchError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('username', username)
+        .eq('is_active', true)
+        .single();
 
-      const user = users[username.toLowerCase()];
-
-      // التحقق من المستخدم
-      if (!user || user.password !== password) {
+      if (fetchError || !users) {
         this.recordFailedAttempt(username);
         return {
           success: false,
@@ -59,15 +48,31 @@ class AuthService {
         };
       }
 
+      // التحقق من كلمة المرور
+      if (users.password !== password) {
+        this.recordFailedAttempt(username);
+        return {
+          success: false,
+          error: 'Invalid username or password'
+        };
+      }
+
+      // تحديث آخر تسجيل دخول
+      await supabase
+        .from('admin_users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', users.id);
+
       // إنشاء Session
       const session = {
         id: this.generateSessionId(),
-        username: username,
-        role: user.role,
-        name: user.name,
+        username: users.username,
+        role: users.role,
+        name: users.name,
+        email: users.email,
         loginTime: new Date().toISOString(),
         expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
-        token: this.generateToken(username, user.role)
+        token: this.generateToken(users.username, users.role)
       };
 
       // حفظ Session
