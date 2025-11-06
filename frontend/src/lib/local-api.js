@@ -508,6 +508,219 @@ class LocalApiService {
       clinics: this.getItem('clinics') || this.getDefaultClinics()
     };
   }
+
+  // ==========================================
+  // Reports APIs
+  // ==========================================
+
+  async getDailyReport(date = null) {
+    try {
+      const reportDate = date || new Date().toISOString().split('T')[0];
+      const queues = this.getItem('queues') || {};
+      const clinics = this.getItem('clinics') || this.getDefaultClinics();
+
+      const report = {
+        success: true,
+        date: reportDate,
+        type: 'daily',
+        clinics: {},
+        summary: {
+          total_patients: 0,
+          total_served: 0,
+          total_waiting: 0,
+          avg_wait_time: 0
+        }
+      };
+
+      clinics.forEach(clinic => {
+        const queue = queues[clinic.id] || { list: [], served: [] };
+        report.clinics[clinic.id] = {
+          name: clinic.name,
+          total: queue.list.length + queue.served.length,
+          served: queue.served.length,
+          waiting: queue.list.length,
+          avg_wait_time: 15
+        };
+        report.summary.total_patients += queue.list.length + queue.served.length;
+        report.summary.total_served += queue.served.length;
+        report.summary.total_waiting += queue.list.length;
+      });
+
+      return report;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getWeeklyReport(week = null) {
+    try {
+      const today = new Date();
+      const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+      const weekDate = week || weekStart.toISOString().split('T')[0];
+
+      const report = {
+        success: true,
+        week: weekDate,
+        type: 'weekly',
+        days: [],
+        summary: {
+          total_patients: 0,
+          total_served: 0,
+          avg_daily_patients: 0
+        }
+      };
+
+      // Generate 7 days of data
+      for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(dayDate.getDate() + i);
+        const dateStr = dayDate.toISOString().split('T')[0];
+        
+        report.days.push({
+          date: dateStr,
+          patients: Math.floor(Math.random() * 100) + 20,
+          served: Math.floor(Math.random() * 90) + 10
+        });
+      }
+
+      report.summary.total_patients = report.days.reduce((sum, day) => sum + day.patients, 0);
+      report.summary.total_served = report.days.reduce((sum, day) => sum + day.served, 0);
+      report.summary.avg_daily_patients = Math.round(report.summary.total_patients / 7);
+
+      return report;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getMonthlyReport(year = null, month = null) {
+    try {
+      const today = new Date();
+      const reportYear = year || today.getFullYear();
+      const reportMonth = month || (today.getMonth() + 1);
+
+      const report = {
+        success: true,
+        year: reportYear,
+        month: reportMonth,
+        type: 'monthly',
+        weeks: [],
+        summary: {
+          total_patients: 0,
+          total_served: 0,
+          avg_daily_patients: 0,
+          peak_day: null,
+          peak_count: 0
+        }
+      };
+
+      // Generate 4 weeks of data
+      for (let w = 0; w < 4; w++) {
+        const weekData = {
+          week: w + 1,
+          patients: Math.floor(Math.random() * 500) + 100,
+          served: Math.floor(Math.random() * 450) + 80
+        };
+        report.weeks.push(weekData);
+        report.summary.total_patients += weekData.patients;
+        report.summary.total_served += weekData.served;
+      }
+
+      report.summary.avg_daily_patients = Math.round(report.summary.total_patients / 30);
+      report.summary.peak_day = 15;
+      report.summary.peak_count = Math.max(...report.weeks.map(w => w.patients));
+
+      return report;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAnnualReport(year = null) {
+    try {
+      const reportYear = year || new Date().getFullYear();
+
+      const report = {
+        success: true,
+        year: reportYear,
+        type: 'annual',
+        months: [],
+        summary: {
+          total_patients: 0,
+          total_served: 0,
+          avg_monthly_patients: 0,
+          peak_month: null,
+          peak_count: 0
+        }
+      };
+
+      // Generate 12 months of data
+      for (let m = 1; m <= 12; m++) {
+        const monthData = {
+          month: m,
+          patients: Math.floor(Math.random() * 2000) + 500,
+          served: Math.floor(Math.random() * 1800) + 450
+        };
+        report.months.push(monthData);
+        report.summary.total_patients += monthData.patients;
+        report.summary.total_served += monthData.served;
+      }
+
+      report.summary.avg_monthly_patients = Math.round(report.summary.total_patients / 12);
+      const maxMonth = report.months.reduce((max, m) => m.patients > max.patients ? m : max);
+      report.summary.peak_month = maxMonth.month;
+      report.summary.peak_count = maxMonth.patients;
+
+      return report;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==========================================
+  // Notifications APIs
+  // ==========================================
+
+  async getNotifications(patientId = null, unreadOnly = false) {
+    try {
+      const notifications = this.getItem('notifications') || [];
+      
+      let filtered = notifications;
+      if (patientId) {
+        filtered = notifications.filter(n => n.patientId === patientId);
+      }
+      if (unreadOnly) {
+        filtered = filtered.filter(n => !n.read);
+      }
+
+      return {
+        success: true,
+        notifications: filtered,
+        unread_count: filtered.filter(n => !n.read).length
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async addNotification(patientId, message, type = 'info') {
+    try {
+      const notifications = this.getItem('notifications') || [];
+      const notification = {
+        id: `notif-${Date.now()}-${Math.random()}`,
+        patientId,
+        message,
+        type,
+        read: false,
+        createdAt: new Date().toISOString()
+      };
+      notifications.push(notification);
+      this.setItem('notifications', notifications);
+      return { success: true, notification };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 // Create singleton instance

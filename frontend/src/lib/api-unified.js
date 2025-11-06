@@ -1,102 +1,19 @@
-// Unified API Service - Auto-fallback: Supabase -> Local Storage
-import supabaseApi from './supabase-api';
+// Unified API Service - Local Storage Only (No Supabase)
 import localApi from './local-api';
 
 const API_VERSION = '/api/v1';
-const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE !== 'false'; // Default to true
+// Force Local Storage mode - Supabase disabled
+const USE_LOCAL_STORAGE = true;
 
 class UnifiedApiService {
   constructor() {
-    this.useSupabase = USE_SUPABASE;
-    this.useLocal = !USE_SUPABASE;
-    
-    if (this.useSupabase) {
-      console.log('✅ Using Supabase as primary backend');
-    } else {
-      console.log('⚠️  Using Local Storage as backend');
-    }
+    this.useLocal = USE_LOCAL_STORAGE;
+    console.log('✅ Using Local Storage as primary backend (Supabase disabled)');
   }
 
   async request(endpoint, options = {}) {
-    // Try Supabase first if enabled
-    if (this.useSupabase) {
-      try {
-        return await this.routeToSupabase(endpoint, options);
-      } catch (error) {
-        console.error('❌ Supabase error, falling back to local:', error);
-        return await this.routeToLocal(endpoint, options);
-      }
-    }
-    
-    // Use local storage
+    // Use local storage only
     return await this.routeToLocal(endpoint, options);
-  }
-
-  async routeToSupabase(endpoint, options) {
-    const method = (options.method || 'GET').toUpperCase();
-    const body = options.body ? JSON.parse(options.body) : null;
-
-    // Patient operations
-    if ((endpoint.includes('/patient/login') || endpoint.includes('/patients/login')) && method === 'POST') {
-      return await supabaseApi.patientLogin(body.patientId, body.gender);
-    }
-    
-    // Queue operations
-    if (endpoint.includes('/queue/enter') && method === 'POST') {
-      return await supabaseApi.enterQueue(body.clinic, body.user, body.examType, body.gender);
-    }
-    
-    if (endpoint.includes('/queue/status')) {
-      const clinic = new URL(window.location.origin + endpoint).searchParams.get('clinic');
-      return await supabaseApi.getQueueStatus(clinic, body?.user);
-    }
-    
-    if (endpoint.includes('/queue/done') && method === 'POST') {
-      return await supabaseApi.queueDone(body.clinic, body.user, body.pin);
-    }
-    
-    if (endpoint.includes('/queue/call') && method === 'POST') {
-      return await supabaseApi.callNextPatient(body.clinic);
-    }
-    
-    // PIN operations
-    if (endpoint.includes('/pin/status')) {
-      return await supabaseApi.getPinStatus();
-    }
-    
-    // Pathway operations
-    if (endpoint.includes('/path/choose')) {
-      return await supabaseApi.choosePath(body.patientId, body.examType, body.gender);
-    }
-    
-    // Clinic operations
-    if (endpoint.includes('/clinics')) {
-      return await supabaseApi.getClinics();
-    }
-    
-    // Notification operations
-    if (endpoint.includes('/notifications') && method === 'GET') {
-      return await supabaseApi.getNotifications(body?.patientId, body?.unreadOnly);
-    }
-    
-    // Admin operations - fallback to local for now
-    if (endpoint.includes('/admin/status')) {
-      return localApi.getAdminStatus();
-    }
-    
-    if (endpoint.includes('/stats/queues')) {
-      return localApi.getQueues();
-    }
-    
-    if (endpoint.includes('/stats/dashboard')) {
-      return localApi.getDashboardStats();
-    }
-    
-    if (endpoint.includes('/health/status')) {
-      return { success: true, status: 'healthy', backend: 'supabase' };
-    }
-
-    throw new Error('Endpoint not implemented in Supabase');
   }
 
   async routeToLocal(endpoint, options) {
@@ -149,6 +66,26 @@ class UnifiedApiService {
       return localApi.getHealthStatus();
     }
 
+    if (endpoint.includes('/reports/daily')) {
+      return localApi.getDailyReport(body?.date);
+    }
+
+    if (endpoint.includes('/reports/weekly')) {
+      return localApi.getWeeklyReport(body?.week);
+    }
+
+    if (endpoint.includes('/reports/monthly')) {
+      return localApi.getMonthlyReport(body?.year, body?.month);
+    }
+
+    if (endpoint.includes('/reports/annual')) {
+      return localApi.getAnnualReport(body?.year);
+    }
+
+    if (endpoint.includes('/notifications')) {
+      return localApi.getNotifications(body?.patientId, body?.unreadOnly);
+    }
+
     return { success: false, error: 'Endpoint not implemented' };
   }
 
@@ -164,7 +101,7 @@ class UnifiedApiService {
   }
 
   async enterQueue(clinic, user, isAutoEntry = false) {
-    // Get patient data from localStorage for Supabase
+    // Get patient data from localStorage for Local Storage
     const patientData = JSON.parse(localStorage.getItem('patient') || '{}');
     const examType = localStorage.getItem('examType') || 'recruitment';
     const gender = patientData.gender || 'male';
@@ -242,17 +179,46 @@ class UnifiedApiService {
   }
 
   async getClinics() {
-    if (this.useSupabase) {
-      return supabaseApi.getClinics();
-    }
     return localApi.getClinics();
   }
 
   async getNotifications(patientId, unreadOnly = false) {
-    if (this.useSupabase) {
-      return supabaseApi.getNotifications(patientId, unreadOnly);
-    }
-    return { success: true, notifications: [] };
+    return this.request(`${API_VERSION}/notifications`, {
+      method: 'GET',
+      body: JSON.stringify({ patientId, unreadOnly })
+    });
+  }
+
+  // ==========================================
+  // Reports Methods
+  // ==========================================
+
+  async getDailyReport(date) {
+    return this.request(`${API_VERSION}/reports/daily`, {
+      method: 'GET',
+      body: JSON.stringify({ date: date || new Date().toISOString().split('T')[0] })
+    });
+  }
+
+  async getWeeklyReport(week) {
+    return this.request(`${API_VERSION}/reports/weekly`, {
+      method: 'GET',
+      body: JSON.stringify({ week })
+    });
+  }
+
+  async getMonthlyReport(year, month) {
+    return this.request(`${API_VERSION}/reports/monthly`, {
+      method: 'GET',
+      body: JSON.stringify({ year, month })
+    });
+  }
+
+  async getAnnualReport(year) {
+    return this.request(`${API_VERSION}/reports/annual`, {
+      method: 'GET',
+      body: JSON.stringify({ year: year || new Date().getFullYear() })
+    });
   }
 
   // ==========================================
@@ -380,4 +346,4 @@ const api = new UnifiedApiService();
 export default api;
 export { api };
 
-// Updated with Supabase support - Nov 5, 2025
+// Updated: Local Storage only - Supabase disabled - Nov 6, 2025
