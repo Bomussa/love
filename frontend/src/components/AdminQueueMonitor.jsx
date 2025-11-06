@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { GENERAL_REFRESH_INTERVAL } from '../core/config/refresh.constants'
 import { t } from '../lib/i18n'
-import enhancedApi from '../lib/enhanced-api'
+import enhancedApi from '../lib/api-unified'
 
 /**
  * Admin Queue Monitor Component

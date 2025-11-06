@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
 import { Clock, Settings, Save, RefreshCw, Eye, EyeOff, Play, Pause } from 'lucide-react'
-import api from '../lib/api'
+import api from '../lib/api-unified'
 
 export function SystemSettingsPanel({ language = 'ar' }) {
   const [settings, setSettings] = useState({

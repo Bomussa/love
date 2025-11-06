@@ -32,7 +32,7 @@ import {
   X
 } from 'lucide-react'
 import { t } from '../lib/i18n'
-import api from '../lib/api'
+import api from '../lib/api-unified'
 import AdminQueueMonitor from './AdminQueueMonitor'
 import AdminPINMonitor from './AdminPINMonitor'
 import { AdminQrManager } from './AdminQrManager'

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import enhancedApi from '../lib/enhanced-api'
+import enhancedApi from '../lib/api-unified'
 
 /**
  * Admin PIN Monitor Component
