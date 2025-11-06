@@ -1,0 +1,28 @@
+🔧 Applying exam_types migration...
+
+📝 Found 2 SQL statements
+
+Executing statement 1/2...
+⚠️  Statement 1 - Using alternative method
+Executing statement 2/2...
+⚠️  Statement 2 - Using alternative method
+
+📝 Creating exam_types table using direct approach...
+❌ Error inserting exam types: {
+  code: 'PGRST205',
+  details: null,
+  hint: null,
+  message: "Could not find the table 'public.exam_types' in the schema cache"
+}
+
+⚠️  The exam_types table may not exist yet.
+   Please create it manually in Supabase Dashboard using the SQL in:
+   /home/ubuntu/love/supabase/migrations/create_exam_types.sql
+
+📋 Verifying exam_types table...
+❌ Verification error: {
+  code: 'PGRST205',
+  details: null,
+  hint: null,
+  message: "Could not find the table 'public.exam_types' in the schema cache"
+}

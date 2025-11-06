@@ -3,6 +3,8 @@
  * 
  * Purpose: Patient login/registration endpoint
  * Connects directly to Supabase for patient authentication
+ * 
+ * FIXED: Changed 'patient_id' to 'id' to match database schema
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -62,11 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Check if patient exists
+    // Check if patient exists (FIXED: using 'id' instead of 'patient_id')
     const { data: existing, error: checkError } = await supabase
       .from('patients')
       .select('*')
-      .eq('patient_id', patientId)
+      .eq('id', patientId)
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -78,11 +80,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (existing) {
-      // Update existing patient
+      // Update existing patient (FIXED: using 'id' instead of 'patient_id')
       const { data, error } = await supabase
         .from('patients')
-        .update({ gender, updated_at: new Date().toISOString() })
-        .eq('patient_id', patientId)
+        .update({ gender, last_active: new Date().toISOString() })
+        .eq('id', patientId)
         .select()
         .single();
 
@@ -100,10 +102,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: 'تم تسجيل الدخول بنجاح'
       });
     } else {
-      // Create new patient
+      // Create new patient (FIXED: using 'id' instead of 'patient_id')
       const { data, error } = await supabase
         .from('patients')
-        .insert({ patient_id: patientId, gender })
+        .insert({ id: patientId, gender })
         .select()
         .single();
 
