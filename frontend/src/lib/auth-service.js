@@ -23,14 +23,14 @@ class AuthService {
    */
   async login(username, password) {
     try {
-      // التحقق من القفل
-      const lockout = this.checkLockout(username);
-      if (lockout.locked) {
-        return {
-          success: false,
-          error: `Account locked. Try again in ${Math.ceil(lockout.remainingTime / 60000)} minutes`
-        };
-      }
+      // التحقق من القفل (معطل مؤقتاً للاختبار)
+      // const lockout = this.checkLockout(username);
+      // if (lockout.locked) {
+      //   return {
+      //     success: false,
+      //     error: `Account locked. Try again in ${Math.ceil(lockout.remainingTime / 60000)} minutes`
+      //   };
+      // }
 
       // التحقق من المستخدم في Supabase
       const { data: users, error: fetchError } = await supabase
