@@ -3,9 +3,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/v1/$1" }
-  ],
-  "functions": {
-    "api/v1/events/stream.ts": { "runtime": "edge" }
-  }
+    { "source": "^/api/(.*)$", "destination": "/api/v1/$1" }
+  ]
 }
