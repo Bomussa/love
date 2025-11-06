@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-<<<<<<< HEAD:vite.config.js
   base: './',
-=======
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -17,7 +16,6 @@ export default defineConfig({
     strictPort: false,
     allowedHosts: 'all'
   },
->>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/vite.config.js
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

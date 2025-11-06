@@ -1,27 +1,25 @@
 {
-   "version": 2,
+  "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install",
+  "framework": "vite",
   "rewrites": [
-    { "source": "^/api/(.*)$", "destination": "/api/v1/$1" }
-  ],
-  "builds": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "frontend/dist"
-      }
+      "source": "/api/v1/:path*",
+      "destination": "/api/v1/:path*"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/api/v1/(.*)",
       "dest": "/api/v1/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/$1"
+      "dest": "/frontend/$1"
     }
   ]
 }
