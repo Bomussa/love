@@ -10,6 +10,7 @@ import EnhancedThemeSelector from './components/EnhancedThemeSelector'
 import api from './lib/api-unified'
 import enhancedApi from './lib/api-unified'
 import { validateAdminCredentials } from './config/admin-credentials'
+import authService from './lib/auth-service'
 
 import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
@@ -239,83 +240,19 @@ function App() {
       return
     }
 
-    // التحقق من طول اسم المستخدم
-    if (username.length < 3) {
-      showNotification(
-        language === 'ar' ? 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل' : 'Username must be at least 3 characters',
-        'error'
-      )
-      return
-    }
-
-    // التحقق من طول كلمة المرور
-    if (password.length < 4) {
-      showNotification(
-        language === 'ar' ? 'كلمة المرور يجب أن تكون 4 أحرف على الأقل' : 'Password must be at least 4 characters',
-        'error'
-      )
-      return
-    }
-
-    // ✅ التحقق من بيانات الدخول المحلية أولاً (مشروع 2027)
-    if (validateAdminCredentials(username, password)) {
+    // استخدام auth-service للتحقق من بيانات الدخول
+    const result = await authService.login(username, password)
+    
+    if (result.success) {
       setIsAdmin(true)
       setCurrentView('admin')
       showNotification(
-        language === 'ar' ? '✅ تم تسجيل الدخول بنجاح - مشروع 2027' : '✅ Login successful - Project 2027',
+        language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
       )
-      return
-    }
-
-    try {
-      const formData = new URLSearchParams()
-      formData.append('username', username)
-      formData.append('password', password)
-
-      const response = await fetch('/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString(),
-        credentials: 'include',
-        redirect: 'follow'
-      })
-
-      // التحقق من النجاح: إذا وصل للـ dashboard أو status 200
-      const finalUrl = response.url
-      if (response.ok || finalUrl.includes('/admin/dashboard') || finalUrl.includes('/admin')) {
-        setIsAdmin(true)
-        setCurrentView('admin')
-        showNotification(
-          language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
-          'success'
-        )
-        return
-      }
-
-      // التحقق من نوع الخطأ
-      if (response.status === 401 || response.status === 403) {
-        showNotification(
-          language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid username or password',
-          'error'
-        )
-      } else if (response.status === 404) {
-        showNotification(
-          language === 'ar' ? '⚠️ الخادم غير متوفر حالياً' : '⚠️ Server not available',
-          'error'
-        )
-      } else {
-        showNotification(
-          language === 'ar' ? 'فشل تسجيل الدخول - يرجى المحاولة مرة أخرى' : 'Login failed - please try again',
-          'error'
-        )
-      }
-    } catch (error) {
-      console.error('Admin login error:', error)
+    } else {
       showNotification(
-        language === 'ar' ? '⚠️ لا يمكن الاتصال بالخادم - يرجى التحقق من الاتصال' : '⚠️ Cannot connect to server - please check connection',
+        language === 'ar' ? `❌ ${result.error}` : `❌ ${result.error}`,
         'error'
       )
     }
