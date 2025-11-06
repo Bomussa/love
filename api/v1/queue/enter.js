@@ -3,8 +3,8 @@
  * POST /api/v1/queue/enter
  */
 
-import { createEnv } from '../../lib/storage.js';
-import { validateClinic, generateUniqueNumber, emitQueueEvent, withLock } from '../../lib/helpers.js';
+import SupabaseClient, { getSupabaseClient } from '../../lib/supabase.js';
+import { validateClinic, emitQueueEvent } from '../../lib/helpers.js';
 
 export default async function handler(req, res) {
   try {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { clinic, user, isAutoEntry } = req.body;
+    const { clinic, user, isAutoEntry, examType } = req.body;
 
     if (!clinic || !user) {
       return res.status(400).json({
@@ -41,87 +41,79 @@ export default async function handler(req, res) {
       });
     }
 
-    const env = createEnv();
+    const { addToQueue, getPatientPosition } = SupabaseClient;
+    const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
 
-    // Use distributed lock to prevent race conditions
-    const result = await withLock(env, `queue:${clinic}`, async () => {
-      // Get current queue
-      const queueKey = `queue:list:${clinic}`;
-      const queueData = await env.KV_QUEUES.get(queueKey, { type: 'json' }) || [];
+    // 1. Check if user is already in queue (Supabase handles uniqueness, but we check for better UX)
+    const existingPosition = await getPatientPosition(supabase, user);
+    if (existingPosition && (existingPosition.status === 'waiting' || existingPosition.status === 'called')) {
+      // User is already in queue, return their current position
+      const { data: activeQueue } = await supabase
+        .from('queue')
+        .select('id')
+        .eq('clinic_id', clinic)
+        .in('status', ['waiting', 'called'])
+        .order('position', { ascending: true });
 
-      // Check if user already in queue
-      const existingEntry = queueData.find(e => e.user === user);
-      if (existingEntry) {
-        const position = queueData.indexOf(existingEntry) + 1;
-        return {
-          success: true,
-          clinic: clinic,
-          user: user,
-          number: existingEntry.number,
-          status: 'ALREADY_IN_QUEUE',
-          ahead: position - 1,
-          display_number: position,
-          position: position,
-          message: 'You are already in the queue'
-        };
-      }
+      const position = activeQueue.findIndex(q => q.id === existingPosition.id) + 1;
+      const ahead = position > 0 ? position - 1 : 0;
 
-      // Generate unique number
-      const uniqueNumber = generateUniqueNumber();
-
-      // Add to queue
-      const entry = {
-        number: uniqueNumber,
-        user: user,
-        status: isAutoEntry ? 'IN_PROGRESS' : 'WAITING',
-        enteredAt: new Date().toISOString()
-      };
-
-      queueData.push(entry);
-
-      // Save queue
-      await env.KV_QUEUES.put(queueKey, JSON.stringify(queueData), {
-        expirationTtl: 86400
-      });
-
-      // Save user entry
-      await env.KV_QUEUES.put(
-        `queue:user:${clinic}:${user}`,
-        JSON.stringify(entry),
-        { expirationTtl: 86400 }
-      );
-
-      // Calculate ahead and position
-      const ahead = queueData.length - 1;
-      const position = queueData.length;
-
-      // Emit event for real-time updates
-      await emitQueueEvent(env, clinic, user, 'ENTERED', position);
-
-      return {
+      return res.status(200).json({
         success: true,
         clinic: clinic,
         user: user,
-        number: uniqueNumber,
-        status: 'WAITING',
+        status: 'ALREADY_IN_QUEUE',
         ahead: ahead,
         display_number: position,
-        position: position
-      };
+        position: position,
+        message: 'You are already in the queue'
+      });
+    }
+
+    // 2. Prepare data for Supabase
+    const patientData = {
+      patient_id: user,
+      patient_name: user, // Placeholder for now
+      clinic_id: clinic,
+      exam_type: examType || 'general',
+      status: isAutoEntry ? 'called' : 'waiting', // If auto-entry, set status to 'called'
+      entered_at: new Date().toISOString(),
+      called_at: isAutoEntry ? new Date().toISOString() : null
+    };
+
+    // 3. Use the helper function to add to queue, which handles position and insertion
+    const newEntry = await addToQueue(supabase, patientData);
+
+    // 4. Get final position for response
+    const finalPosition = await getPatientPosition(supabase, user);
+    const { data: activeQueue } = await supabase
+      .from('queue')
+      .select('id')
+      .eq('clinic_id', clinic)
+      .in('status', ['waiting', 'called'])
+      .order('position', { ascending: true });
+
+    const position = activeQueue.findIndex(q => q.id === finalPosition.id) + 1;
+    const ahead = position > 0 ? position - 1 : 0;
+
+    // 5. Emit event (assuming emitQueueEvent is adapted to use Supabase data)
+    // await emitQueueEvent(clinic, 'enter', newEntry);
+
+    return res.status(200).json({
+      success: true,
+      clinic: clinic,
+      user: user,
+      status: finalPosition.status.toUpperCase(),
+      ahead: ahead,
+      display_number: position,
+      position: position
     });
 
-    return res.status(200).json(result);
-
   } catch (error) {
+    console.error('Error in api/v1/queue/enter.js:', error);
     return res.status(500).json({
       success: false,
       error: error.message
     });
   }
 }
-
-
-  } catch (error) {
-    console.error('Error in api/v1/queue/enter.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }

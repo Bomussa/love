@@ -3,8 +3,8 @@
  * POST /api/v1/queue/call
  */
 
-import { createEnv } from '../../lib/storage.js';
-import { validateClinic, withLock, emitQueueEvent } from '../../lib/helpers.js';
+import SupabaseClient, { getSupabaseClient } from '../../lib/supabase.js';
+import { validateClinic, emitQueueEvent } from '../../lib/helpers.js';
 
 export default async function handler(req, res) {
   try {
@@ -42,61 +42,43 @@ export default async function handler(req, res) {
       });
     }
 
-    const env = createEnv();
+    const { callNextPatient, getActiveQueues } = SupabaseClient;
+    const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
 
-    // Use distributed lock
-    const result = await withLock(env, `queue:${clinicName}`, async () => {
-      // Get current queue
-      const queueKey = `queue:list:${clinicName}`;
-      const queueData = await env.KV_QUEUES.get(queueKey, { type: 'json' }) || [];
+    // 1. Call the next patient using the Supabase helper
+    const nextPatient = await callNextPatient(supabase, clinicName);
 
-      if (queueData.length === 0) {
-        return {
-          success: false,
-          error: 'Queue is empty'
-        };
-      }
-
-      // Get first patient
-      const nextPatient = queueData[0];
-
-      // Update status
-      const statusKey = `queue:status:${clinicName}`;
-      const status = await env.KV_QUEUES.get(statusKey, { type: 'json' }) || {
-        current: null,
-        served: []
-      };
-
-      status.current = nextPatient.number;
-      status.lastCalled = new Date().toISOString();
-
-      await env.KV_QUEUES.put(statusKey, JSON.stringify(status), {
-        expirationTtl: 86400
+    if (!nextPatient) {
+      return res.status(200).json({
+        success: false,
+        error: 'No patients waiting'
       });
+    }
 
-      // Emit event
-      await emitQueueEvent(env, clinicName, nextPatient.user, 'CALLED', 1);
+    // 2. Get remaining queue length for the response
+    const activeQueues = await getActiveQueues(supabase, clinicName);
+    const remaining = activeQueues.length;
 
-      return {
-        success: true,
-        clinic: clinicName,
-        current: nextPatient,
-        remaining: queueData.length - 1
-      };
+    // 3. Emit event (assuming emitQueueEvent is adapted)
+    // await emitQueueEvent(clinicName, nextPatient.patient_id, 'CALLED', nextPatient.position);
+
+    return res.status(200).json({
+      success: true,
+      clinic: clinicName,
+      current: {
+        user: nextPatient.patient_id,
+        number: nextPatient.id, // Using Supabase ID as the number for now
+        status: nextPatient.status,
+        enteredAt: nextPatient.entered_at
+      },
+      remaining: remaining
     });
 
-    return res.status(200).json(result);
-
   } catch (error) {
+    console.error('Error in api/v1/queue/call.js:', error);
     return res.status(500).json({
       success: false,
       error: error.message
     });
   }
 }
-
-
-  } catch (error) {
-    console.error('Error in api/v1/queue/call.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
