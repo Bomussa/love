@@ -1,9 +1,13 @@
 {
+  "name": "mmc-mms",
+  "version": "1.0.0",
+  "description": "Military Medical Committee Management System",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@vercel/node": "^3.0.12"
+  },
   "devDependencies": {
-    "@babel/preset-env": "^7.28.5",
-    "@babel/preset-react": "^7.28.5",
-    "babel-jest": "^30.2.0",
-    "identity-obj-proxy": "^3.0.0",
-    "jest": "^30.2.0"
+    "typescript": "^5.3.3"
   }
 }
