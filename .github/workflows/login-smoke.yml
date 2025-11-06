@@ -1,0 +1,118 @@
+name: Login Smoke Test
+
+# Test login endpoints on production to ensure they work reliably
+on:
+  schedule:
+    - cron: '15 * * * *'  # Every hour at 15 minutes past (offset from uptime-smoke)
+  workflow_dispatch: {}  # Allow manual trigger
+
+permissions:
+  contents: read
+
+env:
+  PRODUCTION_URL: https://mmc-mms.com
+
+jobs:
+  login-check:
+    name: Production Login Endpoint Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /api/login POST endpoint
+        run: |
+          set -e
+          echo "Checking /api/login POST endpoint..."
+          # Accept 200 (success), 401 (auth required), or 403 (forbidden) as valid
+          # We're not sending valid credentials, so 401/403 is expected and valid
+          API_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"test"}' \
+            $PRODUCTION_URL/api/login)
+          
+          # Check for valid status codes (not 404 or 5xx)
+          if [ "$API_STATUS" != "200" ] && [ "$API_STATUS" != "401" ] && [ "$API_STATUS" != "403" ]; then
+            echo "❌ POST /api/login expected 200/401/403, got $API_STATUS"
+            exit 1
+          fi
+          echo "✓ POST /api/login returned $API_STATUS"
+
+      - name: Check /api/login OPTIONS preflight
+        run: |
+          set -e
+          echo "Checking /api/login OPTIONS preflight..."
+          # OPTIONS should not return 5xx (server errors)
+          OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X OPTIONS \
+            $PRODUCTION_URL/api/login \
+            -H "Origin: $PRODUCTION_URL" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: Content-Type')
+          
+          # Check if status is NOT 5xx
+          case "$OPT_STATUS" in
+            2*|3*|4*) 
+              echo "✓ OPTIONS /api/login returned $OPT_STATUS (non-5xx)"
+              ;;
+            5*)
+              echo "❌ OPTIONS /api/login returned 5xx error: $OPT_STATUS"
+              exit 1
+              ;;
+            *)
+              echo "⚠️  OPTIONS /api/login returned unexpected status: $OPT_STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Check /login rewrite POST endpoint
+        run: |
+          set -e
+          echo "Checking /login POST endpoint (rewrite)..."
+          # This tests the vercel.json rewrite for /login
+          LOGIN_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"test"}' \
+            $PRODUCTION_URL/login)
+          
+          # Check for valid status codes (not 404 or 5xx)
+          if [ "$LOGIN_STATUS" != "200" ] && [ "$LOGIN_STATUS" != "401" ] && [ "$LOGIN_STATUS" != "403" ]; then
+            echo "❌ POST /login expected 200/401/403, got $LOGIN_STATUS"
+            exit 1
+          fi
+          echo "✓ POST /login returned $LOGIN_STATUS"
+
+      - name: Check /login OPTIONS preflight
+        run: |
+          set -e
+          echo "Checking /login OPTIONS preflight..."
+          OPT_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X OPTIONS \
+            $PRODUCTION_URL/login \
+            -H "Origin: $PRODUCTION_URL" \
+            -H 'Access-Control-Request-Method: POST')
+          
+          # Check if status is NOT 5xx
+          case "$OPT_STATUS" in
+            2*|3*|4*) 
+              echo "✓ OPTIONS /login returned $OPT_STATUS (non-5xx)"
+              ;;
+            5*)
+              echo "❌ OPTIONS /login returned 5xx error: $OPT_STATUS"
+              exit 1
+              ;;
+            *)
+              echo "⚠️  OPTIONS /login returned unexpected status: $OPT_STATUS"
+              exit 1
+              ;;
+          esac
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "✓ All login checks passed successfully"
+          echo "  - POST /api/login: OK (200/401/403)"
+          echo "  - OPTIONS /api/login: OK (non-5xx)"
+          echo "  - POST /login: OK (200/401/403)"
+          echo "  - OPTIONS /login: OK (non-5xx)"
+          echo "=========================================="

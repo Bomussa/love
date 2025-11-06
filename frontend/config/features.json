@@ -1,0 +1,8 @@
+{
+  "call_interval_minutes": 2,
+  "notifications_seconds": 30,
+  "features": {
+    "qr_enabled": false,
+    "admin_duplicate_login_fix": true
+  }
+}

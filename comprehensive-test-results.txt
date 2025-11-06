@@ -1,0 +1,45 @@
+🧪 Comprehensive Database Test
+
+============================================================
+
+📝 TEST 1: Creating test patient...
+✅ Patient created successfully!
+   Patient ID: test-comprehensive-1762415222207
+   Columns: id, gender, created_at, last_active
+
+📝 TEST 2: Creating pathway...
+✅ Pathway created successfully!
+   Pathway: [ 'lab', 'radiology', 'vitals', 'internal' ]
+
+📝 TEST 3: Adding patient to queue...
+✅ Added to queue successfully!
+   Queue entry: {
+  id: 'f2021f5d-afe4-4501-b8f1-4671be98c637',
+  clinic_id: 'lab',
+  patient_id: 'test-comprehensive-1762415222207',
+  display_number: 1,
+  status: 'waiting',
+  entered_at: '2025-11-06T07:47:02.997596+00:00',
+  called_at: null,
+  completed_at: null,
+  completed_by_pin: null
+}
+   Columns: id, clinic_id, patient_id, display_number, status, entered_at, called_at, completed_at, completed_by_pin
+
+📝 TEST 4: Querying queue status...
+✅ Queue query successful!
+   Waiting in lab: 1
+
+📝 TEST 5: Creating notification...
+✅ Notification created successfully!
+   Message: Test notification
+
+🗑️  CLEANUP: Removing test data...
+   ✓ Deleted notifications
+   ✓ Deleted queue entries
+   ✓ Deleted pathways
+   ✓ Deleted patient
+
+============================================================
+✅ ALL TESTS COMPLETED SUCCESSFULLY!
+============================================================

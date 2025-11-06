@@ -1,24 +1,13 @@
 {
-  "name": "medical-center-complete",
+  "name": "mmc-mms",
   "version": "1.0.0",
+  "description": "Military Medical Committee Management System",
   "type": "module",
-  "description": "Military Medical Committee System - Complete Application",
-  "main": "server.js",
-  "engines": {
-    "node": ">=18.17 <21"
-  },
   "scripts": {
-    "dev": "wrangler pages dev --compatibility-date=2025-10-22",
-    "dev:vite": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "node server.js",
-    "deploy": "npm run build && wrangler pages publish dist",
-    "test:api": "node test-api-integration.js",
-    "test:final": "node final-integration-test.js"
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev"
   },
-  "dependencies": {
-    "@radix-ui/react-dialog": "^1.0.5",
+  "dependencies": {    "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-switch": "^1.0.3",
@@ -40,7 +29,8 @@
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
     "ws": "^8.14.2",
-    "@supabase/supabase-js": "^2.76.1"
+    "@supabase/supabase-js": "^2.79.0",
+    "@vercel/node": "^3.0.12"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -54,6 +44,8 @@
     "tailwindcss": "^3.3.5",
     "terser": "^5.44.0",
     "vite": "^5.4.11",
-    "wrangler": "^3.80.4"
+    "wrangler": "^3.80.4",
+    "pg": "^8.16.3",
+    "typescript": "^5.3.3"
   }
 }
