@@ -228,11 +228,14 @@ function App() {
   }
 
   const handleAdminLogin = async (credentials) => {
+    console.log('[App] handleAdminLogin called with:', credentials)
     // credentials format: "username:password"
     const [username, password] = credentials.split(':')
+    console.log('[App] Parsed username:', username, 'password length:', password?.length)
 
     // التحقق من صحة البيانات المدخلة
     if (!username || !password) {
+      console.log('[App] Missing username or password')
       showNotification(
         language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password',
         'error'
@@ -241,11 +244,15 @@ function App() {
     }
 
     // استخدام auth-service للتحقق من بيانات الدخول
+    console.log('[App] Calling authService.login...')
     const result = await authService.login(username, password)
+    console.log('[App] authService.login result:', result)
     
     if (result.success) {
+      console.log('[App] Login successful! Setting isAdmin=true and currentView=admin')
       setIsAdmin(true)
       setCurrentView('admin')
+      console.log('[App] State updated. isAdmin:', true, 'currentView:', 'admin')
       showNotification(
         language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
