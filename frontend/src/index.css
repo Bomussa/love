@@ -151,5 +151,5 @@
   background: rgba(251, 191, 36, 0.7);
 }
 
-/* Import QR safety styles */
 @import './styles/qr-safe.css';
+/* باقي الستايلات تحت */
