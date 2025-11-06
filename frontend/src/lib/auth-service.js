@@ -34,10 +34,9 @@ class AuthService {
 
       // التحقق من المستخدم في Supabase
       const { data: users, error: fetchError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .select('*')
         .eq('username', username)
-        .eq('is_active', true)
         .single();
 
       if (fetchError || !users) {
@@ -49,7 +48,7 @@ class AuthService {
       }
 
       // التحقق من كلمة المرور
-      if (users.password !== password) {
+      if (users.password_hash !== password) {
         this.recordFailedAttempt(username);
         return {
           success: false,
@@ -59,8 +58,8 @@ class AuthService {
 
       // تحديث آخر تسجيل دخول
       await supabase
-        .from('admin_users')
-        .update({ last_login: new Date().toISOString() })
+        .from('admins')
+        .update({ updated_at: new Date().toISOString() })
         .eq('id', users.id);
 
       // إنشاء Session
