@@ -1,10 +1,13 @@
-// Reset System Settings to Default
-// POST /api/v1/admin/system-settings/reset
+/**
+ * Admin System Settings Reset Endpoint
+ * POST /api/v1/admin/system-settings/reset
+ */
 
-import { jsonResponse, corsResponse, checkKVAvailability } from '../../../../_shared/utils.js';
+import SupabaseClient, { getSupabaseClient } from '../../../api/lib/supabase.js';
+import { jsonResponse, corsResponse } from '../../../../_shared/utils.js';
 import { logActivity } from '../../../../_shared/activity-logger.js';
 
-// القيم الافتراضية
+// القيم الافتراضية (يجب أن تكون متطابقة مع system-settings.js)
 const DEFAULT_SETTINGS = {
   // توقيتات النظام (بالثواني)
   queueIntervalSeconds: 120,        // 2 دقيقة للنداء التلقائي
@@ -29,45 +32,45 @@ const DEFAULT_SETTINGS = {
   noticeTtlSeconds: 30              // مدة عرض الإشعار
 };
 
-export async function onRequestPost(context) {
-  const { env } = context;
-  
+export default async function handler(req, res) {
   try {
-    const kvError = checkKVAvailability(env.KV_ADMIN, 'KV_ADMIN');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
-    }
-    
-    // إعادة تعيين الإعدادات للقيم الافتراضية
-    await env.KV_ADMIN.put('system:settings', JSON.stringify(DEFAULT_SETTINGS));
-    
-    // تسجيل النشاط
-    await logActivity(env, 'SETTINGS_RESET', {
-      timestamp: new Date().toISOString()
-    });
-    
-    return jsonResponse({
-      success: true,
-      message: 'Settings reset to default values',
-      settings: DEFAULT_SETTINGS,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    return jsonResponse({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }, 500);
+  // Handle CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-}
 
-export async function onRequestOptions() {
-  return corsResponse(['POST', 'OPTIONS']);
-}
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      success: false,
+      error: 'Method not allowed'
+    });
+  }
 
+  try {
+    const { updateSettings } = SupabaseClient;
+    const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
+    const SETTINGS_KEY = 'system:settings';
 
+    // 1. إعادة تعيين الإعدادات للقيم الافتراضية باستخدام updateSettings
+    await updateSettings(supabase, SETTINGS_KEY, DEFAULT_SETTINGS, 'admin_reset');
+    
+    // 2. تسجيل النشاط
+    // await logActivity(supabase, 'ADMIN', 'SETTINGS_RESET', 'System settings reset to defaults');
+    
+    return res.status(200).json({
+      success: true,
+      message: 'System settings reset to defaults successfully'
+    });
+    
   } catch (error) {
     console.error('Error in api/v1/admin/system-settings/reset.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
   }
+}

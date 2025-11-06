@@ -1,8 +1,11 @@
-// System Settings Management API
-// GET/POST /api/v1/admin/system-settings
-// Manage all system timings, toggles, and display settings
+/**
+ * Admin System Settings Endpoint
+ * GET/POST /api/v1/admin/system-settings
+ * Manage all system timings, toggles, and display settings
+ */
 
-import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js';
+import SupabaseClient, { getSupabaseClient } from '../../../api/lib/supabase.js';
+import { jsonResponse, corsResponse, validateRequiredFields } from '../../../_shared/utils.js';
 import { logActivity } from '../../../_shared/activity-logger.js';
 
 // القيم الافتراضية
@@ -30,155 +33,77 @@ const DEFAULT_SETTINGS = {
   noticeTtlSeconds: 30              // مدة عرض الإشعار
 };
 
-/**
- * GET - الحصول على الإعدادات الحالية
- */
-export async function onRequestGet(context) {
-  const { env } = context;
-  
+export default async function handler(req, res) {
   try {
-    const kvError = checkKVAvailability(env.KV_ADMIN, 'KV_ADMIN');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
-    }
-    
-    // جلب الإعدادات من KV
-    let settings = await env.KV_ADMIN.get('system:settings', { type: 'json' });
-    
-    // إذا لم توجد، استخدم القيم الافتراضية
-    if (!settings) {
-      settings = DEFAULT_SETTINGS;
-      // حفظها في KV
-      await env.KV_ADMIN.put('system:settings', JSON.stringify(settings));
-    }
-    
-    return jsonResponse({
-      success: true,
-      settings: settings,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    return jsonResponse({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }, 500);
+  // Handle CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-}
 
-/**
- * POST - تحديث الإعدادات
- */
-export async function onRequestPost(context) {
-  const { request, env } = context;
-  
-  try {
-    const body = await request.json().catch(() => ({}));
-    const { settings } = body;
-    
-    if (!settings || typeof settings !== 'object') {
-      return jsonResponse({
-        success: false,
-        error: 'Invalid settings object'
-      }, 400);
-    }
-    
-    const kvError = checkKVAvailability(env.KV_ADMIN, 'KV_ADMIN');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
-    }
-    
-    // التحقق من صحة القيم
-    const validatedSettings = validateSettings(settings);
-    
-    // حفظ الإعدادات
-    await env.KV_ADMIN.put('system:settings', JSON.stringify(validatedSettings));
-    
-    // تسجيل النشاط
-    await logActivity(env, 'SETTINGS_UPDATE', {
-      settings: validatedSettings,
-      timestamp: new Date().toISOString()
-    });
-    
-    return jsonResponse({
-      success: true,
-      message: 'Settings updated successfully',
-      settings: validatedSettings,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    return jsonResponse({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-}
+  const { getSettings, updateSettings } = SupabaseClient;
+  const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
+  const SETTINGS_KEY = 'system:settings';
 
-/**
- * التحقق من صحة الإعدادات
- */
-function validateSettings(settings) {
-  const validated = { ...DEFAULT_SETTINGS };
-  
-  // التحقق من التوقيتات
-  if (settings.queueIntervalSeconds !== undefined) {
-    validated.queueIntervalSeconds = Math.max(30, Math.min(300, parseInt(settings.queueIntervalSeconds)));
-  }
-  
-  if (settings.patientMaxWaitSeconds !== undefined) {
-    validated.patientMaxWaitSeconds = Math.max(60, Math.min(600, parseInt(settings.patientMaxWaitSeconds)));
-  }
-  
-  if (settings.refreshIntervalSeconds !== undefined) {
-    validated.refreshIntervalSeconds = Math.max(5, Math.min(60, parseInt(settings.refreshIntervalSeconds)));
-  }
-  
-  if (settings.nearTurnRefreshSeconds !== undefined) {
-    validated.nearTurnRefreshSeconds = Math.max(3, Math.min(30, parseInt(settings.nearTurnRefreshSeconds)));
-  }
-  
-  // التحقق من التبديلات (boolean)
-  const booleanFields = [
-    'autoCallEnabled',
-    'timeoutHandlerEnabled',
-    'notificationsEnabled',
-    'showCountdownTimer',
-    'showQueuePosition',
-    'showEstimatedWait',
-    'showAheadCount'
-  ];
-  
-  booleanFields.forEach(field => {
-    if (settings[field] !== undefined) {
-      validated[field] = Boolean(settings[field]);
+  if (req.method === 'GET') {
+    try {
+      // 1. جلب الإعدادات من Supabase
+      const settingsEntry = await getSettings(supabase, SETTINGS_KEY);
+      
+      // 2. إذا لم توجد، استخدم القيم الافتراضية
+      let settings = settingsEntry ? settingsEntry.value : DEFAULT_SETTINGS;
+      
+      return res.status(200).json({
+        success: true,
+        settings: settings
+      });
+      
+    } catch (error) {
+      console.error('Supabase GET Error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message
+      });
     }
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const body = req.body;
+      
+      // 1. جلب الإعدادات الحالية (للتحديث الجزئي)
+      const currentSettingsEntry = await getSettings(supabase, SETTINGS_KEY);
+      const currentSettings = currentSettingsEntry ? currentSettingsEntry.value : DEFAULT_SETTINGS;
+
+      // 2. دمج الإعدادات الجديدة مع الحالية
+      const newSettings = { ...currentSettings, ...body };
+      
+      // 3. حفظ الإعدادات المحدثة في Supabase
+      await updateSettings(supabase, SETTINGS_KEY, newSettings, 'admin');
+      
+      // 4. تسجيل النشاط
+      // await logActivity(supabase, 'ADMIN', 'UPDATE_SETTINGS', `Updated system settings: ${JSON.stringify(body)}`);
+
+      return res.status(200).json({
+        success: true,
+        message: 'System settings updated successfully',
+        settings: newSettings
+      });
+      
+    } catch (error) {
+      console.error('Supabase POST Error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message
+      });
+    }
+  }
+
+  return res.status(405).json({
+    success: false,
+    error: 'Method not allowed'
   });
-  
-  // التحقق من الأرقام الإضافية
-  if (settings.notifyNearAhead !== undefined) {
-    validated.notifyNearAhead = Math.max(1, Math.min(10, parseInt(settings.notifyNearAhead)));
-  }
-  
-  if (settings.pinLateMinutes !== undefined) {
-    validated.pinLateMinutes = Math.max(1, Math.min(30, parseInt(settings.pinLateMinutes)));
-  }
-  
-  if (settings.noticeTtlSeconds !== undefined) {
-    validated.noticeTtlSeconds = Math.max(5, Math.min(60, parseInt(settings.noticeTtlSeconds)));
-  }
-  
-  return validated;
 }
-
-export async function onRequestOptions() {
-  return corsResponse(['GET', 'POST', 'OPTIONS']);
-}
-
-
-  } catch (error) {
-    console.error('Error in api/v1/admin/system-settings.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }

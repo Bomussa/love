@@ -1,43 +1,50 @@
-// Admin: Set call interval for auto-calling patients
+/**
+ * Admin Set Call Interval Endpoint
+ * POST /api/v1/admin/set-call-interval
+ */
 
-import { jsonResponse, corsResponse, validateRequiredFields, checkKVAvailability } from '../../../_shared/utils.js';
+import SupabaseClient, { getSupabaseClient } from '../../../api/lib/supabase.js';
+import { jsonResponse, corsResponse, validateRequiredFields } from '../../../_shared/utils.js';
 
 export default async function handler(req, res) {
   try {
-  const { request, env } = context;
+  // Handle CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  if (request.method !== 'POST') {
-    return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-  
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      success: false,
+      error: 'Method not allowed'
+    });
+  }
+
   try {
-    const body = await request.json();
-    const { clinic, interval_minutes } = body;
+    const { clinic, interval_minutes } = req.body;
     
     // Validate required fields
-    const validationError = validateRequiredFields(body, ['clinic', 'interval_minutes']);
-    if (validationError) {
-      return jsonResponse(validationError, 400);
+    if (!clinic || interval_minutes === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing clinic or interval_minutes'
+      });
     }
+
+    const { updateSettings } = SupabaseClient;
+    const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
+
+    // 1. Save interval setting to the 'settings' table
+    const key = `queue_interval_${clinic}`;
+    const value = { interval_minutes: interval_minutes };
     
-    // Check KV availability
-    const kvError = checkKVAvailability(env.KV_QUEUES, 'KV_QUEUES');
-    if (kvError) {
-      return jsonResponse(kvError, 500);
-    }
-    
-    const kv = env.KV_QUEUES;
-    
-    // Save interval setting
-    const intervalKey = `queue:interval:${clinic}`;
-    await kv.put(intervalKey, JSON.stringify({
-      interval_minutes: interval_minutes,
-      updated_at: new Date().toISOString()
-    }), {
-      expirationTtl: 86400 * 30 // 30 days
-    });
-    
-    return jsonResponse({
+    await updateSettings(supabase, key, value, 'admin');
+
+    return res.status(200).json({
       success: true,
       clinic: clinic,
       interval_minutes: interval_minutes,
@@ -45,20 +52,10 @@ export default async function handler(req, res) {
     });
     
   } catch (error) {
-    return jsonResponse({ 
-      success: false, 
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }, 500);
-  }
-}
-
-export async function onRequestOptions() {
-  return corsResponse(['POST', 'OPTIONS']);
-}
-
-
-  } catch (error) {
     console.error('Error in api/v1/admin/set-call-interval.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
   }
+}
