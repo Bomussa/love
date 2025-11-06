@@ -4,7 +4,7 @@
   "description": "Military Medical Committee Management System",
   "type": "module",
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
+    "@supabase/supabase-js": "^2.79.0",
     "@vercel/node": "^3.0.12"
   },
   "devDependencies": {
