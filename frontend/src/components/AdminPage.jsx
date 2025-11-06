@@ -57,6 +57,17 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     if (existingSession) {
       setSession(existingSession)
       setIsAuthenticated(true)
+    } else {
+      // إذا لم يكن هناك session، انتظر قليلاً ثم تحقق مرة أخرى
+      // هذا يحل مشكلة التوقيت عندما يتم تسجيل الدخول من الصفحة الرئيسية
+      const timer = setTimeout(() => {
+        const retrySession = authService.getSession()
+        if (retrySession) {
+          setSession(retrySession)
+          setIsAuthenticated(true)
+        }
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [])
 
