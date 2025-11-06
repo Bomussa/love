@@ -3,10 +3,7 @@
   "version": "1.0.0",
   "description": "Military Medical Committee Management System",
   "type": "module",
-  "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "dev": "cd frontend && npm run dev"
-  },
+
   "dependencies": {    "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
