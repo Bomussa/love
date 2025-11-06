@@ -3,7 +3,7 @@
  * GET /api/v1/queue/status?clinic=lab
  */
 
-import SupabaseClient, { getSupabaseClient } from '../../lib/supabase.js';
+import { getSupabaseClient, getActiveQueues, getSettings } from '../../lib/supabase.js';
 
 export default async function handler(req, res) {
   try {
@@ -33,7 +33,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const { getActiveQueues, getSettings } = SupabaseClient;
     const supabase = getSupabaseClient(process.env); // Use process.env for Vercel environment
 
     // 1. Get active queue list
