@@ -40,9 +40,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed', allowed: ['POST', 'OPTIONS'] });
   }
 
-  // Get Supabase credentials from environment
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  // Get Supabase credentials from environment (SERVER-ONLY)
+  const supabaseUrl = process.env.SUPABASE_URL as string;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY as string;
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({
