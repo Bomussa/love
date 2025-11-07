@@ -33,8 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const headers: Record<string,string> = {
     'apikey': ANON,
-    'authorization': `Bearer ${ANON}`,
   };
+  const incomingAuth = req.headers['authorization'];
+  headers['authorization'] = typeof incomingAuth === 'string' && incomingAuth ? incomingAuth : `Bearer ${ANON}`;
   if (req.headers['content-type']) headers['content-type'] = String(req.headers['content-type']);
 
   const doFetch = async () => {
