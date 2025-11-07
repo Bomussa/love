@@ -1,3 +1,6 @@
+import { getSupabaseClient } from "../lib/supabase-enhanced.js";
+const supabase = getSupabaseClient(process.env);
+
 // Lock Manager - Prevent race conditions and duplicates
 // Uses KV_LOCKS for distributed locking
 

@@ -1,3 +1,6 @@
+import { getSupabaseClient } from "./supabase-enhanced.js";
+const supabase = getSupabaseClient(process.env);
+
 /**
  * Reports System - نظام التقارير والإحصائيات
  */

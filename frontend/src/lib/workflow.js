@@ -1,5 +1,5 @@
 // lib/workflow.js - مدير تدفق العمل الشامل للمراجعين
-import db from './db.js';
+import db from '../../../src/lib/supabase-db.js';
 import { createPatientRoute, moveToNextStep, pickClinicForNextStep, markDistributed } from './routingManager.js';
 import { completeClinicForPatient } from './queueManager.js';
 import { getSystemConfig } from './settings.js';

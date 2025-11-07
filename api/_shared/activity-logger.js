@@ -1,3 +1,6 @@
+import { getSupabaseClient, logActivity } from "../lib/supabase-enhanced.js";
+const supabase = getSupabaseClient(process.env);
+
 // Activity Logger - Track all patient movements
 // Temporary memory (with timestamps) for real-time admin dashboard
 // Permanent memory (without timestamps) for statistics

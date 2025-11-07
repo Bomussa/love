@@ -1,6 +1,6 @@
 // pages/api/queue/status.js - واجهة API لعرض حالة الكيو لحظياً
-import { getQueueDetails, getQueueSnapshot } from '../../../lib/queueManager.js';
-import { getDistributionStats } from '../../../lib/routingManager.js';
+import { getQueueDetails, getQueueSnapshot } from '../../../frontend/src/lib/queueManager.js';
+import { getDistributionStats } from '../../../frontend/src/lib/routingManager.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

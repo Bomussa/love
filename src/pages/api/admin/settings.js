@@ -5,7 +5,7 @@ import {
   updateSettings, 
   getThemeSettings, 
   updateThemeSettings 
-} from '../../../lib/settings.js';
+} from '../../../frontend/src/lib/settings.js';
 
 export default async function handler(req, res) {
   try {

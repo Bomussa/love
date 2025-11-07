@@ -1,5 +1,5 @@
 // lib/queueManager.js - مدير الكيو اللحظي مع المهلة الزمنية والاستدعاء التلقائي
-import db from './db.js';
+import db from '../../../src/lib/supabase-db.js';
 import { getSetting, getSystemConfig } from './settings.js';
 
 /**

@@ -1,3 +1,6 @@
+import { getSupabaseClient } from "./supabase-enhanced.js";
+const supabase = getSupabaseClient(process.env);
+
 /**
  * Dynamic Routing System with Weighted Load Balancing
  * نظام المسارات الديناميكية حسب الأوزان

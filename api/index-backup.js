@@ -4,10 +4,7 @@
  * Enhanced with complete endpoints and proper error handling
  */
 
-import { initializeKVStores } from './lib/supabase-enhanced.js';
-
-// Initialize Supabase-backed KV stores
-const { KV_ADMIN, KV_PINS, KV_QUEUES, KV_EVENTS, KV_LOCKS, KV_CACHE, supabase } = initializeKVStores(process.env);
+import { KV_ADMIN, KV_PINS, KV_QUEUES, KV_EVENTS, KV_LOCKS, KV_CACHE } from './lib/storage.js';
 import { 
   parseBody, 
   setCorsHeaders, 
