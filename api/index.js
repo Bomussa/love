@@ -475,6 +475,76 @@ export default async function handler(req, res) {
 
     // ==================== ADMIN ====================
     
+    if (pathname === '/api/v1/admin/login' && method === 'POST') {
+      const { username, password } = body;
+      
+      if (!username || !password) {
+        return res.status(400).json(formatError('Missing username or password', 'MISSING_CREDENTIALS'));
+      }
+      
+      try {
+        // التحقق من المستخدم في Supabase
+        const { data: admin, error } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('username', username)
+          .single();
+        
+        if (error || !admin) {
+          return res.status(401).json(formatError('Invalid credentials', 'INVALID_CREDENTIALS'));
+        }
+        
+        // التحقق من كلمة المرور (plain text أو SHA-256)
+        let isPasswordValid = false;
+        
+        if (admin.password_hash === password) {
+          isPasswordValid = true;
+        } else {
+          // Try SHA-256
+          const crypto = await import('crypto');
+          const hash = crypto.createHash('sha256').update(password).digest('hex');
+          if (admin.password_hash === hash) {
+            isPasswordValid = true;
+          }
+        }
+        
+        if (!isPasswordValid) {
+          return res.status(401).json(formatError('Invalid credentials', 'INVALID_CREDENTIALS'));
+        }
+        
+        // إنشاء session
+        const sessionId = generateSessionId();
+        const session = {
+          id: sessionId,
+          userId: admin.id,
+          username: admin.username,
+          role: admin.role,
+          name: admin.name,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+        };
+        
+        // حفظ session في Supabase
+        await supabase.from('admin_sessions').insert(session);
+        
+        // حفظ في KV أيضاً للسرعة
+        await KV_ADMIN.put(`session:${sessionId}`, session, { expirationTtl: 1800 });
+        
+        return res.status(200).json(formatSuccess({
+          success: true,
+          session: {
+            id: sessionId,
+            username: admin.username,
+            role: admin.role,
+            name: admin.name
+          }
+        }, 'Login successful'));
+      } catch (err) {
+        console.error('[Admin Login Error]', err);
+        return res.status(500).json(formatError('Login failed', 'LOGIN_ERROR'));
+      }
+    }
+    
     if (pathname === '/api/v1/admin/status' && method === 'GET') {
       const queuesData = await KV_QUEUES.list();
       const pinsData = await KV_PINS.list();
@@ -488,6 +558,57 @@ export default async function handler(req, res) {
       }));
     }
 
+    // ==================== QUEUE POSITION ====================
+    
+    if (pathname === '/api/v1/queue/position' && method === 'POST') {
+      const { clinicId, patientId, sessionId } = body;
+      
+      if (!clinicId) {
+        return res.status(400).json(formatError('Missing clinicId', 'MISSING_FIELDS'));
+      }
+      
+      try {
+        // Get all waiting patients in this clinic
+        const { data: queues, error } = await supabase
+          .from('queues')
+          .select('*')
+          .eq('clinic_id', clinicId)
+          .eq('status', 'waiting')
+          .order('created_at', { ascending: true });
+        
+        if (error) {
+          return res.status(500).json(formatError('Failed to fetch queue', 'QUEUE_ERROR'));
+        }
+        
+        // Find patient position
+        let position = -1;
+        let displayNumber = null;
+        
+        if (patientId) {
+          position = queues.findIndex(q => q.patient_id === patientId);
+          if (position >= 0) {
+            displayNumber = queues[position].display_number;
+          }
+        } else if (sessionId) {
+          position = queues.findIndex(q => q.session_id === sessionId);
+          if (position >= 0) {
+            displayNumber = queues[position].display_number;
+          }
+        }
+        
+        return res.status(200).json(formatSuccess({
+          position: position >= 0 ? position : null,
+          displayNumber,
+          ahead: position >= 0 ? position : null,
+          totalWaiting: queues.length,
+          inQueue: position >= 0
+        }));
+      } catch (err) {
+        console.error('[Queue Position Error]', err);
+        return res.status(500).json(formatError('Failed to get position', 'POSITION_ERROR'));
+      }
+    }
+    
     // ==================== CLINIC ====================
     
     if (pathname === '/api/v1/clinic/exit' && method === 'POST') {
