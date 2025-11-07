@@ -4,14 +4,6 @@
   "installCommand": "cd frontend && npm install",
   "framework": "vite",
   "cleanUrls": true,
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     { "source": "/api/login", "destination": "/api/v1/login" },
     { "source": "/api/queue", "destination": "/api/v1/queue" },
