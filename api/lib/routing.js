@@ -6,7 +6,7 @@ const supabase = getSupabaseClient(process.env);
  * نظام المسارات الديناميكية حسب الأوزان
  */
 
-import { createEnv } from './storage.js';
+// import { createEnv } from './storage.js'; // Removed - using Supabase
 
 // تعريف المسارات حسب نوع الفحص والجنس
 export const ROUTE_MAP = {
@@ -65,12 +65,16 @@ export const CLINICS = {
  * حساب الوزن الديناميكي للعيادة بناءً على عدد المنتظرين
  */
 export async function calculateClinicWeight(clinicId) {
-  const env = createEnv();
-  const queueKey = `queue:list:${clinicId}`;
-  const queueData = await env.KV_QUEUES.get(queueKey, { type: 'json' }) || [];
+  // Get queue length from Supabase
+  const { data: queueData, error } = await supabase
+    .from('queue')
+    .select('id', { count: 'exact' })
+    .eq('clinic_id', clinicId)
+    .eq('status', 'waiting');
+  
+  const queueLength = queueData?.length || 0;
   
   const baseWeight = CLINICS[clinicId]?.weight || 1.0;
-  const queueLength = queueData.length;
   
   // الوزن الديناميكي = الوزن الأساسي × (1 + عدد المنتظرين × 0.1)
   const dynamicWeight = baseWeight * (1 + queueLength * 0.1);
@@ -171,7 +175,6 @@ export function updateClinicStatus(route, clinicId, status) {
  * الحصول على إحصائيات المسارات
  */
 export async function getRouteStatistics() {
-  const env = createEnv();
   const stats = {};
   
   for (const [clinicId, clinic] of Object.entries(CLINICS)) {

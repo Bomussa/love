@@ -5,14 +5,13 @@ const supabase = getSupabaseClient(process.env);
  * Reports System - نظام التقارير والإحصائيات
  */
 
-import { createEnv } from './storage.js';
+// import { createEnv } from './storage.js'; // Removed - using Supabase
 import { getValidClinics } from './helpers.js';
 
 /**
  * توليد تقرير يومي
  */
 export async function generateDailyReport(date) {
-  const env = createEnv();
   const dateKey = date || new Date().toISOString().split('T')[0];
   const clinics = getValidClinics();
   const clinicsData = {};
@@ -22,14 +21,22 @@ export async function generateDailyReport(date) {
   let totalWaiting = 0;
 
   for (const clinic of clinics) {
-    const queueKey = `queue:list:${clinic}`;
-    const queueData = await env.KV_QUEUES.get(queueKey, { type: 'json' }) || [];
+    // Get queue data from Supabase
+    const { data: waitingData } = await supabase
+      .from('queue')
+      .select('id', { count: 'exact' })
+      .eq('clinic_id', clinic)
+      .eq('status', 'waiting');
     
-    const statusKey = `queue:status:${clinic}`;
-    const status = await env.KV_QUEUES.get(statusKey, { type: 'json' }) || { served: [] };
+    const { data: servedData } = await supabase
+      .from('queue')
+      .select('id', { count: 'exact' })
+      .eq('clinic_id', clinic)
+      .eq('status', 'completed')
+      .gte('updated_at', dateKey);
     
-    const served = status.served?.length || 0;
-    const waiting = queueData.length;
+    const served = servedData?.length || 0;
+    const waiting = waitingData?.length || 0;
     
     clinicsData[clinic] = {
       clinic,
