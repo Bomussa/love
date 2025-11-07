@@ -12,9 +12,18 @@
     }
   },
   "rewrites": [
+    { "source": "/api/login", "destination": "/api/v1/login" },
+    { "source": "/api/queue", "destination": "/api/v1/queue" },
+    { "source": "/api/pin",   "destination": "/api/v1/pin"  },
+    { "source": "/api/(.*)",  "destination": "/api/v1/$1"   }
+  ],
+  "headers": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
     }
   ]
 }
