@@ -7,7 +7,7 @@
   "installCommand": "cd frontend && npm install && cd ../api && npm install",
   "framework": "vite",
   "functions": {
-    "api/**/*.js": {
+    "api/**/*.{js,ts}": {
       "runtime": "nodejs20.x"
     }
   },
