@@ -48,8 +48,12 @@ class AuthService {
       }
 
       // التحقق من كلمة المرور (hash أو plain text)
-      const crypto = await import('crypto');
-      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      // استخدام Web Crypto API للمتصفح
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
       if (users.password_hash !== password && users.password_hash !== passwordHash) {
         this.recordFailedAttempt(username);
