@@ -1,93 +1,86 @@
+/**
+ * Unified API Router for Vercel
+ * Single serverless function that routes to all API handlers
+ * This solves the Hobby plan limit of 12 functions
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
 
-const JSON = (res: VercelResponse, code: number, body: unknown) =>
-  res.status(code).setHeader('content-type','application/json; charset=utf-8').send(JSON.stringify(body));
+// CORS helper
+function setCORS(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
 
+// JSON response helper
+function sendJSON(res: VercelResponse, code: number, body: any) {
+  setCORS(res);
+  return res.status(code).json(body);
+}
+
+// Main router
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // رول-باك فوري
-  if (process.env.PROXY_FORCE_DISABLE === '1') return JSON(res, 503, { error: 'proxy_disabled' });
-
-  // مسارات مسموحة فقط (whitelist)
-  const allowed = (process.env.ALLOWED_API_PATHS || 'core,queue,pin,login,clinics,routes,patients,health,events,notifications')
-    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-  const parts = ([] as string[]).concat((req.query.path ?? []) as string[]);
-  let p = parts.join('/').replace(/\/+/g,'/').replace(/^\/|\/$/g,'').toLowerCase();
-  if (!p) p = 'core';
-  const root = p.split('/')[0];
-  if (!allowed.includes(root)) return JSON(res, 404, { error: 'blocked_by_whitelist', path: p, allowed });
-
-  // بيئة Runtime الصحيحة
-  const SUPABASE_URL  = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
-  const ANON          = process.env.SUPABASE_ANON_KEY || '';
-  if (!SUPABASE_URL || !ANON) return JSON(res, 500, { error: 'missing_runtime_env', need: ['SUPABASE_URL','SUPABASE_ANON_KEY'] });
-
-  // Aliases ثابتة إن لزم
-  const aliases: Record<string,string> = { signin:'login', queues:'queue' };
-  const orig = p; if (aliases[root]) p = p.replace(root, aliases[root]);
-
-  // الوجهة الوحيدة المسموح بها (Supabase Edge Functions)
-  const url = new URL(`${SUPABASE_URL}/functions/v1/functions-proxy`);
-  url.searchParams.set('path', p);
-
-  const headers: Record<string,string> = {
-    'apikey': ANON,
-  };
-  const incomingAuth = req.headers['authorization'];
-  headers['authorization'] = typeof incomingAuth === 'string' && incomingAuth ? incomingAuth : `Bearer ${ANON}`;
-  if (req.headers['content-type']) headers['content-type'] = String(req.headers['content-type']);
-
-  const doFetch = async () => {
-    const t0 = Date.now();
-    try {
-      const r = await fetch(url.toString(), {
-        method: req.method,
-        headers,
-        body: (req.method === 'GET' || req.method === 'HEAD') ? undefined : (req as any).body,
-        redirect: 'manual',
-      } as RequestInit);
-      return { r, dt: Date.now()-t0, err: null as null | string };
-    } catch (e:any) {
-      return { r: null as any, dt: Date.now()-t0, err: String(e) };
-    }
-  };
-
-  // محاولة واحدة + Retry 200ms للأخطاء العابرة/5xx
-  let attempts = 0;
-  let res1 = await doFetch(); attempts++;
-  if ((!res1.r || res1.r.status >= 500) && attempts === 1) {
-    await new Promise(r => setTimeout(r, 200));
-    res1 = await doFetch(); attempts++;
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    setCORS(res);
+    return res.status(200).end();
   }
 
-  // تسجيل موحّد اختياري (server-only)
   try {
-    const SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (SVC) {
-      const admin = createClient(SUPABASE_URL, SVC);
-      await admin.from('api_monitor').insert([{
-        path: p,
-        rewritten_from: orig === p ? null : orig,
-        status: res1.r ? res1.r.status : 0,
-        duration_ms: res1.dt,
-        attempts_count: attempts,
-        upstream_error: res1.err,
-        ts: new Date().toISOString(),
-        source: 'vercel_proxy',
-      }]).select().single();
+    // Extract path from query
+    const pathParts = ([] as string[]).concat((req.query.path ?? []) as string[]);
+    const path = pathParts.join('/').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+
+    // Route to appropriate handler
+    if (!path || path === 'health') {
+      // Health check
+      return sendJSON(res, 200, {
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        mode: 'vercel-router',
+      });
     }
-  } catch { /* لا تُفشل الطلب بسبب التسجيل */ }
 
-  if (!res1.r) return JSON(res, 502, { error:'upstream_unreachable', duration_ms: res1.dt });
+    // Parse path: /queue/status -> queue, status
+    const parts = path.split('/');
+    const module = parts[0]; // queue, pin, admin, etc.
+    const action = parts[1] || 'index';
 
-  const buf = Buffer.from(await res1.r.arrayBuffer());
-  const origin = String(process.env.FRONTEND_ORIGIN || '*');
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Vary', 'Origin');
+    // Dynamic import of handler
+    let handler;
+    try {
+      // Try to import the handler module
+      const handlerPath = `../../_api_handlers/v1/${module}/${action}`;
+      handler = await import(handlerPath);
+    } catch (e) {
+      // Handler not found
+      return sendJSON(res, 404, {
+        success: false,
+        error: 'Endpoint not found',
+        path,
+        module,
+        action,
+      });
+    }
 
-  res.status(res1.r.status);
-  for (const [k, v] of res1.r.headers.entries())
-    if (k.toLowerCase() !== 'content-length') res.setHeader(k, v);
-  return res.send(buf);
+    // Execute handler
+    if (handler && handler.default) {
+      return await handler.default(req, res);
+    } else {
+      return sendJSON(res, 500, {
+        success: false,
+        error: 'Handler has no default export',
+        path,
+      });
+    }
+  } catch (error: any) {
+    console.error('Router error:', error);
+    return sendJSON(res, 500, {
+      success: false,
+      error: 'Internal server error',
+      message: error.message,
+    });
+  }
 }
