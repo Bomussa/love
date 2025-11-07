@@ -4,9 +4,6 @@
   "installCommand": "cd frontend && npm install",
   "framework": "vite",
   "cleanUrls": true,
-  "routes": [
-    { "src": "/api/v1/(.*)", "dest": "/api/index.js" }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
