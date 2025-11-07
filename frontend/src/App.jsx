@@ -257,59 +257,7 @@ function App() {
         language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
       )
-<<<<<<< HEAD:src/App.jsx
-      return
-    }
-
-    try {
-      const formData = new URLSearchParams()
-      formData.append('username', username)
-      formData.append('password', password)
-
-      const response = await fetch('/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString(),
-        credentials: 'include',
-        redirect: 'follow'
-      })
-
-      // التحقق من النجاح: إذا وصل للـ dashboard أو status 200
-      const finalUrl = response.url
-      if (response.ok || finalUrl.includes('/admin/dashboard') || finalUrl.includes('/admin')) {
-        setIsAdmin(true)
-        setCurrentView('admin')
-        showNotification(
-          language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
-          'success'
-        )
-        return
-      }
-
-      // التحقق من نوع الخطأ
-      if (response.status === 401 || response.status === 403) {
-        showNotification(
-          language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid username or password',
-          'error'
-        )
-      } else if (response.status === 404) {
-        showNotification(
-          language === 'ar' ? '⚠️ الخادم غير متوفر حالياً' : '⚠️ Server not available',
-          'error'
-        )
-      } else {
-        showNotification(
-          language === 'ar' ? 'فشل تسجيل الدخول - يرجى المحاولة مرة أخرى' : 'Login failed - please try again',
-          'error'
-        )
-      }
-    } catch (error) {
-      // console.error('Admin login error:', error)
-=======
     } else {
->>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/App.jsx
       showNotification(
         language === 'ar' ? `❌ ${result.error}` : `❌ ${result.error}`,
         'error'
