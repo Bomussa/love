@@ -24,7 +24,7 @@ import {
   logRequest,
   handleError
 } from './lib/helpers-enhanced.js';
-import { calculateDynamicRoute, optimizeRoute } from './lib/routing.js';
+import { optimizeRoute, createOptimizedRoute } from './lib/routing.js';
 import { 
   generateDailyReport, 
   generateWeeklyReport, 
