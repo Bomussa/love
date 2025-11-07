@@ -36,7 +36,7 @@ class AuthService {
       const { data: users, error: fetchError } = await supabase
         .from('admins')
         .select('*')
-        .eq('username', username)
+        .ilike('username', username)
         .single();
 
       if (fetchError || !users) {
