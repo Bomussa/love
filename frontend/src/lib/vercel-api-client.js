@@ -1,35 +1,50 @@
 /**
- * Vercel API Client
- * Uses /api/v1/ endpoints for all backend communication
- * This ensures proper routing through Vercel to Supabase
+ * Supabase Edge Functions API Client
+ * Direct connection to Supabase Edge Functions (bypassing Vercel)
+ * 
+ * Benefits:
+ * - No Vercel serverless functions limit
+ * - Faster response (direct to Supabase)
+ * - Lower latency (same infrastructure as database)
+ * - 100% free
  */
 
-const API_BASE = '/api/v1';
+// Supabase configuration
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Base URL for Edge Functions
+const EDGE_FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 
 /**
- * Generic API call helper
+ * Make API call to Supabase Edge Function
+ * @param {string} endpoint - Edge function name (e.g., 'queue-status', 'pin-generate')
+ * @param {object} options - Fetch options
+ * @returns {Promise<object>} Response data
  */
-async function apiCall(endpoint, options = {}) {
+async function callEdgeFunction(endpoint, options = {}) {
+  const url = `${EDGE_FUNCTIONS_BASE}/${endpoint}`;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    ...options.headers,
+  };
+
   try {
-    const url = `${API_BASE}${endpoint}`;
     const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      credentials: 'include',
+      ...options,
+      headers,
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`Edge Function error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
-    console.error(`API call failed for ${endpoint}:`, error);
+    console.error(`[Edge Function] ${endpoint} failed:`, error);
     throw error;
   }
 }
@@ -40,9 +55,9 @@ async function apiCall(endpoint, options = {}) {
 
 export async function patientLogin(patientId, gender) {
   try {
-    const data = await apiCall('/patient/login', {
+    const data = await callEdgeFunction('patient-login', {
       method: 'POST',
-      body: { patient_id: patientId, gender },
+      body: JSON.stringify({ patient_id: patientId, gender }),
     });
     return { success: true, data };
   } catch (error) {
@@ -56,13 +71,13 @@ export async function patientLogin(patientId, gender) {
 
 export async function enterQueue(clinicId, patientData) {
   try {
-    const data = await apiCall('/queue/enter', {
+    const data = await callEdgeFunction('queue-enter', {
       method: 'POST',
-      body: {
+      body: JSON.stringify({
         clinic_id: clinicId,
         patient_id: patientData.id || patientData.patientId,
         gender: patientData.gender,
-      },
+      }),
     });
     return { success: true, ...data };
   } catch (error) {
@@ -72,7 +87,10 @@ export async function enterQueue(clinicId, patientData) {
 
 export async function getQueueStatus(clinicId) {
   try {
-    const data = await apiCall(`/queue/status?clinic_id=${clinicId}`);
+    const data = await callEdgeFunction('queue-status', {
+      method: 'POST',
+      body: JSON.stringify({ clinic_id: clinicId }),
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -81,7 +99,13 @@ export async function getQueueStatus(clinicId) {
 
 export async function getQueuePosition(clinicId, patientId) {
   try {
-    const data = await apiCall(`/queue/position?clinic_id=${clinicId}&patient_id=${patientId}`);
+    const data = await callEdgeFunction('queue-position', {
+      method: 'POST',
+      body: JSON.stringify({
+        clinic_id: clinicId,
+        patient_id: patientId,
+      }),
+    });
     return {
       success: true,
       displayNumber: data.display_number,
@@ -95,13 +119,13 @@ export async function getQueuePosition(clinicId, patientId) {
 
 export async function queueDone(clinicId, patientData, pin) {
   try {
-    const data = await apiCall('/queue/done', {
+    const data = await callEdgeFunction('queue-done', {
       method: 'POST',
-      body: {
+      body: JSON.stringify({
         clinic_id: clinicId,
         patient_id: patientData.id || patientData.patientId,
         pin: String(pin),
-      },
+      }),
     });
     return { success: true, ...data };
   } catch (error) {
@@ -115,7 +139,10 @@ export async function queueDone(clinicId, patientData, pin) {
 
 export async function getPinStatus(clinicId) {
   try {
-    const data = await apiCall(`/pin/status?clinic_id=${clinicId}`);
+    const data = await callEdgeFunction('pin-status', {
+      method: 'POST',
+      body: JSON.stringify({ clinic_id: clinicId }),
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -124,9 +151,9 @@ export async function getPinStatus(clinicId) {
 
 export async function generatePIN(clinicId, adminCode) {
   try {
-    const data = await apiCall('/pin/generate', {
+    const data = await callEdgeFunction('pin-generate', {
       method: 'POST',
-      body: { clinic_id: clinicId, admin_code: adminCode },
+      body: JSON.stringify({ clinic_id: clinicId, admin_code: adminCode }),
     });
     return { success: true, ...data };
   } catch (error) {
@@ -136,9 +163,12 @@ export async function generatePIN(clinicId, adminCode) {
 
 export async function verifyPIN(clinicId, pin) {
   try {
-    const data = await apiCall('/pin/verify', {
+    const data = await callEdgeFunction('pin-status', {
       method: 'POST',
-      body: { clinic_id: clinicId, pin: String(pin) },
+      body: JSON.stringify({
+        clinic_id: clinicId,
+        verify_pin: String(pin),
+      }),
     });
     return { success: true, valid: data.valid };
   } catch (error) {
@@ -152,7 +182,9 @@ export async function verifyPIN(clinicId, pin) {
 
 export async function getAdminStatus() {
   try {
-    const data = await apiCall('/admin/status');
+    const data = await callEdgeFunction('admin-status', {
+      method: 'GET',
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -161,7 +193,9 @@ export async function getAdminStatus() {
 
 export async function getQueueStats() {
   try {
-    const data = await apiCall('/stats/queues');
+    const data = await callEdgeFunction('stats-queues', {
+      method: 'GET',
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -170,7 +204,9 @@ export async function getQueueStats() {
 
 export async function getDashboardStats() {
   try {
-    const data = await apiCall('/stats/dashboard');
+    const data = await callEdgeFunction('stats-dashboard', {
+      method: 'GET',
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -179,7 +215,10 @@ export async function getDashboardStats() {
 
 export async function getActivePins(adminCode) {
   try {
-    const data = await apiCall(`/pin/status?admin_code=${adminCode}`);
+    const data = await callEdgeFunction('pin-status', {
+      method: 'POST',
+      body: JSON.stringify({ admin_code: adminCode }),
+    });
     return { success: true, pins: data.pins || [] };
   } catch (error) {
     return { success: false, error: error.message, pins: [] };
@@ -192,7 +231,13 @@ export async function getActivePins(adminCode) {
 
 export async function getDailyReport(adminCode) {
   try {
-    const data = await apiCall(`/reports/daily?admin_code=${adminCode}`);
+    const data = await callEdgeFunction('stats-dashboard', {
+      method: 'POST',
+      body: JSON.stringify({
+        report_type: 'daily',
+        admin_code: adminCode,
+      }),
+    });
     return { success: true, report: data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -201,7 +246,13 @@ export async function getDailyReport(adminCode) {
 
 export async function getWeeklyReport(adminCode) {
   try {
-    const data = await apiCall(`/reports/weekly?admin_code=${adminCode}`);
+    const data = await callEdgeFunction('stats-dashboard', {
+      method: 'POST',
+      body: JSON.stringify({
+        report_type: 'weekly',
+        admin_code: adminCode,
+      }),
+    });
     return { success: true, report: data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -210,7 +261,13 @@ export async function getWeeklyReport(adminCode) {
 
 export async function getMonthlyReport(adminCode) {
   try {
-    const data = await apiCall(`/reports/monthly?admin_code=${adminCode}`);
+    const data = await callEdgeFunction('stats-dashboard', {
+      method: 'POST',
+      body: JSON.stringify({
+        report_type: 'monthly',
+        admin_code: adminCode,
+      }),
+    });
     return { success: true, report: data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -239,7 +296,9 @@ export async function getRecentReports(adminCode) {
 
 export async function healthCheck() {
   try {
-    const data = await apiCall('/health');
+    const data = await callEdgeFunction('health', {
+      method: 'GET',
+    });
     return { success: true, ...data };
   } catch (error) {
     return { success: false, error: error.message };
