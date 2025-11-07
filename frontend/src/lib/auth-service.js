@@ -47,15 +47,26 @@ class AuthService {
         };
       }
 
-      // التحقق من كلمة المرور (hash أو plain text)
-      // استخدام Web Crypto API للمتصفح
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      // التحقق من كلمة المرور (plain text أولاً ثم hash)
+      let isPasswordValid = false;
       
-      if (users.password_hash !== password && users.password_hash !== passwordHash) {
+      // تحقق من plain text أولاً
+      if (users.password_hash === password) {
+        isPasswordValid = true;
+      } else {
+        // إذا لم يتطابق، جرب SHA-256 hash
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        if (users.password_hash === passwordHash) {
+          isPasswordValid = true;
+        }
+      }
+      
+      if (!isPasswordValid) {
         this.recordFailedAttempt(username);
         return {
           success: false,
