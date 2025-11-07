@@ -1,88 +1,56 @@
 /**
- * MIGRATED TO SUPABASE
- * Health Status Endpoint
+ * Health Status Endpoint - Vercel Serverless Function
  * GET /api/v1/health/status
  */
 
-export async function onRequestGet(context) {
-  const { request, env } = context;
+import { createClient } from '@supabase/supabase-js';
+
+export default async function handler(req, res) {
+  // Only allow GET requests
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    // Check KV bindings
-    const kvBound = [];
-    if (env.KV_ADMIN) kvBound.push('KV_ADMIN');
-    if (env.KV_PINS) kvBound.push('KV_PINS');
-    if (env.KV_QUEUES) kvBound.push('KV_QUEUES');
-    if (env.KV_EVENTS) kvBound.push('KV_EVENTS');
-    if (env.KV_LOCKS) kvBound.push('KV_LOCKS');
-    if (env.KV_CACHE) kvBound.push('KV_CACHE');
-
-    // Check R2 bindings
-    const r2Bound = [];
-    if (env.R2_BUCKET_REPORTS) r2Bound.push('R2_BUCKET_REPORTS');
-
-    // Check DO bindings
-    const doBound = [];
-    if (env.DO_ROUTER) doBound.push('DO_ROUTER');
+    // Check Supabase connection
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    
+    let supabaseConnected = false;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data, error } = await supabase.from('admins').select('count').limit(1);
+        supabaseConnected = !error;
+      } catch (e) {
+        supabaseConnected = false;
+      }
+    }
 
     // Check environment variables
     const envOk = {
-      PIN_SECRET: !!env.PIN_SECRET,
-      NOTIFY_KEY: !!env.NOTIFY_KEY,
-      JWT_SECRET: !!env.JWT_SECRET,
-      TIMEZONE: env.TIMEZONE === 'Asia/Qatar',
-      DB_URL: !!env.DB_URL
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+      supabase_connected: supabaseConnected
     };
-
-    // Check WWW redirect
-    const url = new URL(request.url);
-    const wwwRedirect = url.hostname.startsWith('www.');
 
     const healthStatus = {
-      pages_fullstack: true,
+      status: 'ok',
+      platform: 'vercel',
       functions_enabled: true,
-      kv_bound: kvBound,
-      r2_bound: r2Bound,
-      do_bound: doBound,
-      env_ok: envOk,
-      www_redirect: wwwRedirect,
-      rate_limit: {
-        enabled: false,
-        rpm: 60
-      },
-      edge_headers: {
-        server: 'cloudflare',
-        'cf-worker': true
-      },
+      environment: envOk,
       timestamp: new Date().toISOString()
     };
 
-    return new Response(JSON.stringify(healthStatus, null, 2), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
-    });
-
-  } catch (error) {
-    return new Response(JSON.stringify({
-      ok: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-  }
-}
-
+    return res.status(200).json(healthStatus);
 
   } catch (error) {
     console.error('Error in api/v1/health/status.js:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
+}
