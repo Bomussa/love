@@ -6,12 +6,15 @@
 
 import localApi from './local-api';
 import supabaseApi from './supabase-backend-api';
+import vercelApi from './vercel-api-client';
 
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// Set to 'supabase' to use Supabase backend, 'local' for Local Storage
-const BACKEND_MODE = 'supabase'; // Using Supabase backend for production
+// Set to 'vercel' to use Vercel API endpoints (recommended for production)
+// Set to 'supabase' to use direct Supabase connection
+// Set to 'local' for Local Storage (development only)
+const BACKEND_MODE = 'vercel'; // Using Vercel API for production
 
 console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
 
@@ -20,7 +23,13 @@ console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
 // ==========================================
 class UnifiedApiService {
   constructor() {
-    this.backend = BACKEND_MODE === 'supabase' ? supabaseApi : localApi;
+    if (BACKEND_MODE === 'vercel') {
+      this.backend = vercelApi;
+    } else if (BACKEND_MODE === 'supabase') {
+      this.backend = supabaseApi;
+    } else {
+      this.backend = localApi;
+    }
     this.mode = BACKEND_MODE;
   }
 

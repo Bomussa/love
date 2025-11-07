@@ -70,7 +70,8 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     loadQueues()
     loadRecentReports()
     
-    // Polling للتحديثات الدورية (كل دقيقة)
+    // استخدام Polling فقط (بدون SSE مؤقتاً لتجنب الأخطاء)
+    // تحديث كل دقيقة
     pollingIntervalRef.current = setInterval(() => {
       if (!document.hidden) {
         loadStats()
@@ -80,7 +81,28 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       }
     }, 60000);
     
-    // الاستماع لأحداث eventBus للتحديثات اللحظية من SSE ومصادر أخرى
+<<<<<<< HEAD:src/components/AdminPage.jsx
+    // Adaptive Polling: يعمل فقط إذا SSE غير نشط
+    const handleSSEConnected = () => {
+
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+    
+    const handleSSEError = () => {
+
+      if (!pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(() => {
+          loadStats()
+          loadActivePins()
+          loadQueues()
+          loadRecentReports()
+        }, 60000);
+      }
+=======
+    // الاستماع لأحداث eventBus للتحديثات اللحظية من مصادر أخرى
     const handleQueueUpdate = (data) => {
       if (data.stats) setStats(data)
       if (data.queues) setQueues(data.queues)
@@ -88,6 +110,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     
     const handleStatsUpdate = (data) => {
       setStats(data)
+>>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/components/AdminPage.jsx
     };
     
     const unsubscribeQueueUpdate = eventBus.on('queue:update', handleQueueUpdate);

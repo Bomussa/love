@@ -57,8 +57,8 @@ class EventBus {
     }
 
     // تسجيل في console للتطوير
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-      // console.log(`[EventBus] ${event}:`, data)
+    if (import.meta.env.DEV) {
+
     }
   }
 
@@ -191,6 +191,15 @@ if (typeof window !== 'undefined') {
   //   connectToSSE();
   // }, 1000);
 
+<<<<<<< HEAD:src/core/event-bus.js
+  // إعادة الاتصال عند عودة الصفحة من hidden
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !sseConnection) {
+
+      connectToSSE();
+    }
+  });
+=======
   // // إعادة الاتصال عند عودة الصفحة من hidden
   // document.addEventListener('visibilitychange', () => {
   //   if (!document.hidden && !sseConnection) {
@@ -198,6 +207,7 @@ if (typeof window !== 'undefined') {
   //     connectToSSE();
   //   }
   // });
+>>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/core/event-bus.js
 
   // تصدير للاستخدام اليدوي
   window.eventBusSSE = {

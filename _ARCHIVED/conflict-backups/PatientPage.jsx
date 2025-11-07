@@ -47,8 +47,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
       }
     } catch (e) {
+<<<<<<< HEAD:src/components/PatientPage.jsx
+      // console.error('Auto-enter first clinic failed:', e)
+      // في حالة الفشل، لا نعطي أي رقم افتراضي
+      // console.error('Cannot enter clinic without backend connection')
+=======
       console.error('Get ticket for first clinic failed:', e)
       // في حالة الفشل، العيادة تبقى جاهزة بدون رقم
+>>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/components/PatientPage.jsx
     }
   }
 
@@ -681,6 +687,34 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   </div>
                   
+<<<<<<< HEAD:src/components/PatientPage.jsx
+                  {station.isEntered && (
+                    <>
+                      {/* عرض العد التنازلي */}
+                      {station.entered_at && (
+                        <div className="mt-3">
+                          <CountdownTimer
+                            enteredAt={station.entered_at}
+                            maxSeconds={240}
+                            show={true}
+                            language={language}
+                            onTimeout={() => {
+
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-300">
+                            🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
+                          </span>
+                          <span className="text-blue-400 font-bold">
+                            {station.ahead ? `~${station.ahead * 5} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                          </span>
+                        </div>
+=======
                   {/* عرض العد التنازلي قبل الدخول */}
                   {station.status === 'ready' && !station.isEntered && station.entered_at && (
                     <div className="mt-3">
@@ -706,6 +740,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         <span className="text-blue-400 font-bold">
                           {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
                         </span>
+>>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/components/PatientPage.jsx
                       </div>
                     </div>
                   )}

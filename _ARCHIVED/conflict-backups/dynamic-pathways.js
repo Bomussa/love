@@ -1,6 +1,6 @@
 // المسارات الديناميكية - تعمل sync ثم تعيد الترتيب في الخلفية
-import routeMap from '../../config/routeMap.json' assert { type: 'json' }
-import clinicsData from '../../config/clinics.json' assert { type: 'json' }
+import routeMap from '../../config/routeMap.json'
+import clinicsData from '../../config/clinics.json'
 
 // تحويل رموز العيادات إلى كائنات كاملة
 function mapClinicCodes(codes) {
@@ -48,7 +48,11 @@ async function fetchClinicWeights(clinicIds) {
     
     await Promise.all(promises)
   } catch (err) {
+<<<<<<< HEAD:src/lib/dynamic-pathways.js
+    // console.error('Failed to fetch clinic weights:', err)
+=======
     console.log('Using default weights for all clinics')
+>>>>>>> cc9033d5cf9190f8972ab2ccebe5b926add6f68b:frontend/src/lib/dynamic-pathways.js
   }
   
   return weights
