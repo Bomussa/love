@@ -1,5 +1,5 @@
 // pages/api/queue/complete.js - واجهة API لإنهاء الفحص والانتقال للعيادة التالية
-import { routeToNextClinic, processClinicCode } from '../../../lib/workflow.js';
+import { routeToNextClinic, processClinicCode } from '../../../frontend/src/lib/workflow.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

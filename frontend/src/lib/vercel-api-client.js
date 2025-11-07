@@ -1,34 +1,31 @@
 /**
- * Supabase Edge Functions API Client
- * Direct connection to Supabase Edge Functions (bypassing Vercel)
+ * Vercel API Client
+ * Connection to Vercel API endpoints
+ * 
+ * Architecture:
+ * Frontend → Vercel API (/api/v1) → Supabase Edge Functions → Supabase Database
  * 
  * Benefits:
- * - No Vercel serverless functions limit
- * - Faster response (direct to Supabase)
- * - Lower latency (same infrastructure as database)
- * - 100% free
+ * - Centralized API layer
+ * - Better error handling
+ * - Rate limiting
+ * - Logging and monitoring
  */
 
-// Supabase configuration
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Base URL for Edge Functions
-const EDGE_FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
+// Base URL for Vercel API
+const API_BASE = '/api/v1';
 
 /**
- * Make API call to Supabase Edge Function
- * @param {string} endpoint - Edge function name (e.g., 'queue-status', 'pin-generate')
+ * Make API call to Vercel API
+ * @param {string} endpoint - API endpoint (e.g., 'queue/status', 'pin/generate')
  * @param {object} options - Fetch options
  * @returns {Promise<object>} Response data
  */
-async function callEdgeFunction(endpoint, options = {}) {
-  const url = `${EDGE_FUNCTIONS_BASE}/${endpoint}`;
+async function callAPI(endpoint, options = {}) {
+  const url = `${API_BASE}/${endpoint}`;
   
   const headers = {
     'Content-Type': 'application/json',
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     ...options.headers,
   };
 
@@ -39,12 +36,13 @@ async function callEdgeFunction(endpoint, options = {}) {
     });
 
     if (!response.ok) {
-      throw new Error(`Edge Function error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error(`[Edge Function] ${endpoint} failed:`, error);
+    console.error(`[Vercel API] ${endpoint} failed:`, error);
     throw error;
   }
 }
@@ -55,7 +53,7 @@ async function callEdgeFunction(endpoint, options = {}) {
 
 export async function patientLogin(patientId, gender) {
   try {
-    const data = await callEdgeFunction('patient-login', {
+    const data = await callAPI('patient-login', {
       method: 'POST',
       body: JSON.stringify({ patient_id: patientId, gender }),
     });
@@ -71,7 +69,7 @@ export async function patientLogin(patientId, gender) {
 
 export async function enterQueue(clinicId, patientData) {
   try {
-    const data = await callEdgeFunction('queue-enter', {
+    const data = await callAPI('queue-enter', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -87,7 +85,7 @@ export async function enterQueue(clinicId, patientData) {
 
 export async function getQueueStatus(clinicId) {
   try {
-    const data = await callEdgeFunction('queue-status', {
+    const data = await callAPI('queue-status', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId }),
     });
@@ -99,7 +97,7 @@ export async function getQueueStatus(clinicId) {
 
 export async function getQueuePosition(clinicId, patientId) {
   try {
-    const data = await callEdgeFunction('queue-position', {
+    const data = await callAPI('queue-position', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -119,7 +117,7 @@ export async function getQueuePosition(clinicId, patientId) {
 
 export async function queueDone(clinicId, patientData, pin) {
   try {
-    const data = await callEdgeFunction('queue-done', {
+    const data = await callAPI('queue-done', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -139,7 +137,7 @@ export async function queueDone(clinicId, patientData, pin) {
 
 export async function getPinStatus(clinicId) {
   try {
-    const data = await callEdgeFunction('pin-status', {
+    const data = await callAPI('pin-status', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId }),
     });
@@ -151,7 +149,7 @@ export async function getPinStatus(clinicId) {
 
 export async function generatePIN(clinicId, adminCode) {
   try {
-    const data = await callEdgeFunction('pin-generate', {
+    const data = await callAPI('pin-generate', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId, admin_code: adminCode }),
     });
@@ -163,7 +161,7 @@ export async function generatePIN(clinicId, adminCode) {
 
 export async function verifyPIN(clinicId, pin) {
   try {
-    const data = await callEdgeFunction('pin-status', {
+    const data = await callAPI('pin-status', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -182,7 +180,7 @@ export async function verifyPIN(clinicId, pin) {
 
 export async function getAdminStatus() {
   try {
-    const data = await callEdgeFunction('admin-status', {
+    const data = await callAPI('admin-status', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -193,7 +191,7 @@ export async function getAdminStatus() {
 
 export async function getQueueStats() {
   try {
-    const data = await callEdgeFunction('stats-queues', {
+    const data = await callAPI('stats-queues', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -204,7 +202,7 @@ export async function getQueueStats() {
 
 export async function getDashboardStats() {
   try {
-    const data = await callEdgeFunction('stats-dashboard', {
+    const data = await callAPI('stats-dashboard', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -215,7 +213,7 @@ export async function getDashboardStats() {
 
 export async function getActivePins(adminCode) {
   try {
-    const data = await callEdgeFunction('pin-status', {
+    const data = await callAPI('pin-status', {
       method: 'POST',
       body: JSON.stringify({ admin_code: adminCode }),
     });
@@ -231,7 +229,7 @@ export async function getActivePins(adminCode) {
 
 export async function getDailyReport(adminCode) {
   try {
-    const data = await callEdgeFunction('stats-dashboard', {
+    const data = await callAPI('stats-dashboard', {
       method: 'POST',
       body: JSON.stringify({
         report_type: 'daily',
@@ -246,7 +244,7 @@ export async function getDailyReport(adminCode) {
 
 export async function getWeeklyReport(adminCode) {
   try {
-    const data = await callEdgeFunction('stats-dashboard', {
+    const data = await callAPI('stats-dashboard', {
       method: 'POST',
       body: JSON.stringify({
         report_type: 'weekly',
@@ -261,7 +259,7 @@ export async function getWeeklyReport(adminCode) {
 
 export async function getMonthlyReport(adminCode) {
   try {
-    const data = await callEdgeFunction('stats-dashboard', {
+    const data = await callAPI('stats-dashboard', {
       method: 'POST',
       body: JSON.stringify({
         report_type: 'monthly',
@@ -296,7 +294,7 @@ export async function getRecentReports(adminCode) {
 
 export async function healthCheck() {
   try {
-    const data = await callEdgeFunction('health', {
+    const data = await callAPI('health', {
       method: 'GET',
     });
     return { success: true, ...data };

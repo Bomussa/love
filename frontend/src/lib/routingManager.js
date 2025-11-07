@@ -1,5 +1,5 @@
 // lib/routingManager.js - مدير التوجيه الديناميكي مع الأوزان والسعة
-import db from './db.js';
+import db from '../../../src/lib/supabase-db.js';
 import { getSystemConfig } from './settings.js';
 
 /**

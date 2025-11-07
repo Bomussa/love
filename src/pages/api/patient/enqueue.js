@@ -1,5 +1,5 @@
 // pages/api/patient/enqueue.js - واجهة API لإضافة مراجع جديد للنظام
-import { enqueuePatient, getPatientStatus, handleEmergency } from '../../../lib/workflow.js';
+import { enqueuePatient, getPatientStatus, handleEmergency } from '../../../frontend/src/lib/workflow.js';
 
 export default async function handler(req, res) {
   try {

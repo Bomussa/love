@@ -3,9 +3,9 @@
 // --- Safety layer: per-clinic lightweight lock ---
 const clinicLastProcessed = new Map();
 
-import db from '../../../lib/db.js';
-import { callNextPatient, expireNoShows } from '../../../lib/queueManager.js';
-import { isWorkingHours } from '../../../lib/settings.js';
+import db from '../../../lib/supabase-db.js';
+import { callNextPatient, expireNoShows } from '../../../frontend/src/lib/queueManager.js';
+import { isWorkingHours } from '../../../frontend/src/lib/settings.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

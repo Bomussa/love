@@ -1,6 +1,6 @@
 // pages/api/queue/call-next.js - واجهة API لاستدعاء المراجع التالي
-import { callNextPatient, expireNoShows } from '../../../lib/queueManager.js';
-import { isWorkingHours } from '../../../lib/settings.js';
+import { callNextPatient, expireNoShows } from '../../../frontend/src/lib/queueManager.js';
+import { isWorkingHours } from '../../../frontend/src/lib/settings.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
