@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (process.env.PROXY_FORCE_DISABLE === '1') return JSON(res, 503, { error: 'proxy_disabled' });
 
   // مسارات مسموحة فقط (whitelist)
-  const allowed = (process.env.ALLOWED_API_PATHS || 'core,queue,pin,login,clinics,routes')
+  const allowed = (process.env.ALLOWED_API_PATHS || 'core,queue,pin,login,clinics,routes,patients,health,events,notifications')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
   const parts = ([] as string[]).concat((req.query.path ?? []) as string[]);
@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (SVC) {
       const admin = createClient(SUPABASE_URL, SVC);
-      await admin.from('api_monitor.logs').insert([{
+      await admin.from('api_monitor').insert([{
         path: p,
         rewritten_from: orig === p ? null : orig,
         status: res1.r ? res1.r.status : 0,
