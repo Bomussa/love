@@ -6,6 +6,9 @@
 // Supabase Edge Functions Base URL
 const EDGE_FUNCTIONS_URL = 'https://rujwuruuosffcxazymit.supabase.co/functions/v1';
 
+// Supabase Anon Key (public key, safe to use in frontend)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA1NzQ0NTAsImV4cCI6MjA0NjE1MDQ1MH0.KLdkqwQxQBcqJXbOlxcZOqN1zyFfvO7kEEhOKLXOhHM';
+
 // Helper function to call Edge Functions
 async function callEdgeFunction(functionName, body = {}, method = 'POST') {
   const url = `${EDGE_FUNCTIONS_URL}/${functionName}`;
@@ -14,6 +17,7 @@ async function callEdgeFunction(functionName, body = {}, method = 'POST') {
     method,
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     },
   };
 
