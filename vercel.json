@@ -10,6 +10,16 @@
       "maxDuration": 10
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/daily-pin",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/queue-call",
+      "schedule": "*/2 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -31,6 +41,14 @@
     {
       "source": "/api/signin",
       "destination": "/api/index.js"
+    },
+    {
+      "source": "/api/cron/daily-pin",
+      "destination": "/api/cron/daily-pin.js"
+    },
+    {
+      "source": "/api/cron/queue-call",
+      "destination": "/api/cron/queue-call.js"
     },
     {
       "source": "/api/v1/:path*",
