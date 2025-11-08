@@ -35,11 +35,7 @@
   ],
   "rewrites": [
     {
-      "source": "/api/login",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/api/signin",
+      "source": "/api/v1/:path*",
       "destination": "/api/index.js"
     },
     {
@@ -49,14 +45,6 @@
     {
       "source": "/api/cron/queue-call",
       "destination": "/api/cron/queue-call.js"
-    },
-    {
-      "source": "/api/v1/:path*",
-      "destination": "/api/v1/[...path].js"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
     }
   ]
 }
