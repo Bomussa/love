@@ -4,7 +4,7 @@
  * Enhanced with complete endpoints and proper error handling
  */
 
-import { initializeKVStores } from './lib/supabase-enhanced.js';
+import { initializeKVStores } from '../server-lib/lib/supabase-enhanced.js';
 
 // Initialize Supabase-backed KV stores
 const { KV_ADMIN, KV_PINS, KV_QUEUES, KV_EVENTS, KV_LOCKS, KV_CACHE, supabase } = initializeKVStores(process.env);
@@ -23,14 +23,14 @@ import {
   formatSuccess,
   logRequest,
   handleError
-} from './lib/helpers-enhanced.js';
-import { optimizeRoute, createOptimizedRoute } from './lib/routing.js';
+} from '../server-lib/lib/helpers-enhanced.js';
+import { optimizeRoute, createOptimizedRoute } from '../server-lib/lib/routing.js';
 import { 
   generateDailyReport, 
   generateWeeklyReport, 
   generateMonthlyReport, 
   generateAnnualReport 
-} from './lib/reports.js';
+} from '../server-lib/lib/reports.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
