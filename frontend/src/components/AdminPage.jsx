@@ -689,16 +689,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white">
-              <Settings className="icon icon-md me-2" />
-              Admin
-            </Button>
-            <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white">
-              English 🇺🇸
-            </Button>
-            <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white">
-              Night Shift
-            </Button>
+            {/* Removed static buttons - functionality is in Admin Header below */}
           </div>
         </div>
       </header>
