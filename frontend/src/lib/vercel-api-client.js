@@ -53,7 +53,7 @@ async function callAPI(endpoint, options = {}) {
 
 export async function patientLogin(patientId, gender) {
   try {
-    const data = await callAPI('patient-login', {
+    const data = await callAPI('patient/login', {
       method: 'POST',
       body: JSON.stringify({ patient_id: patientId, gender }),
     });
@@ -69,7 +69,7 @@ export async function patientLogin(patientId, gender) {
 
 export async function enterQueue(clinicId, patientData) {
   try {
-    const data = await callAPI('queue-enter', {
+    const data = await callAPI('queue/enter', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -85,9 +85,8 @@ export async function enterQueue(clinicId, patientData) {
 
 export async function getQueueStatus(clinicId) {
   try {
-    const data = await callAPI('queue-status', {
-      method: 'POST',
-      body: JSON.stringify({ clinic_id: clinicId }),
+    const data = await callAPI(`queue/status?clinicId=${clinicId}`, {
+      method: 'GET',
     });
     return { success: true, ...data };
   } catch (error) {
@@ -97,7 +96,7 @@ export async function getQueueStatus(clinicId) {
 
 export async function getQueuePosition(clinicId, patientId) {
   try {
-    const data = await callAPI('queue-position', {
+    const data = await callAPI('queue/position', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -117,7 +116,7 @@ export async function getQueuePosition(clinicId, patientId) {
 
 export async function queueDone(clinicId, patientData, pin) {
   try {
-    const data = await callAPI('queue-done', {
+    const data = await callAPI('queue/done', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -137,9 +136,8 @@ export async function queueDone(clinicId, patientData, pin) {
 
 export async function getPinStatus(clinicId) {
   try {
-    const data = await callAPI('pin-status', {
-      method: 'POST',
-      body: JSON.stringify({ clinic_id: clinicId }),
+    const data = await callAPI(`pin/status?clinicId=${clinicId}`, {
+      method: 'GET',
     });
     return { success: true, ...data };
   } catch (error) {
@@ -149,7 +147,7 @@ export async function getPinStatus(clinicId) {
 
 export async function generatePIN(clinicId, adminCode) {
   try {
-    const data = await callAPI('pin-generate', {
+    const data = await callAPI('pin/generate', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId, admin_code: adminCode }),
     });
@@ -161,11 +159,11 @@ export async function generatePIN(clinicId, adminCode) {
 
 export async function verifyPIN(clinicId, pin) {
   try {
-    const data = await callAPI('pin-status', {
+    const data = await callAPI('pin/verify', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
-        verify_pin: String(pin),
+        pin: String(pin),
       }),
     });
     return { success: true, valid: data.valid };
@@ -180,7 +178,7 @@ export async function verifyPIN(clinicId, pin) {
 
 export async function getAdminStatus() {
   try {
-    const data = await callAPI('admin-status', {
+    const data = await callAPI('admin/status', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -191,7 +189,7 @@ export async function getAdminStatus() {
 
 export async function getQueueStats() {
   try {
-    const data = await callAPI('stats-queues', {
+    const data = await callAPI('stats/queues', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -202,7 +200,7 @@ export async function getQueueStats() {
 
 export async function getDashboardStats() {
   try {
-    const data = await callAPI('stats-dashboard', {
+    const data = await callAPI('stats/dashboard', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -213,9 +211,8 @@ export async function getDashboardStats() {
 
 export async function getActivePins(adminCode) {
   try {
-    const data = await callAPI('pin-status', {
-      method: 'POST',
-      body: JSON.stringify({ admin_code: adminCode }),
+    const data = await callAPI(`pin/status?adminCode=${adminCode}`, {
+      method: 'GET',
     });
     return { success: true, pins: data.pins || [] };
   } catch (error) {
@@ -229,12 +226,8 @@ export async function getActivePins(adminCode) {
 
 export async function getDailyReport(adminCode) {
   try {
-    const data = await callAPI('stats-dashboard', {
-      method: 'POST',
-      body: JSON.stringify({
-        report_type: 'daily',
-        admin_code: adminCode,
-      }),
+    const data = await callAPI(`reports/daily?adminCode=${adminCode}`, {
+      method: 'GET',
     });
     return { success: true, report: data };
   } catch (error) {
@@ -244,12 +237,8 @@ export async function getDailyReport(adminCode) {
 
 export async function getWeeklyReport(adminCode) {
   try {
-    const data = await callAPI('stats-dashboard', {
-      method: 'POST',
-      body: JSON.stringify({
-        report_type: 'weekly',
-        admin_code: adminCode,
-      }),
+    const data = await callAPI(`reports/weekly?adminCode=${adminCode}`, {
+      method: 'GET',
     });
     return { success: true, report: data };
   } catch (error) {
@@ -259,12 +248,8 @@ export async function getWeeklyReport(adminCode) {
 
 export async function getMonthlyReport(adminCode) {
   try {
-    const data = await callAPI('stats-dashboard', {
-      method: 'POST',
-      body: JSON.stringify({
-        report_type: 'monthly',
-        admin_code: adminCode,
-      }),
+    const data = await callAPI(`reports/monthly?adminCode=${adminCode}`, {
+      method: 'GET',
     });
     return { success: true, report: data };
   } catch (error) {
@@ -294,7 +279,7 @@ export async function getRecentReports(adminCode) {
 
 export async function healthCheck() {
   try {
-    const data = await callAPI('health', {
+    const data = await callAPI('status', {
       method: 'GET',
     });
     return { success: true, ...data };
