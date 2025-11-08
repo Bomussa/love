@@ -13,6 +13,7 @@ const UPSTREAM_TIMEOUT_MS = 30000;
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://mmc-mms.com',
+  'https://love-bomussa.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173',
 ];
