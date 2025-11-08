@@ -1,55 +1,189 @@
-# Military Medical Committee System (MMC-MMS)
+# 🏥 نظام إدارة المركز الطبي التخصصي العسكري (MMC-MMS)
 
-**نظام إدارة اللجان الطبية العسكرية**
-
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://www.mmc-mms.com)
-[![Supabase](https://img.shields.io/badge/Database-Supabase-green?logo=supabase)](https://supabase.com)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.0-blue?logo=react)](https://reactjs.org/)
-
-**آخر تحديث:** 6 نوفمبر 2025 - 03:25 صباحاً (GMT+3)
-
----
+<div dir="rtl">
 
 ## 📋 نظرة عامة
 
-نظام متكامل لإدارة الفحوصات الطبية العسكرية يتيح للمرضى تتبع مسار فحصهم الطبي عبر عيادات متعددة، مع نظام طوابير ذكي وإشعارات فورية.
+نظام متكامل لإدارة العيادات وطوابير المرضى في المركز الطبي التخصصي العسكري. يوفر النظام واجهة سهلة الاستخدام لإدارة المواعيد، تتبع المرضى، وإدارة سير العمل في العيادات المختلفة.
 
-### ✨ المميزات الرئيسية
+## ✨ المميزات الرئيسية
 
-- 🏥 **8 أنواع فحوصات طبية** مع مسارات مخصصة لكل نوع
-- 📱 **واجهة مستخدم عصرية** متجاوبة مع جميع الأجهزة
-- 🎨 **6 ثيمات مختلفة** للواجهة
-- ⏱️ **نظام طوابير ذكي** مع حساب الوقت المتوقع
-- 🔔 **إشعارات فورية** باستخدام Server-Sent Events
-- 🌐 **دعم اللغتين** العربية والإنجليزية
-- 🔐 **نظام أمان متقدم** مع Row Level Security
-- 📊 **لوحة تحكم إدارية** شاملة
+### 🏥 إدارة العيادات
+- ✅ إدارة متعددة للعيادات
+- ✅ نظام طوابير ذكي
+- ✅ تتبع حالة المرضى في الوقت الفعلي
+- ✅ إدارة المسارات الطبية
 
----
+### 👥 إدارة المرضى
+- ✅ تسجيل المرضى السريع
+- ✅ تتبع التاريخ الطبي
+- ✅ نظام الباركود
+- ✅ إشعارات تلقائية
 
-## 🏗️ البنية التقنية
+### 📊 التقارير والتحليلات
+- ✅ تقارير يومية وشهرية
+- ✅ إحصائيات الأداء
+- ✅ رسوم بيانية تفاعلية
+- ✅ تصدير البيانات
+
+### 🔐 الأمان والصلاحيات
+- ✅ مصادقة متعددة المستويات
+- ✅ Row Level Security (RLS)
+- ✅ تشفير البيانات
+- ✅ سجلات التدقيق
+
+## 🏗️ المعمارية التقنية
 
 ### Frontend
-- **Framework:** React 18 + Vite
-- **Styling:** CSS Modules + Tailwind CSS
-- **State Management:** React Context API
-- **HTTP Client:** Supabase Client
-- **Deployment:** Vercel
+- **Framework:** Vite + React
+- **UI Library:** Custom Components
+- **State Management:** React Hooks
+- **Styling:** CSS Modules + Tailwind
 
 ### Backend
-- **Database:** PostgreSQL (Supabase)
-- **API:** Supabase REST API + Vercel Serverless Functions
-- **Real-time:** Server-Sent Events (SSE)
+- **Platform:** Vercel Serverless Functions
+- **Database:** Supabase (PostgreSQL)
 - **Authentication:** Supabase Auth
+- **API:** RESTful + Edge Functions
 
 ### Infrastructure
-- **Hosting:** Vercel (Frontend + API)
-- **Database:** Supabase (PostgreSQL + Storage)
+- **Hosting:** Vercel
+- **Database:** Supabase Cloud
 - **CDN:** Vercel Edge Network
-- **SSL:** Automatic (Vercel + Custom Domain)
+- **Monitoring:** Vercel Analytics
 
----
+## 📁 هيكل المشروع
+
+```
+love/
+├── frontend/          # التطبيق الأمامي (Vite + React)
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── utils/
+│   │   └── api/
+│   ├── public/
+│   └── config/
+│
+├── api/               # Serverless API (Vercel Functions)
+│   ├── v1/           # API v1 endpoints
+│   ├── lib/          # مكتبات مشتركة
+│   └── _shared/      # موارد مشتركة
+│
+├── supabase/          # Supabase configuration
+│   ├── migrations/   # Database migrations
+│   └── functions/    # Edge Functions
+│
+├── scripts/           # سكربتات الصيانة والنشر
+│   ├── deploy/
+│   ├── db/
+│   └── test/
+│
+├── config/            # إعدادات المشروع
+│   ├── vercel-environment-variables.md
+│   ├── vercel-build-settings.md
+│   └── supabase-tables-list.md
+│
+├── docs/              # التوثيق الشامل
+│   ├── ARCHITECTURE.md
+│   ├── API.md
+│   ├── DATABASE.md
+│   ├── DEPLOYMENT.md
+│   └── MAINTENANCE.md
+│
+└── tests/             # الاختبارات
+    ├── unit/
+    ├── integration/
+    └── e2e/
+```
+
+## 🚀 البدء السريع
+
+### المتطلبات الأساسية
+
+```bash
+Node.js >= 18.0.0
+npm >= 9.0.0
+Git
+```
+
+### التثبيت
+
+```bash
+# 1. استنساخ المشروع
+git clone https://github.com/Bomussa/love.git
+cd love
+
+# 2. تثبيت الاعتماديات
+npm install
+cd frontend && npm install
+
+# 3. إعداد متغيرات البيئة
+cp .env.example .env.local
+# عدّل .env.local بالقيم الصحيحة
+
+# 4. تشغيل التطوير
+npm run dev
+```
+
+### متغيرات البيئة المطلوبة
+
+```env
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Vite
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_USE_SUPABASE=true
+VITE_API_BASE_URL=http://localhost:3000
+
+# API
+API_ORIGIN=http://localhost:3000
+```
+
+## 📦 النشر
+
+### النشر على Vercel
+
+```bash
+# 1. تسجيل الدخول إلى Vercel
+vercel login
+
+# 2. ربط المشروع
+vercel link
+
+# 3. إضافة متغيرات البيئة
+vercel env pull
+
+# 4. النشر
+vercel --prod
+```
+
+### النشر التلقائي
+
+المشروع مُعد للنشر التلقائي عند:
+- ✅ Push إلى `main` branch → Production
+- ✅ Push إلى أي branch آخر → Preview
+
+## 🧪 الاختبار
+
+```bash
+# اختبارات الوحدة
+npm run test
+
+# اختبارات التكامل
+npm run test:integration
+
+# اختبارات E2E
+npm run test:e2e
+
+# تغطية الاختبارات
+npm run test:coverage
+```
 
 ## 📊 قاعدة البيانات
 
@@ -57,343 +191,96 @@
 
 | الجدول | الوصف | السجلات |
 |--------|-------|---------|
-| `patients` | بيانات المرضى | ديناميكي |
-| `exam_types` | أنواع الفحوصات الطبية | 8 سجلات |
-| `clinics` | العيادات المتاحة | 13 عيادة |
-| `queues` | طوابير الانتظار | ديناميكي |
-| `pathways` | مسارات الفحص للمرضى | ديناميكي |
-| `notifications` | الإشعارات | ديناميكي |
-| `admin_users` | المستخدمون الإداريون | محدود |
+| `patients` | بيانات المرضى | ~10,000 |
+| `clinics` | العيادات | ~20 |
+| `queue` | طابور الانتظار | ~500/day |
+| `admins` | المسؤولون | ~50 |
+| `routes` | المسارات الطبية | ~15 |
 
-### أنواع الفحوصات المتاحة
-
-1. **فحص التجنيد** - 13 خطوة (فحص شامل)
-2. **فحص النقل** - 4 خطوات
-3. **فحص الترفيع** - 3 خطوات
-4. **فحص التحويل** - 4 خطوات
-5. **فحص الدورات** - 3 خطوات
-6. **فحص الطباخين** - 5 خطوات
-7. **فحص الطيران السنوي** - 8 خطوات
-8. **تجديد التعاقد** - 3 خطوات
-
----
-
-## 🚀 التثبيت والتشغيل
-
-### المتطلبات الأساسية
-
-- Node.js 18+
-- npm أو pnpm
-- حساب Supabase
-- حساب Vercel (للنشر)
-
-### التثبيت المحلي
+### Migrations
 
 ```bash
-# استنساخ المستودع
-git clone https://github.com/Bomussa/love.git
-cd love
+# إنشاء migration جديد
+npm run db:migration:new
 
-# تثبيت التبعيات
-npm install
+# تطبيق migrations
+npm run db:migrate
 
-# إعداد متغيرات البيئة
-cp .env.example .env
-# قم بتعديل .env وإضافة مفاتيح Supabase
-
-# تشغيل Frontend
-cd frontend
-npm run dev
-
-# تشغيل API (في terminal منفصل)
-cd api
-npm run dev
+# التراجع عن migration
+npm run db:rollback
 ```
 
-### متغيرات البيئة المطلوبة
+## 🔧 الصيانة
+
+### النسخ الاحتياطي
 
 ```bash
-# Frontend (.env في مجلد frontend)
-VITE_SUPABASE_URL=https://utgsoizsnqchiduzffxo.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
-VITE_API_BASE_URL=https://www.mmc-mms.com/api/v1
+# نسخ احتياطي لقاعدة البيانات
+npm run db:backup
 
-# API (متغيرات Vercel)
-SUPABASE_URL=https://utgsoizsnqchiduzffxo.supabase.co
-SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+# استعادة من نسخة احتياطية
+npm run db:restore backup_file.sql
 ```
 
-⚠️ **مهم:** راجع ملف `VERCEL_ENV_CRITICAL_FIX.md` للحصول على المفاتيح الصحيحة والخطوات المطلوبة.
+### المراقبة
 
----
+- **Vercel Analytics:** https://vercel.com/bomussa/love/analytics
+- **Supabase Dashboard:** https://supabase.com/dashboard/project/rujwuruuosffcxazymit
+- **Logs:** `npm run logs`
 
-## 📁 هيكل المشروع
+## 📚 التوثيق
 
-```
-love/
-├── frontend/                 # تطبيق React
-│   ├── src/
-│   │   ├── components/      # مكونات React
-│   │   ├── lib/            # مكتبات مساعدة
-│   │   ├── styles/         # ملفات CSS
-│   │   └── main.jsx        # نقطة الدخول
-│   ├── public/             # ملفات ثابتة
-│   └── package.json
-│
-├── api/                     # Vercel Serverless Functions
-│   ├── v1/
-│   │   ├── patients/       # API endpoints للمرضى
-│   │   ├── queue/          # API endpoints للطوابير
-│   │   ├── health/         # Health checks
-│   │   └── events/         # Server-Sent Events
-│   └── _lib/               # مكتبات مشتركة
-│
-├── supabase/               # Supabase migrations
-│   └── migrations/         # SQL migrations
-│
-├── docs/                   # التوثيق
-│   ├── FIXES_APPLIED.md
-│   ├── FIX_PLAN.md
-│   ├── COMPLETE_INTEGRATION_REPORT.md
-│   └── VERCEL_ENV_CRITICAL_FIX.md
-│
-├── tests/                  # الاختبارات
-│   └── unit/
-│
-├── vercel.json            # إعدادات Vercel
-├── package.json
-└── README.md             # هذا الملف
-```
+- [معمارية النظام](docs/ARCHITECTURE.md)
+- [توثيق API](docs/API.md)
+- [قاعدة البيانات](docs/DATABASE.md)
+- [دليل النشر](docs/DEPLOYMENT.md)
+- [دليل الصيانة](docs/MAINTENANCE.md)
+- [دليل المستخدم](docs/USER_GUIDE.md)
 
----
+## 🤝 المساهمة
 
-## 🔧 API Endpoints
+نرحب بالمساهمات! يرجى قراءة [دليل المساهمة](CONTRIBUTING.md) قبل البدء.
 
-### Patient Management
+## 📝 الترخيص
 
-```
-POST /api/v1/patients/login
-Body: { "patientId": "123456789", "gender": "male" }
-Response: { "success": true, "data": {...}, "message": "..." }
-```
+هذا المشروع مرخص تحت [MIT License](LICENSE).
 
-### Queue Management
+## 👥 الفريق
 
-```
-GET /api/v1/queue/status
-Response: { "queues": [...], "stats": {...} }
-```
-
-### Health Check
-
-```
-GET /api/v1/health/status
-Response: { "status": "ok", "timestamp": "..." }
-```
-
-### Real-time Events
-
-```
-GET /api/v1/events/stream
-Response: text/event-stream
-```
-
----
-
-## 🎨 الثيمات المتاحة
-
-1. **طبي احترافي** (Medical Professional) - الافتراضي
-2. **الطبيعة الشافية** (Healing Nature)
-3. **العافية الهادئة** (Calm Wellness)
-4. **الرعاية الدافئة** (Warm Care)
-5. **طبي حديث** (Modern Medical)
-6. **الصحة الموثوقة** (Trusted Health)
-
----
-
-## 🔐 الأمان
-
-### Row Level Security (RLS)
-
-جميع الجداول محمية بـ RLS policies:
-
-- **patients:** قراءة/كتابة للمستخدمين المصادق عليهم
-- **exam_types:** قراءة عامة، كتابة للإداريين فقط
-- **queues:** قراءة عامة، كتابة محدودة
-- **clinics:** قراءة عامة، كتابة للإداريين فقط
-
-### CORS
-
-CORS مفعل للنطاقات التالية:
-- `https://www.mmc-mms.com`
-- `https://mmc-mms.com`
-- `http://localhost:3000` (للتطوير)
-- `http://localhost:5173` (للتطوير)
-
----
-
-## 📈 الأداء
-
-### تحسينات الأداء
-
-- ✅ **Indexes** على جميع الأعمدة المستخدمة في الاستعلامات
-- ✅ **Connection Pooling** عبر Supabase
-- ✅ **Edge Functions** عبر Vercel
-- ✅ **CDN** للملفات الثابتة
-- ✅ **Lazy Loading** للمكونات
-
-### مقاييس الأداء
-
-- **First Contentful Paint:** < 1.5s
-- **Time to Interactive:** < 3.5s
-- **Lighthouse Score:** 90+
-
----
-
-## 🧪 الاختبارات
-
-### تشغيل الاختبارات
-
-```bash
-# اختبارات الوحدة
-npm test
-
-# اختبار شامل للاتصال
-node comprehensive-test.js
-
-# اختبار Supabase endpoints
-bash test-all-endpoints.sh
-```
-
-### نتائج الاختبارات الأخيرة (6 نوفمبر 2025)
-
-```
-✅ exam_types: 8 سجلات
-✅ clinics: 13 سجلات
-✅ patients: يعمل
-✅ queues: يعمل
-✅ pathways: يعمل
-✅ notifications: يعمل
-```
-
----
-
-## 🚀 النشر
-
-### النشر على Vercel
-
-```bash
-# تسجيل الدخول إلى Vercel
-vercel login
-
-# نشر المشروع
-vercel --prod
-```
-
-### إعداد النطاق المخصص
-
-1. أضف النطاق في Vercel Dashboard
-2. قم بتحديث DNS records
-3. انتظر انتشار SSL certificate
-
----
-
-## 🐛 المشاكل الشائعة وحلولها
-
-### المشكلة: API يعيد خطأ 500
-
-**الحل:** تحقق من متغيرات البيئة في Vercel. راجع `VERCEL_ENV_CRITICAL_FIX.md`.
-
-### المشكلة: تسجيل الدخول لا يعمل
-
-**الحل:** تأكد من أن RLS policies مفعلة على جدول `patients`.
-
-### المشكلة: الإشعارات لا تعمل
-
-**الحل:** تحقق من أن EventSource متصل بـ `/api/v1/events/stream`.
-
----
-
-## 📝 التحديثات الأخيرة
-
-### 6 نوفمبر 2025 - 03:25 صباحاً
-
-#### ✅ الإصلاحات المطبقة
-
-1. **إصلاح API endpoint لتسجيل دخول المرضى**
-   - تصحيح عدم تطابق أسماء الأعمدة (`patient_id` → `id`)
-   - الملف: `/api/v1/patients/login.ts`
-
-2. **إنشاء جدول exam_types**
-   - 8 أنواع فحوصات طبية مع مساراتها الكاملة
-   - Row Level Security مفعل
-   - Triggers للتحديث التلقائي
-   - Indexes لتحسين الأداء
-
-3. **اختبارات شاملة**
-   - ✅ exam_types: 8 سجلات
-   - ✅ clinics: 13 سجلات
-   - ✅ patients: يعمل
-   - ✅ queues: يعمل
-   - ✅ pathways: يعمل
-   - ✅ notifications: يعمل
-
-#### ⚠️ الخطوة المتبقية
-
-**تحديث متغيرات البيئة في Vercel:**
-- المتغيرات الحالية تشير إلى مشروع Supabase قديم
-- يجب تحديثها حسب الدليل في `VERCEL_ENV_CRITICAL_FIX.md`
-
----
-
-## 🎯 الحالة الحالية
-
-| المكون | الحالة | الملاحظات |
-|--------|--------|-----------|
-| Frontend | 🟢 يعمل 100% | منشور على Vercel |
-| Supabase Database | 🟢 يعمل 100% | جميع الجداول موجودة |
-| Supabase REST API | 🟢 يعمل 100% | يمكن الوصول مباشرة |
-| Vercel API Functions | 🟡 يحتاج تحديث | متغيرات البيئة خاطئة |
-| تسجيل الدخول | 🟡 يحتاج تحديث | بسبب API Functions |
-
-**الخطوة التالية:** تحديث متغيرات البيئة في Vercel حسب `VERCEL_ENV_CRITICAL_FIX.md`
-
----
-
-## 👥 المساهمون
-
-- **Bomussa** - المطور الرئيسي
-- **Manus AI** - المساعد في التطوير والتوثيق
-
----
-
-## 📄 الترخيص
-
-هذا المشروع ملك خاص للقوات المسلحة. جميع الحقوق محفوظة.
-
----
+- **المطور الرئيسي:** Bomussa
+- **البريد الإلكتروني:** bomussa@gmail.com
+- **GitHub:** [@Bomussa](https://github.com/Bomussa)
 
 ## 🔗 روابط مهمة
 
-- **الموقع المباشر:** https://www.mmc-mms.com
-- **GitHub Repository:** https://github.com/Bomussa/love
-- **Vercel Dashboard:** https://vercel.com/bomussa/love
-- **Supabase Dashboard:** https://supabase.com/dashboard/project/utgsoizsnqchiduzffxo
-
----
+- **الموقع:** https://love-bomussa.vercel.app
+- **API Docs:** https://love-bomussa.vercel.app/api/docs
+- **Supabase:** https://rujwuruuosffcxazymit.supabase.co
+- **GitHub:** https://github.com/Bomussa/love
 
 ## 📞 الدعم
 
-للدعم الفني أو الاستفسارات:
-- **Email:** Bomussa@gmail.com
-- **GitHub Issues:** https://github.com/Bomussa/love/issues
+للحصول على الدعم:
+- 📧 Email: bomussa@gmail.com
+- 💬 GitHub Issues: [فتح issue](https://github.com/Bomussa/love/issues)
+- 📖 Documentation: [docs/](docs/)
+
+## 🎯 خارطة الطريق
+
+### Q1 2025
+- [ ] تطبيق الجوال (React Native)
+- [ ] نظام الإشعارات المتقدم
+- [ ] تكامل مع الأنظمة الخارجية
+
+### Q2 2025
+- [ ] تحليلات متقدمة بالذكاء الاصطناعي
+- [ ] نظام الحجز الإلكتروني
+- [ ] تطبيق للأطباء
 
 ---
 
-**تم التحديث:** 6 نوفمبر 2025 - 03:25 صباحاً (GMT+3)
+**آخر تحديث:** 08 نوفمبر 2025  
+**الإصدار:** 2.0.0  
+**الحالة:** 🟢 Production Ready
 
-
-
-
-
+</div>

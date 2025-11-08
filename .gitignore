@@ -184,3 +184,24 @@ venv/
 
 # Lock file
 .lock
+
+# Archive
+.archive/
+
+# Environment files
+.env.local
+.env.production
+.env*.local
+
+# Test results
+test-results/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
