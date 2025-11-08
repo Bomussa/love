@@ -5,7 +5,7 @@
  */
 
 import localApi from './local-api';
-import supabaseApi from './supabase-backend-api';
+import supabaseApi from './supabase-edge-api';
 import vercelApi from './vercel-api-client';
 
 // ==========================================
@@ -14,7 +14,7 @@ import vercelApi from './vercel-api-client';
 // Set to 'vercel' to use Vercel API endpoints (recommended for production)
 // Set to 'supabase' to use direct Supabase connection
 // Set to 'local' for Local Storage (development only)
-const BACKEND_MODE = 'vercel'; // Using Vercel API (Production)
+const BACKEND_MODE = 'supabase'; // Using Supabase Edge Functions (Production)
 
 console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
 
