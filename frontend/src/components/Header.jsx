@@ -38,6 +38,16 @@ export function Header({ currentPage, onPageChange, onThemeChange, currentTheme,
             variant="ghost"
             size="sm"
             className="text-gray-300 hover:text-white"
+            onClick={() => onPageChange('login')}
+          >
+            <Home className="icon icon-md me-2" />
+            Home
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:text-white"
             onClick={() => onPageChange('admin')}
           >
             <Settings className="icon icon-md me-2" />

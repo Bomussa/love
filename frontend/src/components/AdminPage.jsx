@@ -223,8 +223,8 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           <span className="text-white font-bold">⚕️</span>
         </div>
         <div>
-          <h2 className="text-white font-semibold">Admin Dashboard</h2>
-          <p className="text-gray-400 text-sm">Welcome admin</p>
+          <h2 className="text-white font-semibold">{t('adminDashboard', language)}</h2>
+          <p className="text-gray-400 text-sm">{t('welcomeAdmin', language)}</p>
         </div>
       </div>
 
@@ -711,14 +711,14 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
               <span className="text-white font-bold">⚕️</span>
             </div>
             <div>
-              <h2 className="text-white font-semibold">Admin Dashboard</h2>
-              <p className="text-gray-400 text-sm">Welcome admin</p>
+              <h2 className="text-white font-semibold">{t('adminDashboard', language)}</h2>
+              <p className="text-gray-400 text-sm">{t('welcomeAdmin', language)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-yellow-500 text-yellow-400">
+            <Button variant="outline" size="sm" className="border-yellow-500 text-yellow-400" onClick={onLogout}>
               <Home className="icon icon-md me-2" />
-              Home
+              {t('home', language)}
             </Button>
             <Button variant="gradientSecondary" size="sm" onClick={handleLogout}>
               <LogOut className="icon icon-md me-2" />
