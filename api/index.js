@@ -73,6 +73,15 @@ export default async function handler(req, res) {
   try {
     // ==================== STATUS & HEALTH ====================
     
+    if (pathname === '/api/v1/health' && method === 'GET') {
+      return res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        service: 'love-api',
+        version: '1.0.0'
+      });
+    }
+    
     if (pathname === '/api/v1/status' && method === 'GET') {
       return res.status(200).json(formatSuccess({
         status: 'healthy',
