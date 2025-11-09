@@ -17,39 +17,15 @@ import { supabase } from './supabase-client';
  */
 export async function patientLogin(id, gender) {
   try {
-    // Check if patient exists
-    const { data: existing } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('id', id)
-      .single();
+    // Accept any ID without database verification
+    // System doesn't store patient data permanently
+    const patient = {
+      id,
+      gender,
+      last_active: new Date().toISOString()
+    };
 
-    if (existing) {
-      // Update last_active
-      const { data, error } = await supabase
-        .from('patients')
-        .update({ last_active: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, patient: data };
-    }
-
-    // Create new patient
-    const { data, error } = await supabase
-      .from('patients')
-      .insert([{ id, gender }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Create pathway for the patient
-    await createPathway(id, gender);
-
-    return { success: true, patient: data };
+    return { success: true, patient };
   } catch (error) {
     console.error('Error in patientLogin:', error);
     return { success: false, error: error.message };
