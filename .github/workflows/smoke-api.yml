@@ -1,0 +1,19 @@
+name: smoke-api
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed base URL (e.g. https://your-app.vercel.app)"
+        required: true
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node scripts/smoke-api.mjs
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url }}

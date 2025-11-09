@@ -1,0 +1,49 @@
+name: auto-wire-love
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Base branch to merge into"
+        required: true
+        default: "main"
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+jobs:
+  patch-and-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply safe patches
+        run: node tools/auto_wire_love.mjs
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/auto-wire-love
+          base: ${{ github.event.inputs.target_branch }}
+          title: "chore: auto-wire /api/v1 + supabase admin + health route"
+          commit-message: |
+            chore: auto-wire /api/v1 redirects + supabase admin client + health endpoint
+            - add/merge vercel.json redirects->/api/v1
+            - create src/lib/supabaseAdmin.ts (server-only)
+            - add health endpoint for App or Pages router
+            - idempotent; safe to re-run
+          body: |
+            Auto-generated PR to finalize API path unification (/api/v1) and add a server-only Supabase admin client.
+            Includes a minimal /api/v1/health endpoint. No UI changes.
+          add-paths: |
+            vercel.json
+            src/lib/supabaseAdmin.ts
+            src/app/api/v1/health/route.ts
+            pages/api/v1/health.ts
+          labels: |
+            automation
+            safe-patch
