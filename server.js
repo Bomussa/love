@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -53,12 +53,20 @@ app.all('/api/*', async (req, res) => {
         res.json(data);
         return vercelRes;
       },
-      end: () => {
-        res.end();
+      end: (data) => {
+        res.end(data);
         return vercelRes;
       },
       setHeader: (key, value) => {
         res.setHeader(key, value);
+        return vercelRes;
+      },
+      write: (data) => {
+        res.write(data);
+        return vercelRes;
+      },
+      writeHead: (statusCode, headers) => {
+        res.writeHead(statusCode, headers);
         return vercelRes;
       }
     };
