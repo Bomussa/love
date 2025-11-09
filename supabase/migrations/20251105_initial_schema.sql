@@ -425,3 +425,12 @@ COMMENT ON TABLE audit_log IS 'سجل المراجعة - يحتوي على جم�
 -- ============================================
 -- END OF SCHEMA
 -- ============================================
+
+-- ============================================
+-- REALTIME PUBLICATION
+-- ============================================
+
+-- إضافة الجداول الحرجة إلى publication supabase_realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.queues;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.pathways;

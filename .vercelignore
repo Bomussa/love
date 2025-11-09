@@ -13,3 +13,4 @@ scripts/
 *.swo
 *~
 .emergent
+supabase/functions

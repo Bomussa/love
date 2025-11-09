@@ -454,7 +454,7 @@ export default async function handler(req, res) {
     if (pathname === '/api/v1/events/stream' && method === 'GET') {
       // Set SSE headers
       res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
       
       // Send initial connection message

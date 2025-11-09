@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     strictPort: false,
-    allowedHosts: 'all'
+    allowedHosts: ['3000-igu4b2vsmh6i0ngdsqbh6-ca803bdf.manus-asia.computer']
   },
   build: {
     outDir: 'dist',
