@@ -629,6 +629,49 @@ export default async function handler(req, res) {
       return res.status(200).json(formatSuccess({}, 'Patient exited clinic'));
     }
 
+    // ==================== ADMIN: Export Secrets ====================
+    
+    if (pathname === '/api/v1/admin/export-secrets' && method === 'POST') {
+      const exportToken = req.headers['x-export-token'];
+      const expectedToken = process.env.EXPORT_TOKEN || 'default-export-token-change-me';
+      
+      if (exportToken !== expectedToken) {
+        return res.status(401).json(formatError('Unauthorized', 'UNAUTHORIZED'));
+      }
+      
+      // جمع المتغيرات البيئية
+      const secrets = [
+        { name: 'SUPABASE_URL', value: process.env.SUPABASE_URL },
+        { name: 'SUPABASE_ANON_KEY', value: process.env.SUPABASE_ANON_KEY },
+        { name: 'SUPABASE_SERVICE_ROLE_KEY', value: process.env.SUPABASE_SERVICE_ROLE_KEY },
+        { name: 'VITE_SUPABASE_URL', value: process.env.VITE_SUPABASE_URL },
+        { name: 'VITE_SUPABASE_ANON_KEY', value: process.env.VITE_SUPABASE_ANON_KEY },
+        { name: 'POSTGRES_HOST', value: process.env.POSTGRES_HOST },
+        { name: 'POSTGRES_USER', value: process.env.POSTGRES_USER },
+        { name: 'POSTGRES_DATABASE', value: process.env.POSTGRES_DATABASE },
+        { name: 'API_ORIGIN', value: process.env.API_ORIGIN },
+        { name: 'VITE_API_BASE_URL', value: process.env.VITE_API_BASE_URL },
+        { name: 'FRONTEND_ORIGIN', value: process.env.FRONTEND_ORIGIN },
+        { name: 'VERCEL_URL', value: process.env.VERCEL_URL },
+        { name: 'VERCEL_ENV', value: process.env.VERCEL_ENV }
+      ];
+      
+      const items = secrets
+        .filter(s => s.value)
+        .map(s => ({
+          name: s.name,
+          length: s.value.length,
+          preview: s.value.substring(0, 20) + '...'
+        }));
+      
+      return res.status(200).json(formatSuccess({
+        count: items.length,
+        timestamp: new Date().toISOString(),
+        environment: process.env.VERCEL_ENV || 'unknown',
+        items: items
+      }, 'Secrets exported'));
+    }
+    
     // ==================== DEFAULT: 404 ====================
     
     return res.status(404).json(formatError('Endpoint not found', 'NOT_FOUND', {
