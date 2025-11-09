@@ -1,0 +1,40 @@
+name: Health Checker Schedule
+
+on:
+  schedule:
+    # Run every 6 hours at minute 0
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    name: Run Health Checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase health-checker function
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+          echo "Calling health-checker at $(date)"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://rujwuruuosffcxazymit.supabase.co/functions/v1/health-checker" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Body:"
+          echo "$BODY" | jq . || echo "$BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "⚠️  Health check returned non-200 status: $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo "✅ Health check completed successfully"
