@@ -11,10 +11,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5000,
     host: '0.0.0.0',
-    strictPort: false,
-    allowedHosts: 'all'
+    strictPort: false
   },
   build: {
     outDir: 'dist',
