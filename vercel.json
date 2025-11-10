@@ -1,44 +1,7 @@
 {
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm install && cd frontend && npm install",
+  "installCommand": "cd frontend && npm install",
   "framework": "vite",
-  "cleanUrls": true,
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/login",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/api/signin",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/api/v1/:path*",
-      "destination": "/api/v1/[...path].js"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
-    }
-  ]
+  "cleanUrls": true
 }
