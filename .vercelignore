@@ -1,0 +1,15 @@
+/api/**
+/supabase/**
+*.md
+archive/**
+docs/**
+tools/**
+manus-testing/**
+infra/**
+mms-core/**
+db/**
+deploy/**
+.github/**
+*.ps1
+*.sh
+test-*.js

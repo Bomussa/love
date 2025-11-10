@@ -7,12 +7,21 @@
     {
       "source": "/api/v1/(.*)",
       "headers": [
-        { "key": "X-Accel-Buffering", "value": "no" }
+        {
+          "key": "X-Accel-Buffering",
+          "value": "no"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "https://YOUR-SUPABASE-REF.functions.supabase.co/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
