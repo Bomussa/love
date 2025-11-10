@@ -5,6 +5,8 @@ node_modules
 backend/
 tests/
 scripts/
+/api/**
+/supabase/**
 *.log
 .DS_Store
 .vscode
