@@ -1,17 +1,8 @@
-node_modules
-.git
-.env.local
-.env.*.local
-backend/
-tests/
-scripts/
-/api/**
-/supabase/**
-*.log
-.DS_Store
-.vscode
-.idea
-*.swp
-*.swo
-*~
-.emergent
+# Neutralize backend & duplicate configs (لا حذف – فقط تجاهل للنشر على Vercel)
+api
+supabase
+backend
+server
+functions
+frontend/vercel.json
+vercel.functions-proxy.json
