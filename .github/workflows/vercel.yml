@@ -61,10 +61,10 @@ jobs:
             DELAY=$((DELAY * 2))
           done
 
-      - name: Smoke test /api/api-v1-status
+      - name: Smoke test /api/v1/status
         run: |
           set -e
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/api-v1-status || true)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/status || true)
           echo "Status: $STATUS"
           if [ "$STATUS" -ne 200 ]; then
             echo "Smoke test failed: expected 200, got $STATUS"
