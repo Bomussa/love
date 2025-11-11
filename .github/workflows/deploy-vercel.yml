@@ -1,0 +1,54 @@
+name: Deploy to Vercel and Smoke Test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy frontend to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: '--prod'
+          working-directory: frontend
+
+      - name: Wait for deployment propagation
+        run: |
+          echo "Waiting for deployment to propagate..."
+          sleep 10
+
+      - name: Smoke test /api/api-v1-status
+        run: |
+          set -e
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/api-v1-status || true)
+          echo "Status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Smoke test failed: expected 200, got $STATUS"
+            exit 1
+          fi
+          echo "Smoke test passed"
