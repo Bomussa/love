@@ -8,7 +8,7 @@
   ],
   "buildCommand": "cd frontend && npm ci && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm ci",
+  "installCommand": "cd frontend && npm ci",
   "framework": "vite",
   "cleanUrls": true
 }
