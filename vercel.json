@@ -1,1 +1,14 @@
-{\n  "$schema": "https://openapi.vercel.sh/vercel.json",\n  "rewrites": [\n    { "source": "/api/api-v1-status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-v1-status" },\n    { "source": "/api/v1/health/status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-v1-status" },\n\n    { "source": "/api/queue-enter", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-enter" },\n    { "source": "/api/v1/queue/enter", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-enter" },\n\n    { "source": "/api/queue-status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-status" },\n    { "source": "/api/v1/queue/status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-status" },\n\n    { "source": "/api/queue-call", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-call" },\n    { "source": "/api/v1/queue/call", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-call" },\n\n    { "source": "/api/pin-generate", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-generate" },\n    { "source": "/api/v1/pin/generate", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-generate" },\n\n    { "source": "/api/pin-verify", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-verify" },\n    { "source": "/api/v1/pin/verify", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-verify" },\n\n    { "source": "/api/pin-status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-status" },\n    { "source": "/api/v1/pin/status", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-status" },\n\n    { "source": "/api/reports-daily", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/reports-daily" },\n    { "source": "/api/v1/reports/daily", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/reports-daily" },\n\n    { "source": "/api/stats-dashboard", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/stats-dashboard" },\n    { "source": "/api/v1/stats/dashboard", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/stats-dashboard" },\n\n    { "source": "/api/:path*", "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/:path*" }\n  ],\n  "buildCommand": "cd frontend && npm run build",\n  "outputDirectory": "frontend/dist",\n  "installCommand": "cd frontend && npm install",\n  "framework": "vite",\n  "cleanUrls": true\n}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/:path*"
+    }
+  ],
+  "buildCommand": "cd frontend && npm ci && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm ci",
+  "framework": "vite",
+  "cleanUrls": true
+}
