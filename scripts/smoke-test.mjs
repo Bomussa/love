@@ -13,7 +13,14 @@ const log = (m,c=colors.reset)=>console.log(`${c}${m}${colors.reset}`);
 const pass = t => { passed++; log(`✅ ${t}`, colors.green); };
 const fail = (t,e)=> { failed++; log(`❌ ${t}: ${e}`, colors.red); };
 
-async function test(n, fn){ try{ await fn(); pass(n);} catch(e){ fail(n, e.message);} }
+async function test(n, fn) {
+  try {
+    await fn();
+    pass(n);
+  } catch (e) {
+    fail(n, e.message);
+  }
+}
 async function fetchJSON(url, options = {}){
   const res = await fetch(url, { ...options, headers: { "Content-Type":"application/json", ...(options.headers||{}) }});
   const ct = (res.headers.get("content-type")||"").includes("application/json");
