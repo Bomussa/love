@@ -151,7 +151,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           ...station,
           status: index === 0 ? 'ready' : 'locked',
           current: 0,
-          yourNumber: 0,
+          yourNumber: null,
           ahead: 0,
           isEntered: false
         }))
@@ -246,7 +246,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const start = Date.now();
       try {
         // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط (تقليل 429 Errors)
-        const currentStation = stations.find(s => s.isEntered && s.status === 'ready');
+        const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
         
         if (currentStation) {
           // استخدام endpoint position للحصول على موقع دقيق
@@ -672,7 +672,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       <div className="text-gray-400 text-sm">{t('current', language)}</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{station.yourNumber || '-'}</div>
+                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
                       <div className="text-gray-400 text-sm">{t('yourNumber', language)}</div>
                     </div>
                     <div>

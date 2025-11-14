@@ -53,7 +53,7 @@ class UnifiedApiService {
 
   async enterQueue(clinic, user, isAutoEntry = false) {
     try {
-      const result = await this.backend.enterQueue(clinic, user);
+      const result = await this.backend.enterQueue(clinic, user, isAutoEntry);
       return result;
     } catch (error) {
       console.error('Error in enterQueue:', error);
