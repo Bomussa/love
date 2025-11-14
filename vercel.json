@@ -6,9 +6,9 @@
       "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router/:path*"
     }
   ],
-  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm install --legacy-peer-deps",
+  "installCommand": "npm install",
   "framework": "vite",
   "cleanUrls": true
 }
