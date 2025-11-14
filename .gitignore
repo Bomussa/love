@@ -133,3 +133,11 @@ dist_server/
 # Generated maintenance reports
 scripts/maintenance/unused-report.json
 scripts/ops/test-input.jsonl
+.vercel
+
+# Supabase CSV snapshots at repo root (ignore future ones)
+/*.csv
+
+# Playwright outputs
+playwright-report/
+test-results/

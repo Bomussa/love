@@ -17,6 +17,30 @@
 
 ---
 
+## ⚡ تشغيل سريع (Vercel + Supabase)
+
+- المتطلبات: Node 20 (أنظر `.nvmrc`).
+- تطوير الواجهة مع ربط إلى الباك‑إند الإنتاجي:
+
+```powershell
+cd love
+pnpm install
+$env:VITE_API_BASE="https://www.mmc-mms.com"
+pnpm dev:vite
+```
+
+- تحقق بصري سريع (F12 → Network)، أو نفّذ في Console:
+
+```javascript
+fetch('/api/v1/status')
+  .then(r => (console.log(r.status, r.statusText), r.json()))
+  .then(console.log)
+```
+
+- الإنتاج: `vercel.json` يعيد كتابة `/api/v1/*` إلى Supabase Functions وSSE عند `/api/v1/events/stream`.
+
+---
+
 ## 📋 جدول المحتويات
 
 - [نظرة عامة](#-نظرة-عامة)
