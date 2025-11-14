@@ -1,8 +1,7 @@
+@import './styles/qr-safe.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './styles/qr-safe.css';
 
 @layer base {
   :root {
