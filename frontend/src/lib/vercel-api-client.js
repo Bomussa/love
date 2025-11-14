@@ -55,7 +55,7 @@ export async function patientLogin(patientId, gender) {
   try {
     const data = await callAPI('patient/login', {
       method: 'POST',
-      body: JSON.stringify({ patient_id: patientId, gender }),
+      body: JSON.stringify({ patientId: patientId, gender }),
     });
     return { success: true, data };
   } catch (error) {
@@ -72,9 +72,8 @@ export async function enterQueue(clinicId, patientData) {
     const data = await callAPI('queue/enter', {
       method: 'POST',
       body: JSON.stringify({
-        clinic_id: clinicId,
-        patient_id: patientData.id || patientData.patientId,
-        gender: patientData.gender,
+        clinic: clinicId,
+        user: patientData.id || patientData.sessionId,
       }),
     });
     return { success: true, ...data };
@@ -85,9 +84,8 @@ export async function enterQueue(clinicId, patientData) {
 
 export async function getQueueStatus(clinicId) {
   try {
-    const data = await callAPI('queue/status', {
-      method: 'POST',
-      body: JSON.stringify({ clinic_id: clinicId }),
+    const data = await callAPI(`queue/status?clinic=${clinicId}`, {
+      method: 'GET',
     });
     return { success: true, ...data };
   } catch (error) {
@@ -97,12 +95,8 @@ export async function getQueueStatus(clinicId) {
 
 export async function getQueuePosition(clinicId, patientId) {
   try {
-    const data = await callAPI('queue/position', {
-      method: 'POST',
-      body: JSON.stringify({
-        clinic_id: clinicId,
-        patient_id: patientId,
-      }),
+    const data = await callAPI(`queue/position?clinic=${clinicId}&user=${patientId}`, {
+      method: 'GET',
     });
     return {
       success: true,
@@ -120,8 +114,8 @@ export async function queueDone(clinicId, patientData, pin) {
     const data = await callAPI('queue/done', {
       method: 'POST',
       body: JSON.stringify({
-        clinic_id: clinicId,
-        patient_id: patientData.id || patientData.patientId,
+        clinic: clinicId,
+        user: patientData.id || patientData.sessionId,
         pin: String(pin),
       }),
     });
@@ -137,9 +131,8 @@ export async function queueDone(clinicId, patientData, pin) {
 
 export async function getPinStatus(clinicId) {
   try {
-    const data = await callAPI('pin/status', {
-      method: 'POST',
-      body: JSON.stringify({ clinic_id: clinicId }),
+    const data = await callAPI(`pin/status?clinic=${clinicId}`, {
+      method: 'GET',
     });
     return { success: true, ...data };
   } catch (error) {
