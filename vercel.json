@@ -1,9 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router/:path*"
+      "destination": "/api"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/queue/call",
+      "schedule": "*/2 * * * *"
     }
   ],
   "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",

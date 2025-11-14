@@ -32,6 +32,64 @@ import {
   generateAnnualReport 
 } from '../lib/reports.js';
 
+async function callNextPatientForClinic(clinicId) {
+  const lockKey = `lock:queue:${clinicId}`;
+  const lockId = Math.random().toString(36).substring(2);
+
+  try {
+    const existingLock = await KV_LOCKS.get(lockKey);
+    if (existingLock && (Date.now() - new Date(existingLock.createdAt).getTime() < 10000)) {
+      console.log(`Queue for clinic ${clinicId} is locked. Skipping.`);
+      return { status: 'locked', clinicId };
+    }
+    await KV_LOCKS.put(lockKey, { owner: lockId, createdAt: new Date().toISOString() }, { expirationTtl: 10 });
+
+    const queueKey = `queue:${clinicId}`;
+    const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
+
+    if (queue.current) {
+        console.log(`Clinic ${clinicId} is already serving patient #${queue.current.position}. Skipping.`);
+        return { status: 'busy', clinicId, patient: queue.current.position };
+    }
+
+    if (queue.patients.length === 0) {
+      console.log(`No patients in queue for clinic ${clinicId}.`);
+      return { status: 'empty', clinicId };
+    }
+
+    const nextPatient = queue.patients.shift();
+    queue.current = nextPatient;
+    queue.lastUpdated = new Date().toISOString();
+    await KV_QUEUES.put(queueKey, queue);
+
+    await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
+      type: 'PATIENT_CALLED',
+      clinicId,
+      sessionId: nextPatient.sessionId,
+      position: nextPatient.position,
+      timestamp: new Date().toISOString()
+    }, { expirationTtl: 3600 });
+
+    console.log(`Successfully called patient #${nextPatient.position} for clinic ${clinicId}.`);
+    return {
+      status: 'called',
+      clinicId,
+      calledPatient: { sessionId: nextPatient.sessionId, position: nextPatient.position },
+      remainingInQueue: queue.patients.length
+    };
+
+  } catch(error) {
+    console.error(`Error processing queue for clinic ${clinicId}:`, error);
+    return { status: 'error', clinicId, error: error.message };
+  } finally {
+    const finalLock = await KV_LOCKS.get(lockKey);
+    if (finalLock && finalLock.owner === lockId) {
+      await KV_LOCKS.delete(lockKey);
+    }
+  }
+}
+
+
 export default async function handler(req, res) {
   // Set CORS headers
   setCorsHeaders(res, req);
@@ -91,14 +149,35 @@ export default async function handler(req, res) {
       }));
     }
 
+    // ==================== SESSION MANAGEMENT ====================
+
+    if (pathname === '/api/v1/session/start' && method === 'POST') {
+        const sessionId = generateSessionId();
+        const sessionData = {
+            sessionId,
+            personalId: null,
+            gender: null,
+            isAnonymous: true,
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            ip: clientIP
+        };
+
+        await KV_ADMIN.put(`session:${sessionId}`, sessionData, { expirationTtl: 86400 });
+
+        return res.status(200).json(formatSuccess({
+            sessionId,
+            expiresAt: sessionData.expiresAt
+        }, 'Anonymous session started'));
+    }
+
     // ==================== PATIENT MANAGEMENT ====================
     
     if (pathname === '/api/v1/patient/login' && method === 'POST') {
-      const { personalId, gender } = body;
+      const { sessionId, personalId, gender } = body;
       
-      // Validate inputs
-      if (!personalId || !gender) {
-        return res.status(400).json(formatError('Missing required fields: personalId, gender', 'MISSING_FIELDS'));
+      if (!sessionId || !personalId || !gender) {
+        return res.status(400).json(formatError('Missing required fields: sessionId, personalId, gender', 'MISSING_FIELDS'));
       }
       
       if (!validatePersonalId(personalId)) {
@@ -109,23 +188,39 @@ export default async function handler(req, res) {
         return res.status(400).json(formatError('Invalid gender', 'INVALID_GENDER'));
       }
       
-      // Generate session
-      const sessionId = generateSessionId();
+      const today = new Date().toISOString().split('T')[0];
+      const registrationKey = `registration:${today}:${personalId}`;
+
+      const existingRegistration = await KV_ADMIN.get(registrationKey);
+      if (existingRegistration) {
+          const existingSession = await KV_ADMIN.get(`session:${existingRegistration.sessionId}`);
+          return res.status(200).json(formatSuccess({
+              ...existingSession,
+              isExisting: true
+          }, 'Patient already registered today. Returning existing session.'));
+      }
+
+      const sessionData = await KV_ADMIN.get(`session:${sessionId}`);
+      if (!sessionData) {
+          return res.status(404).json(formatError('Session not found', 'SESSION_NOT_FOUND'));
+      }
+
       const normalizedGender = normalizeGender(gender);
       
-      const sessionData = {
-        personalId,
-        gender: normalizedGender,
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        ip: clientIP
+      const updatedSessionData = {
+          ...sessionData,
+          personalId,
+          gender: normalizedGender,
+          isAnonymous: false,
+          updatedAt: new Date().toISOString()
       };
 
-      await KV_ADMIN.put(`session:${sessionId}`, sessionData, { expirationTtl: 86400 });
+      await KV_ADMIN.put(`session:${sessionId}`, updatedSessionData, { expirationTtl: 86400 });
+      await KV_ADMIN.put(registrationKey, { sessionId, expiresAt: updatedSessionData.expiresAt }, { expirationTtl: 86400 });
 
       return res.status(200).json(formatSuccess({
-        sessionId,
-        expiresAt: sessionData.expiresAt
+        ...updatedSessionData,
+        isExisting: false
       }, 'Login successful'));
     }
 
@@ -155,10 +250,34 @@ export default async function handler(req, res) {
       }));
     }
 
+    // ==================== PATHWAY MANAGEMENT ====================
+
+    if (pathname === '/api/v1/pathway/create' && method === 'POST') {
+        const { personalId, examType, gender } = body;
+        if (!personalId || !examType || !gender) {
+            return res.status(400).json(formatError('Missing required fields: personalId, examType, gender', 'MISSING_FIELDS'));
+        }
+
+        try {
+            const { data, error } = await supabase.rpc('create_patient_pathway', {
+                p_personal_id: personalId,
+                p_exam_type: examType,
+                p_gender: gender
+            });
+
+            if (error) throw error;
+
+            return res.status(200).json(formatSuccess(data, 'Pathway created successfully'));
+        } catch (error) {
+            console.error('Error creating pathway:', error);
+            return handleError(error, res, 500, 'Failed to create pathway');
+        }
+    }
+
     // ==================== QUEUE MANAGEMENT ====================
     
     if (pathname === '/api/v1/queue/enter' && method === 'POST') {
-      const { sessionId, clinicId } = body;
+      const { sessionId, clinicId, pin } = body;
       
       if (!sessionId || !clinicId) {
         return res.status(400).json(formatError('Missing required fields: sessionId, clinicId', 'MISSING_FIELDS'));
@@ -166,6 +285,29 @@ export default async function handler(req, res) {
       
       if (!validateClinicId(clinicId)) {
         return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
+      }
+
+      // Check if this clinic requires a PIN
+      const { data: clinic, error: clinicError } = await supabase.from('clinics').select('requires_pin').eq('id', clinicId).single();
+      if(clinicError || !clinic) {
+        return res.status(404).json(formatError('Clinic not found', 'CLINIC_NOT_FOUND'));
+      }
+
+      if(clinic.requires_pin) {
+        if(!pin) {
+          return res.status(400).json(formatError('PIN is required for this clinic', 'PIN_REQUIRED'));
+        }
+
+        const dateKey = new Date().toISOString().split('T')[0];
+        const key = `pin:${clinicId}:${dateKey}:${pin}`;
+        const pinData = await KV_PINS.get(key);
+
+        if (!pinData) {
+          return res.status(401).json(formatError('PIN not found or invalid', 'PIN_NOT_FOUND'));
+        }
+        if (new Date(pinData.expiresAt) < new Date()) {
+          return res.status(401).json(formatError('PIN expired', 'PIN_EXPIRED'));
+        }
       }
       
       const sessionData = await KV_ADMIN.get(`session:${sessionId}`);
@@ -242,63 +384,46 @@ export default async function handler(req, res) {
       }));
     }
 
-    if (pathname === '/api/v1/queue/call' && method === 'POST') {
-      const { clinicId } = body;
+    if (pathname === '/api/v1/queue/call' && (method === 'POST' || method === 'GET')) {
+      const { clinicId } = (method === 'POST' ? body : query);
 
-      if (!clinicId) {
-        return res.status(400).json(formatError('Missing required field: clinicId', 'MISSING_CLINIC_ID'));
-      }
-
-      if (!validateClinicId(clinicId)) {
-        return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
-      }
-
-      const lockKey = `lock:queue:${clinicId}`;
-      const lockId = Math.random().toString(36).substring(2);
-
-      try {
-        const existingLock = await KV_LOCKS.get(lockKey);
-        if (existingLock && (Date.now() - new Date(existingLock.createdAt).getTime() < 10000)) {
-          return res.status(409).json(formatError('Queue is busy, please try again', 'QUEUE_LOCKED'));
+      // Case 1: A specific clinicId is provided (manual call)
+      if (clinicId) {
+        if (!validateClinicId(clinicId)) {
+          return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
         }
-        await KV_LOCKS.put(lockKey, { owner: lockId, createdAt: new Date().toISOString() }, { expirationTtl: 10 });
+        const result = await callNextPatientForClinic(clinicId);
 
-        const queueKey = `queue:${clinicId}`;
-        const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
-
-        if (queue.patients.length === 0) {
-          return res.status(200).json(formatSuccess({ message: 'No patients in queue', queueEmpty: true }));
-        }
-
-        if (queue.current) {
-          return res.status(409).json(formatError(`Clinic is already serving patient #${queue.current.position}`, 'CLINIC_BUSY'));
-        }
-
-        const nextPatient = queue.patients.shift();
-        queue.current = nextPatient;
-        queue.lastUpdated = new Date().toISOString();
-        await KV_QUEUES.put(queueKey, queue);
-
-        await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
-          type: 'PATIENT_CALLED',
-          clinicId,
-          sessionId: nextPatient.sessionId,
-          position: nextPatient.position,
-          timestamp: new Date().toISOString()
-        }, { expirationTtl: 3600 });
-
-        return res.status(200).json(formatSuccess({
-          calledPatient: { sessionId: nextPatient.sessionId, position: nextPatient.position },
-          remainingInQueue: queue.patients.length,
-          currentNumber: queue.current.position
-        }, 'Patient called successfully'));
-
-      } finally {
-        const finalLock = await KV_LOCKS.get(lockKey);
-        if (finalLock && finalLock.owner === lockId) {
-          await KV_LOCKS.delete(lockKey);
+        if (result.status === 'called') {
+          return res.status(200).json(formatSuccess({
+            ...result,
+            message: `Patient called successfully for clinic ${clinicId}`
+          }));
+        } else if (result.status === 'locked' || result.status === 'busy') {
+          return res.status(409).json(formatError(`Clinic ${clinicId} is busy`, 'CLINIC_BUSY'));
+        } else {
+           return res.status(200).json(formatSuccess({ ...result, message: `No new patient called for clinic ${clinicId}` }));
         }
       }
+
+      // Case 2: No clinicId, triggered by cron (automated call for all clinics)
+      console.log('Cron job triggered: processing all active queues.');
+      const queueKeys = await KV_QUEUES.list();
+      const results = [];
+
+      for (const key of queueKeys.keys) {
+        if (key.name.startsWith('queue:')) {
+          const currentClinicId = key.name.replace('queue:', '');
+          const result = await callNextPatientForClinic(currentClinicId);
+          results.push(result);
+        }
+      }
+
+      const calledCount = results.filter(r => r.status === 'called').length;
+      return res.status(200).json(formatSuccess({
+          summary: `Processed ${results.length} queues. Called ${calledCount} new patients.`,
+          details: results
+      }, 'Cron job executed successfully'));
     }
 
     if (pathname === '/api/v1/queue/done' && method === 'POST') {
@@ -509,25 +634,49 @@ export default async function handler(req, res) {
     // ==================== EVENTS (SSE) ====================
     
     if (pathname === '/api/v1/events/stream' && method === 'GET') {
-      // Set SSE headers
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Send initial connection message
       res.write(`data: ${JSON.stringify({ type: 'CONNECTED', timestamp: new Date().toISOString() })}\n\n`);
-      
-      // Keep connection alive with heartbeat
+
+      let lastEventCheck = Date.now();
+
+      const eventInterval = setInterval(async () => {
+        try {
+          const eventKeys = await KV_EVENTS.list();
+          const newEvents = [];
+
+          for (const key of eventKeys.keys) {
+            const eventTimestamp = parseInt(key.name.split(':').pop(), 10);
+            if (eventTimestamp > lastEventCheck) {
+              const eventData = await KV_EVENTS.get(key.name);
+              if (eventData) {
+                newEvents.push(eventData);
+              }
+            }
+          }
+
+          if (newEvents.length > 0) {
+            res.write(`data: ${JSON.stringify({ type: 'EVENTS', events: newEvents })}\n\n`);
+          }
+
+          lastEventCheck = Date.now();
+        } catch (error) {
+            console.error('Error fetching events for SSE stream:', error);
+        }
+      }, 2000);
+
       const heartbeat = setInterval(() => {
         res.write(`data: ${JSON.stringify({ type: 'HEARTBEAT', timestamp: new Date().toISOString() })}\n\n`);
       }, 30000);
       
-      // Cleanup on close
       req.on('close', () => {
+        clearInterval(eventInterval);
         clearInterval(heartbeat);
       });
       
-      return; // Don't end response
+      return;
     }
 
     // ==================== ADMIN ====================
@@ -740,4 +889,3 @@ export default async function handler(req, res) {
     return handleError(error, res, 500);
   }
 }
-

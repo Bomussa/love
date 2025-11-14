@@ -8,11 +8,12 @@ import { AdminPage } from './components/AdminPage'
 import { QrScanPage } from './components/QrScanPage'
 import { CompletionPage } from './components/CompletionPage'
 import api from './lib/api-unified'
-import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
+import { t, getCurrentLanguage, setCurrentLanguage } from './lib-i18n'
 
 function App() {
   const [currentView, setCurrentView] = useState("qrScan") // Start with QR scan
   const [patientData, setPatientData] = useState(null)
+  const [sessionId, setSessionId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false)
   const [language, setLanguage] = useState(getCurrentLanguage())
 
@@ -27,19 +28,14 @@ function App() {
     }
   }, [language])
 
-  const handleSessionStart = async () => {
-    try {
-      // For QR scan, we don't have a personalId yet, so we can't log in.
-      // We'll just move to the login page.
-      setCurrentView("login")
-    } catch (error) {
-      // Handle error if needed
-    }
+  const handleSessionStart = async (newSessionId) => {
+    setSessionId(newSessionId);
+    setCurrentView("login");
   }
 
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      const loginResponse = await api.patientLogin(patientId, gender)
+      const loginResponse = await api.patientLogin(sessionId, patientId, gender);
       if (loginResponse.success) {
         setPatientData(loginResponse.data)
         setCurrentView("examSelection")
@@ -79,8 +75,9 @@ function App() {
 
   const handleLogout = () => {
     setPatientData(null)
+    setSessionId(null);
     setIsAdmin(false)
-    setCurrentView('login')
+    setCurrentView('qrScan')
     window.history.pushState({}, '', window.location.pathname)
   }
 
@@ -99,6 +96,7 @@ function App() {
 
         {currentView === 'login' && (
           <LoginPage
+            sessionId={sessionId}
             onLogin={handleLogin}
             onAdminLogin={handleAdminLogin}
             language={language}
@@ -110,7 +108,10 @@ function App() {
           <ExamSelectionPage
             patientData={patientData}
             onExamSelect={handleExamSelection}
-            onBack={() => setCurrentView('login')}
+            onBack={() => {
+                setPatientData(null);
+                setCurrentView('login');
+            }}
             language={language}
             toggleLanguage={toggleLanguage}
           />

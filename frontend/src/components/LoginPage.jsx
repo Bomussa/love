@@ -5,8 +5,9 @@ import { Input } from './Input';
 import { User, Globe, Shield, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../lib/i18n';
 import soundService from '../lib/sound-service';
+import { toast } from 'react-hot-toast';
 
-export function LoginPage({ onLogin, onAdminLogin, language, toggleLanguage }) {
+export function LoginPage({ sessionId, onLogin, onAdminLogin, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('');
   const [gender, setGender] = useState('male');
   const [loading, setLoading] = useState(false);
@@ -33,12 +34,15 @@ export function LoginPage({ onLogin, onAdminLogin, language, toggleLanguage }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!patientId.trim()) return;
+    if (!patientId.trim() || !sessionId) return;
 
     setLoading(true);
     try {
-      await onLogin({ patientId: patientId.trim(), gender });
-    } finally {
+      await onLogin({ sessionId, patientId: patientId.trim(), gender });
+    } catch (error) {
+        toast.error(t('loginFailed'));
+    }
+    finally {
       setLoading(false);
     }
   };
