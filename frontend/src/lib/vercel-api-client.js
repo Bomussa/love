@@ -67,13 +67,14 @@ export async function patientLogin(patientId, gender) {
 // QUEUE MANAGEMENT
 // ============================================
 
-export async function enterQueue(clinicId, patientData) {
+export async function enterQueue(clinicId, patientData, enter = true) {
   try {
     const data = await callAPI('queue/enter', {
       method: 'POST',
       body: JSON.stringify({
         clinic: clinicId,
         user: patientData.id || patientData.sessionId,
+        isAutoEntry: enter,
       }),
     });
     return { success: true, ...data };
