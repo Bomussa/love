@@ -15,7 +15,7 @@ class UnifiedApiService {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       if (response.ok) {
         this.useLocal = false;
 
@@ -32,7 +32,7 @@ class UnifiedApiService {
   async request(endpoint, options = {}) {
     // Always try local first for now (since backend is not working)
     this.useLocal = true;
-    
+
     if (this.useLocal) {
       // Route to local API
       return this.routeToLocal(endpoint, options);
@@ -73,44 +73,44 @@ class UnifiedApiService {
     if (endpoint.includes('/patient/login') && method === 'POST') {
       return localApi.patientLogin(body.patientId, body.gender);
     }
-    
+
     if (endpoint.includes('/queue/enter') && method === 'POST') {
       return localApi.enterQueue(body.clinic, body.user);
     }
-    
+
     if (endpoint.includes('/queue/status')) {
       const clinic = new URL(window.location.origin + endpoint).searchParams.get('clinic');
       return localApi.getQueueStatus(clinic);
     }
-    
+
     if (endpoint.includes('/queue/done') && method === 'POST') {
       return localApi.queueDone(body.clinic, body.user, body.pin);
     }
-    
+
     if (endpoint.includes('/queue/call') && method === 'POST') {
       return localApi.callNextPatient(body.clinic);
     }
-    
+
     if (endpoint.includes('/pin/status')) {
       return localApi.getPinStatus();
     }
-    
+
     if (endpoint.includes('/path/choose')) {
       return localApi.choosePath(body?.gender);
     }
-    
+
     if (endpoint.includes('/admin/status')) {
       return localApi.getAdminStatus();
     }
-    
+
     if (endpoint.includes('/stats/queues')) {
       return localApi.getQueues();
     }
-    
+
     if (endpoint.includes('/stats/dashboard')) {
       return localApi.getDashboardStats();
     }
-    
+
     if (endpoint.includes('/health/status')) {
       return localApi.getHealthStatus();
     }
@@ -273,10 +273,10 @@ class UnifiedApiService {
 
   connectWebSocket() {
     return {
-      onopen: () => {},
-      onclose: () => {},
-      onerror: () => {},
-      close: () => {}
+      onopen: () => { },
+      onclose: () => { },
+      onerror: () => { },
+      close: () => { }
     };
   }
 }

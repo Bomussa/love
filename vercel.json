@@ -16,28 +16,12 @@
   ],
   "rewrites": [
     {
-      "source": "/api/v1/status",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-v1-status"
-    },
-    {
-      "source": "/api/v1/patient/login",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/patient-login"
-    },
-    {
-      "source": "/api/v1/queue/enter",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-enter"
-    },
-    {
-      "source": "/api/v1/queue/status",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/queue-status"
-    },
-    {
-      "source": "/api/v1/pin/status",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/pin-status"
-    },
-    {
       "source": "/api/v1/events/stream",
       "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/events-stream"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router?path=:path*"
     },
     {
       "source": "/(.*)",
