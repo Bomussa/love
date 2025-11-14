@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import apiMiddleware from './api-middleware.js';
+
+const apiPath = path.resolve(__dirname, '../api/index.js');
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'api-middleware',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => apiMiddleware(req, res, next, apiPath));
+      },
+    },
+  ],
   base: './',
   resolve: {
     alias: {

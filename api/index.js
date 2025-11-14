@@ -3,7 +3,7 @@
  * Routes all /api/* requests to appropriate handlers
  * Enhanced with complete endpoints and proper error handling
  */
-
+console.log('API Handler loaded');
 import { initializeKVStores } from '../lib/supabase-enhanced.js';
 
 // Initialize Supabase-backed KV stores
@@ -168,17 +168,14 @@ export default async function handler(req, res) {
         return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
       }
       
-      // Verify session
       const sessionData = await KV_ADMIN.get(`session:${sessionId}`);
       if (!sessionData) {
         return res.status(401).json(formatError('Invalid session', 'INVALID_SESSION'));
       }
       
-      // Get queue
       const queueKey = `queue:${clinicId}`;
-      const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: 0, lastUpdated: null };
+      const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
       
-      // Check if already in queue
       const existingIndex = queue.patients.findIndex(p => p.sessionId === sessionId);
       if (existingIndex !== -1) {
         return res.status(200).json(formatSuccess({
@@ -189,8 +186,9 @@ export default async function handler(req, res) {
         }));
       }
       
-      // Add patient
-      const position = queue.patients.length + 1;
+      const lastPosition = queue.patients.length > 0 ? queue.patients[queue.patients.length - 1].position : (queue.current ? queue.current.position : 0);
+      const position = lastPosition + 1;
+
       queue.patients.push({
         sessionId,
         personalId: sessionData.personalId,
@@ -199,10 +197,8 @@ export default async function handler(req, res) {
       });
       
       queue.lastUpdated = new Date().toISOString();
-      
       await KV_QUEUES.put(queueKey, queue);
       
-      // Emit event
       await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
         type: 'PATIENT_ENTERED',
         clinicId,
@@ -214,7 +210,7 @@ export default async function handler(req, res) {
       return res.status(200).json(formatSuccess({
         position,
         queueLength: queue.patients.length,
-        estimatedWait: position * 5
+        estimatedWait: queue.patients.length * 5
       }, 'Successfully entered queue'));
     }
 
@@ -230,15 +226,17 @@ export default async function handler(req, res) {
       }
       
       const queueKey = `queue:${clinicId}`;
-      const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: 0, lastUpdated: null };
+      const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
       
       return res.status(200).json(formatSuccess({
         clinicId,
         queueLength: queue.patients.length,
-        currentNumber: queue.current,
+        currentNumber: queue.current ? queue.current.position : 0,
+        currentlyServing: queue.current,
         patients: queue.patients.map(p => ({
           position: p.position,
-          enteredAt: p.enteredAt
+          enteredAt: p.enteredAt,
+          personalId: p.personalId
         })),
         lastUpdated: queue.lastUpdated
       }));
@@ -246,49 +244,61 @@ export default async function handler(req, res) {
 
     if (pathname === '/api/v1/queue/call' && method === 'POST') {
       const { clinicId } = body;
-      
+
       if (!clinicId) {
         return res.status(400).json(formatError('Missing required field: clinicId', 'MISSING_CLINIC_ID'));
       }
-      
+
       if (!validateClinicId(clinicId)) {
         return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
       }
-      
-      const queueKey = `queue:${clinicId}`;
-      const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: 0, lastUpdated: null };
-      
-      if (queue.patients.length === 0) {
-        return res.status(200).json(formatSuccess({
-          message: 'No patients in queue',
-          queueEmpty: true
-        }));
-      }
-      
-      // Call next patient
-      const nextPatient = queue.patients.shift();
-      queue.current = nextPatient.position;
-      queue.lastUpdated = new Date().toISOString();
-      
-      await KV_QUEUES.put(queueKey, queue);
-      
-      // Emit event
-      await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
-        type: 'PATIENT_CALLED',
-        clinicId,
-        sessionId: nextPatient.sessionId,
-        position: nextPatient.position,
-        timestamp: new Date().toISOString()
-      }, { expirationTtl: 3600 });
-      
-      return res.status(200).json(formatSuccess({
-        calledPatient: {
+
+      const lockKey = `lock:queue:${clinicId}`;
+      const lockId = Math.random().toString(36).substring(2);
+
+      try {
+        const existingLock = await KV_LOCKS.get(lockKey);
+        if (existingLock && (Date.now() - new Date(existingLock.createdAt).getTime() < 10000)) {
+          return res.status(409).json(formatError('Queue is busy, please try again', 'QUEUE_LOCKED'));
+        }
+        await KV_LOCKS.put(lockKey, { owner: lockId, createdAt: new Date().toISOString() }, { expirationTtl: 10 });
+
+        const queueKey = `queue:${clinicId}`;
+        const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
+
+        if (queue.patients.length === 0) {
+          return res.status(200).json(formatSuccess({ message: 'No patients in queue', queueEmpty: true }));
+        }
+
+        if (queue.current) {
+          return res.status(409).json(formatError(`Clinic is already serving patient #${queue.current.position}`, 'CLINIC_BUSY'));
+        }
+
+        const nextPatient = queue.patients.shift();
+        queue.current = nextPatient;
+        queue.lastUpdated = new Date().toISOString();
+        await KV_QUEUES.put(queueKey, queue);
+
+        await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
+          type: 'PATIENT_CALLED',
+          clinicId,
           sessionId: nextPatient.sessionId,
-          position: nextPatient.position
-        },
-        remainingInQueue: queue.patients.length,
-        currentNumber: queue.current
-      }, 'Patient called successfully'));
+          position: nextPatient.position,
+          timestamp: new Date().toISOString()
+        }, { expirationTtl: 3600 });
+
+        return res.status(200).json(formatSuccess({
+          calledPatient: { sessionId: nextPatient.sessionId, position: nextPatient.position },
+          remainingInQueue: queue.patients.length,
+          currentNumber: queue.current.position
+        }, 'Patient called successfully'));
+
+      } finally {
+        const finalLock = await KV_LOCKS.get(lockKey);
+        if (finalLock && finalLock.owner === lockId) {
+          await KV_LOCKS.delete(lockKey);
+        }
+      }
     }
 
     if (pathname === '/api/v1/queue/done' && method === 'POST') {
@@ -298,15 +308,42 @@ export default async function handler(req, res) {
         return res.status(400).json(formatError('Missing required fields: sessionId, clinicId', 'MISSING_FIELDS'));
       }
       
-      // Emit event
-      await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
-        type: 'PATIENT_DONE',
-        clinicId,
-        sessionId,
-        timestamp: new Date().toISOString()
-      }, { expirationTtl: 3600 });
-      
-      return res.status(200).json(formatSuccess({}, 'Patient marked as done'));
+      const lockKey = `lock:queue:${clinicId}`;
+      const lockId = Math.random().toString(36).substring(2);
+
+      try {
+        const existingLock = await KV_LOCKS.get(lockKey);
+        if (existingLock && (Date.now() - new Date(existingLock.createdAt).getTime() < 10000)) {
+            return res.status(409).json(formatError('Queue is busy, please try again', 'QUEUE_LOCKED'));
+        }
+        await KV_LOCKS.put(lockKey, { owner: lockId, createdAt: new Date().toISOString() }, { expirationTtl: 10 });
+
+        const queueKey = `queue:${clinicId}`;
+        const queue = await KV_QUEUES.get(queueKey) || { patients: [], current: null, lastUpdated: null };
+
+        if (!queue.current || queue.current.sessionId !== sessionId) {
+            return res.status(400).json(formatError('Patient is not currently being served or session ID is incorrect', 'PATIENT_NOT_SERVING'));
+        }
+
+        queue.current = null;
+        queue.lastUpdated = new Date().toISOString();
+        await KV_QUEUES.put(queueKey, queue);
+
+        await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
+            type: 'PATIENT_DONE',
+            clinicId,
+            sessionId,
+            timestamp: new Date().toISOString()
+        }, { expirationTtl: 3600 });
+
+        return res.status(200).json(formatSuccess({ clinicId, cleared: true }, 'Patient marked as done'));
+
+      } finally {
+        const finalLock = await KV_LOCKS.get(lockKey);
+        if (finalLock && finalLock.owner === lockId) {
+            await KV_LOCKS.delete(lockKey);
+        }
+      }
     }
 
     // ==================== PIN MANAGEMENT ====================
@@ -320,6 +357,7 @@ export default async function handler(req, res) {
       
       const pin = generatePIN();
       const dateKey = new Date().toISOString().split('T')[0];
+      const key = `pin:${clinicId}:${dateKey}:${pin}`;
       
       const pinData = {
         pin,
@@ -329,7 +367,9 @@ export default async function handler(req, res) {
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
       };
 
-      await KV_PINS.put(`pin:${clinicId}:${dateKey}:${pin}`, pinData, { expirationTtl: 300 });
+      await KV_PINS.put(key, pinData, { expirationTtl: 300 });
+
+      console.log(`Generated PIN ${pin} for clinic ${clinicId} with key ${key}`);
 
       return res.status(200).json(formatSuccess({
         pin,
@@ -346,13 +386,21 @@ export default async function handler(req, res) {
       }
       
       const useDateKey = dateKey || new Date().toISOString().split('T')[0];
-      const pinData = await KV_PINS.get(`pin:${clinicId}:${useDateKey}:${pin}`);
+      const key = `pin:${clinicId}:${useDateKey}:${pin}`;
+
+      console.log(`Verifying PIN with key: ${key}`);
+
+      const pinData = await KV_PINS.get(key);
 
       if (!pinData) {
-        return res.status(404).json(formatError('PIN not found', 'PIN_NOT_FOUND'));
+        console.log(`PIN not found for key: ${key}`);
+        return res.status(404).json(formatError('PIN not found or invalid', 'PIN_NOT_FOUND'));
       }
 
+      console.log(`Found PIN data:`, pinData);
+
       if (new Date(pinData.expiresAt) < new Date()) {
+        console.log(`PIN expired for key: ${key}`);
         return res.status(401).json(formatError('PIN expired', 'PIN_EXPIRED'));
       }
 
@@ -364,19 +412,28 @@ export default async function handler(req, res) {
     }
 
     if (pathname === '/api/v1/pin/status' && method === 'GET') {
-      const { clinicId, dateKey } = query;
-      
-      if (!clinicId) {
-        return res.status(400).json(formatError('Missing required parameter: clinicId', 'MISSING_CLINIC_ID'));
-      }
-      
+      const { dateKey } = query;
       const useDateKey = dateKey || new Date().toISOString().split('T')[0];
-      
-      return res.status(200).json(formatSuccess({
-        clinicId,
-        dateKey: useDateKey,
-        available: true
-      }));
+      const prefix = `pin:`;
+
+      try {
+        const pinsData = await KV_PINS.list(prefix);
+        const activePins = {};
+
+        for (const key of pinsData.keys) {
+          const pinData = await KV_PINS.get(key.name);
+          if (pinData && pinData.dateKey === useDateKey && new Date(pinData.expiresAt) > new Date()) {
+            activePins[pinData.clinicId] = pinData.pin;
+          }
+        }
+
+        return res.status(200).json(formatSuccess({
+          date: useDateKey,
+          pins: activePins
+        }));
+      } catch (error) {
+        return handleError(error, res, 500);
+      }
     }
 
     // ==================== REPORTS ====================

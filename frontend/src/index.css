@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './styles/qr-safe.css';
+
 @layer base {
   :root {
     --background: 220 20% 10%; /* Dark Blue */
@@ -150,6 +152,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(251, 191, 36, 0.7);
 }
-
-@import './styles/qr-safe.css';
-/* باقي الستايلات تحت */
