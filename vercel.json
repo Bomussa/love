@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/:path*"
+      "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router/:path*"
     }
   ],
   "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
