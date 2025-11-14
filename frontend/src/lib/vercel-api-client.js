@@ -53,7 +53,7 @@ async function callAPI(endpoint, options = {}) {
 
 export async function patientLogin(patientId, gender) {
   try {
-    const data = await callAPI('patient-login', {
+    const data = await callAPI('patient/login', {
       method: 'POST',
       body: JSON.stringify({ patient_id: patientId, gender }),
     });
@@ -69,7 +69,7 @@ export async function patientLogin(patientId, gender) {
 
 export async function enterQueue(clinicId, patientData) {
   try {
-    const data = await callAPI('queue-enter', {
+    const data = await callAPI('queue/enter', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -85,7 +85,7 @@ export async function enterQueue(clinicId, patientData) {
 
 export async function getQueueStatus(clinicId) {
   try {
-    const data = await callAPI('queue-status', {
+    const data = await callAPI('queue/status', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId }),
     });
@@ -97,7 +97,7 @@ export async function getQueueStatus(clinicId) {
 
 export async function getQueuePosition(clinicId, patientId) {
   try {
-    const data = await callAPI('queue-position', {
+    const data = await callAPI('queue/position', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -117,7 +117,7 @@ export async function getQueuePosition(clinicId, patientId) {
 
 export async function queueDone(clinicId, patientData, pin) {
   try {
-    const data = await callAPI('queue-done', {
+    const data = await callAPI('queue/done', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -137,7 +137,7 @@ export async function queueDone(clinicId, patientData, pin) {
 
 export async function getPinStatus(clinicId) {
   try {
-    const data = await callAPI('pin-status', {
+    const data = await callAPI('pin/status', {
       method: 'POST',
       body: JSON.stringify({ clinic_id: clinicId }),
     });
@@ -161,7 +161,7 @@ export async function generatePIN(clinicId, adminCode) {
 
 export async function verifyPIN(clinicId, pin) {
   try {
-    const data = await callAPI('pin-status', {
+    const data = await callAPI('pin/status', {
       method: 'POST',
       body: JSON.stringify({
         clinic_id: clinicId,
@@ -213,7 +213,7 @@ export async function getDashboardStats() {
 
 export async function getActivePins(adminCode) {
   try {
-    const data = await callAPI('pin-status', {
+    const data = await callAPI('pin/status', {
       method: 'POST',
       body: JSON.stringify({ admin_code: adminCode }),
     });
