@@ -2,6 +2,7 @@
 // Hook ذكي لمراقبة الطوابير مع إصلاح تلقائي
 
 import { useEffect, useRef } from 'react';
+import { getApiBase } from '../lib/api-base';
 import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants';
 
 const MAX_RETRY = 3;
@@ -57,7 +58,8 @@ export default function useQueueWatcher({
           
           // تسجيل حالة الإصلاح الذاتي
           try {
-            await fetch('/api/v1/events/recovery', {
+            const API_BASE = getApiBase();
+            await fetch(`${API_BASE}/events/recovery`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

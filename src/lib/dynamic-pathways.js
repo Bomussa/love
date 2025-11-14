@@ -1,6 +1,7 @@
 // المسارات الديناميكية - تعمل sync ثم تعيد الترتيب في الخلفية
 import routeMap from '../../config/routeMap.json'
 import clinicsData from '../../config/clinics.json'
+import { getApiBase } from './api-base'
 
 // تحويل رموز العيادات إلى كائنات كاملة
 function mapClinicCodes(codes) {
@@ -27,9 +28,10 @@ async function fetchClinicWeights(clinicIds) {
   const weights = {}
   
   try {
+    const API_BASE = getApiBase()
     const promises = clinicIds.map(async (clinicId) => {
       try {
-        const response = await fetch(`/api/v1/queue/status?clinic=${clinicId}`)
+        const response = await fetch(`${API_BASE}/queue/status?clinic=${clinicId}`)
         const data = await response.json()
         
         if (data.success) {

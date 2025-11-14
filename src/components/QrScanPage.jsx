@@ -8,6 +8,7 @@ import { Camera, Smartphone, Monitor, CheckCircle, XCircle, Loader } from 'lucid
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import axios from 'axios'
+import { getApiBase } from '../lib/api-base'
 
 /**
  * كشف نوع الجهاز بدون مكتبات خارجية
@@ -90,15 +91,16 @@ export function QrScanPage({ language, toggleLanguage }) {
     setErrorMessage('')
 
     try {
+      const API_BASE = getApiBase()
       // التحقق من Token
-      const response = await axios.post('/api/session/validate', { 
+      const response = await axios.post(`${API_BASE}/session/validate`, { 
         token: tokenToValidate 
       })
 
       if (response.data.ok) {
         // حفظ معلومات الجهاز
         const detectedDevice = detectDevice()
-        await axios.post('/api/session/device', {
+        await axios.post(`${API_BASE}/session/device`, {
           token: tokenToValidate,
           device: detectedDevice
         }).catch(() => {
@@ -152,16 +154,18 @@ export function QrScanPage({ language, toggleLanguage }) {
     setRedirecting(true)
     
     let appURL
+    const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'https://www.mmc-mms.com'
     
     if (deviceType === 'iOS') {
       // iPhone/iPad → يفتح في Safari تلقائياً
-      appURL = 'https://www.mmc-mms.com'
+      appURL = origin
     } else if (deviceType === 'Android') {
       // Android → يفتح في Chrome مباشرة
-      appURL = 'intent://www.mmc-mms.com#Intent;scheme=https;package=com.android.chrome;end'
+      const host = (typeof window !== 'undefined' && window.location && window.location.host) ? window.location.host : 'www.mmc-mms.com'
+      appURL = `intent://${host}#Intent;scheme=https;package=com.android.chrome;end`
     } else {
       // Desktop → فتح عادي
-      appURL = 'https://www.mmc-mms.com'
+      appURL = origin
     }
 
     setTimeout(() => {

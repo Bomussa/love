@@ -14,6 +14,7 @@ import { validateAdminCredentials } from './config/admin-credentials'
 import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
+import eventBus from './core/event-bus'
 
 function App() {
   const [currentView, setCurrentView] = useState("login")
@@ -58,74 +59,48 @@ function App() {
     }
   }, [language])
 
-  // SSE notifications with sound (fallback-friendly)
+  // Notifications via central event bus (single SSE connection managed elsewhere)
   useEffect(() => {
-    let es
-    let connected = false
-    let fallbackTimers = []
-
     // Create notification sound using Web Audio API
     const playNotificationSound = () => {
       try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-
-        // Create a simple beep sound
         const oscillator = audioContext.createOscillator()
         const gainNode = audioContext.createGain()
-
         oscillator.connect(gainNode)
         gainNode.connect(audioContext.destination)
-
-        // Configure the sound
-        oscillator.frequency.value = 800 // Frequency in Hz (800 Hz = pleasant notification tone)
-        oscillator.type = 'sine' // Sine wave for smooth sound
-
-        // Set volume envelope (fade in/out for smooth sound)
+        oscillator.frequency.value = 800
+        oscillator.type = 'sine'
         gainNode.gain.setValueAtTime(0, audioContext.currentTime)
         gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01)
         gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1)
         gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2)
-
-        // Play the sound
         oscillator.start(audioContext.currentTime)
         oscillator.stop(audioContext.currentTime + 0.2)
-      } catch (e) {
-        // Audio generation failed silently
-      }
+      } catch {}
     }
 
-    try {
-      es = new EventSource('/api/v1/events/stream')
-      es.onopen = () => { connected = true }
-      es.onmessage = (ev) => {
-        try {
-          const data = JSON.parse(ev.data || '{}')
-          if (data?.type === 'NEAR_TURN') {
-            const msg = language === 'ar' ? 'اقترب دورك' : 'Near your turn'
-            setNotif(msg)
-            showNotification(msg, 'info')
-            playNotificationSound()
-          }
-          if (data?.type === 'YOUR_TURN') {
-            const msg = language === 'ar' ? 'دورك الآن' : 'Your turn now'
-            setNotif(msg)
-            showNotification(msg, 'success')
-            playNotificationSound()
-          }
-        } catch { }
-      }
-      es.onerror = () => {
-        // Auto-retry after short delay
-        setTimeout(() => {
-          try { es && es.close() } catch { }
-          // new EventSource will be created by effect rerun only on mount; keep it simple
-        }, 3000)
-      }
-    } catch { }
+    const onNotice = (data) => {
+      try {
+        if (data?.type === 'NEAR_TURN') {
+          const msg = language === 'ar' ? 'اقترب دورك' : 'Near your turn'
+          setNotif(msg)
+          showNotification(msg, 'info')
+          playNotificationSound()
+        }
+        if (data?.type === 'YOUR_TURN') {
+          const msg = language === 'ar' ? 'دورك الآن' : 'Your turn now'
+          setNotif(msg)
+          showNotification(msg, 'success')
+          playNotificationSound()
+        }
+      } catch {}
+    }
 
-    // Cleanup on unmount
+    const unsubNotice = eventBus.on('notice', onNotice)
+
     return () => {
-      try { es && es.close() } catch { }
+      unsubNotice && unsubNotice()
     }
   }, [language])
 
