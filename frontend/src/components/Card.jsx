@@ -1,4 +1,3 @@
-import { protectVisualIdentity } from "../lib/visual-identity-lock"
 import React from 'react'
 import { cn } from '../lib/utils'
 
@@ -59,6 +58,4 @@ const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
 CardFooter.displayName = "CardFooter"
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
-
-const ProtectedCard = protectVisualIdentity(Card, 'Card')
-export default ProtectedCard
+export default Card

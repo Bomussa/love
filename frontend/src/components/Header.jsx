@@ -1,4 +1,3 @@
-import { protectVisualIdentity } from "../lib/visual-identity-lock"
 import React from 'react'
 import { Home, Settings, Globe, Moon } from 'lucide-react'
 import { t, getCurrentLanguage } from '../lib/i18n'
@@ -60,5 +59,4 @@ function Header({ currentPage, onPageChange, onThemeChange, currentTheme, langua
   )
 }
 
-const ProtectedHeader = protectVisualIdentity(Header, 'Header')
-export default ProtectedHeader
+export default Header
