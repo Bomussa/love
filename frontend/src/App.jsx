@@ -13,6 +13,7 @@ import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 function App() {
   const [currentView, setCurrentView] = useState("qrScan") // Start with QR scan
   const [patientData, setPatientData] = useState(null)
+  const [sessionId, setSessionId] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [language, setLanguage] = useState(getCurrentLanguage())
 
@@ -29,9 +30,14 @@ function App() {
 
   const handleSessionStart = async () => {
     try {
-      // For QR scan, we don't have a personalId yet, so we can't log in.
-      // We'll just move to the login page.
-      setCurrentView("login")
+      const sessionResponse = await api.startSession();
+      if (sessionResponse.success) {
+        setSessionId(sessionResponse.sessionId);
+        localStorage.setItem('sessionId', sessionResponse.sessionId);
+        setCurrentView("login");
+      } else {
+        throw new Error(sessionResponse.error || 'Failed to start session');
+      }
     } catch (error) {
       // Handle error if needed
     }
@@ -39,7 +45,7 @@ function App() {
 
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      const loginResponse = await api.patientLogin(patientId, gender)
+      const loginResponse = await api.patientLogin(sessionId, patientId, gender)
       if (loginResponse.success) {
         setPatientData(loginResponse.data)
         setCurrentView("examSelection")
