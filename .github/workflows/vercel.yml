@@ -42,7 +42,7 @@ jobs:
       - name: Wait for deployment to become healthy
         run: |
           echo "Waiting for deployment to become healthy..."
-          URL="https://mmc-mms.com/api/api-v1-status"
+          URL="https://mmc-mms.com/api/v1/health"
           MAX_ATTEMPTS=6
           DELAY=2
           for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
@@ -61,10 +61,10 @@ jobs:
             DELAY=$((DELAY * 2))
           done
 
-      - name: Smoke test /api/v1/status
+      - name: Smoke test /api/v1/health
         run: |
           set -e
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/status || true)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/health || true)
           echo "Status: $STATUS"
           if [ "$STATUS" -ne 200 ]; then
             echo "Smoke test failed: expected 200, got $STATUS"
