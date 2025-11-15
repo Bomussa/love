@@ -34,28 +34,37 @@ export function PatientPage({ patientData, onLogout, onCompletion, language, tog
   }, [stations, onCompletion]);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const readyStation = stations.find(s => s.status === 'ready');
-      if (readyStation) {
-        const queueStatus = await api.getQueueStatus(readyStation.id);
-        if (queueStatus.success) {
-          const patientInQueue = queueStatus.data.patients.find(p => p.personalId === patientData.personalId);
-          setStations(prev => prev.map(s => {
-            if (s.id === readyStation.id) {
-              return {
-                ...s,
-                yourNumber: patientInQueue ? patientInQueue.position : null,
-                ahead: patientInQueue ? queueStatus.data.patients.indexOf(patientInQueue) : 0,
-              };
-            }
-            return s;
-          }));
-        }
+    const channel = api.connectSSE('queue-changes', (payload) => {
+      if (payload.type === 'queue_update') {
+        const { clinicId, patients } = payload.data;
+        const patientInQueue = patients.find(p => p.personalId === patientData.personalId);
+        setStations(prev => prev.map(s => {
+          if (s.id === clinicId) {
+            return {
+              ...s,
+              yourNumber: patientInQueue ? patientInQueue.position : null,
+              ahead: patientInQueue ? patients.indexOf(patientInQueue) : 0,
+            };
+          }
+          return s;
+        }));
+      } else if (payload.type === 'YOUR_TURN') {
+        const { clinicId, serverTimestamp } = payload.data;
+        handleYourTurn(clinicId, serverTimestamp);
+      } else if (payload.type === 'STEP_DONE_NEXT') {
+        const { completedClinicId, nextClinicId } = payload.data;
+        setStations(prev => prev.map(s => {
+          if (s.id === completedClinicId) return { ...s, status: 'completed' };
+          if (s.id === nextClinicId) return { ...s, status: 'ready' };
+          return s;
+        }));
       }
-    }, 5000); // Poll every 5 seconds
+    });
 
-    return () => clearInterval(interval);
-  }, [stations, patientData.personalId]);
+    return () => {
+      channel.close();
+    };
+  }, [patientData.personalId]);
 
   const handleEnterClinic = async (station) => {
     try {
@@ -77,17 +86,9 @@ export function PatientPage({ patientData, onLogout, onCompletion, language, tog
         return;
       }
 
-      const exitResult = await api.queueDone(patientData.sessionId, station.id, station.requires_pin ? pinInput : null);
-      if (exitResult.success) {
-        const currentIdx = stations.findIndex(s => s.id === station.id);
-        const nextIdx = currentIdx + 1;
-        setStations(prev => prev.map((s, i) => {
-          if (i === currentIdx) return { ...s, status: 'completed' };
-          if (i === nextIdx) return { ...s, status: 'ready' };
-          return s;
-        }));
-        setPinInput('');
-      }
+      await api.queueDone(patientData.sessionId, station.id, station.requires_pin ? pinInput : null);
+      // The UI will update via the real-time event, so we just clear the PIN input
+      setPinInput('');
     } finally {
       setLoading(false);
     }
@@ -96,6 +97,20 @@ export function PatientPage({ patientData, onLogout, onCompletion, language, tog
   const handleTimeout = (stationId) => {
     console.log(`Patient timed out for clinic: ${stationId}`);
     // Here you could trigger a backend event to move the patient to the end of the queue
+  };
+
+  // This will be triggered by a 'YOUR_TURN' event from the backend
+  const handleYourTurn = (clinicId, serverTimestamp) => {
+    setStations(prev => prev.map(s => {
+      if (s.id === clinicId) {
+        return {
+          ...s,
+          isYourTurn: true,
+          turnStartTime: serverTimestamp,
+        };
+      }
+      return s;
+    }));
   };
 
   const getFloorHint = (floor) => {
@@ -147,10 +162,10 @@ export function PatientPage({ patientData, onLogout, onCompletion, language, tog
                       <LogIn className="me-2" /> {t('enterClinic')}
                     </Button>
                   )}
-                  {station.status === 'ready' && station.isEntered && (
+                  {station.status === 'ready' && station.isEntered && station.isYourTurn && (
                     <div className="mt-4 space-y-3">
                       <CountdownTimer
-                        enteredAt={station.enteredAt}
+                        enteredAt={station.turnStartTime}
                         maxSeconds={300}
                         onTimeout={() => handleTimeout(station.id)}
                       />

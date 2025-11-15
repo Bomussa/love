@@ -37,9 +37,30 @@ class UnifiedApiService {
   // PATIENT MANAGEMENT
   // ==========================================
 
-  async patientLogin(patientId, gender) {
+  async startSession() {
     try {
-      const result = await this.backend.patientLogin(patientId, gender);
+      // In a real scenario, this would also pass device information
+      const result = await this.backend.startSession();
+      return result;
+    } catch (error) {
+      console.error('Error in startSession:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getExamTypes() {
+    try {
+      const result = await this.backend.getExamTypes();
+      return result;
+    } catch (error) {
+      console.error('Error in getExamTypes:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async patientLogin(sessionId, patientId, gender) {
+    try {
+      const result = await this.backend.patientLogin(sessionId, patientId, gender);
       return result;
     } catch (error) {
       console.error('Error in patientLogin:', error);
