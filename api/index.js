@@ -292,21 +292,71 @@ export default async function handler(req, res) {
     }
 
     if (pathname === '/api/v1/queue/done' && method === 'POST') {
-      const { sessionId, clinicId } = body;
+      const { clinic, user, pin } = body;
       
-      if (!sessionId || !clinicId) {
-        return res.status(400).json(formatError('Missing required fields: sessionId, clinicId', 'MISSING_FIELDS'));
+      // التحقق من المعاملات المطلوبة
+      if (!clinic || !user || !pin) {
+        return res.status(400).json(formatError('Missing required fields: clinic, user, pin', 'MISSING_FIELDS'));
       }
       
-      // Emit event
-      await KV_EVENTS.put(`event:${clinicId}:${Date.now()}`, {
-        type: 'PATIENT_DONE',
-        clinicId,
-        sessionId,
-        timestamp: new Date().toISOString()
-      }, { expirationTtl: 3600 });
+      if (!validateClinicId(clinic)) {
+        return res.status(400).json(formatError('Invalid clinic ID', 'INVALID_CLINIC_ID'));
+      }
       
-      return res.status(200).json(formatSuccess({}, 'Patient marked as done'));
+      // التحقق من PIN من Supabase
+      try {
+        const { data: pinData, error: pinError } = await supabase
+          .from('pins')
+          .select('*')
+          .eq('clinic_code', clinic)
+          .eq('pin_code', String(pin))
+          .eq('is_active', true)
+          .single();
+        
+        if (pinError || !pinData) {
+          return res.status(401).json(formatError('Invalid PIN', 'INVALID_PIN'));
+        }
+        
+        // التحقق من صلاحية PIN (لم ينتهي)
+        const now = new Date();
+        const expiresAt = new Date(pinData.expires_at);
+        
+        if (now > expiresAt) {
+          return res.status(401).json(formatError('PIN expired', 'PIN_EXPIRED'));
+        }
+        
+        // تسجيل الخروج من العيادة في queue_history
+        const { error: historyError } = await supabase
+          .from('queue_history')
+          .insert({
+            patient_id: user,
+            clinic_code: clinic,
+            exit_time: new Date().toISOString(),
+            pin_used: String(pin),
+            status: 'completed'
+          });
+        
+        if (historyError) {
+          console.error('Failed to log queue history:', historyError);
+        }
+        
+        // Emit event
+        await KV_EVENTS.put(`event:${clinic}:${Date.now()}`, {
+          type: 'PATIENT_DONE',
+          clinicId: clinic,
+          sessionId: user,
+          timestamp: new Date().toISOString()
+        }, { expirationTtl: 3600 });
+        
+        return res.status(200).json(formatSuccess({
+          success: true,
+          duration_minutes: 5
+        }, 'Patient marked as done'));
+        
+      } catch (error) {
+        console.error('Error verifying PIN:', error);
+        return res.status(500).json(formatError('Failed to verify PIN', 'VERIFICATION_ERROR'));
+      }
     }
 
     // ==================== PIN MANAGEMENT ====================
