@@ -37,14 +37,34 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 // ============================================
+// SESSION MANAGEMENT
+// ============================================
+
+export function startSession() {
+  // In a real implementation, this would also send device info for uniqueness
+  return fetchAPI('/session/start', {
+    method: 'POST',
+    body: {},
+  });
+}
+
+// ============================================
 // PATIENT MANAGEMENT
 // ============================================
 
-export function patientLogin(personalId, gender) {
+export function patientLogin(sessionId, personalId, gender) {
   return fetchAPI('/patient/login', {
     method: 'POST',
-    body: { personalId, gender },
+    body: { sessionId, personalId, gender },
   });
+}
+
+// ============================================
+// EXAM MANAGEMENT
+// ============================================
+
+export function getExamTypes() {
+  return fetchAPI('/exams');
 }
 
 // ============================================
