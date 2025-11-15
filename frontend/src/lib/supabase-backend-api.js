@@ -219,13 +219,24 @@ export async function queueDone(clinicId, patientId, pin) {
     // Verify PIN
     const { data: clinic, error: clinicError } = await supabase
       .from('clinics')
-      .select('pin, requires_pin')
+      .select('pin_code, pin_expires_at, is_active')
       .eq('id', clinicId)
       .single();
 
     if (clinicError) throw clinicError;
 
-    if (clinic.requires_pin && clinic.pin !== pin) {
+    // Check if clinic is active
+    if (!clinic.is_active) {
+      return { success: false, error: 'العيادة غير نشطة حالياً' };
+    }
+
+    // Check if PIN has expired
+    if (clinic.pin_expires_at && new Date(clinic.pin_expires_at) < new Date()) {
+      return { success: false, error: 'رقم PIN منتهي الصلاحية' };
+    }
+
+    // Verify PIN
+    if (clinic.pin_code && clinic.pin_code !== pin) {
       return { success: false, error: 'رقم PIN غير صحيح' };
     }
 
@@ -392,7 +403,7 @@ export async function getClinics() {
       .from('clinics')
       .select('*')
       .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .order('name_ar', { ascending: true });
 
     if (error) throw error;
     return { success: true, clinics: data };
@@ -410,18 +421,22 @@ export async function getPinStatus() {
   try {
     const { data, error } = await supabase
       .from('clinics')
-      .select('id, name_ar, name_en, pin, requires_pin')
-      .eq('requires_pin', true)
-      .order('display_order', { ascending: true });
+      .select('id, name_ar, name_en, pin_code, pin_expires_at, is_active')
+      .eq('is_active', true)
+      .order('name_ar', { ascending: true });
 
     if (error) throw error;
 
     const pinStatus = {};
     data.forEach(clinic => {
-      pinStatus[clinic.id] = {
-        clinicName: clinic.name_ar,
-        pin: clinic.pin
-      };
+      // Only include clinics with active PINs
+      if (clinic.pin_code && (!clinic.pin_expires_at || new Date(clinic.pin_expires_at) > new Date())) {
+        pinStatus[clinic.id] = {
+          clinicName: clinic.name_ar,
+          pin: clinic.pin_code,
+          expiresAt: clinic.pin_expires_at
+        };
+      }
     });
 
     return { success: true, pins: pinStatus };
