@@ -1,9 +1,10 @@
+import { protectVisualIdentity } from "../lib/visual-identity-lock"
 import React from 'react'
 import { Home, Settings, Globe, Moon } from 'lucide-react'
 import { t, getCurrentLanguage } from '../lib/i18n'
 import { Button } from './Button'
 
-export function Header({ currentPage, onPageChange, onThemeChange, currentTheme, language, toggleLanguage }) {
+function Header({ currentPage, onPageChange, onThemeChange, currentTheme, language, toggleLanguage }) {
   return (
     <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
       <div className="flex items-center justify-between px-6 py-4">
@@ -58,3 +59,6 @@ export function Header({ currentPage, onPageChange, onThemeChange, currentTheme,
     </header>
   )
 }
+
+const ProtectedHeader = protectVisualIdentity(Header, 'Header')
+export default ProtectedHeader

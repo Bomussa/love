@@ -1,3 +1,4 @@
+import { protectVisualIdentity } from "../lib/visual-identity-lock"
 import React from 'react'
 import { cn } from '../lib/utils'
 
@@ -37,3 +38,6 @@ const Button = React.forwardRef(({ className, variant = "default", size = "defau
 Button.displayName = "Button"
 
 export { Button }
+
+const ProtectedButton = protectVisualIdentity(Button, 'Button')
+export default ProtectedButton
