@@ -4,6 +4,10 @@
     {
       "source": "/api/v1/:path*",
       "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "buildCommand": "cd frontend && npm run build",
