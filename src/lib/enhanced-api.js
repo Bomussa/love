@@ -189,7 +189,18 @@ class EnhancedApiClient {
      * Get current PIN (compatibility)
      */
     async getCurrentPin(clinicId) {
-        return this.getPinStatus()
+        if (!clinicId) return null;
+        // Fetch admin PIN for the clinic
+        const res = await this.request(`${API_VERSION}/admin/pin/status?clinic=${clinicId}`);
+        if (res && res.success && res.pin) {
+            return {
+                currentPin: res.pin.pin,
+                dateKey: res.pin.date,
+                totalIssued: 1,
+                allPins: [res.pin.pin]
+            };
+        }
+        return { currentPin: null, dateKey: null, totalIssued: 0, allPins: [] };
     }
 
     /**
