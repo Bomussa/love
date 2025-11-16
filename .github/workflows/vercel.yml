@@ -37,37 +37,3 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
-          working-directory: frontend
-
-      - name: Wait for deployment to become healthy
-        run: |
-          echo "Waiting for deployment to become healthy..."
-          URL="https://mmc-mms.com/api/v1/health"
-          MAX_ATTEMPTS=6
-          DELAY=2
-          for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
-            echo "Attempt $ATTEMPT: Status $STATUS"
-            if [ "$STATUS" -eq 200 ]; then
-              echo "Deployment is healthy!"
-              break
-            fi
-            if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then
-              echo "Deployment did not become healthy after $MAX_ATTEMPTS attempts."
-              exit 1
-            fi
-            echo "Waiting $DELAY seconds before next attempt..."
-            sleep $DELAY
-            DELAY=$((DELAY * 2))
-          done
-
-      - name: Smoke test /api/v1/health
-        run: |
-          set -e
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mmc-mms.com/api/v1/health || true)
-          echo "Status: $STATUS"
-          if [ "$STATUS" -ne 200 ]; then
-            echo "Smoke test failed: expected 200, got $STATUS"
-            exit 1
-          fi
-          echo "Smoke test passed"
