@@ -24,6 +24,14 @@
       "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router?path=:path*"
     },
     {
+      "source": "/qr",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
