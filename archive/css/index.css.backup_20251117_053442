@@ -1,5 +1,3 @@
-@import './styles/qr-safe.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -153,4 +151,5 @@
   background: rgba(251, 191, 36, 0.7);
 }
 
+@import './styles/qr-safe.css';
 /* باقي الستايلات تحت */
