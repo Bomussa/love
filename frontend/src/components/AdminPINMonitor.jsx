@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import enhancedApi from '../../../lib/enhanced-api'
+import supabaseApi from '../../../../lib/supabase-api'
 
 /**
  * Admin PIN Monitor Component
@@ -19,7 +19,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setLoading(true)
             setError(null)
 
-            const data = await enhancedApi.getCurrentPin(clinicId)
+            const data = await supabaseApi.getCurrentPin(clinicId)
             setPinData(data)
             setLastRefresh(new Date())
         } catch (err) {
@@ -35,10 +35,10 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setIssuing(true)
             setError(null)
 
-            const data = await enhancedApi.issuePin(clinicId)
+            const data = await supabaseApi.issuePin(clinicId)
 
             // Play success sound
-            enhancedApi.playNotificationSound()
+            // Sound notification removed
 
             // Refresh to show new PIN
             await fetchCurrentPin()
