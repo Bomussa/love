@@ -414,25 +414,162 @@ export default async function handler(req, res) {
     }
 
     if (pathname === '/api/v1/pin/status' && method === 'GET') {
-      const { clinicId, dateKey } = query;
+      const { clinic } = query;
       
-      if (!clinicId) {
-        return res.status(400).json(formatError('Missing required parameter: clinicId', 'MISSING_CLINIC_ID'));
+      if (!clinic) {
+        return res.status(400).json(formatError('Missing required parameter: clinic', 'MISSING_CLINIC'));
       }
       
-      const useDateKey = dateKey || new Date().toISOString().split('T')[0];
-      
-      return res.status(200).json(formatSuccess({
-        clinicId,
-        dateKey: useDateKey,
-        available: true
-      }));
+      try {
+        // Get the latest active PIN for this clinic from Supabase
+        const { data: pinData, error: pinError } = await supabase
+          .from('pins')
+          .select('*')
+          .eq('clinic_id', clinic)
+          .gte('valid_until', new Date().toISOString())
+          .is('used_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pinError) {
+          console.error('Error fetching PIN:', pinError);
+          return res.status(500).json(formatError('Failed to fetch PIN', 'DATABASE_ERROR'));
+        }
+
+        // If no active PIN found, return null
+        if (!pinData) {
+          return res.status(200).json(formatSuccess({
+            success: true,
+            clinic: clinic,
+            pin: null,
+            isExpired: true
+          }));
+        }
+
+        // Check if PIN is expired
+        const isExpired = new Date(pinData.valid_until) < new Date();
+
+        return res.status(200).json(formatSuccess({
+          success: true,
+          clinic: clinic,
+          pin: pinData.pin,
+          isExpired: isExpired,
+          validUntil: pinData.valid_until,
+          createdAt: pinData.created_at
+        }));
+      } catch (error) {
+        console.error('Error in pin/status:', error);
+        return res.status(500).json(formatError(error.message, 'INTERNAL_ERROR'));
+      }
     }
 
-    // ==================== REPORTS ====================
+    // ==================== SYSTEM SETTINGS ====================
     
-    if (pathname === '/api/v1/reports/daily' && method === 'GET') {
-      const report = await generateDailyReport();
+    if (pathname === '/api/v1/settings' && method === 'GET') {
+      try {
+        // Get settings from Supabase
+        const { data: settingsData, error } = await supabase
+          .from('settings')
+          .select('*')
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching settings:', error);
+          return res.status(500).json(formatError('Failed to fetch settings', 'DATABASE_ERROR'));
+        }
+
+        // Return default settings if none found
+        const defaultSettings = {
+          queueIntervalSeconds: 120,
+          patientMaxWaitSeconds: 240,
+          refreshIntervalSeconds: 30,
+          nearTurnRefreshSeconds: 7,
+          autoCallEnabled: true,
+          timeoutHandlerEnabled: true,
+          notificationsEnabled: true,
+          showCountdownTimer: true,
+          showQueuePosition: true,
+          showEstimatedWait: true,
+          showAheadCount: true,
+          notifyNearAhead: 3,
+          pinLateMinutes: 5,
+          noticeTtlSeconds: 30
+        };
+
+        return res.status(200).json(formatSuccess(settingsData || defaultSettings));
+      } catch (error) {
+        console.error('Error in settings GET:', error);
+        return res.status(500).json(formatError(error.message, 'INTERNAL_ERROR'));
+      }
+    }
+
+    if (pathname === '/api/v1/settings' && method === 'PUT') {
+      try {
+        const settings = body;
+
+        // Update or insert settings in Supabase
+        const { data, error } = await supabase
+          .from('settings')
+          .upsert({ id: 1, ...settings, updated_at: new Date().toISOString() })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating settings:', error);
+          return res.status(500).json(formatError('Failed to update settings', 'DATABASE_ERROR'));
+        }
+
+        return res.status(200).json(formatSuccess(data));
+      } catch (error) {
+        console.error('Error in settings PUT:', error);
+        return res.status(500).json(formatError(error.message, 'INTERNAL_ERROR'));
+      }
+    }
+
+    if (pathname === '/api/v1/settings/reset' && method === 'POST') {
+      try {
+        const defaultSettings = {
+          id: 1,
+          queueIntervalSeconds: 120,
+          patientMaxWaitSeconds: 240,
+          refreshIntervalSeconds: 30,
+          nearTurnRefreshSeconds: 7,
+          autoCallEnabled: true,
+          timeoutHandlerEnabled: true,
+          notificationsEnabled: true,
+          showCountdownTimer: true,
+          showQueuePosition: true,
+          showEstimatedWait: true,
+          showAheadCount: true,
+          notifyNearAhead: 3,
+          pinLateMinutes: 5,
+          noticeTtlSeconds: 30,
+          updated_at: new Date().toISOString()
+        };
+
+        // Reset settings in Supabase
+        const { data, error } = await supabase
+          .from('settings')
+          .upsert(defaultSettings)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error resetting settings:', error);
+          return res.status(500).json(formatError('Failed to reset settings', 'DATABASE_ERROR'));
+        }
+
+        return res.status(200).json(formatSuccess(data));
+      } catch (error) {
+        console.error('Error in settings reset:', error);
+        return res.status(500).json(formatError(error.message, 'INTERNAL_ERROR'));
+      }
+    }
+
+    // ==================== EXPORT SECRETS ====================
+    
+    if (pathname === '/api/v1/export/secrets' && method === 'GET') {   const report = await generateDailyReport();
       return res.status(200).json(formatSuccess({ report }));
     }
 
