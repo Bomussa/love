@@ -296,40 +296,6 @@ class UnifiedApiService {
   }
 
   // ==========================================
-  // SYSTEM SETTINGS MANAGEMENT
-  // ==========================================
-
-  async getSystemSettings() {
-    try {
-      const result = await this.backend.getSystemSettings();
-      return result;
-    } catch (error) {
-      console.error('Error in getSystemSettings:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async updateSystemSettings(settings) {
-    try {
-      const result = await this.backend.updateSystemSettings(settings);
-      return result;
-    } catch (error) {
-      console.error('Error in updateSystemSettings:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async resetSystemSettings() {
-    try {
-      const result = await this.backend.resetSystemSettings();
-      return result;
-    } catch (error) {
-      console.error('Error in resetSystemSettings:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // ==========================================
   // COMPATIBILITY METHODS
   // ==========================================
 

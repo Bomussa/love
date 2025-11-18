@@ -207,25 +207,11 @@ export async function getDashboardStats() {
 
 export async function getActivePins(adminCode) {
   try {
-    // GET request without clinic parameter returns all clinics
     const data = await callAPI('pin/status', {
-      method: 'GET',
+      method: 'POST',
+      body: JSON.stringify({ admin_code: adminCode }),
     });
-    
-    // Transform clinics data to pins format for compatibility
-    const pins = (data.clinics || []).map(clinic => ({
-      id: clinic.id,
-      clinicId: clinic.id,
-      code: clinic.id,
-      pin: clinic.pin,
-      name_ar: clinic.name_ar,
-      name_en: clinic.name_en,
-      status: clinic.is_active ? 'active' : 'inactive',
-      is_active: clinic.is_active,
-      requires_pin: clinic.requires_pin
-    }));
-    
-    return { success: true, pins };
+    return { success: true, pins: data.pins || [] };
   } catch (error) {
     return { success: false, error: error.message, pins: [] };
   }
@@ -311,44 +297,6 @@ export async function healthCheck() {
   }
 }
 
-// ============================================
-// SYSTEM SETTINGS
-// ============================================
-
-export async function getSystemSettings() {
-  try {
-    const data = await callAPI('settings', {
-      method: 'GET',
-    });
-    return { success: true, settings: data.settings || {} };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function updateSystemSettings(settings) {
-  try {
-    const data = await callAPI('settings', {
-      method: 'PUT',
-      body: JSON.stringify({ settings }),
-    });
-    return { success: true, ...data };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function resetSystemSettings() {
-  try {
-    const data = await callAPI('settings/reset', {
-      method: 'POST',
-    });
-    return { success: true, settings: data.settings || {} };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
 // Default export
 const vercelApiClient = {
   patientLogin,
@@ -368,9 +316,6 @@ const vercelApiClient = {
   getMonthlyReport,
   getRecentReports,
   healthCheck,
-  getSystemSettings,
-  updateSystemSettings,
-  resetSystemSettings,
 };
 
 export default vercelApiClient;
