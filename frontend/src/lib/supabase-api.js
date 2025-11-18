@@ -1,6 +1,7 @@
 /**
  * Supabase Edge Functions API Client
  * يتصل مباشرة بـ Supabase Functions بدون وسيط
+ * ✅ محدّث لاستخدام pin-daily function (PIN يومي)
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'
@@ -41,38 +42,129 @@ class SupabaseApiClient {
     }
 
     // ============================================
-    // PIN Management
+    // PIN Management (Daily PIN System)
     // ============================================
 
     /**
-     * Get current PIN for clinic
-     * Function: pin-status
-     * GET /functions/v1/pin-status?clinic=xxx
+     * Get current daily PIN for clinic
+     * Function: pin-daily
+     * GET /functions/v1/pin-daily?clinic_id=xxx
      */
     async getCurrentPin(clinicId) {
-        const response = await this.request('pin-status', {
+        const response = await this.request('pin-daily', {
             method: 'GET',
-            query: `?clinic=${clinicId}`
+            query: `?clinic_id=${clinicId}`
         })
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to get PIN')
+        }
+
+        const data = response.data
         
         // تحويل البيانات للتوافق مع AdminPINMonitor
         return {
-            currentPin: response.pin,
-            totalIssued: 1,
-            dateKey: new Date().toISOString().split('T')[0],
-            allPins: response.pin ? [response.pin] : [],
-            success: response.success,
-            clinic: response.clinic,
-            isExpired: response.isExpired
+            currentPin: data.currentPin,
+            totalIssued: 1, // يمكن تحسينه لاحقاً
+            dateKey: data.dateKey,
+            allPins: data.currentPin ? [data.currentPin] : [],
+            success: true,
+            clinic: data.clinic_id,
+            clinicNameAr: data.clinic_name_ar,
+            clinicNameEn: data.clinic_name_en,
+            isToday: data.isToday,
+            lastUpdated: data.lastUpdated,
+            timestamp: data.timestamp
         }
     }
 
     /**
-     * Issue new PIN (يستخدم نفس pin-status لأنه يُنشئ PIN تلقائياً إذا لم يكن موجوداً)
+     * Get all PINs for all clinics
+     * Function: pin-daily
+     * GET /functions/v1/pin-daily
+     */
+    async getAllPins() {
+        const response = await this.request('pin-daily', {
+            method: 'GET'
+        })
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to get PINs')
+        }
+
+        return {
+            success: true,
+            dateKey: response.data.dateKey,
+            pins: response.data.pins || [],
+            timestamp: response.data.timestamp
+        }
+    }
+
+    /**
+     * Issue new daily PIN for clinic
+     * Function: pin-daily
+     * POST /functions/v1/pin-daily
      */
     async issuePin(clinicId) {
-        // pin-status يُنشئ PIN جديد تلقائياً إذا لم يكن موجوداً
-        return this.getCurrentPin(clinicId)
+        const response = await this.request('pin-daily', {
+            method: 'POST',
+            body: JSON.stringify({
+                clinic_id: clinicId
+            })
+        })
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to issue PIN')
+        }
+
+        const data = response.data
+
+        // تحويل البيانات للتوافق مع AdminPINMonitor
+        return {
+            currentPin: data.currentPin,
+            totalIssued: 1,
+            dateKey: data.dateKey,
+            allPins: [data.currentPin],
+            success: true,
+            clinic: data.clinic_id,
+            clinicNameAr: data.clinic_name_ar,
+            clinicNameEn: data.clinic_name_en,
+            issuedAt: data.issuedAt,
+            timestamp: data.timestamp
+        }
+    }
+
+    /**
+     * Verify PIN for clinic entry
+     * Checks if the provided PIN matches the current clinic PIN
+     */
+    async verifyPin(clinicId, pin) {
+        try {
+            const currentPinData = await this.getCurrentPin(clinicId)
+            
+            if (!currentPinData.currentPin) {
+                return {
+                    success: false,
+                    error: 'No PIN issued for this clinic today',
+                    valid: false
+                }
+            }
+
+            const isValid = currentPinData.currentPin === pin
+
+            return {
+                success: true,
+                valid: isValid,
+                clinic: clinicId,
+                message: isValid ? 'PIN verified successfully' : 'Invalid PIN'
+            }
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                valid: false
+            }
+        }
     }
 
     // ============================================
@@ -100,12 +192,12 @@ class SupabaseApiClient {
     /**
      * Get queue status
      * Function: queue-status
-     * GET /functions/v1/queue-status?clinic=xxx
+     * GET /functions/v1/queue-status?clinic_id=xxx
      */
     async getQueueStatus(clinicId) {
         return this.request('queue-status', {
             method: 'GET',
-            query: `?clinic=${clinicId}`
+            query: `?clinic_id=${clinicId}`
         })
     }
 
@@ -136,6 +228,13 @@ class SupabaseApiClient {
         }
 
         return eventSource
+    }
+
+    /**
+     * Clear cache
+     */
+    clearCache() {
+        this.cache.clear()
     }
 }
 
