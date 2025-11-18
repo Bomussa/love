@@ -155,18 +155,22 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                 <div data-test="pin-history">
                     <h4 className="font-medium mb-2">{t('Today\'s PINs')} ({allPins.length})</h4>
                     <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded">
-                        {allPins.map((pin, index) => (
-                            <span
-                                key={`pin-${index}`}
-                                className={`px-3 py-1 rounded text-sm font-medium ${pin === currentPin
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 text-gray-700'
-                                    }`}
-                                data-test={`history-pin-${pin}`}
-                            >
-                                {pin}
-                            </span>
-                        ))}
+                        {allPins.map((pinItem, index) => {
+                            // pinItem قد يكون object {pin, clinic, ...} أو string
+                            const pinValue = typeof pinItem === 'object' ? pinItem.pin : pinItem
+                            return (
+                                <span
+                                    key={`pin-${index}`}
+                                    className={`px-3 py-1 rounded text-sm font-medium ${pinValue === currentPin
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-200 text-gray-700'
+                                        }`}
+                                    data-test={`history-pin-${pinValue}`}
+                                >
+                                    {pinValue}
+                                </span>
+                            )
+                        })}
                     </div>
                 </div>
             )}
