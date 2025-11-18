@@ -94,15 +94,18 @@ export default async function handler(req, res) {
     // ==================== PATIENT MANAGEMENT ====================
     
     if (pathname === '/api/v1/patient/login' && method === 'POST') {
-      const { personalId, gender } = body;
+      // Accept both personalId and patientId for compatibility
+      const { personalId, patientId, gender } = body;
+      const id = patientId || personalId;
       
       // Validate inputs
-      if (!personalId || !gender) {
-        return res.status(400).json(formatError('Missing required fields: personalId, gender', 'MISSING_FIELDS'));
+      if (!id || !gender) {
+        return res.status(400).json(formatError('Missing required fields: patientId, gender', 'MISSING_FIELDS'));
       }
       
-      if (!validatePersonalId(personalId)) {
-        return res.status(400).json(formatError('Invalid personal ID format', 'INVALID_PERSONAL_ID'));
+      // Simplified validation - accept any non-empty ID
+      if (!id.toString().trim()) {
+        return res.status(400).json(formatError('Invalid patient ID format', 'INVALID_PATIENT_ID'));
       }
       
       if (!validateGender(gender)) {
@@ -110,12 +113,15 @@ export default async function handler(req, res) {
       }
       
       // Generate session
-      const sessionId = generateSessionId();
+      const sessionId = id.toString().trim(); // Use patient ID as session ID
       const normalizedGender = normalizeGender(gender);
       
       const sessionData = {
-        personalId,
+        id: sessionId,
+        patientId: sessionId,
+        personalId: sessionId,
         gender: normalizedGender,
+        last_active: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         ip: clientIP
@@ -124,6 +130,12 @@ export default async function handler(req, res) {
       await KV_ADMIN.put(`session:${sessionId}`, sessionData, { expirationTtl: 86400 });
 
       return res.status(200).json(formatSuccess({
+        data: {
+          id: sessionId,
+          patientId: sessionId,
+          gender: normalizedGender,
+          last_active: sessionData.last_active
+        },
         sessionId,
         expiresAt: sessionData.expiresAt
       }, 'Login successful'));
@@ -414,19 +426,56 @@ export default async function handler(req, res) {
     }
 
     if (pathname === '/api/v1/pin/status' && method === 'GET') {
-      const { clinicId, dateKey } = query;
+      const { clinic, clinicId } = query;
+      const targetClinic = clinic || clinicId;
       
-      if (!clinicId) {
-        return res.status(400).json(formatError('Missing required parameter: clinicId', 'MISSING_CLINIC_ID'));
+      // If no clinic specified, return all clinics with their PINs
+      if (!targetClinic) {
+        try {
+          const { data: clinics, error } = await supabase
+            .from('clinics')
+            .select('id, name_ar, name_en, pin, is_active, requires_pin')
+            .eq('is_active', true)
+            .order('display_order');
+          
+          if (error) throw error;
+          
+          return res.status(200).json(formatSuccess({
+            clinics: clinics || [],
+            count: clinics?.length || 0,
+            dateKey: new Date().toISOString().split('T')[0]
+          }));
+        } catch (error) {
+          return res.status(500).json(formatError('Failed to fetch clinics', 'DATABASE_ERROR', { details: error.message }));
+        }
       }
       
-      const useDateKey = dateKey || new Date().toISOString().split('T')[0];
-      
-      return res.status(200).json(formatSuccess({
-        clinicId,
-        dateKey: useDateKey,
-        available: true
-      }));
+      // If clinic specified, return single clinic PIN
+      try {
+        const { data: clinic, error } = await supabase
+          .from('clinics')
+          .select('id, name_ar, name_en, pin, is_active, requires_pin')
+          .eq('id', targetClinic)
+          .single();
+        
+        if (error) throw error;
+        if (!clinic) {
+          return res.status(404).json(formatError('Clinic not found', 'CLINIC_NOT_FOUND'));
+        }
+        
+        return res.status(200).json(formatSuccess({
+          clinic: clinic.id,
+          clinicId: clinic.id,
+          name_ar: clinic.name_ar,
+          name_en: clinic.name_en,
+          pin: clinic.pin,
+          is_active: clinic.is_active,
+          requires_pin: clinic.requires_pin,
+          dateKey: new Date().toISOString().split('T')[0]
+        }));
+      } catch (error) {
+        return res.status(500).json(formatError('Failed to fetch clinic', 'DATABASE_ERROR', { details: error.message }));
+      }
     }
 
     // ==================== REPORTS ====================
@@ -720,6 +769,124 @@ export default async function handler(req, res) {
         environment: process.env.VERCEL_ENV || 'unknown',
         items: items
       }, 'Secrets exported'));
+    }
+    
+    // ==================== SYSTEM SETTINGS ====================
+    
+    if (pathname === '/api/v1/settings' && method === 'GET') {
+      try {
+        const { data: settingsRows, error } = await supabase
+          .from('system_settings')
+          .select('key, value');
+        
+        if (error) throw error;
+        
+        // Convert array of {key, value} to object
+        const settings = {};
+        if (settingsRows) {
+          for (const row of settingsRows) {
+            settings[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          }
+        }
+        
+        // Provide defaults if no settings exist
+        const defaultSettings = {
+          queueIntervalSeconds: 120,
+          patientMaxWaitSeconds: 240,
+          refreshIntervalSeconds: 30,
+          nearTurnRefreshSeconds: 7,
+          autoCallEnabled: true,
+          timeoutHandlerEnabled: true,
+          notificationsEnabled: true,
+          showCountdownTimer: true,
+          showQueuePosition: true,
+          showEstimatedWait: true,
+          showAheadCount: true,
+          notifyNearAhead: 3,
+          pinLateMinutes: 5,
+          noticeTtlSeconds: 30
+        };
+        
+        return res.status(200).json(formatSuccess({
+          settings: { ...defaultSettings, ...settings }
+        }));
+      } catch (error) {
+        console.error('[Settings Error]', error);
+        return res.status(500).json(formatError('Failed to fetch settings', 'SETTINGS_ERROR'));
+      }
+    }
+    
+    if (pathname === '/api/v1/settings' && method === 'PUT') {
+      try {
+        const { settings } = body;
+        
+        if (!settings || typeof settings !== 'object') {
+          return res.status(400).json(formatError('Invalid settings object', 'INVALID_SETTINGS'));
+        }
+        
+        // Update each setting in the database
+        for (const [key, value] of Object.entries(settings)) {
+          await supabase
+            .from('system_settings')
+            .upsert({
+              key,
+              value: JSON.stringify(value),
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'key'
+            });
+        }
+        
+        return res.status(200).json(formatSuccess({
+          settings,
+          message: 'Settings updated successfully'
+        }));
+      } catch (error) {
+        console.error('[Settings Update Error]', error);
+        return res.status(500).json(formatError('Failed to update settings', 'SETTINGS_UPDATE_ERROR'));
+      }
+    }
+    
+    if (pathname === '/api/v1/settings/reset' && method === 'POST') {
+      try {
+        const defaultSettings = {
+          queueIntervalSeconds: 120,
+          patientMaxWaitSeconds: 240,
+          refreshIntervalSeconds: 30,
+          nearTurnRefreshSeconds: 7,
+          autoCallEnabled: true,
+          timeoutHandlerEnabled: true,
+          notificationsEnabled: true,
+          showCountdownTimer: true,
+          showQueuePosition: true,
+          showEstimatedWait: true,
+          showAheadCount: true,
+          notifyNearAhead: 3,
+          pinLateMinutes: 5,
+          noticeTtlSeconds: 30
+        };
+        
+        // Delete all existing settings
+        await supabase.from('system_settings').delete().neq('key', '');
+        
+        // Insert default settings
+        for (const [key, value] of Object.entries(defaultSettings)) {
+          await supabase
+            .from('system_settings')
+            .insert({
+              key,
+              value: JSON.stringify(value)
+            });
+        }
+        
+        return res.status(200).json(formatSuccess({
+          settings: defaultSettings,
+          message: 'Settings reset to defaults'
+        }));
+      } catch (error) {
+        console.error('[Settings Reset Error]', error);
+        return res.status(500).json(formatError('Failed to reset settings', 'SETTINGS_RESET_ERROR'));
+      }
     }
     
     // ==================== DEFAULT: 404 ====================
