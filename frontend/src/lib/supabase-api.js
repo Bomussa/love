@@ -66,11 +66,13 @@ class SupabaseApiClient {
             })
             
             // تحويل البيانات للتوافق مع AdminPINMonitor
+            // response.pin هو object يحتوي على {pin, clinic, date, generatedAt, expiresAt, active}
+            const pinData = response.pin
             return {
-                currentPin: response.pin || null,
+                currentPin: pinData?.pin || null,
                 totalIssued: response.totalIssued || 1,
-                dateKey: response.dateKey || new Date().toISOString().split('T')[0],
-                allPins: response.allPins || (response.pin ? [response.pin] : []),
+                dateKey: response.dateKey || pinData?.date || new Date().toISOString().split('T')[0],
+                allPins: response.allPins || (pinData ? [pinData] : []),
                 success: response.success !== false,
                 clinic: response.clinic || clinicId,
                 isExpired: response.isExpired || false
@@ -101,18 +103,19 @@ class SupabaseApiClient {
                 method: 'POST',
                 body: JSON.stringify({ clinic: clinicId })
             })
-            
-            // تحويل البيانات للتوافق مع AdminPINMonitor
+                        // تحويل البيانات للتوافق مع AdminPINMonitor
+            // response.pin هو object يحتوي على {pin, clinic, date, generatedAt, expiresAt, active}
+            const pinData = response.pin
             return {
-                currentPin: response.pin || null,
-                totalIssued: response.totalIssued || 1,
-                dateKey: response.dateKey || new Date().toISOString().split('T')[0],
-                allPins: response.allPins || (response.pin ? [response.pin] : []),
+                currentPin: pinData?.pin || null,
+                nextPin: null,
+                totalIssued: 0,
+                dateKey: response.dateKey || pinData?.date || new Date().toISOString().split('T')[0],
+                allPins: response.allPins || (pinData ? [pinData] : []),
                 success: response.success !== false,
                 clinic: response.clinic || clinicId,
                 isExpired: false
-            }
-        } catch (error) {
+            }   } catch (error) {
             console.error('[PIN] Error issuing new PIN:', error)
             throw error
         }
