@@ -8,7 +8,7 @@
  * - STAFF: عرض فقط
  */
 
-import { supabase } from './supabase-client.js';
+// import { supabase } from './supabase-client.js'; // Not needed for hardcoded users
 
 class AuthService {
   constructor() {
@@ -23,73 +23,58 @@ class AuthService {
    */
   async login(username, password) {
     try {
-      // التحقق من القفل (معطل مؤقتاً للاختبار)
-      // const lockout = this.checkLockout(username);
-      // if (lockout.locked) {
-      //   return {
-      //     success: false,
-      //     error: `Account locked. Try again in ${Math.ceil(lockout.remainingTime / 60000)} minutes`
-      //   };
-      // }
-
-      // التحقق من المستخدم في Supabase
-      const { data: users, error: fetchError } = await supabase
-        .from('admins')
-        .select('*')
-        .ilike('username', username)
-        .single();
-
-      if (fetchError || !users) {
-        this.recordFailedAttempt(username);
+      // التحقق من القفل
+      const lockout = this.checkLockout(username);
+      if (lockout.locked) {
         return {
           success: false,
-          error: 'Invalid username or password'
+          error: `Account locked. Try again in ${Math.ceil(lockout.remainingTime / 60000)} minutes`
         };
       }
 
-      // التحقق من كلمة المرور (plain text أولاً ثم hash)
-      let isPasswordValid = false;
-      
-      // تحقق من plain text أولاً
-      if (users.password_hash === password) {
-        isPasswordValid = true;
-      } else {
-        // إذا لم يتطابق، جرب SHA-256 hash
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        if (users.password_hash === passwordHash) {
-          isPasswordValid = true;
+      // المستخدمون الافتراضيون (hardcoded)
+      const users = {
+        'Admin': {
+          password: 'Admin123',
+          role: 'SUPER_ADMIN',
+          name: 'Super Administrator',
+          email: 'admin@mmc.gov.sa'
+        },
+        'admin': {
+          password: 'admin123',
+          role: 'ADMIN',
+          name: 'Administrator',
+          email: 'admin@mmc.gov.sa'
+        },
+        'staff': {
+          password: 'staff123',
+          role: 'STAFF',
+          name: 'Staff Member',
+          email: 'staff@mmc.gov.sa'
         }
-      }
-      
-      if (!isPasswordValid) {
+      };
+
+      const user = users[username];
+
+      // التحقق من المستخدم
+      if (!user || user.password !== password) {
         this.recordFailedAttempt(username);
         return {
           success: false,
           error: 'Invalid username or password'
         };
       }
-
-      // تحديث آخر تسجيل دخول
-      await supabase
-        .from('admins')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', users.id);
 
       // إنشاء Session
       const session = {
         id: this.generateSessionId(),
-        username: users.username,
-        role: users.role,
-        name: users.name,
-        email: users.email,
+        username: username,
+        role: user.role,
+        name: user.name,
+        email: user.email,
         loginTime: new Date().toISOString(),
         expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
-        token: this.generateToken(users.username, users.role)
+        token: this.generateToken(username, user.role)
       };
 
       // حفظ Session
