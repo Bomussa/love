@@ -375,6 +375,10 @@ class UnifiedApiService {
     return { success: true, message: 'PIN deactivated' };
   }
 
+  async getActivePins(adminCode) {
+    return this.getActivePINs(adminCode);
+  }
+
   async getActivePINs(adminCode) {
     try {
       const result = await supabasePinApi.getAllPins()
