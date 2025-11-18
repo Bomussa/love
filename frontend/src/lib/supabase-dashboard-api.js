@@ -71,7 +71,7 @@ class DashboardApiClient {
 
             // Get queue stats for today
             const queues = await this.request(
-                `/queues?select=*&created_at=gte.${today}T00:00:00`
+                `/queues?select=*&entered_at=gte.${today}T00:00:00`
             )
 
             // Get clinic counters
