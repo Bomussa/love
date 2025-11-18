@@ -1,6 +1,7 @@
 /**
  * Supabase Dashboard API Client
- * يتصل بـ stats-dashboard function للحصول على إحصائيات حقيقية
+ * يتصل مباشرة بـ Supabase REST API للحصول على إحصائيات حقيقية
+ * ✅ يستخدم الجداول الموجودة فعلياً في قاعدة البيانات
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'
@@ -8,7 +9,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 class DashboardApiClient {
     constructor() {
-        this.functionsUrl = `${SUPABASE_URL}/functions/v1`
+        this.restUrl = `${SUPABASE_URL}/rest/v1`
         this.cache = {
             data: null,
             timestamp: null,
@@ -16,14 +17,15 @@ class DashboardApiClient {
         }
     }
 
-    async request(functionName, options = {}) {
-        const url = `${this.functionsUrl}/${functionName}${options.query || ''}`
+    async request(endpoint, options = {}) {
+        const url = `${this.restUrl}${endpoint}`
         const config = {
             method: options.method || 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation',
                 ...options.headers
             }
         }
@@ -36,22 +38,20 @@ class DashboardApiClient {
             const response = await fetch(url, config)
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData?.error || `HTTP ${response.status}`)
+                const errorText = await response.text()
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
             }
 
             const data = await response.json()
             return data
         } catch (error) {
-            console.error(`[Dashboard API] Error calling ${functionName}:`, error)
+            console.error(`[Dashboard API] Error calling ${endpoint}:`, error)
             throw error
         }
     }
 
     /**
-     * Get dashboard statistics
-     * Function: stats-dashboard
-     * GET /functions/v1/stats-dashboard
+     * Get dashboard statistics from Supabase tables
      */
     async getDashboardStats() {
         // Check cache first
@@ -61,37 +61,48 @@ class DashboardApiClient {
         }
 
         try {
-            const response = await this.request('stats-dashboard', {
-                method: 'GET'
-            })
+            const today = new Date().toISOString().split('T')[0]
 
-            if (!response.success) {
-                throw new Error(response.error || 'Failed to fetch dashboard stats')
-            }
+            // Get queue stats for today
+            const queues = await this.request(
+                `/queues?select=*&created_at=gte.${today}T00:00:00`
+            )
 
-            // Transform data to match AdvancedDashboard expectations
-            const overview = response.data?.overview || {}
-            const clinics = response.data?.clinics || []
+            // Get clinic counters
+            const clinicCounters = await this.request(
+                `/clinic_counters?select=*`
+            )
+
+            // Calculate stats
+            const totalWaiting = queues.filter(q => q.status === 'waiting').length
+            const completedToday = queues.filter(q => q.status === 'completed').length
+            const totalPatients = queues.length
+            const uniquePatients = new Set(queues.map(q => q.patient_id)).size
+
+            // Get active clinics (those with waiting or serving patients)
+            const activeClinics = clinicCounters.filter(c => 
+                (c.waiting_count || 0) > 0 || (c.serving_count || 0) > 0
+            ).length
 
             const transformedData = {
                 // Overview stats
-                totalWaiting: overview.in_queue_now || 0,
-                completedToday: overview.completed_today || 0,
-                totalPatients: overview.visits_today || 0,
-                uniquePatients: overview.unique_patients_today || 0,
+                totalWaiting,
+                completedToday,
+                totalPatients,
+                uniquePatients,
                 
                 // Calculated stats
-                activeClinics: clinics.filter(c => (c.waiting_count || 0) > 0 || (c.serving_count || 0) > 0).length,
-                totalServed: overview.completed_today || 0,
+                activeClinics,
+                totalServed: completedToday,
                 
-                // System health (calculated based on data availability)
-                systemHealth: response.success ? 100 : 0,
+                // System health
+                systemHealth: 100,
                 
                 // Clinics details
-                clinics: clinics,
+                clinics: clinicCounters,
                 
                 // Timestamp
-                timestamp: response.data?.timestamp || new Date().toISOString()
+                timestamp: new Date().toISOString()
             }
 
             // Cache the result
@@ -120,25 +131,14 @@ class DashboardApiClient {
 
     /**
      * Calculate average wait time from queues
-     * This requires direct Supabase query
      */
     async getAverageWaitTime() {
         try {
-            // Import supabase client
-            const { createClient } = await import('@supabase/supabase-js')
-            const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-            // Query queues table for today's completed entries
             const today = new Date().toISOString().split('T')[0]
             
-            const { data, error } = await supabase
-                .from('queues')
-                .select('entered_at, completed_at')
-                .eq('status', 'completed')
-                .gte('entered_at', `${today}T00:00:00`)
-                .not('completed_at', 'is', null)
-
-            if (error) throw error
+            const data = await this.request(
+                `/queues?select=entered_at,completed_at&status=eq.completed&entered_at=gte.${today}T00:00:00&completed_at=not.is.null`
+            )
 
             if (!data || data.length === 0) {
                 return 0
@@ -161,64 +161,41 @@ class DashboardApiClient {
     }
 
     /**
-     * Get recent activity from events or queue_history
+     * Get recent activity from queues
      */
     async getRecentActivity(limit = 10) {
         try {
-            const { createClient } = await import('@supabase/supabase-js')
-            const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            const queueHistory = await this.request(
+                `/queues?select=clinic_id,patient_id,status,entered_at,completed_at&order=entered_at.desc&limit=${limit}`
+            )
 
-            // Try to get from events table first
-            let { data: events, error } = await supabase
-                .from('events')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(limit)
-
-            // If events table doesn't exist or is empty, use queue_history
-            if (error || !events || events.length === 0) {
-                const { data: queueHistory, error: qhError } = await supabase
-                    .from('queues')
-                    .select('clinic_id, patient_id, status, entered_at, completed_at')
-                    .order('entered_at', { ascending: false })
-                    .limit(limit)
-
-                if (qhError) throw qhError
-
-                // Transform queue history to activity format
-                events = (queueHistory || []).map(q => {
-                    const time = new Date(q.entered_at).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    })
-                    
-                    let event = ''
-                    let type = 'info'
-                    
-                    if (q.status === 'completed') {
-                        event = `Patient completed ${q.clinic_id}`
-                        type = 'success'
-                    } else if (q.status === 'serving') {
-                        event = `Patient being served at ${q.clinic_id}`
-                        type = 'info'
-                    } else {
-                        event = `Patient entered ${q.clinic_id}`
-                        type = 'info'
-                    }
-
-                    return { time, event, type }
-                })
-            } else {
-                // Transform events to activity format
-                events = events.map(e => ({
-                    time: new Date(e.created_at).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    }),
-                    event: e.message || e.event_type || 'System event',
-                    type: e.event_type === 'error' ? 'warning' : 'info'
-                }))
+            if (!queueHistory || queueHistory.length === 0) {
+                return []
             }
+
+            // Transform queue history to activity format
+            const events = queueHistory.map(q => {
+                const time = new Date(q.entered_at).toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })
+                
+                let event = ''
+                let type = 'info'
+                
+                if (q.status === 'completed') {
+                    event = `Patient completed ${q.clinic_id}`
+                    type = 'success'
+                } else if (q.status === 'serving') {
+                    event = `Patient being served at ${q.clinic_id}`
+                    type = 'info'
+                } else {
+                    event = `Patient entered ${q.clinic_id}`
+                    type = 'info'
+                }
+
+                return { time, event, type }
+            })
 
             return events
         } catch (error) {
