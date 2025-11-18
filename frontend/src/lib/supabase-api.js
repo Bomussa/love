@@ -1,7 +1,8 @@
 /**
  * Supabase Edge Functions API Client
- * يتصل مباشرة بـ Supabase Functions بدون وسيط
- * ✅ محدّث لاستخدام pin-daily function (PIN يومي)
+ * Updated: 2025-11-18
+ * Uses pin-generate and pin-status for daily PIN system
+ * ✅ NO MOCK DATA - All real Supabase connections
  */
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'
@@ -43,15 +44,16 @@ class SupabaseApiClient {
 
     // ============================================
     // PIN Management (Daily PIN System)
+    // Uses: pin-generate and pin-status functions
     // ============================================
 
     /**
      * Get current daily PIN for clinic
-     * Function: pin-daily
-     * GET /functions/v1/pin-daily?clinic_id=xxx
+     * Function: pin-status
+     * GET /functions/v1/pin-status?clinic_id=xxx
      */
     async getCurrentPin(clinicId) {
-        const response = await this.request('pin-daily', {
+        const response = await this.request('pin-status', {
             method: 'GET',
             query: `?clinic_id=${clinicId}`
         })
@@ -62,51 +64,31 @@ class SupabaseApiClient {
 
         const data = response.data
         
-        // تحويل البيانات للتوافق مع AdminPINMonitor
+        // Transform data for AdminPINMonitor compatibility
         return {
-            currentPin: data.currentPin,
-            totalIssued: 1, // يمكن تحسينه لاحقاً
-            dateKey: data.dateKey,
-            allPins: data.currentPin ? [data.currentPin] : [],
+            currentPin: data.has_active_pin ? data.pin : null,
+            totalIssued: data.has_active_pin ? 1 : 0,
+            dateKey: new Date().toISOString().split('T')[0],
+            allPins: data.has_active_pin ? [data.pin] : [],
             success: true,
             clinic: data.clinic_id,
-            clinicNameAr: data.clinic_name_ar,
-            clinicNameEn: data.clinic_name_en,
-            isToday: data.isToday,
-            lastUpdated: data.lastUpdated,
-            timestamp: data.timestamp
-        }
-    }
-
-    /**
-     * Get all PINs for all clinics
-     * Function: pin-daily
-     * GET /functions/v1/pin-daily
-     */
-    async getAllPins() {
-        const response = await this.request('pin-daily', {
-            method: 'GET'
-        })
-        
-        if (!response.success) {
-            throw new Error(response.error || 'Failed to get PINs')
-        }
-
-        return {
-            success: true,
-            dateKey: response.data.dateKey,
-            pins: response.data.pins || [],
-            timestamp: response.data.timestamp
+            isToday: data.has_active_pin,
+            lastUpdated: data.checked_at,
+            timestamp: data.checked_at,
+            validUntil: data.valid_until,
+            expiresInSeconds: data.expires_in_seconds,
+            pinId: data.pin_id,
+            isUsed: data.is_used
         }
     }
 
     /**
      * Issue new daily PIN for clinic
-     * Function: pin-daily
-     * POST /functions/v1/pin-daily
+     * Function: pin-generate
+     * POST /functions/v1/pin-generate
      */
     async issuePin(clinicId) {
-        const response = await this.request('pin-daily', {
+        const response = await this.request('pin-generate', {
             method: 'POST',
             body: JSON.stringify({
                 clinic_id: clinicId
@@ -119,18 +101,70 @@ class SupabaseApiClient {
 
         const data = response.data
 
-        // تحويل البيانات للتوافق مع AdminPINMonitor
+        // Transform data for AdminPINMonitor compatibility
         return {
-            currentPin: data.currentPin,
+            currentPin: data.pin,
             totalIssued: 1,
-            dateKey: data.dateKey,
-            allPins: [data.currentPin],
+            dateKey: new Date().toISOString().split('T')[0],
+            allPins: [data.pin],
             success: true,
-            clinic: data.clinic_id,
-            clinicNameAr: data.clinic_name_ar,
-            clinicNameEn: data.clinic_name_en,
-            issuedAt: data.issuedAt,
-            timestamp: data.timestamp
+            clinic: clinicId,
+            issuedAt: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
+            validUntil: data.valid_until,
+            expiresInSeconds: data.expires_in_seconds,
+            pinId: data.pin_id,
+            isExisting: data.is_existing || false
+        }
+    }
+
+    /**
+     * Get all PINs for all clinics
+     * Fetches from Supabase clinics table and gets PIN for each
+     */
+    async getAllPins() {
+        try {
+            // Get all clinics from Supabase
+            const clinicsResponse = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id,name`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            })
+
+            const clinics = await clinicsResponse.json()
+
+            // Get PIN status for each clinic
+            const pinPromises = clinics.map(async (clinic) => {
+                try {
+                    const pinData = await this.getCurrentPin(clinic.id)
+                    return {
+                        clinic_id: clinic.id,
+                        clinic_name: clinic.name,
+                        ...pinData
+                    }
+                } catch (error) {
+                    console.error(`Error getting PIN for clinic ${clinic.id}:`, error)
+                    return {
+                        clinic_id: clinic.id,
+                        clinic_name: clinic.name,
+                        currentPin: null,
+                        success: false
+                    }
+                }
+            })
+
+            const pins = await Promise.all(pinPromises)
+
+            return {
+                success: true,
+                dateKey: new Date().toISOString().split('T')[0],
+                pins: pins.filter(p => p.currentPin),
+                timestamp: new Date().toISOString()
+            }
+        } catch (error) {
+            console.error('Error getting all PINs:', error)
+            throw error
         }
     }
 
@@ -198,6 +232,20 @@ class SupabaseApiClient {
         return this.request('queue-status', {
             method: 'GET',
             query: `?clinic_id=${clinicId}`
+        })
+    }
+
+    /**
+     * Call next patient
+     * Function: queue-call
+     * POST /functions/v1/queue-call
+     */
+    async callNextPatient(clinicId) {
+        return this.request('queue-call', {
+            method: 'POST',
+            body: JSON.stringify({
+                clinic_id: clinicId
+            })
         })
     }
 
