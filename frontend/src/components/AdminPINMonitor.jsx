@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import supabaseApi from '../../../lib/supabase-api'
+import supabaseApi from '../lib/supabase-api'
 
 /**
  * Admin PIN Monitor Component

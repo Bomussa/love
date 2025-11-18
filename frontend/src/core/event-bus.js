@@ -186,27 +186,27 @@ function disconnectSSE() {
 
 // الاتصال التلقائي عند تحميل الصفحة
 if (typeof window !== 'undefined') {
-  // تعطيل SSE مؤقتاً - الاعتماد على polling فقط
-  // setTimeout(() => {
-  //   connectToSSE();
-  // }, 1000);
+  // تفعيل SSE للاتصال الحي
+  setTimeout(() => {
+    connectToSSE();
+  }, 1000);
 
-  // // إعادة الاتصال عند عودة الصفحة من hidden
-  // document.addEventListener('visibilitychange', () => {
-  //   if (!document.hidden && !sseConnection) {
-  //     console.log('[EventBus] Page visible, reconnecting SSE...');
-  //     connectToSSE();
-  //   }
-  // });
+  // إعادة الاتصال عند عودة الصفحة من hidden
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !sseConnection) {
+      console.log('[EventBus] Page visible, reconnecting SSE...');
+      connectToSSE();
+    }
+  });
 
   // تصدير للاستخدام اليدوي
   window.eventBusSSE = {
     connect: connectToSSE,
     disconnect: disconnectSSE,
-    isConnected: () => false // Always return false when SSE disabled
+    isConnected: () => sseConnection !== null
   };
   
-  console.log('ℹ️ [EventBus] SSE disabled - using polling fallback');
+  console.log('ℹ️ [EventBus] SSE enabled - connecting to realtime events');
 }
 
 export { connectToSSE, disconnectSSE };
