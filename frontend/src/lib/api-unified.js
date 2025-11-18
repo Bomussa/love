@@ -7,6 +7,7 @@
 import localApi from './local-api';
 import supabaseApi from './supabase-backend-api';
 import vercelApi from './vercel-api-client';
+import supabasePinApi from './supabase-api';
 
 // ==========================================
 // CONFIGURATION
@@ -347,8 +348,27 @@ class UnifiedApiService {
     return { success: true, message: 'System reset' };
   }
 
-  async generatePIN(stationId, adminCode) {
-    return this.getPinStatus();
+   async generatePIN(clinicId, adminCode) {
+    try {
+      const result = await supabasePinApi.issuePin(clinicId)
+      
+      return {
+        success: true,
+        pin: {
+          id: result.pinId,
+          pin: result.currentPin,
+          clinicId: clinicId,
+          status: 'active',
+          validUntil: result.validUntil
+        }
+      }
+    } catch (error) {
+      console.error('Error generating PIN:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
   }
 
   async deactivatePIN(pinId, adminCode) {
@@ -356,7 +376,36 @@ class UnifiedApiService {
   }
 
   async getActivePINs(adminCode) {
-    return this.getPinStatus();
+    try {
+      const result = await supabasePinApi.getAllPins()
+      
+      if (!result.success) {
+        return { success: false, pins: [], error: result.error }
+      }
+
+      // Transform to match AdminPage expected format
+      const pins = (result.pins || []).map(pin => ({
+        id: pin.pinId || pin.clinic_id,
+        pin: pin.currentPin,
+        clinicId: pin.clinic_id,
+        clinic_name: pin.clinic_name,
+        status: pin.isUsed ? 'used' : 'active',
+        validUntil: pin.validUntil,
+        expiresInSeconds: pin.expiresInSeconds
+      }))
+
+      return {
+        success: true,
+        pins: pins
+      }
+    } catch (error) {
+      console.error('Error getting active PINs:', error)
+      return {
+        success: false,
+        pins: [],
+        error: error.message
+      }
+    }
   }
 
   async generateReport(type, format, adminCode) {
