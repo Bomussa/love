@@ -174,7 +174,7 @@ export async function verifyPIN(clinicId, pin) {
 
 export async function getAdminStatus() {
   try {
-    const data = await callAPI('admin-status', {
+    const data = await callAPI('admin/status', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -185,7 +185,7 @@ export async function getAdminStatus() {
 
 export async function getQueueStats() {
   try {
-    const data = await callAPI('stats-queues', {
+    const data = await callAPI('stats/queues', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -196,7 +196,7 @@ export async function getQueueStats() {
 
 export async function getDashboardStats() {
   try {
-    const data = await callAPI('stats-dashboard', {
+    const data = await callAPI('stats/dashboard', {
       method: 'GET',
     });
     return { success: true, ...data };
