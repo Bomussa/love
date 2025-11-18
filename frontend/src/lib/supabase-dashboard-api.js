@@ -19,15 +19,21 @@ class DashboardApiClient {
 
     async request(endpoint, options = {}) {
         const url = `${this.restUrl}${endpoint}`
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            ...options.headers
+        }
+        
+        // Only add Prefer header for POST/PUT/PATCH requests
+        if (options.method && options.method !== 'GET') {
+            headers['Prefer'] = 'return=representation'
+        }
+        
         const config = {
             method: options.method || 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Prefer': 'return=representation',
-                ...options.headers
-            }
+            headers
         }
 
         if (options.body) {
