@@ -55,17 +55,18 @@ class SupabaseApiClient {
      */
     async getCurrentPin(clinicId) {
         try {
-            const { data: clinic, error } = await supabase
+            const { data: clinics, error } = await supabase
                 .from('clinics')
                 .select('id, name, name_ar, name_en, pin_code, pin_expires_at')
                 .eq('id', clinicId)
-                .single()
 
             if (error) throw error
 
-            if (!clinic) {
+            if (!clinics || clinics.length === 0) {
                 throw new Error(`Clinic ${clinicId} not found`)
             }
+            
+            const clinic = clinics[0]
 
             return {
                 currentPin: clinic.pin_code,
