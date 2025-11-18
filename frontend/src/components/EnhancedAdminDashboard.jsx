@@ -254,12 +254,12 @@ export function EnhancedAdminDashboard({ language, onLogout }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* PIN Monitor for Clinic 1 */}
           <div data-test="admin-pin-section">
-            <AdminPINMonitor clinicId="clinic1" autoRefresh={false} />
+            <AdminPINMonitor clinicId="clinic_1" autoRefresh={false} />
           </div>
 
           {/* Queue Monitor for Clinic 1 */}
           <div data-test="admin-queue-section">
-            <AdminQueueMonitor clinicId="clinic1" autoRefresh={true} refreshInterval={5000} />
+            <AdminQueueMonitor clinicId="clinic_1" autoRefresh={true} refreshInterval={5000} />
           </div>
         </div>
 

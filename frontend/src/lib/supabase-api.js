@@ -61,7 +61,7 @@ class SupabaseApiClient {
      */
     async getCurrentPin(clinicId) {
         try {
-            const response = await this.request(`/pin-status?clinic=${clinicId}`, {
+            const response = await this.request(`/admin/pin/status?clinic=${clinicId}`, {
                 method: 'GET'
             })
             
@@ -97,7 +97,7 @@ class SupabaseApiClient {
      */
     async issuePin(clinicId) {
         try {
-            const response = await this.request('/pin-issue', {
+            const response = await this.request('/admin/pin/issue', {
                 method: 'POST',
                 body: JSON.stringify({ clinic: clinicId })
             })
@@ -127,7 +127,7 @@ class SupabaseApiClient {
      * POST /api/v1/queue-enter
      */
     async enterQueue(clinicId, token, priority = 'normal') {
-        return this.request('/queue-enter', {
+        return this.request('/queue/enter', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -144,7 +144,7 @@ class SupabaseApiClient {
      * GET /api/v1/queue-status?clinic=xxx
      */
     async getQueueStatus(clinicId) {
-        return this.request(`/queue-status?clinic=${clinicId}`, {
+        return this.request(`/queue/status?clinic=${clinicId}`, {
             method: 'GET'
         })
     }
@@ -158,7 +158,7 @@ class SupabaseApiClient {
      * GET /api/v1/events-stream?clinic=xxx
      */
     connectEventsStream(clinicId, onMessage) {
-        const url = `${this.apiBase}/events-stream?clinic=${clinicId}`
+        const url = `${this.apiBase}/events/stream?clinic=${clinicId}`
         const eventSource = new EventSource(url)
 
         eventSource.onmessage = (event) => {
