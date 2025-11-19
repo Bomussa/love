@@ -5,6 +5,7 @@ import { Input } from './Input'
 import { EnhancedAdminDashboard } from './EnhancedAdminDashboard'
 import { ClinicsConfiguration } from './ClinicsConfiguration'
 import { SystemSettingsPanel } from './SystemSettingsPanel'
+import SystemHealthStatus from './SystemHealthStatus'
 import {
   BarChart3,
   Users,
@@ -36,7 +37,7 @@ import api from '../lib/api-unified'
 import authService from '../lib/auth-service'
 import { AdvancedDashboard } from './admin/AdvancedDashboard'
 
-export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange }) {
+export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange, systemHealth }) {
   const [session, setSession] = useState(() => authService.getSession())
   const [currentView, setCurrentView] = useState('dashboard')
   const [stats, setStats] = useState(null)
@@ -293,7 +294,9 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">لوحة التحكم</h1>
-        <Button variant="outline" onClick={loadStats} disabled={loading}>
+        <div className="flex items-center gap-4">
+          <SystemHealthStatus status={systemHealth.status} message={systemHealth.message} language={language} />
+          <Button variant="outline" onClick={loadStats} disabled={loading}>
           <RefreshCw className="icon icon-md me-2" />
           تحديث
         </Button>

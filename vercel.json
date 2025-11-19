@@ -6,6 +6,10 @@
       "destination": "https://rujwuruuosffcxazymit.functions.supabase.co/api-router/:path*"
     },
     {
+      "source": "/api/maintenance",
+      "destination": "/api/maintenance.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
