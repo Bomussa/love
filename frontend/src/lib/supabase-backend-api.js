@@ -17,15 +17,28 @@ import { supabase } from './supabase-client';
  */
 export async function patientLogin(id, gender) {
   try {
-    // Accept any ID without database verification
-    // System doesn't store patient data permanently
-    const patient = {
-      id,
-      gender,
-      last_active: new Date().toISOString()
-    };
+    // Insert or update patient in database
+    const { data, error } = await supabase
+      .from('patients')
+      .upsert(
+        {
+          id,
+          gender,
+          last_active: new Date().toISOString()
+        },
+        {
+          onConflict: 'id'
+        }
+      )
+      .select()
+      .single();
 
-    return { success: true, patient };
+    if (error) {
+      console.error('Error inserting/updating patient:', error);
+      throw error;
+    }
+
+    return { success: true, patient: data };
   } catch (error) {
     console.error('Error in patientLogin:', error);
     return { success: false, error: error.message };
