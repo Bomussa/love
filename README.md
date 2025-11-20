@@ -6,6 +6,15 @@
 [![Platform](https://img.shields.io/badge/platform-Vercel-black)](https://vercel.com)
 [![Database](https://img.shields.io/badge/database-Supabase-green)](https://supabase.com)
 
+## 📝 Changelog
+
+### 2025-11-20 – Patient login hotfix
+
+- **Fixed**: Patient login now uses `supabase-backend-api` instead of the deprecated Vercel `/api/v1/patient/login` endpoint
+- **Scope**: Patient login only. No changes to queue, PIN, or reports logic
+- **Testing**: `npm run build` in `/frontend` (success - 13.72s)
+- **Impact**: Resolves 404 errors for patient login on newer deployments
+
 <div dir="rtl">
 
 ## 📋 نظرة عامة
