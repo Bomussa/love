@@ -15,7 +15,7 @@ import supabasePinApi from './supabase-api';
 // Set to 'vercel' to use Vercel API endpoints (recommended for production)
 // Set to 'supabase' to use direct Supabase connection
 // Set to 'local' for Local Storage (development only)
-const BACKEND_MODE = 'vercel'; // Using Vercel API (recommended for production)
+const BACKEND_MODE = 'supabase'; // Using Supabase Backend API directly
 
 console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
 
