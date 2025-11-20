@@ -1,0 +1,54 @@
+name: repo-news
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 * * * *"   # كل ساعة وربع لتخفيف الضغط
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      REPO_SLUG: Bomussa/love
+      VERCEL_PROJECT: love-frontend
+      VERCEL_TEAM: mmc-mms
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }} # ضعه في Secrets
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          npm i -g vercel@latest || true
+
+      - name: Generate repo news
+        run: |
+          bash scripts/repo-news.sh
+
+      - name: Commit report
+        run: |
+          git config user.name "mmc-bot"
+          git config user.email "mmc-bot@users.noreply.github.com"
+          git checkout -B reports/daily-digest
+          git add reports/LATEST_NEWS.md
+          git commit -m "chore(reports): update LATEST_NEWS.md"
+          git push -f origin reports/daily-digest
+
+      - name: Open/Update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: reports/daily-digest
+          title: "chore(reports): automated repo news"
+          body: "Daily/Hourly automated repo digest."
+          commit-message: "chore(reports): update LATEST_NEWS.md"
+          labels: reports, automation
