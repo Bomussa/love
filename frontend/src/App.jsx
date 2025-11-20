@@ -182,7 +182,7 @@ function App() {
       // First login the patient
       const loginResponse = await api.patientLogin(patientId, gender)
       if (loginResponse.success) {
-        setPatientData(loginResponse.data)
+        setPatientData(loginResponse.patient)
         setCurrentView("examSelection")
         showNotification(
           language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
