@@ -34,11 +34,6 @@ function App() {
     // Set initial language and direction
     setCurrentLanguage(language)
 
-    // Check URL for QR scan
-    if (window.location.pathname.includes('/qr') || window.location.search.includes('to  useEffect(() => {
-    // Set initial language and direction
-    setCurrentLanguage(language)
-
     // Check for Maintenance Mode first
     checkForMaintenanceMode()
 

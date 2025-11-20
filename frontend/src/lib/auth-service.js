@@ -9,7 +9,7 @@
  */
 
 import { supabase } from './supabase-client.js';
-import { api } from '../../lib/api-unified';
+import api from './api-unified';
 
 class AuthService {
   constructor() {

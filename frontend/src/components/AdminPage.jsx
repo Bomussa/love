@@ -606,9 +606,8 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     </div>
   )
 
-  const renderSettings = () => {
-    return (
-      <div className="space-y-6">
+  const renderSettings = () => (
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-white">إعدادات النظام المتقدمة</h1>
         </div>
@@ -669,8 +668,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           </CardContent>
         </Card>
       </div>
-    )
-  }
+  )
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -749,6 +747,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           )}
           {currentView === 'settings' && renderSettings()}
         </main>
+      </div>
       </div>
     </div>
   )
