@@ -55,7 +55,7 @@ export async function patientLogin(patientId, gender) {
   try {
     const data = await callAPI('patient/login', {
       method: 'POST',
-      body: JSON.stringify({ patientId: patientId, gender }),
+      body: JSON.stringify({ personalId: patientId, gender }),
     });
     return { success: true, data };
   } catch (error) {
@@ -174,7 +174,7 @@ export async function verifyPIN(clinicId, pin) {
 
 export async function getAdminStatus() {
   try {
-    const data = await callAPI('admin-status', {
+    const data = await callAPI('admin/status', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -185,7 +185,7 @@ export async function getAdminStatus() {
 
 export async function getQueueStats() {
   try {
-    const data = await callAPI('stats-queues', {
+    const data = await callAPI('stats/queues', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -196,7 +196,7 @@ export async function getQueueStats() {
 
 export async function getDashboardStats() {
   try {
-    const data = await callAPI('stats-dashboard', {
+    const data = await callAPI('stats/dashboard', {
       method: 'GET',
     });
     return { success: true, ...data };
@@ -283,6 +283,44 @@ export async function getRecentReports(adminCode) {
 }
 
 // ============================================
+// SYSTEM SETTINGS
+// ============================================
+
+export async function getSystemSettings() {
+  try {
+    const data = await callAPI('settings', {
+      method: 'GET',
+    });
+    return { success: true, settings: data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateSystemSettings(settings) {
+  try {
+    const data = await callAPI('settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+    return { success: true, ...data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function resetSystemSettings() {
+  try {
+    const data = await callAPI('settings/reset', {
+      method: 'POST',
+    });
+    return { success: true, settings: data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 
@@ -315,6 +353,9 @@ const vercelApiClient = {
   getWeeklyReport,
   getMonthlyReport,
   getRecentReports,
+  getSystemSettings,
+  updateSystemSettings,
+  resetSystemSettings,
   healthCheck,
 };
 

@@ -9,6 +9,7 @@
  */
 
 import { supabase } from './supabase-client.js';
+import { api } from '../../lib/api-unified';
 
 class AuthService {
   constructor() {
@@ -32,82 +33,46 @@ class AuthService {
       //   };
       // }
 
-      // التحقق من المستخدم في Supabase
-      const { data: users, error: fetchError } = await supabase
-        .from('admins')
-        .select('*')
-        .ilike('username', username)
-        .single();
+      // استخدام نقطة النهاية الجديدة للواجهة الخلفية لتسجيل دخول المدير
+      const response = await api.adminLogin(username, password);
 
-      if (fetchError || !users) {
-        this.recordFailedAttempt(username);
-        return {
-          success: false,
-          error: 'Invalid username or password'
+      if (response.success) {
+        // Mocked session creation based on successful backend response
+        const session = {
+          id: this.generateSessionId(),
+          username: username,
+          role: 'ADMIN', // يجب أن يعود الدور من الواجهة الخلفية
+          name: username,
+          email: `${username}@example.com`,
+          loginTime: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
+          token: response.token // استخدام التوكن من الواجهة الخلفية
         };
-      }
 
-      // التحقق من كلمة المرور (plain text أولاً ثم hash)
-      let isPasswordValid = false;
-      
-      // تحقق من plain text أولاً
-      if (users.password_hash === password) {
-        isPasswordValid = true;
+        // حفظ Session
+        this.saveSession(session);
+        this.clearFailedAttempts(username);
+
+        // تسجيل في السجل
+        this.logSecurityEvent('LOGIN_SUCCESS', username, session.role);
+
+        return {
+          success: true,
+          session: session
+        };
       } else {
-        // إذا لم يتطابق، جرب SHA-256 hash
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        if (users.password_hash === passwordHash) {
-          isPasswordValid = true;
-        }
-      }
-      
-      if (!isPasswordValid) {
         this.recordFailedAttempt(username);
         return {
           success: false,
-          error: 'Invalid username or password'
+          error: response.message || 'Invalid credentials'
         };
       }
-
-      // تحديث آخر تسجيل دخول
-      await supabase
-        .from('admins')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', users.id);
-
-      // إنشاء Session
-      const session = {
-        id: this.generateSessionId(),
-        username: users.username,
-        role: users.role,
-        name: users.name,
-        email: users.email,
-        loginTime: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
-        token: this.generateToken(users.username, users.role)
-      };
-
-      // حفظ Session
-      this.saveSession(session);
-      this.clearFailedAttempts(username);
-
-      // تسجيل في السجل
-      this.logSecurityEvent('LOGIN_SUCCESS', username, session.role);
-
-      return {
-        success: true,
-        session: session
-      };
     } catch (error) {
       console.error('[Auth] Login error:', error);
+      this.recordFailedAttempt(username);
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Server error during login'
       };
     }
   }

@@ -28,10 +28,19 @@ function App() {
     showThemePreview: true
   })
   const [notif, setNotif] = useState(null)
+  const [systemHealth, setSystemHealth] = useState({ status: 'checking', message: t('system_checking') })
 
   useEffect(() => {
     // Set initial language and direction
     setCurrentLanguage(language)
+
+    // Check URL for QR scan
+    if (window.location.pathname.includes('/qr') || window.location.search.includes('to  useEffect(() => {
+    // Set initial language and direction
+    setCurrentLanguage(language)
+
+    // Check for Maintenance Mode first
+    checkForMaintenanceMode()
 
     // Check URL for QR scan
     if (window.location.pathname.includes('/qr') || window.location.search.includes('token=')) {
@@ -45,7 +54,6 @@ function App() {
       setIsAdmin(true)
     }
   }, [language])
-
   // SSE notifications with sound (fallback-friendly)
   useEffect(() => {
     let es
@@ -227,6 +235,47 @@ function App() {
     }
   }
 
+  const checkForMaintenanceMode = async () => {
+    try {
+      const response = await fetch('/api/maintenance');
+      const data = await response.json();
+
+      if (data.maintenance_active) {
+        setSystemHealth({ status: 'maintenance', message: data.message || t('system_maintenance') });
+        // Prevent further API calls or navigation if in maintenance
+        return;
+      }
+    } catch (error) {
+      // If maintenance endpoint itself fails, assume system is down
+      setSystemHealth({ status: 'down', message: t('system_down') });
+      showNotification(
+        language === 'ar' ? 'فشل الاتصال بخادم الصيانة. النظام معطل.' : 'Maintenance server connection failed. System is down.',
+        'error'
+      );
+      return;
+    }
+
+    // If not in maintenance, proceed to check detailed health
+    checkSystemHealth();
+  }
+
+  const checkSystemHealth = async () => {
+    try {
+      const response = await api.getHealthStatus()
+      if (response.success && response.status === 'operational') {
+        setSystemHealth({ status: 'healthy', message: t('system_healthy') })
+      } else {
+        setSystemHealth({ status: 'degraded', message: t('system_degraded') })
+      }
+    } catch (error) {
+      setSystemHealth({ status: 'down', message: t('system_down') })
+      showNotification(
+        language === 'ar' ? 'فشل الاتصال بالخادم. سيتم استخدام وضع الصيانة.' : 'Server connection failed. Maintenance mode will be used.',
+        'error'
+      )
+    }
+  }
+
   const handleAdminLogin = async (credentials) => {
     console.log('[App] handleAdminLogin called with:', credentials)
     // credentials format: "username:password"
@@ -332,6 +381,7 @@ function App() {
             toggleLanguage={toggleLanguage}
             currentTheme={currentTheme}
             onThemeChange={handleThemeChange}
+            systemHealth={systemHealth}
           />
         )}
       </main>

@@ -92,9 +92,12 @@ export async function getPathway(patientId) {
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) {
+      return { success: false, error: 'No pathway found for this patient' };
+    }
     return { success: true, pathway: data };
   } catch (error) {
     console.error('Error in getPathway:', error);
@@ -144,7 +147,7 @@ export async function enterQueue(clinicId, patientId) {
       .eq('clinic_id', clinicId)
       .order('display_number', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const displayNumber = (maxNumber?.display_number || 0) + 1;
 
@@ -221,9 +224,12 @@ export async function queueDone(clinicId, patientId, pin) {
       .from('clinics')
       .select('pin_code, pin_expires_at, is_active')
       .eq('id', clinicId)
-      .single();
+      .maybeSingle();
 
     if (clinicError) throw clinicError;
+    if (!clinic) {
+      return { success: false, error: 'العيادة غير موجودة' };
+    }
 
     // Check if clinic is active
     if (!clinic.is_active) {
@@ -252,9 +258,12 @@ export async function queueDone(clinicId, patientId, pin) {
       .eq('patient_id', patientId)
       .eq('status', 'waiting')
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) {
+      return { success: false, error: 'لم يتم العثور على المريض في الطابور' };
+    }
 
     // Add notification
     await addNotification(
@@ -284,9 +293,12 @@ export async function getPatientPosition(clinicId, patientId) {
       .eq('clinic_id', clinicId)
       .eq('patient_id', patientId)
       .eq('status', 'waiting')
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) {
+      return { success: false, error: 'Patient not found in queue' };
+    }
 
     // Count how many are ahead
     const { count } = await supabase
