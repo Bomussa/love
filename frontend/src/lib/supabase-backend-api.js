@@ -25,7 +25,7 @@ export async function patientLogin(id, gender) {
       last_active: new Date().toISOString()
     };
 
-    return { success: true, patient };
+    return { success: true, data: patient };
   } catch (error) {
     console.error('Error in patientLogin:', error);
     return { success: false, error: error.message };
