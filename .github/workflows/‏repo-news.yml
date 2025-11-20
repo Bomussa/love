@@ -3,7 +3,7 @@ name: repo-news
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 * * * *"   # كل ساعة وربع لتخفيف الضغط
+    - cron: "15 * * * *"
   push:
     branches:
       - main
@@ -20,10 +20,13 @@ jobs:
       REPO_SLUG: Bomussa/love
       VERCEL_PROJECT: love-frontend
       VERCEL_TEAM: mmc-mms
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }} # ضعه في Secrets
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      GH_TOKEN: ${{ github.token }} # <--- تمت الإضافة هنا لتصحيح خطأ exit code 4
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # لضمان جلب كل التاريخ والفروع
 
       - name: Install deps
         run: |
@@ -36,19 +39,30 @@ jobs:
           bash scripts/repo-news.sh
 
       - name: Commit report
+        id: commit
         run: |
+          # إعداد بيانات المستخدم للالتزام
           git config user.name "mmc-bot"
           git config user.email "mmc-bot@users.noreply.github.com"
-          git checkout -B reports/daily-digest
-          git add reports/LATEST_NEWS.md
-          git commit -m "chore(reports): update LATEST_NEWS.md"
-          git push -f origin reports/daily-digest
+          
+          # التحقق مما إذا كان هناك شيء لإضافته
+          if ! git diff --quiet reports/LATEST_NEWS.md; then
+            git add reports/LATEST_NEWS.md
+            git commit -m "chore(reports): update LATEST_NEWS.md"
+            echo "commit_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes to report. Skipping commit."
+            echo "commit_needed=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Open/Update PR
+        if: steps.commit.outputs.commit_needed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: reports/daily-digest
+          token: ${{ secrets.GITHUB_TOKEN }} # استخدام GITHUB_TOKEN الافتراضي
+          commit-message: "chore(reports): update LATEST_NEWS.md"
           title: "chore(reports): automated repo news"
           body: "Daily/Hourly automated repo digest."
-          commit-message: "chore(reports): update LATEST_NEWS.md"
+          branch: reports/daily-digest
           labels: reports, automation
+          delete-branch: true # حذف الفرع بعد الدمج
