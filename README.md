@@ -8,6 +8,15 @@
 
 ## 📝 Changelog
 
+### 2025-11-21 – Patient Login Fix and Documentation
+
+- **Fixed**: Resolved potential JSON parsing error in Supabase API calls by replacing `.single()` with `.maybeSingle()` in `supabase-backend-api.js`.
+- **Fixed**: Implemented session persistence for patient login using `localStorage` in `App.jsx` to maintain state across refreshes.
+- **Added**: Comprehensive documentation for Patient Login flow, environment variables, and local setup in `docs/auth-patient-login.md`.
+- **Updated**: `.env.example` with clearer placeholders for Supabase and Admin credentials.
+
+## 📝 Changelog
+
 ### 2025-11-20 – Patient login hotfix
 
 - **Fixed**: Patient login now uses `supabase-backend-api` instead of the deprecated Vercel `/api/v1/patient/login` endpoint

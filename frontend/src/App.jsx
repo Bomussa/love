@@ -18,7 +18,14 @@ import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
 function App() {
   const [currentView, setCurrentView] = useState("login")
-  const [patientData, setPatientData] = useState(null)
+  const [patientData, setPatientData] = useState(() => {
+    try {
+      const storedData = localStorage.getItem('patientData');
+      return storedData ? JSON.parse(storedData) : null;
+    } catch (error) {
+      return null;
+    }
+  })
   const [isAdmin, setIsAdmin] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional') // استخدام الثيم الطبي الاحترافي كافتراضي
   const [language, setLanguage] = useState(getCurrentLanguage())
@@ -47,6 +54,15 @@ function App() {
     if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
       setCurrentView('admin')
       setIsAdmin(true)
+    }
+
+    // Check for existing patient session
+    if (patientData) {
+      if (patientData.examType || patientData.queueType) {
+        setCurrentView('patient')
+      } else {
+        setCurrentView('examSelection')
+      }
     }
   }, [language])
   // SSE notifications with sound (fallback-friendly)
@@ -186,6 +202,7 @@ function App() {
       const loginResponse = await api.patientLogin(patientId, gender)
       if (loginResponse.success) {
         setPatientData(loginResponse.data)
+        localStorage.setItem('patientData', JSON.stringify(loginResponse.data)) // حفظ بيانات المراجع
         setCurrentView("examSelection")
         showNotification(
           language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
@@ -311,6 +328,7 @@ function App() {
 
   const handleLogout = () => {
     setPatientData(null)
+    localStorage.removeItem('patientData') // مسح بيانات المراجع
     setIsAdmin(false)
     setCurrentView('login')
     // Clear URL parameters

@@ -69,7 +69,7 @@ export async function createPathway(patientId, gender) {
         completed: false
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, pathway: data };
@@ -118,7 +118,7 @@ export async function updatePathwayStep(patientId, step) {
       .update({ current_step: step })
       .eq('patient_id', patientId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, pathway: data };
@@ -161,7 +161,7 @@ export async function enterQueue(clinicId, patientId) {
         status: 'waiting'
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
@@ -224,9 +224,7 @@ export async function queueDone(clinicId, patientId, pin) {
       .from('clinics')
       .select('pin_code, pin_expires_at, is_active')
       .eq('id', clinicId)
-      .maybeSingle();
-
-    if (clinicError) throw clinicError;
+      .maybeSingle();    if (clinicError) throw clinicError;
     if (!clinic) {
       return { success: false, error: 'العيادة غير موجودة' };
     }
@@ -341,7 +339,7 @@ export async function addNotification(patientId, message, type = 'info') {
         read: false
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, notification: data };
@@ -391,7 +389,7 @@ export async function markNotificationRead(notificationId) {
       .update({ read: true })
       .eq('id', notificationId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, notification: data };
