@@ -55,7 +55,7 @@ export async function patientLogin(patientId, gender) {
   try {
     const data = await callAPI('patient/login', {
       method: 'POST',
-      body: JSON.stringify({ patientId, gender }),
+      body: JSON.stringify({ personalId: patientId, gender }),
     });
     return { success: true, data };
   } catch (error) {
