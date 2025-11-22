@@ -70,7 +70,7 @@ export const settingsQueries = {
       .from('settings')
       .select('*')
       .eq('type', type)
-      .single()
+      .maybeSingle()
     
     if (error && error.code !== 'PGRST116') throw error // PGRST116 = not found
     return data
@@ -84,7 +84,7 @@ export const settingsQueries = {
       .from('settings')
       .upsert({ type, value, updated_at: new Date().toISOString() })
       .select()
-      .single()
+      .maybeSingle()
     
     if (error) throw error
     return data
@@ -109,7 +109,7 @@ export const adminQueries = {
       })
       .eq('id', clinicId)
       .select()
-      .single()
+      .maybeSingle()
     
     if (error) throw error
     return data
@@ -145,7 +145,7 @@ export const eventsQueries = {
         created_at: new Date().toISOString()
       })
       .select()
-      .single()
+      .maybeSingle()
     
     if (error) throw error
     return data

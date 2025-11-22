@@ -224,7 +224,9 @@ export async function queueDone(clinicId, patientId, pin) {
       .from('clinics')
       .select('pin_code, pin_expires_at, is_active')
       .eq('id', clinicId)
-      .maybeSingle();    if (clinicError) throw clinicError;
+      .maybeSingle();
+    
+    if (clinicError) throw clinicError;
     if (!clinic) {
       return { success: false, error: 'العيادة غير موجودة' };
     }

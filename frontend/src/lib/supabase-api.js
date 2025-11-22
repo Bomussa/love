@@ -59,7 +59,7 @@ class SupabaseApiClient {
                 .from('clinics')
                 .select('id, name, name_ar, name_en, pin_code, pin_expires_at')
                 .eq('id', clinicId)
-                .single()
+                .maybeSingle()
 
             if (error) throw error
 
@@ -105,7 +105,7 @@ class SupabaseApiClient {
                 })
                 .eq('id', clinicId)
                 .select()
-                .single()
+                .maybeSingle()
 
             if (error) throw error
 
