@@ -20,7 +20,7 @@ export async function patientLogin(id, gender) {
     // Accept any ID without database verification
     // System doesn't store patient data permanently
     const patient = {
-      id,
+      patient_id: id,
       gender,
       last_active: new Date().toISOString()
     };
