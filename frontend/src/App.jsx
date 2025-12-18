@@ -17,7 +17,26 @@ import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
 function App() {
-  const [currentView, setCurrentView] = useState("login")
+  // تهيئة currentView و isAdmin بناءً على الجلسة المحفوظة أو URL
+  const [currentView, setCurrentView] = useState(() => {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return 'admin';
+      }
+      // Check for existing admin session
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return 'admin';
+          }
+        } catch (e) {}
+      }
+    }
+    return 'login';
+  })
   const [patientData, setPatientData] = useState(() => {
     try {
       const storedData = localStorage.getItem('patientData');
@@ -26,7 +45,25 @@ function App() {
       return null;
     }
   })
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(() => {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return true;
+      }
+      // Check for existing admin session
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return true;
+          }
+        } catch (e) {}
+      }
+    }
+    return false;
+  })
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional') // استخدام الثيم الطبي الاحترافي كافتراضي
   const [language, setLanguage] = useState(getCurrentLanguage())
   const [showThemeSelector, setShowThemeSelector] = useState(false)
