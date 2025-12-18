@@ -463,30 +463,36 @@ function App() {
         )}
 
         {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
-        {/* Show AdminPage if: (currentView is admin AND isAdmin) OR (URL has admin=true AND valid session exists) */}
-        {(currentView === 'admin' && isAdmin) || 
-         (typeof window !== 'undefined' && 
-          window.location.search.includes('admin=true') && 
-          (() => {
-            try {
-              const s = localStorage.getItem('mmc_admin_session');
-              if (s) {
-                const session = JSON.parse(s);
-                return new Date(session.expiresAt) > new Date();
-              }
-            } catch(e) {}
-            return false;
-          })()
-         ) ? (
-          <AdminPage
-            onLogout={handleLogout}
-            language={language}
-            toggleLanguage={toggleLanguage}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChange}
-            systemHealth={systemHealth}
-          />
-        ) : null}
+        {/* Show AdminPage - simplified condition */}
+        {(() => {
+          // Check if should show admin page
+          const showAdmin = currentView === 'admin' && isAdmin;
+          const urlHasAdmin = typeof window !== 'undefined' && window.location.search.includes('admin=true');
+          let sessionValid = false;
+          try {
+            const s = localStorage.getItem('mmc_admin_session');
+            if (s) {
+              const session = JSON.parse(s);
+              sessionValid = new Date(session.expiresAt) > new Date();
+            }
+          } catch(e) {}
+          
+          console.log('[App] AdminPage check - showAdmin:', showAdmin, 'urlHasAdmin:', urlHasAdmin, 'sessionValid:', sessionValid);
+          
+          if (showAdmin || (urlHasAdmin && sessionValid)) {
+            return (
+              <AdminPage
+                onLogout={handleLogout}
+                language={language}
+                toggleLanguage={toggleLanguage}
+                currentTheme={currentTheme}
+                onThemeChange={handleThemeChange}
+                systemHealth={systemHealth}
+              />
+            );
+          }
+          return null;
+        })()}
       </main>
 
     </div>
