@@ -50,10 +50,27 @@ function App() {
       return
     }
 
-    // Check URL for admin access
-    if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
-      setCurrentView('admin')
-      setIsAdmin(true)
+    // Check URL for admin access OR existing admin session
+    const adminSession = localStorage.getItem('mmc_admin_session');
+    if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || adminSession) {
+      try {
+        if (adminSession) {
+          const session = JSON.parse(adminSession);
+          // Check if session is still valid
+          if (new Date(session.expiresAt) > new Date()) {
+            setCurrentView('admin');
+            setIsAdmin(true);
+            return;
+          }
+        }
+      } catch (e) {
+        console.log('Invalid admin session');
+      }
+      // If URL has admin parameter, set admin mode
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        setCurrentView('admin');
+        setIsAdmin(true);
+      }
     }
 
     // Check for existing patient session
