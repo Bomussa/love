@@ -7,7 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "https://mmc-mms.com",
+  "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
 };
@@ -30,11 +30,11 @@ serve(async (req: Request) => {
 
     // Get next waiting patient
     const { data: nextPatient, error: e1 } = await db
-      .from("queues")
-      .select("id,display_number,patient_id")
+      .from("queue")
+      .select("id,position,patient_id")
       .eq("clinic_id", clinic_id)
       .eq("status", "waiting")
-      .order("display_number", { ascending: true })
+      .order("position", { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -49,8 +49,8 @@ serve(async (req: Request) => {
 
     // Update status to serving
     const { data: updated, error: e2 } = await db
-      .from("queues")
-      .update({ status: "serving", called_at: new Date().toISOString() })
+      .from("queue")
+      .update({ status: "called", called_at: new Date().toISOString() })
       .eq("id", nextPatient.id)
       .select()
       .single();
@@ -60,7 +60,7 @@ serve(async (req: Request) => {
     // Create notification
     await db.from("notifications").insert({
       patient_id: nextPatient.patient_id,
-      message: `Your turn at the clinic. Display number: ${nextPatient.display_number}`,
+      message: `Your turn at the clinic. Position: ${nextPatient.position}`,
       type: "info",
     });
 

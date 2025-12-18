@@ -17,21 +17,23 @@ class SupabaseApiClient {
      */
     async getAllPins() {
         try {
-            const { data: clinics, error } = await supabase
-                .from('clinics')
-                .select('id, name, name_ar, name_en, pin_code, pin_expires_at, is_active')
+            // Fetch active pins from 'pins' table
+            const { data: pinsData, error } = await supabase
+                .from('pins')
+                .select('id, clinic_code, pin, expires_at, is_active')
                 .eq('is_active', true)
 
             if (error) throw error
 
-            const pins = (clinics || []).map(clinic => ({
-                pinId: clinic.id,
-                currentPin: clinic.pin_code,
-                clinic_id: clinic.id,
-                clinic_name: clinic.name_ar || clinic.name_en || clinic.name,
+            // Map to expected format
+            const pins = (pinsData || []).map(p => ({
+                pinId: p.id,
+                currentPin: p.pin,
+                clinic_id: p.clinic_code,
+                clinic_name: p.clinic_code, // Fallback name
                 isUsed: false,
-                validUntil: clinic.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(clinic.pin_expires_at).getTime() - Date.now()) / 1000)
+                validUntil: p.expires_at,
+                expiresInSeconds: Math.floor((new Date(p.expires_at).getTime() - Date.now()) / 1000)
             }))
 
             return {

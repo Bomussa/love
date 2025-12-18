@@ -336,8 +336,12 @@ class UnifiedApiService {
     return this.getAdminStatus();
   }
 
-  async adminLogin(code) {
-    return { success: code === 'admin123', token: 'mock-token' };
+  async adminLogin(username, password) {
+    if (this.mode === 'supabase') {
+      return await this.backend.adminLogin(username, password);
+    }
+    // Fallback for non-supabase mode (should not happen in prod)
+    return { success: username === 'admin' && password === 'admin123', token: 'mock-token' };
   }
 
   async pauseQueue(queueType, adminCode) {
