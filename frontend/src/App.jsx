@@ -463,7 +463,21 @@ function App() {
         )}
 
         {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
-        {currentView === 'admin' && isAdmin && (
+        {/* Show AdminPage if: (currentView is admin AND isAdmin) OR (URL has admin=true AND valid session exists) */}
+        {(currentView === 'admin' && isAdmin) || 
+         (typeof window !== 'undefined' && 
+          window.location.search.includes('admin=true') && 
+          (() => {
+            try {
+              const s = localStorage.getItem('mmc_admin_session');
+              if (s) {
+                const session = JSON.parse(s);
+                return new Date(session.expiresAt) > new Date();
+              }
+            } catch(e) {}
+            return false;
+          })()
+         ) ? (
           <AdminPage
             onLogout={handleLogout}
             language={language}
@@ -472,7 +486,7 @@ function App() {
             onThemeChange={handleThemeChange}
             systemHealth={systemHealth}
           />
-        )}
+        ) : null}
       </main>
 
     </div>
