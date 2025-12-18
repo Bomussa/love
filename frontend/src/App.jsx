@@ -16,6 +16,41 @@ import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
+// Error Boundary for AdminPage
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[AdminErrorBoundary] Error caught:', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-900 text-white p-8">
+          <h1 className="text-2xl font-bold mb-4">AdminPage Error</h1>
+          <p className="mb-2">Error: {this.state.error?.message || 'Unknown error'}</p>
+          <pre className="bg-black p-4 rounded overflow-auto text-sm">
+            {this.state.error?.stack}
+          </pre>
+          <pre className="bg-black p-4 rounded overflow-auto text-sm mt-4">
+            {this.state.errorInfo?.componentStack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   // تهيئة currentView و isAdmin بناءً على الجلسة المحفوظة أو URL
   const [currentView, setCurrentView] = useState(() => {
@@ -465,9 +500,9 @@ function App() {
         )}
 
         {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
-        {/* Show AdminPage - direct condition */}
+        {/* Show AdminPage - with Error Boundary */}
         {(currentView === 'admin' && isAdmin) && (
-          <React.Suspense fallback={<div className="text-white p-4">Loading Admin Page...</div>}>
+          <AdminErrorBoundary>
             <AdminPage
               onLogout={handleLogout}
               language={language}
@@ -476,13 +511,7 @@ function App() {
               onThemeChange={handleThemeChange}
               systemHealth={systemHealth}
             />
-          </React.Suspense>
-        )}
-        {/* Fallback message if admin but no AdminPage */}
-        {(currentView === 'admin' && isAdmin) && (
-          <div className="text-white p-4 bg-red-900" style={{display: 'block'}}>
-            Admin mode active - If you see this, AdminPage failed to render
-          </div>
+          </AdminErrorBoundary>
         )}
       </main>
 
