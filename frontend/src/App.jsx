@@ -467,14 +467,22 @@ function App() {
         {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
         {/* Show AdminPage - direct condition */}
         {(currentView === 'admin' && isAdmin) && (
-          <AdminPage
-            onLogout={handleLogout}
-            language={language}
-            toggleLanguage={toggleLanguage}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChange}
-            systemHealth={systemHealth}
-          />
+          <React.Suspense fallback={<div className="text-white p-4">Loading Admin Page...</div>}>
+            <AdminPage
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+              currentTheme={currentTheme}
+              onThemeChange={handleThemeChange}
+              systemHealth={systemHealth}
+            />
+          </React.Suspense>
+        )}
+        {/* Fallback message if admin but no AdminPage */}
+        {(currentView === 'admin' && isAdmin) && (
+          <div className="text-white p-4 bg-red-900" style={{display: 'block'}}>
+            Admin mode active - If you see this, AdminPage failed to render
+          </div>
         )}
       </main>
 
