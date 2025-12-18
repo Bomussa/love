@@ -425,6 +425,8 @@ function App() {
 
       {/* المحتوى الرئيسي */}
       <main className="relative z-10">
+        {/* Debug info - remove after fixing */}
+        <div style={{display: 'none'}} data-debug={JSON.stringify({currentView, isAdmin, hasSession: !!localStorage.getItem('mmc_admin_session')})}>Debug</div>
         {currentView === 'qrscan' && (
           <QrScanPage
             language={language}
