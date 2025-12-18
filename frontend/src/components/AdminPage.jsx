@@ -38,6 +38,7 @@ import authService from '../lib/auth-service'
 import { AdvancedDashboard } from './admin/AdvancedDashboard'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange, systemHealth }) {
+  console.log('[AdminPage] Component rendering...');
   const [session, setSession] = useState(() => authService.getSession())
   const [currentView, setCurrentView] = useState('dashboard')
   const [stats, setStats] = useState(null)
