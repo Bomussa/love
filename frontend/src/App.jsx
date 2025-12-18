@@ -389,6 +389,10 @@ function App() {
         language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
       )
+      // Force re-render by reloading with admin parameter
+      setTimeout(() => {
+        window.location.href = window.location.pathname + '?admin=true';
+      }, 500);
     } else {
       showNotification(
         language === 'ar' ? `❌ ${result.error}` : `❌ ${result.error}`,
