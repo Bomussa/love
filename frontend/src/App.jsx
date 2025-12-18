@@ -38,6 +38,7 @@ function App() {
   const [systemHealth, setSystemHealth] = useState({ status: 'checking', message: t('system_checking') })
 
   useEffect(() => {
+    console.log('[App] useEffect running...');
     // Set initial language and direction
     setCurrentLanguage(language)
 
@@ -52,22 +53,29 @@ function App() {
 
     // Check URL for admin access OR existing admin session
     const adminSession = localStorage.getItem('mmc_admin_session');
+    console.log('[App] Checking admin session:', !!adminSession);
+    console.log('[App] URL includes admin:', window.location.search.includes('admin=true'));
     if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || adminSession) {
       try {
         if (adminSession) {
           const session = JSON.parse(adminSession);
+          console.log('[App] Session expires:', session.expiresAt);
+          console.log('[App] Session valid:', new Date(session.expiresAt) > new Date());
           // Check if session is still valid
           if (new Date(session.expiresAt) > new Date()) {
+            console.log('[App] Setting admin view...');
             setCurrentView('admin');
             setIsAdmin(true);
+            console.log('[App] Admin view set!');
             return;
           }
         }
       } catch (e) {
-        console.log('Invalid admin session');
+        console.log('[App] Invalid admin session:', e);
       }
       // If URL has admin parameter, set admin mode
       if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        console.log('[App] Setting admin from URL param');
         setCurrentView('admin');
         setIsAdmin(true);
       }
@@ -413,6 +421,7 @@ function App() {
           />
         )}
 
+        {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
         {currentView === 'admin' && isAdmin && (
           <AdminPage
             onLogout={handleLogout}
