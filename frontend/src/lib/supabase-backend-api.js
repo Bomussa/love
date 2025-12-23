@@ -20,12 +20,12 @@ export async function patientLogin(id, gender) {
     // Accept any ID without database verification
     // System doesn't store patient data permanently
     const patient = {
-      id,
+      patient_id: id,
       gender,
       last_active: new Date().toISOString()
     };
 
-    return { success: true, patient };
+    return { success: true, data: patient };
   } catch (error) {
     console.error('Error in patientLogin:', error);
     return { success: false, error: error.message };
@@ -69,7 +69,7 @@ export async function createPathway(patientId, gender) {
         completed: false
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, pathway: data };
@@ -118,7 +118,7 @@ export async function updatePathwayStep(patientId, step) {
       .update({ current_step: step })
       .eq('patient_id', patientId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, pathway: data };
@@ -140,39 +140,40 @@ export async function updatePathwayStep(patientId, step) {
  */
 export async function enterQueue(clinicId, patientId) {
   try {
-    // Get next display number
-    const { data: maxNumber } = await supabase
-      .from('queues')
-      .select('display_number')
+    // Get next position number
+    const { data: maxPosition } = await supabase
+      .from('queue')
+      .select('position')
       .eq('clinic_id', clinicId)
-      .order('display_number', { ascending: false })
+      .order('position', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const displayNumber = (maxNumber?.display_number || 0) + 1;
+    const position = (maxPosition?.position || 0) + 1;
 
     // Insert into queue
     const { data, error } = await supabase
-      .from('queues')
+      .from('queue')
       .insert([{
         clinic_id: clinicId,
         patient_id: patientId,
-        display_number: displayNumber,
-        status: 'waiting'
+        position: position,
+        status: 'waiting',
+        entered_at: new Date().toISOString()
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
     // Add notification
     await addNotification(
       patientId,
-      `تم دخولك إلى طابور ${clinicId}. رقمك: ${displayNumber}`,
+      `تم دخولك إلى طابور ${clinicId}. رقمك: ${position}`,
       'success'
     );
 
-    return { success: true, queue: data, displayNumber };
+    return { success: true, queue: data, displayNumber: position };
   } catch (error) {
     console.error('Error in enterQueue:', error);
     return { success: false, error: error.message };
@@ -187,21 +188,21 @@ export async function enterQueue(clinicId, patientId) {
 export async function getQueueStatus(clinicId) {
   try {
     const { data, error } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*')
       .eq('clinic_id', clinicId)
-      .in('status', ['waiting', 'serving'])
-      .order('display_number', { ascending: true });
+      .in('status', ['waiting', 'called'])
+      .order('position', { ascending: true });
 
     if (error) throw error;
 
     const waiting = data.filter(q => q.status === 'waiting');
-    const serving = data.find(q => q.status === 'serving');
+    const called = data.find(q => q.status === 'called');
 
     return {
       success: true,
       waiting: waiting.length,
-      serving: serving ? serving.display_number : null,
+      serving: called ? called.position : null,
       queue: data
     };
   } catch (error) {
@@ -224,9 +225,7 @@ export async function queueDone(clinicId, patientId, pin) {
       .from('clinics')
       .select('pin_code, pin_expires_at, is_active')
       .eq('id', clinicId)
-      .maybeSingle();
-
-    if (clinicError) throw clinicError;
+      .maybeSingle();    if (clinicError) throw clinicError;
     if (!clinic) {
       return { success: false, error: 'العيادة غير موجودة' };
     }
@@ -248,7 +247,7 @@ export async function queueDone(clinicId, patientId, pin) {
 
     // Update queue status
     const { data, error } = await supabase
-      .from('queues')
+      .from('queue')
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
@@ -288,8 +287,8 @@ export async function queueDone(clinicId, patientId, pin) {
 export async function getPatientPosition(clinicId, patientId) {
   try {
     const { data, error } = await supabase
-      .from('queues')
-      .select('display_number')
+      .from('queue')
+      .select('position')
       .eq('clinic_id', clinicId)
       .eq('patient_id', patientId)
       .eq('status', 'waiting')
@@ -302,15 +301,15 @@ export async function getPatientPosition(clinicId, patientId) {
 
     // Count how many are ahead
     const { count } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinicId)
       .eq('status', 'waiting')
-      .lt('display_number', data.display_number);
+      .lt('position', data.position);
 
     return {
       success: true,
-      displayNumber: data.display_number,
+      displayNumber: data.position,
       ahead: count || 0
     };
   } catch (error) {
@@ -341,7 +340,7 @@ export async function addNotification(patientId, message, type = 'info') {
         read: false
       }])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, notification: data };
@@ -391,7 +390,7 @@ export async function markNotificationRead(notificationId) {
       .update({ read: true })
       .eq('id', notificationId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { success: true, notification: data };
@@ -502,19 +501,19 @@ export async function getAdminStatus() {
     // Get total patients today
     const today = new Date().toISOString().split('T')[0];
     const { count: totalToday } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*', { count: 'exact', head: true })
       .gte('entered_at', `${today}T00:00:00`);
 
     // Get waiting count
     const { count: waiting } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'waiting');
 
     // Get completed count today
     const { count: completed } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'completed')
       .gte('completed_at', `${today}T00:00:00`);
@@ -538,8 +537,31 @@ export async function getAdminStatus() {
   }
 }
 
+/**
+ * Admin Login
+ * @param {string} username - Admin username
+ * @param {string} password - Admin password
+ * @returns {Promise<Object>} Login result
+ */
+export async function adminLogin(username, password) {
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-login', {
+      body: { username, password }
+    });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error in adminLogin:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 // Export all functions
 export default {
+  // Admin
+  adminLogin,
+  
   // Patient
   patientLogin,
   

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Plus } from 'lucide-react';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
+import { adminQueries } from '../lib/supabase-queries';
 
 /**
  * Admin Component لتمديد وقت المرضى
@@ -25,19 +26,10 @@ export const AdminExtendTime = ({ language = 'ar' }) => {
     setMessage(null);
 
     try {
-      // استدعاء API لتمديد الوقت
-      const response = await fetch('/api/v1/admin/extend-time', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patientId: patientId.trim(),
-          additionalSeconds: extensionMinutes * 60
-        })
-      });
+      // استدعاء Supabase مباشرة لتمديد الوقت
+      const data = await adminQueries.extendTime(patientId.trim(), extensionMinutes);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data) {
         setMessage({
           type: 'success',
           text: language === 'ar' 
@@ -45,11 +37,6 @@ export const AdminExtendTime = ({ language = 'ar' }) => {
             : `Time extended by ${extensionMinutes} minutes successfully`
         });
         setPatientId('');
-      } else {
-        setMessage({
-          type: 'error',
-          text: data.error || (language === 'ar' ? 'فشل تمديد الوقت' : 'Failed to extend time')
-        });
       }
     } catch (error) {
       setMessage({

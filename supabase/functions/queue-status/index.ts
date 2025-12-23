@@ -7,7 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "https://mmc-mms.com",
+  "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
 };
@@ -31,16 +31,16 @@ serve(async (req: Request) => {
 
     // Get queue list
     const { data: queueList, error: e1 } = await db
-      .from("queues")
-      .select("id,display_number,status,entered_at,called_at,patient_id")
+      .from("queue")
+      .select("id,position,status,entered_at,called_at,patient_id")
       .eq("clinic_id", clinic_id)
-      .in("status", ["waiting", "serving"])
-      .order("display_number", { ascending: true });
+      .in("status", ["waiting", "called"])
+      .order("position", { ascending: true });
 
     if (e1) throw e1;
 
     // Get current serving
-    const serving = queueList?.filter((q) => q.status === "serving")[0];
+    const serving = queueList?.filter((q) => q.status === "called")[0];
     const waiting = queueList?.filter((q) => q.status === "waiting");
 
     return new Response(
@@ -50,9 +50,9 @@ serve(async (req: Request) => {
           clinic_id,
           queueLength: waiting?.length || 0,
           totalInQueue: queueList?.length || 0,
-          currentServing: serving?.display_number || null,
+          currentServing: serving?.position || null,
           next3: waiting?.slice(0, 3).map((q) => ({
-            display_number: q.display_number,
+            position: q.position,
             waiting_since: q.entered_at,
           })) || [],
         },

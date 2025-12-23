@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants';
+import { eventsQueries } from '../lib/supabase-queries';
 
 const MAX_RETRY = 3;
 const RECOVERY_DELAY = 5000; // 5 ثواني
@@ -55,19 +56,15 @@ export default function useQueueWatcher({
         } else {
           // console.error('🔁 إعادة تهيئة النظام...');
           
-          // تسجيل حالة الإصلاح الذاتي
+          // تسجيل حالة الإصلاح الذاتي عبر Supabase
           try {
-            await fetch('/api/v1/events/recovery', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                source: 'queue-watcher',
-                retries: retryCountRef.current,
-                timestamp: new Date().toISOString()
-              })
+            await eventsQueries.logRecovery({
+              source: 'queue-watcher',
+              retries: retryCountRef.current,
+              timestamp: new Date().toISOString()
             });
           } catch (logErr) {
-
+            // Ignore logging errors
           }
           
           // إصلاح ذاتي نهائي

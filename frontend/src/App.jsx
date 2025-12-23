@@ -6,6 +6,7 @@ import { LoginPage } from './components/LoginPage'
 import { ExamSelectionPage } from './components/ExamSelectionPage'
 import { PatientPage } from './components/PatientPage'
 import { AdminPage } from './components/AdminPage'
+// import { AdminPageSimple as AdminPage } from './components/AdminPageSimple'
 import { QrScanPage } from './components/QrScanPage'
 import EnhancedThemeSelector from './components/EnhancedThemeSelector'
 import api from './lib/api-unified'
@@ -17,10 +18,89 @@ import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
+// Error Boundary for AdminPage
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[AdminErrorBoundary] Error caught:', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-900 text-white p-8">
+          <h1 className="text-2xl font-bold mb-4">AdminPage Error</h1>
+          <p className="mb-2">Error: {this.state.error?.message || 'Unknown error'}</p>
+          <pre className="bg-black p-4 rounded overflow-auto text-sm">
+            {this.state.error?.stack}
+          </pre>
+          <pre className="bg-black p-4 rounded overflow-auto text-sm mt-4">
+            {this.state.errorInfo?.componentStack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
-  const [currentView, setCurrentView] = useState("login")
-  const [patientData, setPatientData] = useState(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  // تهيئة currentView و isAdmin بناءً على الجلسة المحفوظة أو URL
+  const [currentView, setCurrentView] = useState(() => {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return 'admin';
+      }
+      // Check for existing admin session
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return 'admin';
+          }
+        } catch (e) {}
+      }
+    }
+    return 'login';
+  })
+  const [patientData, setPatientData] = useState(() => {
+    try {
+      const storedData = localStorage.getItem('patientData');
+      return storedData ? JSON.parse(storedData) : null;
+    } catch (error) {
+      return null;
+    }
+  })
+  const [isAdmin, setIsAdmin] = useState(() => {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return true;
+      }
+      // Check for existing admin session
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return true;
+          }
+        } catch (e) {}
+      }
+    }
+    return false;
+  })
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional') // استخدام الثيم الطبي الاحترافي كافتراضي
   const [language, setLanguage] = useState(getCurrentLanguage())
   const [showThemeSelector, setShowThemeSelector] = useState(false)
@@ -29,10 +109,15 @@ function App() {
     showThemePreview: true
   })
   const [notif, setNotif] = useState(null)
+  const [systemHealth, setSystemHealth] = useState({ status: 'checking', message: t('system_checking') })
 
   useEffect(() => {
+    console.log('[App] useEffect running...');
     // Set initial language and direction
     setCurrentLanguage(language)
+
+    // Check for Maintenance Mode first
+    checkForMaintenanceMode()
 
     // Check URL for QR scan
     if (window.location.pathname.includes('/qr') || window.location.search.includes('token=')) {
@@ -40,13 +125,45 @@ function App() {
       return
     }
 
-    // Check URL for admin access
-    if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
-      setCurrentView('admin')
-      setIsAdmin(true)
+    // Check URL for admin access OR existing admin session
+    const adminSession = localStorage.getItem('mmc_admin_session');
+    console.log('[App] Checking admin session:', !!adminSession);
+    console.log('[App] URL includes admin:', window.location.search.includes('admin=true'));
+    if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || adminSession) {
+      try {
+        if (adminSession) {
+          const session = JSON.parse(adminSession);
+          console.log('[App] Session expires:', session.expiresAt);
+          console.log('[App] Session valid:', new Date(session.expiresAt) > new Date());
+          // Check if session is still valid
+          if (new Date(session.expiresAt) > new Date()) {
+            console.log('[App] Setting admin view...');
+            setCurrentView('admin');
+            setIsAdmin(true);
+            console.log('[App] Admin view set!');
+            return;
+          }
+        }
+      } catch (e) {
+        console.log('[App] Invalid admin session:', e);
+      }
+      // If URL has admin parameter, set admin mode
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        console.log('[App] Setting admin from URL param');
+        setCurrentView('admin');
+        setIsAdmin(true);
+      }
+    }
+
+    // Check for existing patient session
+    if (patientData) {
+      if (patientData.examType || patientData.queueType) {
+        setCurrentView('patient')
+      } else {
+        setCurrentView('examSelection')
+      }
     }
   }, [language])
-
   // SSE notifications with sound (fallback-friendly)
   useEffect(() => {
     let es
@@ -184,6 +301,7 @@ function App() {
       const loginResponse = await api.patientLogin(patientId, gender)
       if (loginResponse.success) {
         setPatientData(loginResponse.data)
+        localStorage.setItem('patientData', JSON.stringify(loginResponse.data)) // حفظ بيانات المراجع
         setCurrentView("examSelection")
         showNotification(
           language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
@@ -228,6 +346,56 @@ function App() {
     }
   }
 
+  const checkForMaintenanceMode = async () => {
+    try {
+      // Try maintenance endpoint first
+      const response = await fetch('/api/maintenance');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.maintenance_active) {
+          setSystemHealth({ status: 'maintenance', message: data.message || t('system_maintenance') });
+          return;
+        }
+      }
+      // If maintenance check passes or endpoint not found, system is operational
+      setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+    } catch (error) {
+      // If maintenance endpoint fails, try the main API status
+      try {
+        const statusResponse = await fetch('/api/v1/status');
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.success && statusData.status === 'healthy') {
+            setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+            return;
+          }
+        }
+      } catch (statusError) {
+        // Both endpoints failed
+      }
+      // Fallback: assume system is operational to allow usage
+      setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+      console.log('Maintenance check skipped, assuming system is operational');
+    }
+  }
+
+  const checkSystemHealth = async () => {
+    try {
+      const response = await api.getHealthStatus()
+      if (response.success && response.status === 'operational') {
+        setSystemHealth({ status: 'healthy', message: t('system_healthy') })
+      } else {
+        setSystemHealth({ status: 'degraded', message: t('system_degraded') })
+      }
+    } catch (error) {
+      setSystemHealth({ status: 'down', message: t('system_down') })
+      showNotification(
+        language === 'ar' ? 'فشل الاتصال بالخادم. سيتم استخدام وضع الصيانة.' : 'Server connection failed. Maintenance mode will be used.',
+        'error'
+      )
+    }
+  }
+
   const handleAdminLogin = async (credentials) => {
     console.log('[App] handleAdminLogin called with:', credentials)
     // credentials format: "username:password"
@@ -258,6 +426,10 @@ function App() {
         language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
       )
+      // Force re-render by reloading with admin parameter
+      setTimeout(() => {
+        window.location.href = window.location.pathname + '?admin=true';
+      }, 500);
     } else {
       showNotification(
         language === 'ar' ? `❌ ${result.error}` : `❌ ${result.error}`,
@@ -268,6 +440,7 @@ function App() {
 
   const handleLogout = () => {
     setPatientData(null)
+    localStorage.removeItem('patientData') // مسح بيانات المراجع
     setIsAdmin(false)
     setCurrentView('login')
     // Clear URL parameters
@@ -289,6 +462,8 @@ function App() {
 
       {/* المحتوى الرئيسي */}
       <main className="relative z-10">
+        {/* Debug info - remove after fixing */}
+        <div style={{display: 'none'}} data-debug={JSON.stringify({currentView, isAdmin, hasSession: !!localStorage.getItem('mmc_admin_session')})}>Debug</div>
         {currentView === 'qrscan' && (
           <QrScanPage
             language={language}
@@ -326,14 +501,19 @@ function App() {
           />
         )}
 
-        {currentView === 'admin' && isAdmin && (
-          <AdminPage
-            onLogout={handleLogout}
-            language={language}
-            toggleLanguage={toggleLanguage}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChange}
-          />
+        {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
+        {/* Show AdminPage - with Error Boundary */}
+        {(currentView === 'admin' && isAdmin) && (
+          <AdminErrorBoundary>
+            <AdminPage
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+              currentTheme={currentTheme}
+              onThemeChange={handleThemeChange}
+              systemHealth={systemHealth}
+            />
+          </AdminErrorBoundary>
         )}
       </main>
 
@@ -343,3 +523,4 @@ function App() {
 }
 
 export default App
+// Trigger rebuild Wed Dec 17 22:01:32 EST 2025
