@@ -1,6 +1,7 @@
 // Ensure notification listeners are active globally
 import './core/notification-engine.js';
 import React, { useState, useEffect } from 'react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { LoginPage } from './components/LoginPage'
 import { ExamSelectionPage } from './components/ExamSelectionPage'
 import { PatientPage } from './components/PatientPage'
@@ -215,7 +216,7 @@ function App() {
       setCurrentView('patient')
       
       showNotification(
-        language === 'ar' ? 'تم اختيار نوع الفحص بنجاح' : 'Exam type selected successfully',
+        language === 'ar' ? 'تم اخ��يار نوع الفحص بنجاح' : 'Exam type selected successfully',
         'success'
       )
     } catch (error) {
@@ -336,6 +337,7 @@ function App() {
         )}
       </main>
 
+      <SpeedInsights />
     </div>
   )
 }
