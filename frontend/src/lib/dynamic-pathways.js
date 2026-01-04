@@ -1,6 +1,7 @@
-// المسارات الديناميكية - تعمل sync ثم تعيد الترتيب في الخلفية
+// المسارات الديناميكية - تعمل sync ثم تعيد// ديناميك المسارات
 import routeMap from '../../config/routeMap.json' assert { type: 'json' }
 import clinicsData from '../../config/clinics.json' assert { type: 'json' }
+import { queueQueries } from './supabase-queries'
 
 // تحويل رموز العيادات إلى كائنات كاملة
 function mapClinicCodes(codes) {
@@ -34,12 +35,8 @@ async function fetchClinicWeights(clinicIds) {
   try {
     const promises = clinicIds.map(async (clinicId) => {
       try {
-        const response = await fetch(`/api/v1/queue/status?clinic=${clinicId}`)
-        const data = await response.json()
-        
-        if (data.success) {
-          weights[clinicId] = data.total_waiting || data.waiting || 0
-        }
+        const status = await queueQueries.getStatus(clinicId)
+        weights[clinicId] = status.waiting || 0
       } catch (err) {
         // Keep default weight of 0
         console.log(`Using default weight for clinic ${clinicId}`)

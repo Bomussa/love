@@ -18,111 +18,202 @@ import {
   VolumeX
 } from 'lucide-react'
 import { t } from '../lib/i18n'
-import api from '../lib/api-unified'
+import { createClient } from '@supabase/supabase-js'
 
-export function NotificationsPage({ language }) {
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+/**
+ * Notifications Page - صفحة الإشعارات
+ * ✅ تستخدم بيانات حقيقية من Supabase
+ * ✅ لا توجد بيانات وهمية
+ */
+export function NotificationsPage({ language, patientId }) {
   const [notifications, setNotifications] = useState([])
   const [filter, setFilter] = useState('all') // all, unread, read
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [error, setError] = useState(null)
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   useEffect(() => {
     loadNotifications()
 
-    // Fallback polling كل 60 ثانية (الإشعارات غير حرجة)
-    const interval = setInterval(loadNotifications, 60000)
+    // تحديث كل 30 ثانية
+    const interval = setInterval(loadNotifications, 30000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [patientId])
 
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      // استدعاء API للحصول على الإشعارات
-      // const data = await api.getNotifications()
+      setError(null)
 
-      // بيانات تجريبية للعرض
-      const mockData = [
-        {
-          id: 1,
-          type: 'YOUR_TURN',
-          title: language === 'ar' ? 'حان دورك' : 'Your Turn',
-          message: language === 'ar'
-            ? 'يرجى التوجه إلى عيادة الباطنية - الرقم 15'
-            : 'Please proceed to Internal Medicine - Number 15',
-          timestamp: new Date(Date.now() - 2 * 60000),
-          read: false,
-          priority: 'high',
-          clinic: language === 'ar' ? 'الباطنية' : 'Internal Medicine',
-          number: 15
-        },
-        {
-          id: 2,
-          type: 'NEAR_TURN',
-          title: language === 'ar' ? 'قريب من دورك' : 'Near Your Turn',
-          message: language === 'ar'
-            ? 'أنت الثالث في قائمة الانتظار - عيادة العيون'
-            : 'You are 3rd in queue - Ophthalmology',
-          timestamp: new Date(Date.now() - 5 * 60000),
-          read: false,
-          priority: 'medium',
-          clinic: language === 'ar' ? 'العيون' : 'Ophthalmology',
-          position: 3
-        },
-        {
-          id: 3,
-          type: 'STEP_DONE_NEXT',
-          title: language === 'ar' ? 'اكتمل الفحص' : 'Examination Completed',
-          message: language === 'ar'
-            ? 'تم إتمام فحص الأشعة - انتقل إلى المختبر'
-            : 'Radiology completed - Proceed to Laboratory',
-          timestamp: new Date(Date.now() - 15 * 60000),
-          read: true,
-          priority: 'low',
-          clinic: language === 'ar' ? 'الأشعة' : 'Radiology'
-        },
-        {
-          id: 4,
-          type: 'SYSTEM',
-          title: language === 'ar' ? 'تحديث النظام' : 'System Update',
-          message: language === 'ar'
-            ? 'تم تحديث نظام الطوابير - الإصدار 2026'
-            : 'Queue system updated - Version 2026',
-          timestamp: new Date(Date.now() - 30 * 60000),
-          read: true,
-          priority: 'low'
-        }
-      ]
+      if (!patientId) {
+        // إذا لم يكن هناك patient ID، نعرض رسالة فارغة
+        setNotifications([])
+        setLoading(false)
+        return
+      }
 
-      setNotifications(mockData)
-    } catch (error) {
-      // console.error('Failed to load notifications:', error)
+      // جلب الإشعارات من جدول notifications
+      const { data, error: fetchError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (fetchError) {
+        console.error('[Notifications] Error fetching:', fetchError)
+        setError(fetchError.message)
+        setNotifications([])
+        return
+      }
+
+      // تحويل البيانات إلى الشكل المطلوب
+      const transformedNotifications = (data || []).map(notif => ({
+        id: notif.id,
+        type: notif.type?.toUpperCase() || 'INFO',
+        title: getNotificationTitle(notif.type, language),
+        message: notif.message,
+        timestamp: new Date(notif.created_at),
+        read: notif.read,
+        priority: getPriorityFromType(notif.type),
+        clinic: notif.clinic_id || '',
+        metadata: notif.metadata || {}
+      }))
+
+      setNotifications(transformedNotifications)
+    } catch (err) {
+      console.error('[Notifications] Failed to load:', err)
+      setError(err.message)
+      setNotifications([])
     } finally {
       setLoading(false)
     }
   }
 
-  const markAsRead = (id) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, read: true } : notif
+  const getNotificationTitle = (type, lang) => {
+    const titles = {
+      'YOUR_TURN': lang === 'ar' ? 'حان دورك' : 'Your Turn',
+      'NEAR_TURN': lang === 'ar' ? 'قريب من دورك' : 'Near Your Turn',
+      'STEP_DONE_NEXT': lang === 'ar' ? 'اكتمل الفحص' : 'Examination Completed',
+      'SYSTEM': lang === 'ar' ? 'إشعار النظام' : 'System Notification',
+      'INFO': lang === 'ar' ? 'معلومة' : 'Information',
+      'WARNING': lang === 'ar' ? 'تحذير' : 'Warning',
+      'SUCCESS': lang === 'ar' ? 'نجاح' : 'Success',
+      'ERROR': lang === 'ar' ? 'خطأ' : 'Error'
+    }
+    return titles[type?.toUpperCase()] || (lang === 'ar' ? 'إشعار' : 'Notification')
+  }
+
+  const getPriorityFromType = (type) => {
+    const priorities = {
+      'YOUR_TURN': 'high',
+      'NEAR_TURN': 'medium',
+      'STEP_DONE_NEXT': 'medium',
+      'ERROR': 'high',
+      'WARNING': 'medium',
+      'SUCCESS': 'low',
+      'INFO': 'low',
+      'SYSTEM': 'low'
+    }
+    return priorities[type?.toUpperCase()] || 'low'
+  }
+
+  const markAsRead = async (id) => {
+    try {
+      // تحديث في قاعدة البيانات
+      const { error: updateError } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id)
+
+      if (updateError) {
+        console.error('[Notifications] Error marking as read:', updateError)
+        return
+      }
+
+      // تحديث محلياً
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
       )
-    )
+    } catch (err) {
+      console.error('[Notifications] Failed to mark as read:', err)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    )
+  const markAllAsRead = async () => {
+    try {
+      if (!patientId) return
+
+      // تحديث جميع الإشعارات في قاعدة البيانات
+      const { error: updateError } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('patient_id', patientId)
+        .eq('read', false)
+
+      if (updateError) {
+        console.error('[Notifications] Error marking all as read:', updateError)
+        return
+      }
+
+      // تحديث محلياً
+      setNotifications(prev =>
+        prev.map(notif => ({ ...notif, read: true }))
+      )
+    } catch (err) {
+      console.error('[Notifications] Failed to mark all as read:', err)
+    }
   }
 
-  const deleteNotification = (id) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
+  const deleteNotification = async (id) => {
+    try {
+      // حذف من قاعدة البيانات
+      const { error: deleteError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) {
+        console.error('[Notifications] Error deleting:', deleteError)
+        return
+      }
+
+      // حذف محلياً
+      setNotifications(prev => prev.filter(notif => notif.id !== id))
+    } catch (err) {
+      console.error('[Notifications] Failed to delete:', err)
+    }
   }
 
-  const clearAll = () => {
-    setNotifications([])
+  const clearAll = async () => {
+    try {
+      if (!patientId) return
+
+      // حذف جميع الإشعارات من قاعدة البيانات
+      const { error: deleteError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('patient_id', patientId)
+
+      if (deleteError) {
+        console.error('[Notifications] Error clearing all:', deleteError)
+        return
+      }
+
+      // حذف محلياً
+      setNotifications([])
+    } catch (err) {
+      console.error('[Notifications] Failed to clear all:', err)
+    }
   }
 
   const getNotificationIcon = (type) => {
@@ -134,7 +225,14 @@ export function NotificationsPage({ language }) {
       case 'STEP_DONE_NEXT':
         return <CheckCircle className="w-6 h-6 text-green-500" />
       case 'SYSTEM':
+      case 'INFO':
         return <Info className="w-6 h-6 text-blue-500" />
+      case 'WARNING':
+        return <AlertCircle className="w-6 h-6 text-yellow-500" />
+      case 'ERROR':
+        return <AlertCircle className="w-6 h-6 text-red-500" />
+      case 'SUCCESS':
+        return <CheckCircle className="w-6 h-6 text-green-500" />
       default:
         return <Bell className="w-6 h-6 text-gray-500" />
     }
@@ -149,232 +247,249 @@ export function NotificationsPage({ language }) {
       case 'low':
         return 'border-r-4 border-gray-300 bg-gray-50'
       default:
-        return 'bg-white'
+        return 'border-r-4 border-gray-300 bg-white'
     }
   }
 
-  const filteredNotifications = notifications
-    .filter(notif => {
-      if (filter === 'unread') return !notif.read
-      if (filter === 'read') return notif.read
-      return true
-    })
-    .filter(notif => {
-      if (!searchTerm) return true
-      return notif.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        notif.message.toLowerCase().includes(searchTerm.toLowerCase())
-    })
+  const filteredNotifications = notifications.filter(notif => {
+    // Filter by read/unread
+    if (filter === 'unread' && notif.read) return false
+    if (filter === 'read' && !notif.read) return false
+
+    // Filter by search term
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase()
+      return (
+        notif.title?.toLowerCase().includes(search) ||
+        notif.message?.toLowerCase().includes(search) ||
+        notif.clinic?.toLowerCase().includes(search)
+      )
+    }
+
+    return true
+  })
 
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Bell className="icon icon-xl icon-brand" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#8A1538] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                {unreadCount}
-              </span>
-            )}
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {language === 'ar' ? 'الإشعارات' : 'Notifications'}
-            </h2>
-            <p className="text-sm text-gray-500">
-              {language === 'ar'
-                ? `${unreadCount} إشعار غير مقروء`
-                : `${unreadCount} unread notifications`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="border-gray-300"
-          >
-            {soundEnabled ? (
-              <Volume2 className="icon icon-md icon-brand" />
-            ) : (
-              <VolumeX className="icon icon-md icon-muted" />
-            )}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadNotifications}
-            disabled={loading}
-            className="border-gray-300"
-          >
-            <RefreshCw className={`icon icon-md icon-brand ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={markAllAsRead}
-            disabled={unreadCount === 0}
-            className="border-gray-300"
-          >
-            {language === 'ar' ? 'تحديد الكل كمقروء' : 'Mark All Read'}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearAll}
-            className="border-gray-300 text-red-600 hover:bg-red-50"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder={language === 'ar' ? 'بحث في الإشعارات...' : 'Search notifications...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8A1538] focus:border-transparent"
-              />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <Card className="bg-gray-800/50 border-gray-700 mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bell className="w-8 h-8 text-[#C9A54C]" />
+                <div>
+                  <CardTitle className="text-white text-2xl">
+                    {language === 'ar' ? 'الإشعارات' : 'Notifications'}
+                  </CardTitle>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {unreadCount > 0
+                      ? language === 'ar'
+                        ? `${unreadCount} إشعار غير مقروء`
+                        : `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
+                      : language === 'ar'
+                        ? 'لا توجد إشعارات غير مقروءة'
+                        : 'No unread notifications'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white"
+                >
+                  {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </Button>
+                <Button
+                  onClick={loadNotifications}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white"
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
+          </CardHeader>
+        </Card>
 
-            {/* Filter Buttons */}
-            <div className="flex gap-2">
-              <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('all')}
-                className={filter === 'all' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'الكل' : 'All'}
-              </Button>
-              <Button
-                variant={filter === 'unread' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('unread')}
-                className={filter === 'unread' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'غير مقروء' : 'Unread'}
-              </Button>
-              <Button
-                variant={filter === 'read' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('read')}
-                className={filter === 'read' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'مقروء' : 'Read'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notifications List */}
-      <div className="space-y-3">
-        {filteredNotifications.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Bell className="icon icon-xl icon-muted mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
-                {language === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}
-              </p>
+        {/* Error Alert */}
+        {error && (
+          <Card className="bg-red-500/10 border-red-500/50 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <p className="text-red-400 text-sm">
+                  {language === 'ar' ? 'خطأ في تحميل الإشعارات: ' : 'Error loading notifications: '}
+                  {error}
+                </p>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <Card
-              key={notification.id}
-              className={`transition-all hover:shadow-md ${getPriorityColor(notification.priority)} ${!notification.read ? 'shadow-lg' : ''}`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  {/* Icon */}
-                  <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(notification.type)}
-                  </div>
+        )}
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className={`font-semibold ${!notification.read ? 'text-gray-900' : 'text-gray-600'}`}>
-                        {notification.title}
-                      </h3>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {notification.timestamp.toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
+        {/* Controls */}
+        <Card className="bg-gray-800/50 border-gray-700 mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={language === 'ar' ? 'بحث في الإشعارات...' : 'Search notifications...'}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-[#C9A54C]"
+                />
+              </div>
 
-                    <p className={`text-sm mb-3 ${!notification.read ? 'text-gray-700' : 'text-gray-500'}`}>
-                      {notification.message}
-                    </p>
+              {/* Filter */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setFilter('all')}
+                  variant={filter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className={filter === 'all' ? 'bg-[#C9A54C] hover:bg-[#B8944B]' : 'border-gray-600 text-gray-300'}
+                >
+                  {language === 'ar' ? 'الكل' : 'All'}
+                </Button>
+                <Button
+                  onClick={() => setFilter('unread')}
+                  variant={filter === 'unread' ? 'default' : 'outline'}
+                  size="sm"
+                  className={filter === 'unread' ? 'bg-[#C9A54C] hover:bg-[#B8944B]' : 'border-gray-600 text-gray-300'}
+                >
+                  {language === 'ar' ? 'غير مقروء' : 'Unread'}
+                </Button>
+                <Button
+                  onClick={() => setFilter('read')}
+                  variant={filter === 'read' ? 'default' : 'outline'}
+                  size="sm"
+                  className={filter === 'read' ? 'bg-[#C9A54C] hover:bg-[#B8944B]' : 'border-gray-600 text-gray-300'}
+                >
+                  {language === 'ar' ? 'مقروء' : 'Read'}
+                </Button>
+              </div>
 
-                    {/* Metadata */}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      {notification.clinic && (
-                        <span className="flex items-center gap-1">
-                          <Activity className="w-3 h-3" />
-                          {notification.clinic}
-                        </span>
-                      )}
-                      {notification.number && (
-                        <span className="flex items-center gap-1 font-semibold text-[#8A1538]">
-                          #{notification.number}
-                        </span>
-                      )}
-                      {notification.position && (
-                        <span className="flex items-center gap-1 font-semibold text-[#C9A54C]">
-                          {language === 'ar' ? 'الترتيب:' : 'Position:'} {notification.position}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+              {/* Actions */}
+              <div className="flex gap-2">
+                {unreadCount > 0 && (
+                  <Button
+                    onClick={markAllAsRead}
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {language === 'ar' ? 'قراءة الكل' : 'Mark all read'}
+                  </Button>
+                )}
+                {notifications.length > 0 && (
+                  <Button
+                    onClick={clearAll}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-600 text-red-400 hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {language === 'ar' ? 'حذف الكل' : 'Clear all'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    {!notification.read && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => markAsRead(notification.id)}
-                        className="text-[#8A1538] hover:bg-[#8A1538]/10"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteNotification(notification.id)}
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+        {/* Notifications List */}
+        <div className="space-y-3">
+          {loading && notifications.length === 0 ? (
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C] mx-auto mb-4"></div>
+                <p className="text-gray-400">
+                  {language === 'ar' ? 'جاري تحميل الإشعارات...' : 'Loading notifications...'}
+                </p>
               </CardContent>
             </Card>
-          ))
-        )}
+          ) : filteredNotifications.length === 0 ? (
+            <Card className="bg-gray-800/50 border-gray-700">
+              <CardContent className="p-8 text-center">
+                <Bell className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">
+                  {language === 'ar' ? 'لا توجد إشعارات' : 'No notifications'}
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {language === 'ar' 
+                    ? 'سيتم عرض الإشعارات هنا عند توفرها' 
+                    : 'Notifications will appear here when available'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredNotifications.map((notif) => (
+              <Card
+                key={notif.id}
+                className={`${getPriorityColor(notif.priority)} ${
+                  !notif.read ? 'border-l-4 border-l-[#C9A54C]' : ''
+                } hover:shadow-lg transition-shadow cursor-pointer`}
+                onClick={() => !notif.read && markAsRead(notif.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 mt-1">
+                      {getNotificationIcon(notif.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                            {notif.title}
+                            {!notif.read && (
+                              <span className="inline-block w-2 h-2 bg-[#C9A54C] rounded-full"></span>
+                            )}
+                          </h3>
+                          <p className="text-sm text-gray-700 mt-1">{notif.message}</p>
+                          {notif.clinic && (
+                            <p className="text-xs text-gray-500 mt-2">
+                              {language === 'ar' ? 'العيادة: ' : 'Clinic: '}
+                              {notif.clinic}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteNotification(notif.id)
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {notif.timestamp.toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
+export default NotificationsPage
