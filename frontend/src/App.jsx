@@ -53,8 +53,87 @@ class AdminErrorBoundary extends React.Component {
   }
 }
 
+import { ClinicLoginPage } from './components/ClinicLoginPage'
+import { ClinicDashboard } from './components/ClinicDashboard'
+
 function App() {
-  // تهيئة currentView و isAdmin بناءً على الجلسة المحفوظة أو URL
+  // ... existing states ...
+  const [clinicSession, setClinicSession] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mmc_clinic_session')
+      if (stored) {
+        const session = JSON.parse(stored)
+        // Check expiry?
+        return session
+      }
+    } catch(e) {}
+    return null
+  })
+
+  useEffect(() => {
+    // ... existing ...
+    
+    // Check for clinic login URL
+    if (window.location.pathname.includes('/clinic/login')) {
+        setCurrentView('clinic_login')
+        return
+    }
+    // Check for clinic dashboard URL
+    if (window.location.pathname.match(/\/clinic\/[^/]+$/)) {
+        if (clinicSession) {
+             setCurrentView('clinic_dashboard')
+        } else {
+             setCurrentView('clinic_login')
+        }
+    }
+  }, [])
+
+
+  const handleClinicLogin = async (clinicId, pin) => {
+      try {
+        const result = await api.verifyPin(clinicId, pin)
+        
+        if (result.success) {
+            const session = { clinicId, pin, loginTime: Date.now() }
+            setClinicSession(session)
+            localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
+            setCurrentView('clinic_dashboard')
+            showNotification(language === 'ar' ? 'تم الدخول بنجاح' : 'Login successful', 'success')
+        } else {
+            showNotification(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN', 'error')
+        }
+      } catch (e) {
+        console.error(e)
+        showNotification(language === 'ar' ? 'حدث خطأ' : 'Error occurred', 'error')
+      }
+  }
+
+  
+  const handleClinicLogout = () => {
+      setClinicSession(null)
+      localStorage.removeItem('mmc_clinic_session')
+      setCurrentView('clinic_login')
+  }
+
+  // ... return ...
+  
+        {currentView === 'clinic_login' && (
+            <ClinicLoginPage
+                onLogin={handleClinicLogin}
+                language={language}
+                toggleLanguage={toggleLanguage}
+            />
+        )}
+
+        {currentView === 'clinic_dashboard' && clinicSession && (
+            <ClinicDashboard
+                clinicId={clinicSession.clinicId}
+                pin={clinicSession.pin}
+                onLogout={handleClinicLogout}
+                language={language}
+            />
+        )}
+
   const [currentView, setCurrentView] = useState(() => {
     // Check URL for admin access
     if (typeof window !== 'undefined') {
@@ -409,6 +488,24 @@ function App() {
         language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password',
         'error'
       )
+
+        {currentView === 'clinic_login' && (
+            <ClinicLoginPage
+                onLogin={handleClinicLogin}
+                language={language}
+                toggleLanguage={toggleLanguage}
+            />
+        )}
+
+        {currentView === 'clinic_dashboard' && clinicSession && (
+            <ClinicDashboard
+                clinicId={clinicSession.clinicId}
+                pin={clinicSession.pin}
+                onLogout={handleClinicLogout}
+                language={language}
+            />
+        )}
+
       return
     }
 

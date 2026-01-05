@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
@@ -23,6 +24,9 @@ import {
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import authService from '../lib/auth-service'
+import { AdminQueueMonitor } from './AdminQueueMonitor'
+import { AdminPINMonitor } from './AdminPINMonitor'
+import { ClinicsConfiguration } from './ClinicsConfiguration'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange, systemHealth }) {
   console.log('[AdminPage] Component rendering...');
@@ -37,20 +41,30 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [selectedClinic, setSelectedClinic] = useState('INT')
+  const [clinics, setClinics] = useState([])
 
-  // Load stats on mount
+  // Load stats & clinics on mount
   useEffect(() => {
     loadStats()
+    loadClinics()
     const interval = setInterval(loadStats, 60000)
     return () => clearInterval(interval)
   }, [])
 
+  const loadClinics = async () => {
+      try {
+          const res = await api.getClinics()
+          if(res.success) setClinics(res.clinics)
+      } catch(e) { console.error(e) }
+  }
+
   const loadStats = async () => {
     try {
       setLoading(true)
-      const response = await api.getStats()
-      if (response && response.data) {
-        setStats(response.data)
+      const response = await (api.getStats ? api.getStats() : api.getAdminStatus())
+      if (response && (response.data || response.success)) {
+        setStats(response.data || response)
       }
     } catch (err) {
       console.error('[AdminPage] Error loading stats:', err)
@@ -70,34 +84,33 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
 
   const menuItems = [
     { id: 'dashboard', icon: Home, label: isRTL ? 'لوحة التحكم' : 'Dashboard' },
-    { id: 'patients', icon: Users, label: isRTL ? 'المرضى' : 'Patients' },
-    { id: 'queues', icon: Clock, label: isRTL ? 'الطوابير' : 'Queues' },
-    { id: 'reports', icon: FileText, label: isRTL ? 'التقارير' : 'Reports' },
-    { id: 'settings', icon: Settings, label: isRTL ? 'الإعدادات' : 'Settings' },
+    { id: 'queues', icon: Clock, label: isRTL ? 'مراقبة الطوابير' : 'Queue Monitor' },
+    { id: 'pins', icon: Shield, label: isRTL ? 'إدارة الرموز (PIN)' : 'PIN Manager' },
+    { id: 'settings', icon: Settings, label: isRTL ? 'إعدادات العيادات' : 'Clinic Settings' },
   ]
 
   const statCards = [
     { 
       title: isRTL ? 'إجمالي المرضى' : 'Total Patients', 
-      value: stats.totalPatients || 0, 
+      value: stats.totalPatients || stats.totalToday || 0, 
       icon: Users, 
       color: 'bg-blue-500' 
     },
     { 
       title: isRTL ? 'في الانتظار' : 'Waiting', 
-      value: stats.waitingPatients || 0, 
+      value: stats.waitingPatients || stats.waiting || 0, 
       icon: Clock, 
       color: 'bg-yellow-500' 
     },
     { 
       title: isRTL ? 'مكتمل اليوم' : 'Completed Today', 
-      value: stats.completedToday || 0, 
+      value: stats.completedToday || stats.completed || 0, 
       icon: CheckCircle, 
       color: 'bg-green-500' 
     },
     { 
       title: isRTL ? 'الطوابير النشطة' : 'Active Queues', 
-      value: stats.activeQueues || 0, 
+      value: stats.activeQueues || stats.activePins || 0, 
       icon: Activity, 
       color: 'bg-purple-500' 
     },
@@ -164,20 +177,22 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {statCards.map((stat, index) => (
-              <div key={index} className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${stat.color}`}>
-                    <stat.icon className="w-6 h-6 text-white" />
-                  </div>
-                  {loading && <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />}
+          {currentView === 'dashboard' && (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {statCards.map((stat, index) => (
+                <div key={index} className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <div className="flex items-center justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${stat.color}`}>
+                        <stat.icon className="w-6 h-6 text-white" />
+                    </div>
+                    {loading && <RefreshCw className="w-4 h-4 text-gray-400 animate-spin" />}
+                    </div>
+                    <h3 className="text-gray-400 text-sm mb-1">{stat.title}</h3>
+                    <p className="text-3xl font-bold text-white">{stat.value}</p>
                 </div>
-                <h3 className="text-gray-400 text-sm mb-1">{stat.title}</h3>
-                <p className="text-3xl font-bold text-white">{stat.value}</p>
-              </div>
-            ))}
-          </div>
+                ))}
+            </div>
+          )}
 
           {/* Content Area */}
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -196,147 +211,43 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             </div>
 
             {currentView === 'dashboard' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* System Status */}
-                  <div className="bg-gray-700/50 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <Database className="w-5 h-5 text-green-500" />
-                      {isRTL ? 'حالة النظام' : 'System Status'}
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-300">{isRTL ? 'قاعدة البيانات' : 'Database'}</span>
-                        <span className="flex items-center gap-2 text-green-400">
-                          <CheckCircle className="w-4 h-4" />
-                          {isRTL ? 'متصل' : 'Connected'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-300">{isRTL ? 'الخادم' : 'Server'}</span>
-                        <span className="flex items-center gap-2 text-green-400">
-                          <CheckCircle className="w-4 h-4" />
-                          {isRTL ? 'يعمل' : 'Running'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-300">{isRTL ? 'الإشعارات' : 'Notifications'}</span>
-                        <span className="flex items-center gap-2 text-green-400">
-                          <CheckCircle className="w-4 h-4" />
-                          {isRTL ? 'نشط' : 'Active'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="bg-gray-700/50 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-blue-500" />
-                      {isRTL ? 'إجراءات سريعة' : 'Quick Actions'}
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button className="p-3 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors">
-                        {isRTL ? 'إضافة مريض' : 'Add Patient'}
-                      </button>
-                      <button className="p-3 bg-green-600 rounded-lg text-white hover:bg-green-700 transition-colors">
-                        {isRTL ? 'تقرير جديد' : 'New Report'}
-                      </button>
-                      <button className="p-3 bg-purple-600 rounded-lg text-white hover:bg-purple-700 transition-colors">
-                        {isRTL ? 'إدارة الطوابير' : 'Manage Queues'}
-                      </button>
-                      <button className="p-3 bg-yellow-600 rounded-lg text-white hover:bg-yellow-700 transition-colors">
-                        {isRTL ? 'الإعدادات' : 'Settings'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-gray-700/50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-yellow-500" />
-                    {isRTL ? 'النشاط الأخير' : 'Recent Activity'}
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-gray-600/50 rounded-lg">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-gray-300 flex-1">
-                        {isRTL ? 'تم تسجيل مريض جديد' : 'New patient registered'}
-                      </span>
-                      <span className="text-gray-500 text-sm">
-                        {isRTL ? 'منذ 5 دقائق' : '5 min ago'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-600/50 rounded-lg">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-gray-300 flex-1">
-                        {isRTL ? 'تم تحديث الطابور' : 'Queue updated'}
-                      </span>
-                      <span className="text-gray-500 text-sm">
-                        {isRTL ? 'منذ 10 دقائق' : '10 min ago'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-600/50 rounded-lg">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <span className="text-gray-300 flex-1">
-                        {isRTL ? 'تم إنشاء تقرير' : 'Report generated'}
-                      </span>
-                      <span className="text-gray-500 text-sm">
-                        {isRTL ? 'منذ 30 دقيقة' : '30 min ago'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentView === 'patients' && (
-              <div className="text-center py-12">
-                <Users className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl text-gray-300 mb-2">
-                  {isRTL ? 'إدارة المرضى' : 'Patient Management'}
-                </h3>
-                <p className="text-gray-500">
-                  {isRTL ? 'قريباً...' : 'Coming soon...'}
-                </p>
+              <div className="text-center py-12 text-gray-400">
+                {isRTL ? 'مرحباً بك في لوحة التحكم' : 'Welcome to Dashboard'}
               </div>
             )}
 
             {currentView === 'queues' && (
-              <div className="text-center py-12">
-                <Clock className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl text-gray-300 mb-2">
-                  {isRTL ? 'إدارة الطوابير' : 'Queue Management'}
-                </h3>
-                <p className="text-gray-500">
-                  {isRTL ? 'قريباً...' : 'Coming soon...'}
-                </p>
+              <div className="space-y-4">
+                  <div className="flex gap-4 mb-4">
+                      <select 
+                        className="bg-gray-700 text-white p-2 rounded"
+                        value={selectedClinic}
+                        onChange={(e) => setSelectedClinic(e.target.value)}
+                      >
+                          {clinics.map(c => <option key={c.id} value={c.id}>{isRTL ? c.name_ar : c.name_en}</option>)}
+                      </select>
+                  </div>
+                  <AdminQueueMonitor clinicId={selectedClinic} autoRefresh={true} />
               </div>
             )}
 
-            {currentView === 'reports' && (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl text-gray-300 mb-2">
-                  {isRTL ? 'التقارير' : 'Reports'}
-                </h3>
-                <p className="text-gray-500">
-                  {isRTL ? 'قريباً...' : 'Coming soon...'}
-                </p>
+            {currentView === 'pins' && (
+              <div className="space-y-4">
+                  <div className="flex gap-4 mb-4">
+                      <select 
+                        className="bg-gray-700 text-white p-2 rounded"
+                        value={selectedClinic}
+                        onChange={(e) => setSelectedClinic(e.target.value)}
+                      >
+                          {clinics.map(c => <option key={c.id} value={c.id}>{isRTL ? c.name_ar : c.name_en}</option>)}
+                      </select>
+                  </div>
+                  <AdminPINMonitor clinicId={selectedClinic} autoRefresh={true} />
               </div>
             )}
 
             {currentView === 'settings' && (
-              <div className="text-center py-12">
-                <Settings className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl text-gray-300 mb-2">
-                  {isRTL ? 'الإعدادات' : 'Settings'}
-                </h3>
-                <p className="text-gray-500">
-                  {isRTL ? 'قريباً...' : 'Coming soon...'}
-                </p>
-              </div>
+              <ClinicsConfiguration />
             )}
           </div>
         </main>
