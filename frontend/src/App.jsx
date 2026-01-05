@@ -13,6 +13,7 @@ import api from './lib/api-unified'
 import enhancedApi from './lib/api-unified'
 import { validateAdminCredentials } from './config/admin-credentials'
 import authService from './lib/auth-service'
+import { DisplayPage } from './components/DisplayPage'
 
 import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
@@ -151,6 +152,13 @@ function App() {
         } catch (e) {}
       }
     }
+
+    // Check for display URL
+    if (window.location.pathname.match(/\/clinic\/[^/]+\/display$/)) {
+        setCurrentView('display')
+        return
+    }
+
     return 'login';
   })
   const [patientData, setPatientData] = useState(() => {
@@ -504,6 +512,14 @@ function App() {
                 onLogout={handleClinicLogout}
                 language={language}
             />
+
+        {currentView === 'display' && (
+            <DisplayPage
+                clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
+                language={language}
+            />
+        )}
+
         )}
 
       return

@@ -412,6 +412,9 @@ class UnifiedApiService {
       return {
         success: false,
         error: error.message
+      }
+    }
+  }
 
   async verifyPin(clinicId, pin) {
     try {
@@ -424,10 +427,6 @@ class UnifiedApiService {
     } catch (error) {
       console.error('Error in verifyPin:', error);
       return { success: false, error: error.message };
-    }
-  }
-
-      }
     }
   }
 
