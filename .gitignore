@@ -169,3 +169,7 @@ scripts/ops/test-input.jsonl
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
