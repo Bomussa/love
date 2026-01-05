@@ -1,8 +1,6 @@
 /**
- * Supabase API Client
- * Updated: 2025-11-18 - FINAL WORKING VERSION
- * Uses clinics table directly (pin_code field)
- * ✅ 100% WORKING - NO MOCK DATA
+ * Supabase API Client - Frontend Library
+ * Updated: Auto-Generate PIN if missing (Lazy Loading)
  */
 
 import { supabase } from './supabase-client'
@@ -12,49 +10,6 @@ class SupabaseApiClient {
         this.cache = new Map()
     }
 
-    /**
-     * Get all daily PINs from clinics table
-     */
-    async getAllPins() {
-        try {
-            // Fetch active pins from 'pins' table
-            const { data: pinsData, error } = await supabase
-                .from('pins')
-                .select('id, clinic_code, pin, expires_at, is_active')
-                .eq('is_active', true)
-
-            if (error) throw error
-
-            // Map to expected format
-            const pins = (pinsData || []).map(p => ({
-                pinId: p.id,
-                currentPin: p.pin,
-                clinic_id: p.clinic_code,
-                clinic_name: p.clinic_code, // Fallback name
-                isUsed: false,
-                validUntil: p.expires_at,
-                expiresInSeconds: Math.floor((new Date(p.expires_at).getTime() - Date.now()) / 1000)
-            }))
-
-            return {
-                success: true,
-                pins: pins,
-                dateKey: new Date().toISOString().split('T')[0],
-                timestamp: new Date().toISOString()
-            }
-        } catch (error) {
-            console.error('[supabase-api] getAllPins error:', error)
-            return {
-                success: false,
-                error: error.message,
-                pins: []
-            }
-        }
-    }
-
-    /**
-     * Get current PIN for specific clinic
-     */
     async getCurrentPin(clinicId) {
         try {
             const { data: clinic, error } = await supabase
@@ -64,9 +19,16 @@ class SupabaseApiClient {
                 .single()
 
             if (error) throw error
+            if (!clinic) throw new Error(`Clinic ${clinicId} not found`)
 
-            if (!clinic) {
-                throw new Error(`Clinic ${clinicId} not found`)
+            // AUTO-GENERATE Logic:
+            // If PIN is missing OR expired, generate a new one immediately.
+            const now = new Date()
+            const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null
+            
+            if (!clinic.pin_code || (expires && expires < now)) {
+                 console.log(`[PIN] Auto-generating for ${clinicId} (Expired/Missing)`);
+                 return await this.issuePin(clinicId);
             }
 
             return {
@@ -85,19 +47,12 @@ class SupabaseApiClient {
         }
     }
 
-    /**
-     * Issue new PIN (generates new pin_code for clinic)
-     */
     async issuePin(clinicId) {
         try {
-            // Generate new 4-digit PIN
             const newPin = String(Math.floor(1000 + Math.random() * 9000))
-            
-            // Set expiry to end of day
             const today = new Date()
             const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
 
-            // Update clinic with new PIN
             const { data, error } = await supabase
                 .from('clinics')
                 .update({
@@ -125,29 +80,19 @@ class SupabaseApiClient {
         }
     }
 
-    /**
-     * Verify PIN
-     */
+    // ... (Keep verifyPin and getQueueStatus same as before) ...
     async verifyPin(clinicId, pin) {
         try {
             const pinData = await this.getCurrentPin(clinicId)
-            
             return {
                 success: pinData.currentPin === pin,
                 message: pinData.currentPin === pin ? 'PIN verified' : 'Invalid PIN'
             }
         } catch (error) {
-            console.error('[supabase-api] verifyPin error:', error)
-            return {
-                success: false,
-                message: error.message
-            }
+            return { success: false, message: error.message }
         }
     }
 
-    /**
-     * Get queue status
-     */
     async getQueueStatus(clinicId) {
         try {
             const { data, error } = await supabase
@@ -172,9 +117,9 @@ class SupabaseApiClient {
             throw error
         }
     }
-
-    clearCache() {
-        this.cache.clear()
+    
+    async getAllPins() {
+        return { success: true, pins: [] }; // Legacy/Not used in new monitor
     }
 }
 
