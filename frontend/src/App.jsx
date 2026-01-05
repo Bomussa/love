@@ -116,25 +116,6 @@ function App() {
       setCurrentView('clinic_login')
   }
 
-  // ... return ...
-  
-        {currentView === 'clinic_login' && (
-            <ClinicLoginPage
-                onLogin={handleClinicLogin}
-                language={language}
-                toggleLanguage={toggleLanguage}
-            />
-        )}
-
-        {currentView === 'clinic_dashboard' && clinicSession && (
-            <ClinicDashboard
-                clinicId={clinicSession.clinicId}
-                pin={clinicSession.pin}
-                onLogout={handleClinicLogout}
-                language={language}
-            />
-        )}
-
   const [currentView, setCurrentView] = useState(() => {
     // Check URL for admin access
     if (typeof window !== 'undefined') {
@@ -496,32 +477,6 @@ function App() {
         language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password',
         'error'
       )
-
-        {currentView === 'clinic_login' && (
-            <ClinicLoginPage
-                onLogin={handleClinicLogin}
-                language={language}
-                toggleLanguage={toggleLanguage}
-            />
-        )}
-
-        {currentView === 'clinic_dashboard' && clinicSession && (
-            <ClinicDashboard
-                clinicId={clinicSession.clinicId}
-                pin={clinicSession.pin}
-                onLogout={handleClinicLogout}
-                language={language}
-            />
-
-        {currentView === 'display' && (
-            <DisplayPage
-                clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
-                language={language}
-            />
-        )}
-
-        )}
-
       return
     }
 
@@ -614,6 +569,30 @@ function App() {
           />
         )}
 
+        {currentView === 'clinic_login' && (
+          <ClinicLoginPage
+            onLogin={handleClinicLogin}
+            language={language}
+            toggleLanguage={toggleLanguage}
+          />
+        )}
+
+        {currentView === 'clinic_dashboard' && clinicSession && (
+          <ClinicDashboard
+            clinicId={clinicSession.clinicId}
+            pin={clinicSession.pin}
+            onLogout={handleClinicLogout}
+            language={language}
+          />
+        )}
+
+        {currentView === 'display' && (
+          <DisplayPage
+            clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
+            language={language}
+          />
+        )}
+
         {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
         {/* Show AdminPage - with Error Boundary */}
         {(currentView === 'admin' && isAdmin) && (
@@ -628,6 +607,31 @@ function App() {
             />
           </AdminErrorBoundary>
         )}
+
+        {currentView === 'clinic_login' && (
+            <ClinicLoginPage
+                onLogin={handleClinicLogin}
+                language={language}
+                toggleLanguage={toggleLanguage}
+            />
+        )}
+
+        {currentView === 'clinic_dashboard' && clinicSession && (
+            <ClinicDashboard
+                clinicId={clinicSession.clinicId}
+                pin={clinicSession.pin}
+                onLogout={handleClinicLogout}
+                language={language}
+            />
+        )}
+
+        {currentView === 'display' && (
+            <DisplayPage
+                clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
+                language={language}
+            />
+        )}
+
       </main>
 
       <SpeedInsights />
