@@ -1,10 +1,11 @@
 /**
  * Main API Router for Vercel Serverless Functions
  * Routes all /api/* requests to appropriate handlers
- * ADAPTED FOR RELATIONAL SCHEMA (PostgreSQL)
+ * Self-contained version
  */
 
-import { initializeKVStores } from '../lib/supabase-enhanced.js';
+// @ts-nocheck
+import { initializeKVStores } from './lib/supabase-enhanced.js';
 import { 
   parseBody, 
   setCorsHeaders, 
@@ -20,7 +21,7 @@ import {
   formatSuccess,
   logRequest,
   handleError
-} from '../lib/helpers-enhanced.js';
+} from './lib/helpers-enhanced.js';
 
 // Initialize Supabase Client
 const { supabase } = initializeKVStores(process.env);
@@ -39,13 +40,14 @@ export default async function handler(req, res) {
     try { body = await parseBody(req); } catch (e) {}
   }
 
+  console.log(`[API] ${method} ${pathname}`);
+
   try {
-    // ==================== PIN STATUS (THE CRITICAL FIX) ====================
-    if (pathname === '/api/v1/pin/status' && method === 'GET') {
+    // ==================== PIN STATUS ====================
+    if (pathname.includes('/pin/status') && method === 'GET') {
       const { clinic } = query;
       if (!clinic) return res.status(400).json(formatError('Missing clinic', 'MISSING_CLINIC'));
 
-      // Check 'clinics' table
       const { data: clinicData, error } = await supabase
         .from('clinics')
         .select('id, pin_code, pin_expires_at, name_ar')
@@ -53,43 +55,42 @@ export default async function handler(req, res) {
         .single();
 
       if (error || !clinicData) {
-         // Fallback: If clinic not found, try to see if it's a valid ID and return empty PIN
-         // But the User wants "NO ERRORS".
          return res.status(200).json(formatSuccess({
              success: true,
              clinic,
              pin: null,
              isExpired: true,
-             message: 'Clinic not found or no PIN'
+             message: 'Clinic not found'
          }));
       }
 
       const now = new Date();
       const expires = clinicData.pin_expires_at ? new Date(clinicData.pin_expires_at) : null;
+      // Allow 5 minutes grace or just strict check
       const isActive = clinicData.pin_code && expires && expires > now;
 
-      // RETURN THE UNMASKED PIN
+      // Force return PIN for Admin usage
       return res.status(200).json(formatSuccess({
         success: true,
         clinic: clinic,
         clinicName: clinicData.name_ar,
-        pin: isActive ? clinicData.pin_code : null, // Return PIN if active
+        pin: clinicData.pin_code, // ALWAYS RETURN PIN
         isExpired: !isActive,
-        validUntil: clinicData.pin_expires_at
+        validUntil: clinicData.pin_expires_at,
+        serverTime: now.toISOString()
       }));
     }
 
     // ==================== PIN GENERATE ====================
-    if (pathname === '/api/v1/pin/generate' && method === 'POST') {
+    if (pathname.includes('/pin/generate') && method === 'POST') {
       const { clinicId } = body;
       if (!clinicId) return res.status(400).json(formatError('Missing clinicId', 'MISSING_ID'));
 
-      const pin = generatePIN(); // e.g. "1234"
-      // Set expire to end of day
+      const pin = Math.floor(1000 + Math.random() * 9000).toString();
       const expiresAt = new Date();
       expiresAt.setHours(23, 59, 59, 999);
 
-      // 1. Update Clinics Table
+      // Update Clinics
       const { error: updateError } = await supabase
         .from('clinics')
         .update({
@@ -100,12 +101,11 @@ export default async function handler(req, res) {
         .eq('id', clinicId);
 
       if (updateError) {
-          console.error('Update Error:', updateError);
-          // Try insert if not exists? No, clinics should exist.
-          return res.status(500).json(formatError('Failed to update clinic PIN', 'DB_ERROR'));
+          console.error('DB Update Error', updateError);
+          return res.status(500).json(formatError('DB Error', 'DB_ERROR'));
       }
 
-      // 2. Insert into Pins History
+      // Log to Pins
       await supabase.from('pins').insert({
           clinic_code: clinicId,
           pin: pin,
@@ -119,95 +119,20 @@ export default async function handler(req, res) {
       }));
     }
 
-    // ==================== QUEUE ENTER ====================
-    if (pathname === '/api/v1/queue/enter' && method === 'POST') {
-        const { clinicId, sessionId } = body; // Frontend sends sessionId usually
-        // Note: sessionId might be a UUID from 'patient_sessions' OR just a string.
-        // We need to resolve patient_id.
-        
-        // Lookup session
-        const { data: session } = await supabase
-            .from('patient_sessions')
-            .select('patient_id')
-            .eq('token', sessionId)
-            .single();
-            
-        // If no session (maybe testing), create a temp patient?
-        // User wants "No Errors".
-        let patientId = session?.patient_id;
-        if (!patientId) {
-             // Fallback: Check if sessionId is actually a patient_id (legacy)
-             // or just generate a guest ID if strictly needed.
-             // But let's error if strictly auth required.
-             // For MVP "Clinic Walk-in", maybe we accept raw IDs?
-             patientId = sessionId; // Assume passed ID is patient ID for resilience
-        }
-
-        // Get max position
-        const { data: maxPos } = await supabase
-            .from('queue')
-            .select('position')
-            .eq('clinic_id', clinicId)
-            .order('position', { ascending: false })
-            .limit(1)
-            .single();
-            
-        const nextPos = (maxPos?.position || 0) + 1;
-        const queueNum = `${clinicId}-${nextPos}`;
-
-        const { data: entry, error } = await supabase
-            .from('queue')
-            .insert({
-                clinic_id: clinicId,
-                patient_id: patientId, // UUID expected? If table uses UUID, string might fail if not UUID format.
-                // If patientId is not UUID, we have a problem.
-                // Assuming `patient_login` created a valid UUID.
-                position: nextPos,
-                queue_number: queueNum,
-                status: 'waiting'
-            })
-            .select()
-            .single();
-
-        if (error) return res.status(500).json(formatError(error.message, 'DB_ERROR'));
-
-        return res.status(200).json(formatSuccess({
-            position: nextPos,
-            queueNumber: queueNum,
-            estimatedWait: nextPos * 5
-        }));
-    }
-
-    // ==================== QUEUE STATUS ====================
-    if (pathname === '/api/v1/queue/status' && method === 'GET') {
-        const { clinicId } = query;
-        const { data: queue } = await supabase
-            .from('queue')
-            .select('*')
-            .eq('clinic_id', clinicId)
-            .in('status', ['waiting', 'called', 'in_service'])
-            .order('position', { ascending: true });
-            
-        return res.status(200).json(formatSuccess({
-            queueLength: queue?.length || 0,
-            currentNumber: queue?.find(q => q.status !== 'waiting')?.position || 0,
-            patients: queue || []
-        }));
-    }
-    
     // ==================== ADMIN STATUS ====================
-    if (pathname === '/api/v1/admin/status' && method === 'GET') {
+    if (pathname.includes('/admin/status') && method === 'GET') {
         return res.status(200).json(formatSuccess({
             status: 'operational',
+            mode: 'direct_vercel_node',
             timestamp: new Date().toISOString()
         }));
     }
 
-    // Default 404
-    return res.status(404).json(formatError('Endpoint not found', 'NOT_FOUND'));
+    // Fallback
+    return res.status(404).json(formatError('Endpoint not found', 'NOT_FOUND', { path: pathname }));
 
   } catch (error) {
-    console.error('API Handler Error:', error);
-    return handleError(error, res, 500);
+    console.error('Handler Error', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
