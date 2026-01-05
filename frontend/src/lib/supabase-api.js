@@ -1,6 +1,6 @@
 /**
  * Supabase API Client - Frontend Library
- * Updated: Auto-Generate PIN if missing (Lazy Loading)
+ * Updated: Proxy through Vercel API to bypass RLS/Anon restrictions
  */
 
 import { supabase } from './supabase-client'
@@ -12,65 +12,50 @@ class SupabaseApiClient {
 
     async getCurrentPin(clinicId) {
         try {
-            const { data: clinic, error } = await supabase
-                .from('clinics')
-                .select('id, name, name_ar, name_en, pin_code, pin_expires_at')
-                .eq('id', clinicId)
-                .single()
-
-            if (error) throw error
-            if (!clinic) throw new Error(`Clinic ${clinicId} not found`)
-
-            // AUTO-GENERATE Logic:
-            // If PIN is missing OR expired, generate a new one immediately.
-            const now = new Date()
-            const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null
+            // Use Vercel API (Service Role) to get PIN
+            const response = await fetch(`/api/v1/pin/status?clinic=${clinicId}`);
+            if (!response.ok) throw new Error('API Error');
             
-            if (!clinic.pin_code || (expires && expires < now)) {
-                 console.log(`[PIN] Auto-generating for ${clinicId} (Expired/Missing)`);
-                 return await this.issuePin(clinicId);
-            }
+            const data = await response.json();
+            
+            if (!data.success) throw new Error(data.error);
 
+            // If API returns auto-generated PIN, it handles the logic.
+            // Map API response to Component expectation
             return {
-                currentPin: clinic.pin_code,
+                currentPin: data.pin,
                 dateKey: new Date().toISOString().split('T')[0],
-                clinicNameAr: clinic.name_ar || clinic.name,
-                clinicNameEn: clinic.name_en || clinic.name,
+                clinicNameAr: data.clinicName || clinicId,
+                clinicNameEn: data.clinicName || clinicId,
                 isToday: true,
                 lastUpdated: new Date().toISOString(),
-                validUntil: clinic.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(clinic.pin_expires_at).getTime() - Date.now()) / 1000)
+                validUntil: data.validUntil,
+                expiresInSeconds: 300 // Approximation
             }
         } catch (error) {
             console.error('[supabase-api] getCurrentPin error:', error)
+            // Fallback? No, if API fails, we can't get secret PIN.
             throw error
         }
     }
 
     async issuePin(clinicId) {
         try {
-            const newPin = String(Math.floor(1000 + Math.random() * 9000))
-            const today = new Date()
-            const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-
-            const { data, error } = await supabase
-                .from('clinics')
-                .update({
-                    pin_code: newPin,
-                    pin_expires_at: endOfDay.toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', clinicId)
-                .select()
-                .single()
-
-            if (error) throw error
+            // Use Vercel API
+            const response = await fetch('/api/v1/pin/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clinicId })
+            });
+            
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error);
 
             return {
-                pinId: data.id,
-                currentPin: data.pin_code,
-                validUntil: data.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(data.pin_expires_at).getTime() - Date.now()) / 1000),
+                pinId: 'new',
+                currentPin: data.pin,
+                validUntil: data.expiresAt,
+                expiresInSeconds: 300,
                 success: true,
                 message: 'New PIN generated successfully'
             }
@@ -80,13 +65,18 @@ class SupabaseApiClient {
         }
     }
 
-    // ... (Keep verifyPin and getQueueStatus same as before) ...
+    // ... (Keep verifyPin and getQueueStatus same or proxy them too) ...
     async verifyPin(clinicId, pin) {
         try {
-            const pinData = await this.getCurrentPin(clinicId)
+            const response = await fetch('/api/v1/pin/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clinicId, pin })
+            });
+            const data = await response.json();
             return {
-                success: pinData.currentPin === pin,
-                message: pinData.currentPin === pin ? 'PIN verified' : 'Invalid PIN'
+                success: data.success && data.valid,
+                message: data.valid ? 'PIN verified' : 'Invalid PIN'
             }
         } catch (error) {
             return { success: false, message: error.message }
@@ -95,21 +85,16 @@ class SupabaseApiClient {
 
     async getQueueStatus(clinicId) {
         try {
-            const { data, error } = await supabase
-                .from('queue')
-                .select('*')
-                .eq('clinic_id', clinicId)
-                .eq('status', 'waiting')
-                .order('created_at', { ascending: true })
-
-            if (error) throw error
-
+            const response = await fetch(`/api/v1/queue/status?clinicId=${clinicId}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error);
+            
             return {
                 success: true,
                 data: {
                     clinic_id: clinicId,
-                    waiting_count: data.length,
-                    queue: data
+                    waiting_count: data.queueLength,
+                    queue: data.patients || [] // API returns 'patients' array
                 }
             }
         } catch (error) {
@@ -119,7 +104,7 @@ class SupabaseApiClient {
     }
     
     async getAllPins() {
-        return { success: true, pins: [] }; // Legacy/Not used in new monitor
+        return { success: true, pins: [] };
     }
 }
 
