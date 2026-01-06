@@ -97,6 +97,34 @@ function App() {
     }
   }, [language, isAdmin, patientData, clinicSession])
 
+  // Monitor admin session changes
+  useEffect(() => {
+    const checkAdminSession = () => {
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          const isValid = new Date(session.expiresAt) > new Date();
+          if (isValid && !isAdmin) {
+            setIsAdmin(true);
+            setCurrentView('admin');
+          } else if (!isValid && isAdmin) {
+            setIsAdmin(false);
+            localStorage.removeItem('mmc_admin_session');
+          }
+        } catch (e) {
+          if (isAdmin) setIsAdmin(false);
+        }
+      } else if (isAdmin) {
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminSession();
+    const interval = setInterval(checkAdminSession, 5000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
+
   useEffect(() => {
     applyTheme(currentTheme)
     localStorage.setItem('selectedTheme', currentTheme)
