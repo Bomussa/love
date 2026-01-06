@@ -34,54 +34,30 @@ function getTodayDateKey() {
 
 export async function patientLogin(patientId, gender) {
   try {
-    // أولاً: البحث عن المريض أو إنشاؤه
-    let { data: patient, error: findError } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('patient_id', patientId)
-      .maybeSingle();
+    // استخدام API Router مباشرة
+    const response = await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-router/patient/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ patientId, gender })
+    });
 
-    if (findError) throw findError;
-
-    // إذا لم يوجد المريض، أنشئه
-    if (!patient) {
-      const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const { data: newPatient, error: insertError } = await supabase
-        .from('patients')
-        .insert([{
-          patient_id: patientId,
-          gender: gender,
-          session_id: sessionId,
-          login_time: new Date().toISOString(),
-          status: 'logged_in'
-        }])
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-      patient = newPatient;
-    } else {
-      // تحديث وقت الدخول
-      const { error: updateError } = await supabase
-        .from('patients')
-        .update({
-          login_time: new Date().toISOString(),
-          status: 'logged_in',
-          gender: gender
-        })
-        .eq('id', patient.id);
-
-      if (updateError) console.warn('Update login time failed:', updateError);
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Login failed');
     }
 
     return {
       success: true,
       data: {
-        id: patient.id,
-        patientId: patient.patient_id,
-        gender: patient.gender,
-        sessionId: patient.session_id,
-        loginTime: patient.login_time
+        id: result.data.id,
+        patientId: result.data.patientId,
+        gender: result.data.gender,
+        sessionId: result.data.sessionId,
+        loginTime: result.data.loginTime,
+        patient: result.data.patient
       }
     };
   } catch (error) {
