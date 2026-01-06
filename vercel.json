@@ -2,13 +2,8 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/" },
-    { "source": "/((?!api/|_next/|static/|assets/|favicon.ico|logo.jpeg|manifest.webmanifest).*)", "destination": "/frontend/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!api/|_next/|static/|assets/|favicon.ico|logo.jpeg|manifest.webmanifest).*)", "destination": "/index.html" }
   ]
 }
