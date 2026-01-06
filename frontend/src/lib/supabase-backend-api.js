@@ -350,6 +350,77 @@ export async function getPatientPosition(clinicId, patientId) {
 // PIN MANAGEMENT - حقيقي بالكامل
 // ==========================================
 
+// دالة الحصول على PIN الحالي لعيادة معينة
+export async function getCurrentPin(clinicId) {
+  try {
+    const { data: clinic, error } = await supabase
+      .from('clinics')
+      .select('id, name_ar, name_en, pin_code, pin_expires_at')
+      .eq('id', clinicId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!clinic) {
+      return {
+        success: true,
+        currentPin: null,
+        totalIssued: 0,
+        dateKey: getTodayDateKey(),
+        allPins: []
+      };
+    }
+
+    const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null;
+    const isActive = clinic.pin_code && expires && expires > new Date();
+
+    return {
+      success: true,
+      currentPin: isActive ? clinic.pin_code : null,
+      totalIssued: clinic.pin_code ? 1 : 0,
+      dateKey: getTodayDateKey(),
+      allPins: clinic.pin_code ? [clinic.pin_code] : [],
+      expiresAt: clinic.pin_expires_at,
+      isActive: isActive
+    };
+  } catch (error) {
+    console.error('[getCurrentPin] Error:', error);
+    throw error;
+  }
+}
+
+// دالة الحصول على جميع أكواد PIN النشطة
+export async function getAllPins() {
+  try {
+    const { data: clinics, error } = await supabase
+      .from('clinics')
+      .select('id, name_ar, name_en, pin_code, pin_expires_at, is_active')
+      .eq('is_active', true);
+
+    if (error) throw error;
+
+    const now = new Date();
+    const pins = (clinics || []).map(clinic => {
+      const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null;
+      const isActive = clinic.pin_code && expires && expires > now;
+
+      return {
+        pinId: clinic.id,
+        currentPin: isActive ? clinic.pin_code : null,
+        clinic_id: clinic.id,
+        clinicName: clinic.name_ar || clinic.name_en,
+        status: isActive ? 'active' : 'expired',
+        expiresAt: clinic.pin_expires_at
+      };
+    }).filter(p => p.currentPin);
+
+    return { success: true, pins };
+  } catch (error) {
+    console.error('[getAllPins] Error:', error);
+    return { success: false, error: error.message, pins: [] };
+  }
+}
+
 export async function getPinStatus() {
   try {
     const { data: clinics, error } = await supabase
@@ -893,6 +964,8 @@ export default {
   subscribeToQueue,
   
   // PIN
+  getCurrentPin,
+  getAllPins,
   getPinStatus,
   issuePin,
   verifyPin,
