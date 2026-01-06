@@ -62,7 +62,7 @@ serve(async (req: Request) => {
     const errorMessage = err?.message || err?.error?.message || JSON.stringify(err) || String(err);
     console.error("queue-enter error:", errorMessage, err);
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred" }),
       { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
     );
   }
