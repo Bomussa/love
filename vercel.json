@@ -2,6 +2,7 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
+  "installCommand": "npm install",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api/|_next/|static/|assets/|favicon.ico|logo.jpeg|manifest.webmanifest).*)", "destination": "/index.html" }
