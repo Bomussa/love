@@ -1,26 +1,21 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "npm install",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
   "functions": {
-    "api/**/*.ts": {
-      "runtime": "edge"
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
   },
-  "headers": [
-    {
-      "source": "/api/v1/(.*)",
-      "headers": [
-        { "key": "X-Accel-Buffering", "value": "no" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
-      ]
-    }
-  ],
   "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "/api/v1/index.js" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api/|_next/|static/|assets/|favicon.ico|logo.jpeg|manifest.webmanifest).*)", "destination": "/index.html" }
-  ]
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "buildCommand": "npm run build --workspace frontend",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "cleanUrls": true,
+  "trailingSlash": false
 }

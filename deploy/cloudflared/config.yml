@@ -1,6 +1,0 @@
-tunnel: mmc-mms-tunnel
-credentials-file: /etc/cloudflared/mmc-mms.json
-ingress:
-  - hostname: mmc-mms.com
-    service: http://localhost:${PORT}
-  - service: http_status:404
