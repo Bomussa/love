@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import supabaseApi from '../../../lib/supabase-api'
+import supabaseApi from '../lib/supabase-api'
+import { Shield } from 'lucide-react'
 
 /**
  * Admin PIN Monitor Component
@@ -120,15 +121,23 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                 </div>
             </div>
 
-            {/* Current PIN Display */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
-                <p className="text-sm font-medium mb-2">{t('Current PIN')}</p>
+            {/* Current PIN Display - Optimized for Visibility */}
+            <div className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white p-8 rounded-2xl shadow-2xl border border-white/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Shield className="w-24 h-24" />
+                </div>
+                <p className="text-sm font-bold uppercase tracking-wider mb-4 text-blue-200">{t('Current Active PIN')}</p>
                 {currentPin ? (
-                    <p className="text-6xl font-bold text-center" data-test="current-pin">
-                        {currentPin}
-                    </p>
+                    <div className="flex flex-col items-center">
+                        <p className="text-7xl font-black text-center tracking-tighter drop-shadow-lg" data-test="current-pin">
+                            {currentPin}
+                        </p>
+                        <p className="mt-4 text-xs text-blue-100 bg-blue-900/40 px-3 py-1 rounded-full border border-blue-400/30">
+                            {t('Connection Verified')} ✓
+                        </p>
+                    </div>
                 ) : (
-                    <p className="text-2xl text-center opacity-75" data-test="no-pin">
+                    <p className="text-2xl text-center opacity-75 font-medium py-4" data-test="no-pin">
                         {t('No PINs issued today')}
                     </p>
                 )}

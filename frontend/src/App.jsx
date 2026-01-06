@@ -82,12 +82,15 @@ function App() {
     const path = window.location.pathname;
     if (path.includes('/admin') || isAdmin) {
       setCurrentView('admin');
-    } else if (path.includes('/clinic/login')) {
-      setCurrentView('clinic_login');
     } else if (path.match(/\/clinic\/[^/]+\/display$/)) {
       setCurrentView('display');
     } else if (path.match(/\/clinic\/[^/]+$/)) {
-      setCurrentView(clinicSession ? 'clinic_dashboard' : 'clinic_login');
+      // Direct access to clinic dashboard if session exists, otherwise redirect to main login
+      if (clinicSession) {
+        setCurrentView('clinic_dashboard');
+      } else {
+        setCurrentView('login');
+      }
     } else if (path.includes('/qr')) {
       setCurrentView('qrscan');
     } else if (patientData) {
@@ -203,7 +206,7 @@ function App() {
           />
         )}
         {currentView === 'patient' && patientData && <PatientPage patientData={patientData} onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage} />}
-        {currentView === 'clinic_login' && <ClinicLoginPage onLogin={handleClinicLogin} language={language} toggleLanguage={toggleLanguage} />}
+        {/* Removed redundant clinic login screen as per requirements */}
         {currentView === 'clinic_dashboard' && clinicSession && (
           <ClinicDashboard clinicId={clinicSession.clinicId} pin={clinicSession.pin} onLogout={() => { setClinicSession(null); localStorage.removeItem('mmc_clinic_session'); }} language={language} />
         )}

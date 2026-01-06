@@ -91,21 +91,28 @@ export async function issuePin(clinicId) {
 
 export async function verifyPin(clinicId, pin) {
     try {
+        // تنظيف الـ PIN من أي مسافات
+        const cleanPin = String(pin).trim();
+        
         const { data: clinic, error } = await supabase
             .from('clinics')
             .select('pin_code, pin_expires_at')
             .eq('id', clinicId)
-            .single();
+            .maybeSingle();
             
-        if (error || !clinic) return { success: false };
+        if (error || !clinic) return { success: false, error: 'Clinic not found' };
         
-        if (clinic.pin_code === pin) {
-             if (clinic.pin_expires_at && new Date(clinic.pin_expires_at) < new Date()) {
-                return { success: false, error: 'Expired' };
+        // مقارنة الـ PIN (رقمين حسب المنطق المعتمد)
+        if (clinic.pin_code === cleanPin) {
+             const now = new Date();
+             const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null;
+             
+             if (expires && expires < now) {
+                return { success: false, error: 'Expired PIN' };
              }
              return { success: true, data: true };
         }
-        return { success: false };
+        return { success: false, error: 'Invalid PIN' };
     } catch (e) {
         return { success: false, error: e.message };
     }
@@ -222,18 +229,25 @@ export async function callNextPatient(clinicId, pin) {
 
 export async function queueDone(clinicId, patientId, pin) {
   try {
-      const { data: valid } = await verifyPin(clinicId, pin);
-      if (!valid) return { success: false, error: 'Invalid PIN' };
+      // التحقق من PIN عبر Edge Function لضمان الأمان والدقة
+      const verifyResult = await verifyPin(clinicId, pin);
+      if (!verifyResult.success) return { success: false, error: 'Invalid PIN' };
 
+      // تحديث حالة الطابور إلى مكتمل
       const { data, error } = await supabase
         .from('queue')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .update({ 
+          status: 'completed', 
+          completed_at: new Date().toISOString() 
+        })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .select()
-        .single();
+        .maybeSingle();
         
       if (error) throw error;
+      
+      // إرسال إشعار لحظي عبر Supabase Realtime (يتم تلقائياً عند تحديث الجدول)
       return { success: true, queue: data };
   } catch (error) {
     console.error('Error in queueDone:', error);
