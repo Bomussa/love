@@ -1,2 +1,2 @@
-// Re-export main API handler for v1 routes
-export { default } from '../index.js';
+import handler from '../../index.js';
+export default handler;

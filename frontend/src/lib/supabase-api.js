@@ -1,10 +1,8 @@
 /**
- * Supabase API Client
- * Updated: 2025-11-18 - FINAL WORKING VERSION
- * Uses clinics table directly (pin_code field)
- * ✅ 100% WORKING - NO MOCK DATA
+ * Supabase API Client - Frontend Library
+ * Updated: Direct Supabase connection for PIN logic
+ * Table: pins (clinic_code, pin, is_active, expires_at)
  */
-
 import { supabase } from './supabase-client'
 
 class SupabaseApiClient {
@@ -12,167 +10,129 @@ class SupabaseApiClient {
         this.cache = new Map()
     }
 
-    /**
-     * Get all daily PINs from clinics table
-     */
-    async getAllPins() {
-        try {
-            const { data: clinics, error } = await supabase
-                .from('clinics')
-                .select('id, name, name_ar, name_en, pin_code, pin_expires_at, is_active')
-                .eq('is_active', true)
-
-            if (error) throw error
-
-            const pins = (clinics || []).map(clinic => ({
-                pinId: clinic.id,
-                currentPin: clinic.pin_code,
-                clinic_id: clinic.id,
-                clinic_name: clinic.name_ar || clinic.name_en || clinic.name,
-                isUsed: false,
-                validUntil: clinic.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(clinic.pin_expires_at).getTime() - Date.now()) / 1000)
-            }))
-
-            return {
-                success: true,
-                pins: pins,
-                dateKey: new Date().toISOString().split('T')[0],
-                timestamp: new Date().toISOString()
-            }
-        } catch (error) {
-            console.error('[supabase-api] getAllPins error:', error)
-            return {
-                success: false,
-                error: error.message,
-                pins: []
-            }
-        }
-    }
-
-    /**
-     * Get current PIN for specific clinic
-     */
     async getCurrentPin(clinicId) {
         try {
-            const { data: clinic, error } = await supabase
-                .from('clinics')
-                .select('id, name, name_ar, name_en, pin_code, pin_expires_at')
-                .eq('id', clinicId)
-                .single()
+            // جدول pins يستخدم clinic_code وليس clinic_id
+            const { data, error } = await supabase
+                .from('pins')
+                .select('id, clinic_code, pin, is_active, generated_at, expires_at')
+                .eq('clinic_code', clinicId)
+                .eq('is_active', true)
+                .order('generated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            if (error) throw error
-
-            if (!clinic) {
-                throw new Error(`Clinic ${clinicId} not found`)
-            }
+            if (error) throw error;
 
             return {
-                currentPin: clinic.pin_code,
-                dateKey: new Date().toISOString().split('T')[0],
-                clinicNameAr: clinic.name_ar || clinic.name,
-                clinicNameEn: clinic.name_en || clinic.name,
-                isToday: true,
-                lastUpdated: new Date().toISOString(),
-                validUntil: clinic.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(clinic.pin_expires_at).getTime() - Date.now()) / 1000)
-            }
+                success: true,
+                currentPin: data ? data.pin : null,
+                pinId: data ? data.id : null,
+                clinicCode: data ? data.clinic_code : clinicId,
+                isActive: data ? data.is_active : false,
+                generatedAt: data ? data.generated_at : null,
+                expiresAt: data ? data.expires_at : null
+            };
         } catch (error) {
-            console.error('[supabase-api] getCurrentPin error:', error)
-            throw error
+            console.error('[supabase-api] getCurrentPin error:', error);
+            throw error;
         }
     }
 
-    /**
-     * Issue new PIN (generates new pin_code for clinic)
-     */
     async issuePin(clinicId) {
         try {
-            // Generate new 4-digit PIN
-            const newPin = String(Math.floor(1000 + Math.random() * 9000))
+            // توليد PIN جديد من 4 أرقام
+            const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+            const now = new Date();
+            const expiresAt = new Date(now);
+            expiresAt.setHours(23, 59, 59, 999);
             
-            // Set expiry to end of day
-            const today = new Date()
-            const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+            // تعطيل جميع الـ PINs السابقة لهذه العيادة
+            await supabase
+                .from('pins')
+                .update({ is_active: false })
+                .eq('clinic_code', clinicId);
 
-            // Update clinic with new PIN
+            // إضافة PIN جديد
             const { data, error } = await supabase
-                .from('clinics')
-                .update({
-                    pin_code: newPin,
-                    pin_expires_at: endOfDay.toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', clinicId)
+                .from('pins')
+                .insert([{
+                    clinic_code: clinicId,
+                    pin: newPin,
+                    is_active: true,
+                    generated_at: now.toISOString(),
+                    expires_at: expiresAt.toISOString()
+                }])
                 .select()
-                .single()
+                .single();
 
-            if (error) throw error
+            if (error) throw error;
 
             return {
-                pinId: data.id,
-                currentPin: data.pin_code,
-                validUntil: data.pin_expires_at,
-                expiresInSeconds: Math.floor((new Date(data.pin_expires_at).getTime() - Date.now()) / 1000),
                 success: true,
-                message: 'New PIN generated successfully'
-            }
+                currentPin: data.pin,
+                pinId: data.id,
+                message: 'تم توليد رمز PIN جديد بنجاح'
+            };
         } catch (error) {
-            console.error('[supabase-api] issuePin error:', error)
-            throw error
+            console.error('[supabase-api] issuePin error:', error);
+            throw error;
         }
     }
 
-    /**
-     * Verify PIN
-     */
     async verifyPin(clinicId, pin) {
         try {
-            const pinData = await this.getCurrentPin(clinicId)
-            
-            return {
-                success: pinData.currentPin === pin,
-                message: pinData.currentPin === pin ? 'PIN verified' : 'Invalid PIN'
-            }
-        } catch (error) {
-            console.error('[supabase-api] verifyPin error:', error)
-            return {
-                success: false,
-                message: error.message
-            }
-        }
-    }
-
-    /**
-     * Get queue status
-     */
-    async getQueueStatus(clinicId) {
-        try {
             const { data, error } = await supabase
-                .from('queue')
-                .select('*')
-                .eq('clinic_id', clinicId)
-                .eq('status', 'waiting')
-                .order('created_at', { ascending: true })
+                .from('pins')
+                .select('id, clinic_code, pin, is_active, expires_at')
+                .eq('clinic_code', clinicId)
+                .eq('pin', pin)
+                .eq('is_active', true)
+                .limit(1)
+                .maybeSingle();
 
-            if (error) throw error
+            if (error) throw error;
+
+            // التحقق من صلاحية الـ PIN
+            const isValid = data && data.is_active && 
+                           (!data.expires_at || new Date(data.expires_at) > new Date());
 
             return {
                 success: true,
-                data: {
-                    clinic_id: clinicId,
-                    waiting_count: data.length,
-                    queue: data
-                }
-            }
+                valid: isValid,
+                message: isValid ? 'رمز PIN صحيح' : 'رمز PIN غير صحيح أو منتهي الصلاحية'
+            };
         } catch (error) {
-            console.error('Error getting queue status:', error)
-            throw error
+            console.error('[supabase-api] verifyPin error:', error);
+            return { success: false, valid: false, error: error.message };
         }
     }
 
-    clearCache() {
-        this.cache.clear()
+    async getAllPins() {
+        try {
+            const { data, error } = await supabase
+                .from('pins')
+                .select('id, clinic_code, pin, is_active, generated_at, expires_at')
+                .eq('is_active', true)
+                .order('clinic_code', { ascending: true });
+
+            if (error) throw error;
+
+            return {
+                success: true,
+                pins: data.map(p => ({
+                    pinId: p.id,
+                    currentPin: p.pin,
+                    clinicCode: p.clinic_code,
+                    isActive: p.is_active,
+                    generatedAt: p.generated_at,
+                    expiresAt: p.expires_at
+                }))
+            };
+        } catch (error) {
+            console.error('[supabase-api] getAllPins error:', error);
+            return { success: false, pins: [], error: error.message };
+        }
     }
 }
 

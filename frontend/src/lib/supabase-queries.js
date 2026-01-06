@@ -16,10 +16,10 @@ export const queueQueries = {
    */
   async getStatus(clinicId) {
     const { data, error } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*')
       .eq('clinic_id', clinicId)
-      .order('created_at', { ascending: true })
+      .order('position', { ascending: true })
     
     if (error) throw error
     
@@ -45,7 +45,7 @@ export const queueQueries = {
         {
           event: '*',
           schema: 'public',
-          table: 'queues',
+          table: 'queue',
           filter: `clinic_id=eq.${clinicId}`
         },
         callback

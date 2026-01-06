@@ -4,7 +4,8 @@
   "private": true,
   "description": "Medical Committee Integrated Application monorepo (frontend + api proxy).",
   "workspaces": [
-    "frontend"
+    "frontend",
+    "api"
   ],
   "scripts": {
     "dev": "npm run dev --workspace frontend",
