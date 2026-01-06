@@ -2,7 +2,6 @@
 import './core/notification-engine.js';
 import React, { useState, useEffect } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
-import { Analytics } from '@vercel/analytics/react'
 import { LoginPage } from './components/LoginPage'
 import { ExamSelectionPage } from './components/ExamSelectionPage'
 import { PatientPage } from './components/PatientPage'
@@ -424,7 +423,7 @@ function App() {
       setCurrentView('admin')
       console.log('[App] State updated. isAdmin:', true, 'currentView:', 'admin')
       showNotification(
-        language === 'ar' ? '✅ تم تسج��ل الدخول بنجاح' : '✅ Login successful',
+        language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
         'success'
       )
       // Force re-render by reloading with admin parameter
@@ -519,7 +518,6 @@ function App() {
       </main>
 
       <SpeedInsights />
-      <Analytics />
     </div>
   )
 }
