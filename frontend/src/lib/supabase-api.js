@@ -1,6 +1,7 @@
 /**
  * Supabase API Client - Frontend Library
  * Updated: Direct Supabase connection for PIN logic
+ * Table: pins (clinic_code, pin, is_active, expires_at)
  */
 import { supabase } from './supabase-client'
 
@@ -11,21 +12,26 @@ class SupabaseApiClient {
 
     async getCurrentPin(clinicId) {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // جدول pins يستخدم clinic_code وليس clinic_id
             const { data, error } = await supabase
                 .from('pins')
-                .select('pin_code')
-                .eq('clinic_id', clinicId)
-                .gte('created_at', `${today}T00:00:00Z`)
-                .order('created_at', { ascending: false })
+                .select('id, clinic_code, pin, is_active, generated_at, expires_at')
+                .eq('clinic_code', clinicId)
+                .eq('is_active', true)
+                .order('generated_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
             if (error) throw error;
 
             return {
-                currentPin: data ? data.pin_code : null,
-                success: true
+                success: true,
+                currentPin: data ? data.pin : null,
+                pinId: data ? data.id : null,
+                clinicCode: data ? data.clinic_code : clinicId,
+                isActive: data ? data.is_active : false,
+                generatedAt: data ? data.generated_at : null,
+                expiresAt: data ? data.expires_at : null
             };
         } catch (error) {
             console.error('[supabase-api] getCurrentPin error:', error);
@@ -35,13 +41,27 @@ class SupabaseApiClient {
 
     async issuePin(clinicId) {
         try {
-            const newPin = Math.floor(10 + Math.random() * 90).toString();
+            // توليد PIN جديد من 4 أرقام
+            const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+            const now = new Date();
+            const expiresAt = new Date(now);
+            expiresAt.setHours(23, 59, 59, 999);
             
+            // تعطيل جميع الـ PINs السابقة لهذه العيادة
+            await supabase
+                .from('pins')
+                .update({ is_active: false })
+                .eq('clinic_code', clinicId);
+
+            // إضافة PIN جديد
             const { data, error } = await supabase
                 .from('pins')
                 .insert([{
-                    clinic_id: clinicId,
-                    pin_code: newPin,
+                    clinic_code: clinicId,
+                    pin: newPin,
+                    is_active: true,
+                    generated_at: now.toISOString(),
+                    expires_at: expiresAt.toISOString()
                 }])
                 .select()
                 .single();
@@ -49,9 +69,10 @@ class SupabaseApiClient {
             if (error) throw error;
 
             return {
-                currentPin: data.pin_code,
                 success: true,
-                message: 'New PIN generated successfully'
+                currentPin: data.pin,
+                pinId: data.id,
+                message: 'تم توليد رمز PIN جديد بنجاح'
             };
         } catch (error) {
             console.error('[supabase-api] issuePin error:', error);
@@ -63,33 +84,37 @@ class SupabaseApiClient {
         try {
             const { data, error } = await supabase
                 .from('pins')
-                .select('id')
-                .eq('clinic_id', clinicId)
-                .eq('pin_code', pin)
-                .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Valid for 5 minutes
+                .select('id, clinic_code, pin, is_active, expires_at')
+                .eq('clinic_code', clinicId)
+                .eq('pin', pin)
+                .eq('is_active', true)
                 .limit(1)
                 .maybeSingle();
 
             if (error) throw error;
 
+            // التحقق من صلاحية الـ PIN
+            const isValid = data && data.is_active && 
+                           (!data.expires_at || new Date(data.expires_at) > new Date());
+
             return {
-                success: !!data,
-                valid: !!data
+                success: true,
+                valid: isValid,
+                message: isValid ? 'رمز PIN صحيح' : 'رمز PIN غير صحيح أو منتهي الصلاحية'
             };
         } catch (error) {
             console.error('[supabase-api] verifyPin error:', error);
-            return { success: false, error: error.message };
+            return { success: false, valid: false, error: error.message };
         }
     }
 
     async getAllPins() {
         try {
-            const today = new Date().toISOString().split('T')[0];
             const { data, error } = await supabase
                 .from('pins')
-                .select('id, pin_code, clinic_id, created_at, status')
-                .gte('created_at', `${today}T00:00:00Z`)
-                .order('created_at', { ascending: false });
+                .select('id, clinic_code, pin, is_active, generated_at, expires_at')
+                .eq('is_active', true)
+                .order('clinic_code', { ascending: true });
 
             if (error) throw error;
 
@@ -97,15 +122,16 @@ class SupabaseApiClient {
                 success: true,
                 pins: data.map(p => ({
                     pinId: p.id,
-                    currentPin: p.pin_code,
-                    clinic_id: p.clinic_id,
-                    status: p.status,
-                    created_at: p.created_at
+                    currentPin: p.pin,
+                    clinicCode: p.clinic_code,
+                    isActive: p.is_active,
+                    generatedAt: p.generated_at,
+                    expiresAt: p.expires_at
                 }))
             };
         } catch (error) {
             console.error('[supabase-api] getAllPins error:', error);
-            return { success: false, error: error.message };
+            return { success: false, pins: [], error: error.message };
         }
     }
 }
