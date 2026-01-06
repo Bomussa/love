@@ -1,8 +1,7 @@
 /**
  * Supabase API Client - Frontend Library
- * Updated: Proxy through Vercel API to bypass RLS/Anon restrictions
+ * Updated: Direct Supabase connection for PIN logic
  */
-
 import { supabase } from './supabase-client'
 
 class SupabaseApiClient {
@@ -12,99 +11,102 @@ class SupabaseApiClient {
 
     async getCurrentPin(clinicId) {
         try {
-            // Use Vercel API (Service Role) to get PIN
-            const response = await fetch(`/api/v1/pin/status?clinic=${clinicId}`);
-            if (!response.ok) throw new Error('API Error');
-            
-            const data = await response.json();
-            
-            if (!data.success) throw new Error(data.error);
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('pins')
+                .select('pin_code')
+                .eq('clinic_id', clinicId)
+                .gte('created_at', `${today}T00:00:00Z`)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            // If API returns auto-generated PIN, it handles the logic.
-            // Map API response to Component expectation
+            if (error) throw error;
+
             return {
-                currentPin: data.pin,
-                dateKey: new Date().toISOString().split('T')[0],
-                clinicNameAr: data.clinicName || clinicId,
-                clinicNameEn: data.clinicName || clinicId,
-                isToday: true,
-                lastUpdated: new Date().toISOString(),
-                validUntil: data.validUntil,
-                expiresInSeconds: 300 // Approximation
-            }
+                currentPin: data ? data.pin_code : null,
+                success: true
+            };
         } catch (error) {
-            console.error('[supabase-api] getCurrentPin error:', error)
-            // Fallback? No, if API fails, we can't get secret PIN.
-            throw error
+            console.error('[supabase-api] getCurrentPin error:', error);
+            throw error;
         }
     }
 
     async issuePin(clinicId) {
         try {
-            // Use Vercel API
-            const response = await fetch('/api/v1/pin/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clinicId })
-            });
+            const newPin = Math.floor(10 + Math.random() * 90).toString();
             
-            const data = await response.json();
-            if (!data.success) throw new Error(data.error);
+            const { data, error } = await supabase
+                .from('pins')
+                .insert([{
+                    clinic_id: clinicId,
+                    pin_code: newPin,
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
 
             return {
-                pinId: 'new',
-                currentPin: data.pin,
-                validUntil: data.expiresAt,
-                expiresInSeconds: 300,
+                currentPin: data.pin_code,
                 success: true,
                 message: 'New PIN generated successfully'
-            }
+            };
         } catch (error) {
-            console.error('[supabase-api] issuePin error:', error)
-            throw error
+            console.error('[supabase-api] issuePin error:', error);
+            throw error;
         }
     }
 
-    // ... (Keep verifyPin and getQueueStatus same or proxy them too) ...
     async verifyPin(clinicId, pin) {
         try {
-            const response = await fetch('/api/v1/pin/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clinicId, pin })
-            });
-            const data = await response.json();
+            const { data, error } = await supabase
+                .from('pins')
+                .select('id')
+                .eq('clinic_id', clinicId)
+                .eq('pin_code', pin)
+                .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Valid for 5 minutes
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
             return {
-                success: data.success && data.valid,
-                message: data.valid ? 'PIN verified' : 'Invalid PIN'
-            }
+                success: !!data,
+                valid: !!data
+            };
         } catch (error) {
-            return { success: false, message: error.message }
+            console.error('[supabase-api] verifyPin error:', error);
+            return { success: false, error: error.message };
         }
     }
 
-    async getQueueStatus(clinicId) {
+    async getAllPins() {
         try {
-            const response = await fetch(`/api/v1/queue/status?clinicId=${clinicId}`);
-            const data = await response.json();
-            if (!data.success) throw new Error(data.error);
-            
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('pins')
+                .select('id, pin_code, clinic_id, created_at, status')
+                .gte('created_at', `${today}T00:00:00Z`)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
             return {
                 success: true,
-                data: {
-                    clinic_id: clinicId,
-                    waiting_count: data.queueLength,
-                    queue: data.patients || [] // API returns 'patients' array
-                }
-            }
+                pins: data.map(p => ({
+                    pinId: p.id,
+                    currentPin: p.pin_code,
+                    clinic_id: p.clinic_id,
+                    status: p.status,
+                    created_at: p.created_at
+                }))
+            };
         } catch (error) {
-            console.error('Error getting queue status:', error)
-            throw error
+            console.error('[supabase-api] getAllPins error:', error);
+            return { success: false, error: error.message };
         }
-    }
-    
-    async getAllPins() {
-        return { success: true, pins: [] };
     }
 }
 
