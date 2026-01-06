@@ -1,21 +1,14 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": "vite",
   "functions": {
     "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
+      "runtime": "nodejs20.x"
     }
   },
   "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "/api/v1/index.js" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "buildCommand": "npm run build --workspace frontend",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "cleanUrls": true,
-  "trailingSlash": false
+    { "source": "/api/(.*)", "destination": "/api/" },
+    { "source": "/((?!api/|_next/|static/|assets/|favicon.ico|logo.jpeg|manifest.webmanifest).*)", "destination": "/frontend/index.html" }
+  ]
 }
