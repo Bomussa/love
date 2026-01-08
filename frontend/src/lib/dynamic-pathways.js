@@ -39,13 +39,13 @@ async function fetchClinicWeights(clinicIds) {
         weights[clinicId] = status.waiting || 0
       } catch (err) {
         // Keep default weight of 0
-        console.log(`Using default weight for clinic ${clinicId}`)
+        
       }
     })
     
     await Promise.all(promises)
   } catch (err) {
-    console.log('Using default weights for all clinics')
+    
   }
   
   return weights
@@ -124,7 +124,7 @@ export async function getDynamicMedicalPathway(examType, gender) {
   try {
     weights = await fetchClinicWeights(clinicIds)
   } catch (err) {
-    console.log('Failed to fetch weights, using default order')
+    
     // Use default weights (all 0)
     clinicIds.forEach(id => {
       weights[id] = 0

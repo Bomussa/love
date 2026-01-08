@@ -175,9 +175,9 @@ function App() {
   // ============= LOGIN HANDLERS =============
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      console.log('[App] Patient login attempt:', patientId, gender);
+      ;
       const res = await api.patientLogin(patientId, gender)
-      console.log('[App] Patient login response:', res);
+      ;
       
       if (res.success) {
         setPatientData(res.data)
@@ -195,7 +195,7 @@ function App() {
 
   const handleAdminLogin = async (credentials) => {
     try {
-      console.log('[App] Admin login attempt');
+      ;
       const [username, password] = credentials.split(':')
       
       if (!username || !password) {
@@ -204,7 +204,7 @@ function App() {
       }
       
       const result = await authService.login(username, password)
-      console.log('[App] Admin login result:', result);
+      ;
       
       if (result.success) {
         setIsAdmin(true)

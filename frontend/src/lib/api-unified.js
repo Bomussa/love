@@ -1,101 +1,114 @@
 /**
  * Unified API Layer - Medical Committee System
- * Optimized for direct Supabase connection (No Vercel API Proxy)
- * Updated: Jan 6, 2026
+ * المصدر الوحيد للحقيقة: توجيه كافة الطلبات عبر Backend API (api.mmc-mms.com)
+ * يمنع الاتصال المباشر بـ Supabase من الواجهة الأمامية لضمان الأمان وتوحيد المنطق.
  */
 
-import supabaseBackendApi from './supabase-backend-api';
-import supabasePinApi from './supabase-api';
-
-const BACKEND_MODE = 'supabase';
+const API_BASE_URL = 'https://api.mmc-mms.com/api/v1';
 
 class UnifiedApiService {
   constructor() {
-    this.backend = supabaseBackendApi;
-    this.mode = BACKEND_MODE;
+    this.baseUrl = API_BASE_URL;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'API Request failed');
+    }
+
+    return await response.json();
   }
 
   // ==========================================
   // PATIENT MANAGEMENT
   // ==========================================
   async patientLogin(patientId, gender) {
-    return this.backend.patientLogin(patientId, gender);
+    return this.request('/patients/login', {
+      method: 'POST',
+      body: JSON.stringify({ patientId, gender }),
+    });
   }
 
   // ==========================================
   // QUEUE MANAGEMENT
   // ==========================================
-  async enterQueue(clinic, user, isAutoEntry = false) {
-    return this.backend.enterQueue(clinic, user, isAutoEntry);
+  async enterQueue(clinicId, patientId, isAutoEntry = false) {
+    return this.request('/queue/enter', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, patientId, isAutoEntry }),
+    });
   }
 
-  async getQueueStatus(clinic) {
-    return this.backend.getQueueStatus(clinic);
+  async getQueueStatus(clinicId) {
+    return this.request(`/queue/status/${clinicId}`);
   }
 
-  async queueDone(clinic, user, pin) {
-    return this.backend.queueDone(clinic, user, String(pin));
+  async queueDone(clinicId, patientId, pin) {
+    return this.request('/queue/done', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, patientId, pin }),
+    });
   }
 
   async callNextPatient(clinicId, pin) {
-    return this.backend.callNextPatient(clinicId, pin);
+    return this.request('/queue/next', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, pin }),
+    });
   }
 
   async getQueuePosition(clinicId, patientId) {
-    return this.backend.getQueuePosition(clinicId, patientId);
+    return this.request(`/queue/position/${clinicId}/${patientId}`);
   }
 
   // ==========================================
   // PIN MANAGEMENT
   // ==========================================
   async generatePIN(clinicId) {
-    return supabasePinApi.issuePin(clinicId);
+    return this.request('/pin/generate', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId }),
+    });
   }
 
   async verifyPin(clinicId, pin) {
-    return supabasePinApi.verifyPin(clinicId, pin);
-  }
-
-  async getActivePINs() {
-    return supabasePinApi.getAllPins();
+    return this.request('/pin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, pin }),
+    });
   }
 
   // ==========================================
   // PATHWAY MANAGEMENT
   // ==========================================
   async getPathway(patientId) {
-    return this.backend.getPathway(patientId);
-  }
-
-  async getRoute(patientId) {
-    return this.backend.getRoute(patientId);
-  }
-
-  async createPathway(patientId, gender) {
-    return this.backend.createPathway(patientId, gender);
+    return this.request(`/pathway/${patientId}`);
   }
 
   // ==========================================
   // REPORTS & STATISTICS
   // ==========================================
-  async getAdminStatus() {
-    return this.backend.getAdminStatus();
-  }
-
-  async getDailyReport(date) {
-    return this.backend.getDailyReport(date);
-  }
-
   async getClinics() {
-    return this.backend.getClinics();
+    return this.request('/clinics');
   }
 
   async adminLogin(username, password) {
-    // Emergency Fallback
-    if (username === 'admin' && password === 'admin123') {
-      return { success: true, token: 'emergency-token' };
-    }
-    return this.backend.adminLogin(username, password);
+    return this.request('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
   }
 }
 

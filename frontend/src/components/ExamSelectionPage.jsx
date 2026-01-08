@@ -6,13 +6,13 @@ import { examTypes } from '../lib/utils'
 import { t } from '../lib/i18n'
 
 export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLanguage }) {
-  console.log('[ExamSelectionPage] Rendered with props:', { onExamSelect: typeof onExamSelect, onBack: typeof onBack });
+  ;
   
   const handleExamClick = (examId) => {
-    console.log('[ExamSelectionPage] Button clicked! examId:', examId);
-    console.log('[ExamSelectionPage] onExamSelect type:', typeof onExamSelect);
+    ;
+    ;
     if (onExamSelect) {
-      console.log('[ExamSelectionPage] Calling onExamSelect...');
+      ;
       onExamSelect(examId);
     } else {
       console.error('[ExamSelectionPage] onExamSelect is undefined!');

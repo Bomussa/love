@@ -157,9 +157,9 @@ function App() {
   // ============= LOGIN HANDLERS =============
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      console.log('[App] Patient login attempt:', patientId, gender);
+      ;
       const res = await api.patientLogin(patientId, gender)
-      console.log('[App] Patient login response:', res);
+      ;
       
       if (res.success) {
         // Clear admin session when patient logs in to prevent conflicts
@@ -181,7 +181,7 @@ function App() {
 
   const handleAdminLogin = async (credentials) => {
     try {
-      console.log('[App] Admin login attempt');
+      ;
       const [username, password] = credentials.split(':')
       
       if (!username || !password) {
@@ -190,7 +190,7 @@ function App() {
       }
       
       const result = await authService.login(username, password)
-      console.log('[App] Admin login result:', result);
+      ;
       
       if (result.success) {
         // Clear patient data when admin logs in
@@ -251,7 +251,7 @@ function App() {
           <ExamSelectionPage
             patientData={patientData}
             onExamSelect={async (examType) => {
-              console.log('[App] onExamSelect called with examType:', examType);
+              ;
               try {
                 // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
                 const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
@@ -262,10 +262,10 @@ function App() {
                 }
                 
                 const firstClinic = clinics[0].id
-                console.log('[App] Entering queue for clinic:', firstClinic);
+                ;
                 
                 const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
-                console.log('[App] Queue response:', queueRes);
+                ;
                 
                 if (queueRes.success) {
                   const updatedPatientData = {

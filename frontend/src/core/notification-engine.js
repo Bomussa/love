@@ -7,8 +7,8 @@ let toast;
     toast = importedToast;
   } catch (err) {
     toast = {
-      success: (msg) => console.log('[Toast ✅]', msg),
-      error: (msg) => console.log('[Toast ❌]', msg),
+      success: (msg) => ,
+      error: (msg) => ,
       loading: (msg) => console.info('[Toast ⏳]', msg),
     };
 

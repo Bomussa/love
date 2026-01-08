@@ -125,7 +125,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         //     examStations = savedRoute.route.stations
         //   }
         // } catch (err) {
-        //   console.log('No saved route found')
+        //   
         // }
         
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
@@ -690,7 +690,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         show={true}
                         language={language}
                         onTimeout={() => {
-                          console.log('Countdown timeout for station:', station.id)
+                          
                         }}
                       />
                     </div>

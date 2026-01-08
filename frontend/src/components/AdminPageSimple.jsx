@@ -1,7 +1,7 @@
 import React from 'react';
 
 export function AdminPageSimple({ onLogout, language }) {
-  console.log('[AdminPageSimple] Rendering...');
+  ;
   
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">

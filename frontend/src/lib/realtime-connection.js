@@ -62,7 +62,7 @@ class RealtimeConnectionManager {
         
         // Check if already subscribed
         if (this.channels.has(channelName)) {
-            console.log(`[Realtime] Already subscribed to ${channelName}`)
+            
             return this.channels.get(channelName)
         }
 
@@ -80,14 +80,14 @@ class RealtimeConnectionManager {
                         filter: `clinic_id=eq.${clinicId}`
                     },
                     (payload) => {
-                        console.log(`[Realtime] Queue update for ${clinicId}:`, payload)
+                        
                         if (callbacks.onQueueUpdate) {
                             callbacks.onQueueUpdate(payload)
                         }
                     }
                 )
                 .subscribe((status) => {
-                    console.log(`[Realtime] Channel ${channelName} status:`, status)
+                    
                     
                     if (status === 'SUBSCRIBED') {
                         this._notifyStatusChange('connected')
@@ -134,7 +134,7 @@ class RealtimeConnectionManager {
         const channelName = `notifications:${patientId}`
         
         if (this.channels.has(channelName)) {
-            console.log(`[Realtime] Already subscribed to ${channelName}`)
+            
             return this.channels.get(channelName)
         }
 
@@ -150,14 +150,14 @@ class RealtimeConnectionManager {
                         filter: `patient_id=eq.${patientId}`
                     },
                     (payload) => {
-                        console.log(`[Realtime] New notification for ${patientId}:`, payload)
+                        
                         if (callbacks.onNotification) {
                             callbacks.onNotification(payload.new)
                         }
                     }
                 )
                 .subscribe((status) => {
-                    console.log(`[Realtime] Channel ${channelName} status:`, status)
+                    
                     
                     if (status === 'SUBSCRIBED') {
                         this._notifyStatusChange('connected')
@@ -199,7 +199,7 @@ class RealtimeConnectionManager {
                         table: 'clinics'
                     },
                     (payload) => {
-                        console.log('[Realtime] PIN update:', payload)
+                        
                         if (callbacks.onPINUpdate) {
                             callbacks.onPINUpdate(payload.new)
                         }
@@ -223,7 +223,7 @@ class RealtimeConnectionManager {
         if (channel) {
             this.supabase.removeChannel(channel)
             this.channels.delete(channelName)
-            console.log(`[Realtime] Unsubscribed from ${channelName}`)
+            
         }
     }
 
@@ -233,7 +233,7 @@ class RealtimeConnectionManager {
     unsubscribeAll() {
         this.channels.forEach((channel, name) => {
             this.supabase.removeChannel(channel)
-            console.log(`[Realtime] Unsubscribed from ${name}`)
+            
         })
         this.channels.clear()
         this._notifyStatusChange('disconnected')
@@ -252,10 +252,10 @@ class RealtimeConnectionManager {
         this.reconnectAttempts++
         const delay = this.reconnectDelay * this.reconnectAttempts
 
-        console.log(`[Realtime] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+        
 
         setTimeout(() => {
-            console.log('[Realtime] Attempting to reconnect...')
+            
             this.unsubscribe(`queue:${clinicId}`)
             this.subscribeToQueue(clinicId, callbacks)
         }, delay)

@@ -35,7 +35,7 @@ class AdvancedQueueEngine {
   }
 
   init() {
-    console.log('[Advanced Queue] Initialized');
+    ;
     
     // تشغيل مراقب الوقت كل ثانية
     setInterval(() => this.checkAllTimers(), 1000);
@@ -100,7 +100,7 @@ class AdvancedQueueEngine {
       totalWaiting: queue.waiting.length
     });
     
-    console.log(`[Queue] Patient ${patientId} added to ${clinicId} with number ${number}`);
+    ;
     
     return entry;
   }
@@ -151,7 +151,7 @@ class AdvancedQueueEngine {
       nextInQueue: queue.waiting[0]?.number
     });
     
-    console.log(`[Queue] Patient ${patientId} entered ${clinicId}`);
+    ;
     
     return { 
       success: true, 
@@ -196,7 +196,7 @@ class AdvancedQueueEngine {
       totalWaiting: queue.waiting.length
     });
     
-    console.log(`[Queue] Patient ${patientId} exited ${clinicId}`);
+    ;
     
     return { 
       success: true, 
@@ -221,7 +221,7 @@ class AdvancedQueueEngine {
     queue.isClinicTimerActive = true;
     queue.clinicTimerStartedAt = Date.now();
     
-    console.log(`[Queue] Clinic ${clinicId} auto-call timer started (120s)`);
+    ;
     
     // بدء عداد المراجع الأول (5 دقائق)
     const firstPatient = queue.waiting[0];
@@ -238,7 +238,7 @@ class AdvancedQueueEngine {
     queue.isClinicTimerActive = false;
     queue.clinicTimerStartedAt = null;
     
-    console.log(`[Queue] Clinic ${clinicId} auto-call timer stopped`);
+    ;
   }
 
   /**
@@ -258,7 +258,7 @@ class AdvancedQueueEngine {
     
     this.patientTimers.set(patientId, timerData);
     
-    console.log(`[Queue] Patient ${patientId} timer started (300s)`);
+    ;
   }
 
   /**
@@ -266,7 +266,7 @@ class AdvancedQueueEngine {
    */
   stopPatientTimer(patientId) {
     this.patientTimers.delete(patientId);
-    console.log(`[Queue] Patient ${patientId} timer stopped`);
+    ;
   }
 
   /**
@@ -341,7 +341,7 @@ class AdvancedQueueEngine {
       number: nextPatient.number
     });
     
-    console.log(`[Queue] Auto-called patient ${nextPatient.patientId} in ${clinicId}`);
+    ;
   }
 
   /**
@@ -356,7 +356,7 @@ class AdvancedQueueEngine {
       timeLeft: 60
     });
     
-    console.log(`[Queue] Warning sent to patient ${patientId}`);
+    ;
   }
 
   /**
@@ -396,7 +396,7 @@ class AdvancedQueueEngine {
       reason: 'timeout'
     });
     
-    console.log(`[Queue] Patient ${patientId} moved to end of ${clinicId} queue`);
+    ;
   }
 
   /**
@@ -420,7 +420,7 @@ class AdvancedQueueEngine {
       additionalTime: additionalSeconds
     });
     
-    console.log(`[Queue] Patient ${patientId} time extended by ${additionalSeconds}s`);
+    ;
     
     return { success: true, message: 'Time extended successfully' };
   }
