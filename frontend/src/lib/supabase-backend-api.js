@@ -660,11 +660,27 @@ export async function createPathway(patientId, gender, examType = 'general') {
 
 export async function getPathway(patientId) {
   try {
+    // Get patient's exam type first
+    const { data: queueEntry, error: queueError } = await supabase
+      .from('queue')
+      .select('exam_type')
+      .eq('patient_id', patientId)
+      .order('entered_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (queueError) throw queueError;
+    
+    if (!queueEntry || !queueEntry.exam_type) {
+      return { success: false, error: 'لا يوجد نوع فحص للمريض' };
+    }
+
+    // Get route for this exam type
     const { data: route, error } = await supabase
       .from('routes')
-      .select('*, route_steps(*)')
-      .eq('patient_id', patientId)
-      .eq('status', 'active')
+      .select('*')
+      .eq('exam_type', queueEntry.exam_type)
+      .eq('is_active', true)
       .maybeSingle();
 
     if (error) throw error;
@@ -673,7 +689,7 @@ export async function getPathway(patientId) {
       return { success: false, error: 'لا يوجد مسار نشط' };
     }
 
-    return { success: true, pathway: route };
+    return { success: true, pathway: route, route: route };
   } catch (error) {
     console.error('[getPathway] Error:', error);
     return { success: false, error: error.message };
