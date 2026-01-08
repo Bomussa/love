@@ -11,7 +11,7 @@ import authService from './lib/auth-service'
 import { DisplayPage } from './components/DisplayPage'
 import { ClinicLoginPage } from './components/ClinicLoginPage'
 import { ClinicDashboard } from './components/ClinicDashboard'
-import clinicPathways from './lib/dynamic-pathways'
+import getDynamicMedicalPathway from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
@@ -253,9 +253,10 @@ function App() {
             onExamSelect={async (examType) => {
               console.log('[App] onExamSelect called with examType:', examType);
               try {
-                const clinics = clinicPathways[examType]?.[patientData.gender] || []
+                // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
+                const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
                 
-                if (clinics.length === 0) {
+                if (!clinics || clinics.length === 0) {
                   console.error('[App] No clinics found for:', examType, patientData.gender);
                   throw new Error('No clinics found');
                 }
