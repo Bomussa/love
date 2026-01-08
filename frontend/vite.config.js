@@ -1,3 +1,4 @@
+// Build timestamp: 2026-01-08-07:05:00 - Force cache bust
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
