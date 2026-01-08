@@ -67,6 +67,11 @@ function App() {
   // ============= ADMIN SESSION MONITOR =============
   useEffect(() => {
     const checkAdminSession = () => {
+      // لا تفحص جلسة الإدارة إذا كان هناك مراجع مسجل
+      if (patientData) {
+        return false;
+      }
+      
       const adminSession = localStorage.getItem('mmc_admin_session');
       if (adminSession) {
         try {
@@ -92,7 +97,7 @@ function App() {
     // Check every 2 seconds
     const interval = setInterval(checkAdminSession, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [patientData]);
 
   // ============= ROUTING LOGIC =============
   useEffect(() => {
