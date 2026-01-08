@@ -11,6 +11,7 @@ import authService from './lib/auth-service'
 import { DisplayPage } from './components/DisplayPage'
 import { ClinicLoginPage } from './components/ClinicLoginPage'
 import { ClinicDashboard } from './components/ClinicDashboard'
+import clinicPathways from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
@@ -59,45 +60,20 @@ function App() {
     } catch (error) { return null }
   })
 
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(() => {
+    try {
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        const session = JSON.parse(adminSession);
+        return new Date(session.expiresAt) > new Date();
+      }
+    } catch (e) { return false }
+    return false
+  })
+
   const [currentView, setCurrentView] = useState('login')
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
   const [language, setLanguage] = useState(getCurrentLanguage())
-
-  // ============= ADMIN SESSION MONITOR =============
-  useEffect(() => {
-    const checkAdminSession = () => {
-      // لا تفحص جلسة الإدارة إذا كان هناك مراجع مسجل
-      if (patientData) {
-        return false;
-      }
-      
-      const adminSession = localStorage.getItem('mmc_admin_session');
-      if (adminSession) {
-        try {
-          const session = JSON.parse(adminSession);
-          const isValid = new Date(session.expiresAt) > new Date();
-          if (isValid) {
-            setIsAdmin(true);
-            setCurrentView('admin');
-            return true;
-          } else {
-            localStorage.removeItem('mmc_admin_session');
-          }
-        } catch (e) {
-          console.error('Admin session parse error:', e);
-        }
-      }
-      return false;
-    };
-    
-    // Check immediately
-    checkAdminSession();
-    
-    // Check every 2 seconds
-    const interval = setInterval(checkAdminSession, 2000);
-    return () => clearInterval(interval);
-  }, [patientData]);
 
   // ============= ROUTING LOGIC =============
   useEffect(() => {
@@ -105,9 +81,10 @@ function App() {
     
     const path = window.location.pathname;
     
-    // Priority 1: Patient flow (if patient just logged in)
+    // Priority 1: Patient flow
     if (patientData) {
-      setCurrentView(patientData.examType ? 'patient' : 'examSelection');
+      // If patient is logged in, they MUST NOT see admin screen
+      setCurrentView(patientData.queueType || patientData.examType ? 'patient' : 'examSelection');
       return;
     }
     
@@ -131,7 +108,7 @@ function App() {
       return;
     }
     
-    // Priority 3: QR Scan
+    // Priority 4: QR Scan
     if (path.includes('/qr')) {
       setCurrentView('qrscan');
       return;
@@ -185,7 +162,7 @@ function App() {
       console.log('[App] Patient login response:', res);
       
       if (res.success) {
-        // حذف جلسة الإدارة عند دخول المراجع
+        // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);
         
@@ -216,6 +193,10 @@ function App() {
       console.log('[App] Admin login result:', result);
       
       if (result.success) {
+        // Clear patient data when admin logs in
+        localStorage.removeItem('patientData');
+        setPatientData(null);
+        
         setIsAdmin(true)
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
@@ -235,7 +216,7 @@ function App() {
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
-    window.history.pushState({}, '', window.location.pathname)
+    window.history.pushState({}, '', '/')
   }
 
   // ============= LANGUAGE TOGGLE =============
@@ -272,21 +253,31 @@ function App() {
             onExamSelect={async (examType) => {
               console.log('[App] onExamSelect called with examType:', examType);
               try {
-                const clinics = require('./lib/clinic-pathways').default[examType]?.[patientData.gender] || []
-                if (clinics.length === 0) throw new Error('No clinics found')
+                const clinics = clinicPathways[examType]?.[patientData.gender] || []
+                
+                if (clinics.length === 0) {
+                  console.error('[App] No clinics found for:', examType, patientData.gender);
+                  throw new Error('No clinics found');
+                }
                 
                 const firstClinic = clinics[0].id
+                console.log('[App] Entering queue for clinic:', firstClinic);
+                
                 const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
+                console.log('[App] Queue response:', queueRes);
                 
                 if (queueRes.success) {
-                  setPatientData({
+                  const updatedPatientData = {
                     ...patientData,
                     queueType: examType,
                     currentClinic: firstClinic,
                     queueNumber: queueRes.display_number || queueRes.number,
                     ahead: queueRes.ahead || 0,
                     pathway: clinics
-                  })
+                  };
+                  
+                  setPatientData(updatedPatientData)
+                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
                   setCurrentView('patient')
                   showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
                 } else {
@@ -297,7 +288,11 @@ function App() {
                 showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
               }
             }}
-            onBack={() => setCurrentView('login')}
+            onBack={() => {
+              localStorage.removeItem('patientData');
+              setPatientData(null);
+              setCurrentView('login');
+            }}
             language={language}
             toggleLanguage={toggleLanguage}
           />
