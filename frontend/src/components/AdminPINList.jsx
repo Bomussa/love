@@ -44,29 +44,18 @@ export function AdminPINList({ language = 'ar' }) {
       if (clinicsRes.success) {
         setClinics(clinicsRes.clinics)
         
-        // جلب PIN لكل عيادة
+        // جلب PIN لكل عيادة مباشرة من جدول clinics
         const pinsData = {}
         for (const clinic of clinicsRes.clinics) {
-          try {
-            const pinRes = await api.getCurrentPIN(clinic.id)
-            if (pinRes.success && pinRes.pin) {
-              pinsData[clinic.id] = {
-                pin: pinRes.pin,
-                createdAt: pinRes.createdAt,
-                expiresAt: pinRes.expiresAt,
-                status: 'active'
-              }
-            } else {
-              pinsData[clinic.id] = {
-                pin: null,
-                status: 'none'
-              }
-            }
-          } catch (err) {
-            pinsData[clinic.id] = {
-              pin: null,
-              status: 'error'
-            }
+          // استخدام البيانات الموجودة في clinic مباشرة
+          const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null
+          const isActive = clinic.pin_code && expires && expires > new Date()
+          
+          pinsData[clinic.id] = {
+            pin: clinic.pin_code || null,
+            createdAt: clinic.created_at,
+            expiresAt: clinic.pin_expires_at,
+            status: isActive ? 'active' : 'none'
           }
         }
         setPins(pinsData)
