@@ -2,6 +2,7 @@
 import './core/notification-engine.js';
 import React, { useState, useEffect } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
+import { inject } from '@vercel/analytics'
 import { LoginPage } from './components/LoginPage'
 import { ExamSelectionPage } from './components/ExamSelectionPage'
 import { PatientPage } from './components/PatientPage'
@@ -45,6 +46,11 @@ class AdminErrorBoundary extends React.Component {
 }
 
 function App() {
+  // Initialize Vercel Web Analytics
+  useEffect(() => {
+    inject();
+  }, []);
+
   const [clinicSession, setClinicSession] = useState(() => {
     try {
       const stored = localStorage.getItem('mmc_clinic_session')
