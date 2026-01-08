@@ -100,13 +100,19 @@ function App() {
     
     const path = window.location.pathname;
     
-    // Priority 1: Admin
+    // Priority 1: Patient flow (if patient just logged in)
+    if (patientData) {
+      setCurrentView(patientData.examType ? 'patient' : 'examSelection');
+      return;
+    }
+    
+    // Priority 2: Admin
     if (isAdmin) {
       setCurrentView('admin');
       return;
     }
     
-    // Priority 2: Clinic routes
+    // Priority 3: Clinic routes
     if (path.includes('/clinic/login')) {
       setCurrentView('clinic_login');
       return;
@@ -123,12 +129,6 @@ function App() {
     // Priority 3: QR Scan
     if (path.includes('/qr')) {
       setCurrentView('qrscan');
-      return;
-    }
-    
-    // Priority 4: Patient flow
-    if (patientData) {
-      setCurrentView(patientData.examType ? 'patient' : 'examSelection');
       return;
     }
     
@@ -180,6 +180,10 @@ function App() {
       console.log('[App] Patient login response:', res);
       
       if (res.success) {
+        // حذف جلسة الإدارة عند دخول المراجع
+        localStorage.removeItem('mmc_admin_session');
+        setIsAdmin(false);
+        
         setPatientData(res.data)
         localStorage.setItem('patientData', JSON.stringify(res.data))
         setCurrentView('examSelection')
