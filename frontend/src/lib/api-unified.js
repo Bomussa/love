@@ -67,6 +67,10 @@ class UnifiedApiService {
     return this.backend.getPathway(patientId);
   }
 
+  async getRoute(patientId) {
+    return this.backend.getRoute(patientId);
+  }
+
   async createPathway(patientId, gender) {
     return this.backend.createPathway(patientId, gender);
   }

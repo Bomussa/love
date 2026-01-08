@@ -680,6 +680,11 @@ export async function getPathway(patientId) {
   }
 }
 
+// Alias for getPathway - used by PatientPage.jsx
+export async function getRoute(patientId) {
+  return getPathway(patientId);
+}
+
 export async function updatePathwayStep(patientId, stepId, status = 'completed') {
   try {
     // تحديث الخطوة الحالية
@@ -1001,6 +1006,7 @@ export default {
   // Pathways
   createPathway,
   getPathway,
+  getRoute,
   updatePathwayStep,
   
   // Reports
