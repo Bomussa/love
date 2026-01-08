@@ -10,6 +10,8 @@ import authService from '../lib/auth-service'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
 import { AdminPINMonitor } from './AdminPINMonitor'
 import { ClinicsConfiguration } from './ClinicsConfiguration'
+import { EnhancedAdminDashboard } from './EnhancedAdminDashboard'
+import { AdminReports } from './AdminReports'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange, systemHealth }) {
   const [session, setSession] = useState(() => authService.getSession())
@@ -65,9 +67,11 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
 
   const menuItems = [
     { id: 'dashboard', icon: Home, label: isRTL ? 'لوحة التحكم' : 'Dashboard' },
-    { id: 'queues', icon: Clock, label: isRTL ? 'مراقبة الطوابير' : 'Queue Monitor' },
-    { id: 'pins', icon: Shield, label: isRTL ? 'إدارة الرموز (PIN)' : 'PIN Manager' },
-    { id: 'settings', icon: Settings, label: isRTL ? 'إعدادات العيادات' : 'Clinic Settings' },
+    { id: 'enhanced', icon: Activity, label: isRTL ? 'لوحة التحكم المحسنة' : 'Enhanced Dashboard' },
+    { id: 'queues', icon: Clock, label: isRTL ? 'إدارة الطوابير' : 'Queue Management' },
+    { id: 'pins', icon: Shield, label: isRTL ? 'إدارة الأرقام السرية' : 'PIN Management' },
+    { id: 'reports', icon: FileText, label: isRTL ? 'التقارير' : 'Reports' },
+    { id: 'settings', icon: Settings, label: isRTL ? 'تكوين العيادات' : 'Clinic Configuration' },
   ]
 
   return (
@@ -214,6 +218,14 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
                   </select>
                   <AdminPINMonitor clinicId={selectedClinic} autoRefresh={true} />
               </div>
+            )}
+
+            {currentView === 'enhanced' && (
+              <EnhancedAdminDashboard language={language} onLogout={handleLogout} />
+            )}
+
+            {currentView === 'reports' && (
+              <AdminReports language={language} />
             )}
 
             {currentView === 'settings' && (
