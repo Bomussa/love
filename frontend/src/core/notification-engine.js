@@ -15,29 +15,36 @@ let toast;
 
   // Real-time listeners for frontend notifications
   eventBus.on('queue:near_turn', (data) => {
-    toast.success(`يقترب دورك في ${data?.clinicName || 'العيادة'}`);
+    if (toast) toast.success(`يقترب دورك في ${data?.clinicName || 'العيادة'}`);
   });
 
   eventBus.on('queue:your_turn', (data) => {
-    toast.loading(`الآن دورك في ${data?.clinicName || 'العيادة'}`);
-    if (navigator.vibrate) navigator.vibrate(200);
-    new Audio('/sounds/notify.mp3').play().catch(() => { });
+    if (toast) {
+      toast.loading(`الآن دورك في ${data?.clinicName || 'العيادة'}`);
+      if (navigator.vibrate) navigator.vibrate(200);
+      new Audio('/sounds/notify.mp3').play().catch(() => { });
+    }
   });
 
   eventBus.on('queue:step_done', (data) => {
-    toast.success(
-      data?.nextClinic
-        ? `تم إنهاء الفحص، توجه إلى ${data.nextClinic}`
-        : `تم إنهاء الفحص، انتظر التعليمات`
-    );
+    if (toast) {
+      toast.success(
+        data?.nextClinic
+          ? `تم إنهاء الفحص، توجه إلى ${data.nextClinic}`
+          : `تم إنهاء الفحص، انتظر التعليمات`
+      );
+    }
   });
 
   // Manual test helper
   window.testNotify = () => {
-    toast.success('🔔 اختبار إشعار ناجح!');
-    if (navigator.vibrate) navigator.vibrate(100);
+    if (toast) {
+      toast.success('🔔 اختبار إشعار ناجح!');
+      if (navigator.vibrate) navigator.vibrate(100);
+    }
   };
 })();
+
 // محرك الإشعارات الفوري - Real-time Notifications
 // يعمل لحظياً بدون أي تأخير
 
@@ -86,8 +93,6 @@ class RealtimeNotificationEngine {
 
     // تحميل الإشعارات السابقة من localStorage
     this.loadFromStorage(patientId)
-
-    // لا نرسل إشعار ترحيب تلقائياً - فقط عند الطلب الصريح
 
     // إرجاع دالة إلغاء الاشتراك
     return () => {
