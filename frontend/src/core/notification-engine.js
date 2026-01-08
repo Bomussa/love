@@ -7,11 +7,10 @@ let toast;
     toast = importedToast;
   } catch (err) {
     toast = {
-      success: (msg) => ,
-      error: (msg) => ,
+      success: (msg) => console.info('[Toast ✅]', msg),
+      error: (msg) => console.error('[Toast ❌]', msg),
       loading: (msg) => console.info('[Toast ⏳]', msg),
     };
-
   }
 
   // Real-time listeners for frontend notifications
@@ -374,69 +373,81 @@ class RealtimeNotificationEngine {
    */
   playSound(priority = 'normal') {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const oscillator = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
-
-      oscillator.connect(gainNode)
-      gainNode.connect(audioContext.destination)
-
-      // تحديد التردد والصوت حسب الأولوية
-      switch (priority) {
-        case 'urgent':
-          oscillator.frequency.value = 880 // A5
-          gainNode.gain.value = 0.3
-          oscillator.start()
-          setTimeout(() => {
-            oscillator.frequency.value = 1046 // C6
-          }, 100)
-          setTimeout(() => oscillator.stop(), 300)
-          break
-
-        case 'high':
-          oscillator.frequency.value = 659 // E5
-          gainNode.gain.value = 0.2
-          oscillator.start()
-          setTimeout(() => oscillator.stop(), 200)
-          break
-
-        default:
-          oscillator.frequency.value = 523 // C5
-          gainNode.gain.value = 0.15
-          oscillator.start()
-          setTimeout(() => oscillator.stop(), 150)
-      }
+      const audio = new Audio(priority === 'urgent' ? '/sounds/urgent.mp3' : '/sounds/notify.mp3')
+      audio.play().catch(e => {
+        // console.warn('Audio play failed:', e)
+      })
     } catch (e) {
-
+      // console.error('Error playing sound:', e)
     }
   }
 
   /**
-   * عرض إشعار المتصفح
+   * إظهار إشعار المتصفح
    */
-  async showBrowserNotification(notification) {
-    if ('Notification' in window && Notification.permission === 'granted') {
+  showBrowserNotification(notification) {
+    if (!('Notification' in window)) return
+
+    if (Notification.permission === 'granted') {
       new Notification(notification.title, {
         body: notification.message,
-        icon: '/logo.png',
-        badge: '/logo.png',
-        tag: notification.id,
-        requireInteraction: notification.priority === 'urgent'
+        icon: '/logo.png'
       })
-    } else if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission()
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification(notification.title, {
+            body: notification.message,
+            icon: '/logo.png'
+          })
+        }
+      })
     }
   }
 
-  // === إدارة الإشعارات ===
+  // === إدارة التخزين ===
 
-  /**
-   * وضع علامة مقروء
-   */
+  saveToStorage(patientId) {
+    const data = this.notifications.get(patientId) || []
+    localStorage.setItem(`notifications_${patientId}`, JSON.stringify(data))
+  }
+
+  loadFromStorage(patientId) {
+    try {
+      const data = localStorage.getItem(`notifications_${patientId}`)
+      if (data) {
+        this.notifications.set(patientId, JSON.parse(data))
+      }
+    } catch (e) {
+      // console.error('Error loading notifications:', e)
+    }
+  }
+
+  loadAdminNotifications() {
+    try {
+      const data = localStorage.getItem('admin_notifications')
+      if (data) {
+        this.adminNotifications = JSON.parse(data)
+      }
+    } catch (e) {
+      // console.error('Error loading admin notifications:', e)
+    }
+  }
+
+  // === وظائف مساعدة ===
+
+  getNotifications(patientId) {
+    return this.notifications.get(patientId) || []
+  }
+
+  getAdminNotifications() {
+    return this.adminNotifications
+  }
+
   markAsRead(patientId, notificationId) {
-    const notifications = this.notifications.get(patientId)
-    if (notifications) {
-      const notification = notifications.find(n => n.id === notificationId)
+    const data = this.notifications.get(patientId)
+    if (data) {
+      const notification = data.find(n => n.id === notificationId)
       if (notification) {
         notification.read = true
         this.saveToStorage(patientId)
@@ -444,113 +455,28 @@ class RealtimeNotificationEngine {
     }
   }
 
-  /**
-   * وضع علامة مقروء على الكل
-   */
-  markAllAsRead(patientId) {
-    const notifications = this.notifications.get(patientId)
-    if (notifications) {
-      notifications.forEach(n => n.read = true)
-      this.saveToStorage(patientId)
+  markAdminAsRead(notificationId) {
+    const notification = this.adminNotifications.find(n => n.id === notificationId)
+    if (notification) {
+      notification.read = true
+      localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications))
     }
   }
 
-  /**
-   * الحصول على جميع الإشعارات
-   */
-  getNotifications(patientId) {
-    return this.notifications.get(patientId) || []
-  }
-
-  /**
-   * الحصول على الإشعارات غير المقروءة
-   */
-  getUnreadNotifications(patientId) {
-    const notifications = this.notifications.get(patientId) || []
-    return notifications.filter(n => !n.read)
-  }
-
-  /**
-   * مسح جميع الإشعارات
-   */
-  clearAll(patientId) {
+  clearNotifications(patientId) {
     this.notifications.delete(patientId)
     localStorage.removeItem(`notifications_${patientId}`)
   }
 
-  // === التخزين ===
-
-  saveToStorage(patientId) {
-    const notifications = this.notifications.get(patientId)
-    if (notifications) {
-      localStorage.setItem(`notifications_${patientId}`, JSON.stringify(notifications))
-    }
-  }
-
-  loadFromStorage(patientId) {
-    const stored = localStorage.getItem(`notifications_${patientId}`)
-    if (stored) {
-      try {
-        const notifications = JSON.parse(stored)
-        this.notifications.set(patientId, notifications)
-      } catch (e) {
-        // console.error('Error loading notifications:', e)
-      }
-    }
-  }
-
-  loadAdminNotifications() {
-    const stored = localStorage.getItem('admin_notifications')
-    if (stored) {
-      try {
-        this.adminNotifications = JSON.parse(stored)
-      } catch (e) {
-        // console.error('Error loading admin notifications:', e)
-      }
-    }
-  }
-
-  // === Event Bus Integration ===
-
   setupEventBusListeners() {
-    // الاستماع للأحداث من أجزاء أخرى من التطبيق
-    eventBus.on('queue:near_turn', ({ patientId, clinicName, position }) => {
-      this.sendNearTurn(patientId, clinicName, position)
-    })
-
-    eventBus.on('queue:your_turn', ({ patientId, clinicName, number }) => {
-      this.sendYourTurn(patientId, clinicName, number)
-    })
-
-    eventBus.on('queue:step_done', ({ patientId, currentClinic, nextClinic }) => {
-      this.sendStepDone(patientId, currentClinic, nextClinic)
-    })
-
-    eventBus.on('queue:update', ({ patientId, clinicName, position, totalWaiting }) => {
-      this.sendQueueUpdate(patientId, clinicName, position, totalWaiting)
-    })
-
-    eventBus.on('clinic:opened', ({ clinicName, pin }) => {
-      this.sendClinicOpened(clinicName, pin)
-    })
-
-    eventBus.on('clinic:closed', ({ clinicName }) => {
-      this.sendClinicClosed(clinicName)
-    })
-
-    eventBus.on('pin:generated', ({ clinicName, pin }) => {
-      this.sendPINGenerated(clinicName, pin)
-    })
-
-    eventBus.on('system:reset', () => {
-      this.sendResetDone()
-    })
+    // الاستماع لأحداث النظام العامة وتحويلها لإشعارات
+    eventBus.on('system:reset', () => this.sendResetDone())
+    eventBus.on('clinic:opened', (data) => this.sendClinicOpened(data.name, data.pin))
+    eventBus.on('clinic:closed', (data) => this.sendClinicClosed(data.name))
+    eventBus.on('pin:generated', (data) => this.sendPINGenerated(data.clinicName, data.pin))
   }
 }
 
-// Singleton instance
+// تصدير نسخة وحيدة (Singleton)
 const notificationEngine = new RealtimeNotificationEngine()
-
 export default notificationEngine
-export { RealtimeNotificationEngine, NOTIFICATION_TYPES }
-
