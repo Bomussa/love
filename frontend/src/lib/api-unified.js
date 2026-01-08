@@ -1,411 +1,116 @@
 /**
- * Unified API Layer
- * Switches between Local Storage and Supabase Backend
- * Updated: Nov 6, 2025 - Added Supabase support
+ * Unified API Layer - Medical Committee System
+ * المصدر الوحيد للحقيقة: توجيه كافة الطلبات عبر Backend API (api.mmc-mms.com)
+ * يمنع الاتصال المباشر بـ Supabase من الواجهة الأمامية لضمان الأمان وتوحيد المنطق.
  */
 
-import localApi from './local-api';
-import supabaseApi from './supabase-backend-api';
-import vercelApi from './vercel-api-client';
+const API_BASE_URL = 'https://api.mmc-mms.com/api/v1';
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
-// Set to 'vercel' to use Vercel API endpoints (recommended for production)
-// Set to 'supabase' to use direct Supabase connection
-// Set to 'local' for Local Storage (development only)
-const BACKEND_MODE = 'vercel'; // Using Vercel API (recommended for production)
-
-console.log(`🔧 API Mode: ${BACKEND_MODE.toUpperCase()}`);
-
-// ==========================================
-// API WRAPPER CLASS
-// ==========================================
 class UnifiedApiService {
   constructor() {
-    if (BACKEND_MODE === 'vercel') {
-      this.backend = vercelApi;
-    } else if (BACKEND_MODE === 'supabase') {
-      this.backend = supabaseApi;
-    } else {
-      this.backend = localApi;
+    this.baseUrl = API_BASE_URL;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'API Request failed');
     }
-    this.mode = BACKEND_MODE;
+
+    return await response.json();
   }
 
   // ==========================================
   // PATIENT MANAGEMENT
   // ==========================================
-
   async patientLogin(patientId, gender) {
-    try {
-      const result = await this.backend.patientLogin(patientId, gender);
-      return result;
-    } catch (error) {
-      console.error('Error in patientLogin:', error);
-      return { success: false, error: error.message };
-    }
+    return this.request('/patients/login', {
+      method: 'POST',
+      body: JSON.stringify({ patientId, gender }),
+    });
   }
 
   // ==========================================
   // QUEUE MANAGEMENT
   // ==========================================
-
-  async enterQueue(clinic, user, isAutoEntry = false) {
-    try {
-      const result = await this.backend.enterQueue(clinic, user, isAutoEntry);
-      return result;
-    } catch (error) {
-      console.error('Error in enterQueue:', error);
-      return { success: false, error: error.message };
-    }
+  async enterQueue(clinicId, patientId, isAutoEntry = false) {
+    return this.request('/queue/enter', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, patientId, isAutoEntry }),
+    });
   }
 
-  async getQueueStatus(clinic) {
-    try {
-      const result = await this.backend.getQueueStatus(clinic);
-      return result;
-    } catch (error) {
-      console.error('Error in getQueueStatus:', error);
-      return { success: false, error: error.message };
-    }
+  async getQueueStatus(clinicId) {
+    return this.request(`/queue/status/${clinicId}`);
   }
 
-  async queueDone(clinic, user, pin) {
-    try {
-      const result = await this.backend.queueDone(clinic, user, String(pin));
-      return result;
-    } catch (error) {
-      console.error('Error in queueDone:', error);
-      return { success: false, error: error.message };
-    }
+  async queueDone(clinicId, patientId, pin) {
+    return this.request('/queue/done', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, patientId, pin }),
+    });
   }
 
-  async getQueuePosition(clinic, user) {
-    try {
-      if (this.mode === 'supabase') {
-        const result = await this.backend.getPatientPosition(clinic, user);
-        return {
-          success: result.success,
-          display_number: result.displayNumber,
-          ahead: result.ahead,
-          total_waiting: result.ahead + 1
-        };
-      } else {
-        const queueStatus = await this.backend.getQueueStatus(clinic);
-        return {
-          success: queueStatus.success,
-          display_number: queueStatus.yourNumber || 1,
-          ahead: queueStatus.ahead || 0,
-          total_waiting: queueStatus.waiting || 1
-        };
-      }
-    } catch (error) {
-      console.error('Error in getQueuePosition:', error);
-      return { success: false, error: error.message };
-    }
+  async callNextPatient(clinicId, pin) {
+    return this.request('/queue/next', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, pin }),
+    });
+  }
+
+  async getQueuePosition(clinicId, patientId) {
+    return this.request(`/queue/position/${clinicId}/${patientId}`);
   }
 
   // ==========================================
   // PIN MANAGEMENT
   // ==========================================
+  async generatePIN(clinicId) {
+    return this.request('/pin/generate', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId }),
+    });
+  }
 
-  async getPinStatus() {
-    try {
-      const result = await this.backend.getPinStatus();
-      return result;
-    } catch (error) {
-      console.error('Error in getPinStatus:', error);
-      return { success: false, error: error.message };
-    }
+  async verifyPin(clinicId, pin) {
+    return this.request('/pin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, pin }),
+    });
   }
 
   // ==========================================
   // PATHWAY MANAGEMENT
   // ==========================================
-
-  async choosePath(gender) {
-    try {
-      if (this.mode === 'supabase') {
-        const patientData = JSON.parse(localStorage.getItem('patient') || '{}');
-        const result = await this.backend.createPathway(patientData.id, gender);
-        return result;
-      } else {
-        return this.backend.choosePath(gender);
-      }
-    } catch (error) {
-      console.error('Error in choosePath:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getRoute(patientId) {
-    try {
-      if (this.mode === 'supabase') {
-        const result = await this.backend.getPathway(patientId);
-        return result;
-      } else {
-        return { success: false, error: 'No saved route found' };
-      }
-    } catch (error) {
-      console.error('Error in getRoute:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // ==========================================
-  // NOTIFICATION MANAGEMENT
-  // ==========================================
-
-  async getNotifications(patientId, unreadOnly = false) {
-    try {
-      const result = await this.backend.getNotifications(patientId, unreadOnly);
-      return result;
-    } catch (error) {
-      console.error('Error in getNotifications:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async addNotification(patientId, message, type = 'info') {
-    try {
-      const result = await this.backend.addNotification(patientId, message, type);
-      return result;
-    } catch (error) {
-      console.error('Error in addNotification:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // ==========================================
-  // CLINIC MANAGEMENT
-  // ==========================================
-
-  async getClinics() {
-    try {
-      if (this.mode === 'supabase') {
-        const result = await this.backend.getClinics();
-        return result;
-      } else {
-        return this.backend.getClinics();
-      }
-    } catch (error) {
-      console.error('Error in getClinics:', error);
-      return { success: false, error: error.message };
-    }
+  async getPathway(patientId) {
+    return this.request(`/pathway/${patientId}`);
   }
 
   // ==========================================
   // REPORTS & STATISTICS
   // ==========================================
-
-  async getDailyReport(date) {
-    try {
-      const result = await this.backend.getDailyReport(date);
-      return result;
-    } catch (error) {
-      console.error('Error in getDailyReport:', error);
-      return { success: false, error: error.message };
-    }
+  async getClinics() {
+    return this.request('/clinics');
   }
 
-  async getWeeklyReport(week) {
-    try {
-      if (this.mode === 'local') {
-        return this.backend.getWeeklyReport(week);
-      } else {
-        return { success: false, error: 'Weekly report not implemented for Supabase yet' };
-      }
-    } catch (error) {
-      console.error('Error in getWeeklyReport:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getMonthlyReport(year, month) {
-    try {
-      if (this.mode === 'local') {
-        return this.backend.getMonthlyReport(year, month);
-      } else {
-        return { success: false, error: 'Monthly report not implemented for Supabase yet' };
-      }
-    } catch (error) {
-      console.error('Error in getMonthlyReport:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getAnnualReport(year) {
-    try {
-      if (this.mode === 'local') {
-        return this.backend.getAnnualReport(year);
-      } else {
-        return { success: false, error: 'Annual report not implemented for Supabase yet' };
-      }
-    } catch (error) {
-      console.error('Error in getAnnualReport:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getAdminStatus() {
-    try {
-      const result = await this.backend.getAdminStatus();
-      return result;
-    } catch (error) {
-      console.error('Error in getAdminStatus:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getQueues() {
-    try {
-      if (this.mode === 'local') {
-        return this.backend.getQueues();
-      } else {
-        // Get all clinics and their queue status
-        const clinicsResult = await this.backend.getClinics();
-        if (!clinicsResult.success) return clinicsResult;
-
-        const queues = {};
-        for (const clinic of clinicsResult.clinics) {
-          const status = await this.backend.getQueueStatus(clinic.id);
-          if (status.success) {
-            queues[clinic.id] = {
-              waiting: status.waiting,
-              serving: status.serving,
-              completed: 0
-            };
-          }
-        }
-
-        return { success: true, queues };
-      }
-    } catch (error) {
-      console.error('Error in getQueues:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getDashboardStats() {
-    return this.getAdminStatus();
-  }
-
-  async getHealthStatus() {
-    return { success: true, status: 'healthy', mode: this.mode };
-  }
-
-  // ==========================================
-  // COMPATIBILITY METHODS
-  // ==========================================
-
-  async enterClinic(visitId, clinicId) {
-    return this.enterQueue(clinicId, visitId);
-  }
-
-  async completeClinic(clinicId, user, pin) {
-    return this.queueDone(clinicId, user, pin);
-  }
-
-  async callNextPatient(clinic) {
-    return { success: true, message: 'Call next patient' };
-  }
-
-  async selectExam(patientId, examType) {
-    return { success: true, patientId, examType, status: 'selected' };
-  }
-
-  async getActiveQueue() {
-    return this.getQueues();
-  }
-
-  async getClinicOccupancy() {
-    return this.getQueues();
-  }
-
-  async getWaitTimes() {
-    return this.getQueues();
-  }
-
-  async getThroughputStats() {
-    return this.getAdminStatus();
-  }
-
-  async getQueueStats() {
-    return this.getAdminStatus();
-  }
-
-  async adminLogin(code) {
-    return { success: code === 'admin123', token: 'mock-token' };
-  }
-
-  async pauseQueue(queueType, adminCode) {
-    return { success: true, message: 'Queue paused' };
-  }
-
-  async resetSystem(adminCode) {
-    return { success: true, message: 'System reset' };
-  }
-
-  async generatePIN(stationId, adminCode) {
-    return this.getPinStatus();
-  }
-
-  async deactivatePIN(pinId, adminCode) {
-    return { success: true, message: 'PIN deactivated' };
-  }
-
-  async getActivePINs(adminCode) {
-    return this.getPinStatus();
-  }
-
-  async generateReport(type, format, adminCode) {
-    return { success: true, report: 'Generated' };
-  }
-
-  async getRecentReports(adminCode) {
-    return { success: true, reports: [] };
-  }
-
-  async createRoute(patientId, examType, gender, stations) {
-    return { success: true, message: 'Route created successfully' };
-  }
-
-  // ==========================================
-  // REAL-TIME CONNECTIONS
-  // ==========================================
-
-  connectSSE(clinic, callback) {
-    // Polling fallback for SSE
-    const pollInterval = setInterval(async () => {
-      try {
-        const status = await this.getQueueStatus(clinic);
-        if (status.success) {
-          callback({ type: 'queue_update', data: status });
-        }
-      } catch (e) {
-        console.error('Polling error:', e);
-      }
-    }, 5000);
-
-    return {
-      close: () => clearInterval(pollInterval)
-    };
-  }
-
-  connectWebSocket() {
-    return {
-      onopen: () => {},
-      onclose: () => {},
-      onerror: () => {},
-      close: () => {}
-    };
+  async adminLogin(username, password) {
+    return this.request('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
   }
 }
-
-// ==========================================
-// EXPORT
-// ==========================================
 
 const api = new UnifiedApiService();
 export default api;

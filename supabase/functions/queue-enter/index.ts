@@ -7,7 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "https://mmc-mms.com",
+  "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
 };
@@ -19,52 +19,50 @@ serve(async (req: Request) => {
 
   try {
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { clinic_id, patient_id } = await req.json();
+    const body = await req.json();
+    
+    // Support both naming conventions
+    const clinic_id = body.clinic_id || body.clinic;
+    const patient_id = body.patient_id || body.user;
+    const patient_name = body.patient_name || body.name || patient_id;
+    const exam_type = body.exam_type || body.examType || "general";
 
     if (!clinic_id || !patient_id) {
       return new Response(
-        JSON.stringify({ success: false, error: "clinic_id and patient_id required" }),
+        JSON.stringify({ success: false, error: "clinic and user are required" }),
         { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Get next display number
-    const { data: nextNum, error: e1 } = await db.rpc("get_next_display_number", {
-      p_clinic_id: clinic_id,
-    });
+    // Use the enter_queue_v2 function which handles all the logic
+    const { data: result, error: rpcError } = await db
+      .rpc('enter_queue_v2', {
+        p_clinic_id: clinic_id,
+        p_patient_id: patient_id,
+        p_patient_name: patient_name,
+        p_exam_type: exam_type
+      });
 
-    if (e1) throw e1;
-
-    // Insert into queue
-    const { data: inserted, error: e2 } = await db
-      .from("queues")
-      .insert({
-        clinic_id,
-        patient_id,
-        display_number: nextNum,
-        status: "waiting",
-        entered_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (e2) throw e2;
+    if (rpcError) throw rpcError;
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          queue_id: inserted.id,
-          display_number: inserted.display_number,
-          clinic_id: inserted.clinic_id,
-          status: inserted.status,
+          clinic_id: result.clinic,
+          patient_id: result.user,
+          position: result.number,
+          status: result.status,
+          message: result.message || 'Entered queue successfully'
         },
       }),
       { headers: { "content-type": "application/json", ...corsHeaders } }
     );
-  } catch (err) {
+  } catch (err: any) {
+    const errorMessage = err?.message || err?.error?.message || JSON.stringify(err) || String(err);
+    console.error("queue-enter error:", errorMessage, err);
     return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred" }),
       { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
     );
   }

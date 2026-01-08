@@ -33,10 +33,29 @@
   * {
     @apply border-border;
   }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
     background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
     min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  #root {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 }
 

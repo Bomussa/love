@@ -58,7 +58,7 @@ class EventBus {
 
     // تسجيل في console للتطوير
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-      // console.log(`[EventBus] ${event}:`, data)
+      // 
     }
   }
 
@@ -186,27 +186,27 @@ function disconnectSSE() {
 
 // الاتصال التلقائي عند تحميل الصفحة
 if (typeof window !== 'undefined') {
-  // تفعيل SSE للاتصال الحي
-  setTimeout(() => {
-    connectToSSE();
-  }, 1000);
+  // تعطيل SSE مؤقتاً - الاعتماد على polling فقط
+  // setTimeout(() => {
+  //   connectToSSE();
+  // }, 1000);
 
-  // إعادة الاتصال عند عودة الصفحة من hidden
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !sseConnection) {
-      console.log('[EventBus] Page visible, reconnecting SSE...');
-      connectToSSE();
-    }
-  });
+  // // إعادة الاتصال عند عودة الصفحة من hidden
+  // document.addEventListener('visibilitychange', () => {
+  //   if (!document.hidden && !sseConnection) {
+  //     ;
+  //     connectToSSE();
+  //   }
+  // });
 
   // تصدير للاستخدام اليدوي
   window.eventBusSSE = {
     connect: connectToSSE,
     disconnect: disconnectSSE,
-    isConnected: () => sseConnection !== null
+    isConnected: () => false // Always return false when SSE disabled
   };
   
-  console.log('ℹ️ [EventBus] SSE enabled - connecting to realtime events');
+  ;
 }
 
 export { connectToSSE, disconnectSSE };

@@ -5,13 +5,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration from environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
-}
+// Supabase configuration - Production values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODcyNjUsImV4cCI6MjA3Njk2MzI2NX0.HnrSwc7OZTqZRzCwzBH8hqtgtHMBix4yxy0RKvRDX10';
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -32,7 +28,7 @@ export async function testConnection() {
   try {
     const { data, error } = await supabase.from('clinics').select('count');
     if (error) throw error;
-    console.log('✅ Supabase connection successful');
+    ;
     return true;
   } catch (error) {
     console.error('❌ Supabase connection failed:', error);

@@ -118,15 +118,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         let examStations = null
         
         // محاولة جلب المسار المحفوظ أولاً
-        try {
-          const savedRoute = await api.getRoute(patientData.id)
-          if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
-            examStations = savedRoute.route.stations
-
-          }
-        } catch (err) {
-
-        }
+        // TODO: إضافة دالة getRoute في API
+        // try {
+        //   const savedRoute = await api.getRoute(patientData.id)
+        //   if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
+        //     examStations = savedRoute.route.stations
+        //   }
+        // } catch (err) {
+        //   
+        // }
         
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
@@ -690,7 +690,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         show={true}
                         language={language}
                         onTimeout={() => {
-                          console.log('Countdown timeout for station:', station.id)
+                          
                         }}
                       />
                     </div>
