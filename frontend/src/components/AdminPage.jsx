@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   Users, Settings, FileText, LogOut, Clock, CheckCircle, Activity,
-  RefreshCw, Globe, Shield, AlertTriangle, Home, Menu, X
+  RefreshCw, Globe, Shield, AlertTriangle, Home, Menu, X, List
 } from 'lucide-react'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
@@ -12,6 +12,7 @@ import { AdminPINMonitor } from './AdminPINMonitor'
 import { ClinicsConfiguration } from './ClinicsConfiguration'
 import { EnhancedAdminDashboard } from './EnhancedAdminDashboard'
 import { AdminReports } from './AdminReports'
+import { AdminPINList } from './AdminPINList'
 
 export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, onThemeChange, systemHealth }) {
   const [session, setSession] = useState(() => authService.getSession())
@@ -69,7 +70,8 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     { id: 'dashboard', icon: Home, label: isRTL ? 'لوحة التحكم' : 'Dashboard' },
     { id: 'enhanced', icon: Activity, label: isRTL ? 'لوحة التحكم المحسنة' : 'Enhanced Dashboard' },
     { id: 'queues', icon: Clock, label: isRTL ? 'إدارة الطوابير' : 'Queue Management' },
-    { id: 'pins', icon: Shield, label: isRTL ? 'إدارة الأرقام السرية' : 'PIN Management' },
+    { id: 'pins', icon: Shield, label: isRTL ? 'مراقبة PIN' : 'PIN Monitor' },
+    { id: 'pinlist', icon: List, label: isRTL ? 'قائمة الأرقام السرية' : 'PIN List' },
     { id: 'reports', icon: FileText, label: isRTL ? 'التقارير' : 'Reports' },
     { id: 'settings', icon: Settings, label: isRTL ? 'تكوين العيادات' : 'Clinic Configuration' },
   ]
@@ -226,6 +228,10 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
 
             {currentView === 'reports' && (
               <AdminReports language={language} />
+            )}
+
+            {currentView === 'pinlist' && (
+              <AdminPINList language={language} />
             )}
 
             {currentView === 'settings' && (
