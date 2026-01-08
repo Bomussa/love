@@ -820,3 +820,429 @@ body {
   }
 }
 
+
+/* ======================================
+   21. تحسينات للشاشات الكبيرة جداً (Desktop)
+   ====================================== */
+
+@media (min-width: 1920px) {
+  /* تحسين حجم الخط على الشاشات الكبيرة */
+  body {
+    font-size: 16px;
+  }
+
+  h1, .text-3xl {
+    font-size: 2.5rem !important;
+  }
+
+  h2, .text-2xl {
+    font-size: 2rem !important;
+  }
+
+  h3, .text-xl {
+    font-size: 1.5rem !important;
+  }
+
+  /* تحسين الأزرار */
+  button {
+    padding: 1rem 1.5rem !important;
+    font-size: 1.125rem !important;
+    min-height: 50px;
+  }
+
+  /* تحسين حقول الإدخال */
+  input, select, textarea {
+    padding: 1rem !important;
+    font-size: 1.125rem !important;
+    min-height: 50px;
+  }
+
+  /* تحسين البطاقات */
+  .p-8 {
+    padding: 3rem !important;
+  }
+
+  .p-6 {
+    padding: 2rem !important;
+  }
+
+  .p-4 {
+    padding: 1.5rem !important;
+  }
+
+  /* تحسين الأيقونات */
+  .icon-xl, .w-8.h-8 {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+
+  .icon-lg, .w-6.h-6 {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+
+  .icon-md, .w-5.h-5 {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+
+  /* تحسين الشعار */
+  img[alt*="قيادة"] {
+    width: 8rem !important;
+    height: 8rem !important;
+  }
+
+  /* تحسين الفجوات */
+  .gap-4 {
+    gap: 2rem !important;
+  }
+
+  .gap-3 {
+    gap: 1.5rem !important;
+  }
+
+  .gap-2 {
+    gap: 1rem !important;
+  }
+
+  /* تحسين المسافات */
+  .space-y-8 {
+    gap: 3rem !important;
+  }
+
+  .space-y-6 {
+    gap: 2.5rem !important;
+  }
+
+  .space-y-4 {
+    gap: 2rem !important;
+  }
+
+  /* تحسين الحد الأقصى للعرض */
+  .max-w-md {
+    max-width: 28rem !important;
+  }
+
+  .max-w-lg {
+    max-width: 32rem !important;
+  }
+
+  .max-w-xl {
+    max-width: 36rem !important;
+  }
+
+  /* تحسين الشاشة الرئيسية */
+  .min-h-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ======================================
+   22. تحسينات للشاشات الكبيرة (1440px - 1919px)
+   ====================================== */
+
+@media (min-width: 1440px) and (max-width: 1919px) {
+  body {
+    font-size: 15px;
+  }
+
+  h1, .text-3xl {
+    font-size: 2.25rem !important;
+  }
+
+  h2, .text-2xl {
+    font-size: 1.875rem !important;
+  }
+
+  button {
+    padding: 0.875rem 1.25rem !important;
+    font-size: 1rem !important;
+  }
+
+  input, select, textarea {
+    padding: 0.875rem !important;
+    font-size: 1rem !important;
+  }
+
+  .p-8 {
+    padding: 2.5rem !important;
+  }
+
+  .p-6 {
+    padding: 1.75rem !important;
+  }
+
+  img[alt*="قيادة"] {
+    width: 7rem !important;
+    height: 7rem !important;
+  }
+
+  .gap-4 {
+    gap: 1.75rem !important;
+  }
+
+  .space-y-8 {
+    gap: 2.5rem !important;
+  }
+}
+
+/* ======================================
+   23. تحسينات للشاشات المتوسطة الكبيرة (1024px - 1439px)
+   ====================================== */
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+  body {
+    font-size: 14.5px;
+  }
+
+  h1, .text-3xl {
+    font-size: 2rem !important;
+  }
+
+  h2, .text-2xl {
+    font-size: 1.625rem !important;
+  }
+
+  button {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  input, select, textarea {
+    padding: 0.75rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .p-8 {
+    padding: 2rem !important;
+  }
+
+  .p-6 {
+    padding: 1.5rem !important;
+  }
+
+  img[alt*="قيادة"] {
+    width: 6rem !important;
+    height: 6rem !important;
+  }
+
+  .gap-4 {
+    gap: 1.5rem !important;
+  }
+
+  .space-y-8 {
+    gap: 2rem !important;
+  }
+}
+
+/* ======================================
+   24. تحسينات للشاشات المتوسطة (768px - 1023px)
+   ====================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1, .text-3xl {
+    font-size: 1.75rem !important;
+  }
+
+  h2, .text-2xl {
+    font-size: 1.5rem !important;
+  }
+
+  button {
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  input, select, textarea {
+    padding: 0.625rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  .p-8 {
+    padding: 1.5rem !important;
+  }
+
+  .p-6 {
+    padding: 1.25rem !important;
+  }
+
+  img[alt*="قيادة"] {
+    width: 5rem !important;
+    height: 5rem !important;
+  }
+
+  .gap-4 {
+    gap: 1.25rem !important;
+  }
+
+  .space-y-8 {
+    gap: 1.75rem !important;
+  }
+}
+
+/* ======================================
+   25. تحسينات عامة للتجاوب الكامل
+   ====================================== */
+
+/* ضمان التجاوب الكامل للعناصر */
+@media (min-width: 768px) {
+  /* تحسين الشبكات على الشاشات الكبيرة */
+  .grid.grid-cols-1.md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .grid.grid-cols-1.md\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .grid.grid-cols-1.md\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* تحسين الفليكس */
+  .flex.flex-col.md\:flex-row {
+    flex-direction: row;
+  }
+
+  /* تحسين النصوص */
+  .text-center {
+    text-align: center;
+  }
+
+  [dir="rtl"] .text-center {
+    text-align: center;
+  }
+}
+
+/* ======================================
+   26. تحسينات الأداء والسلاسة
+   ====================================== */
+
+/* تحسين الانتقالات على جميع الأجهزة */
+* {
+  transition: all 0.3s ease;
+}
+
+/* تحسين الرسوم المتحركة */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ======================================
+   27. تحسينات الطباعة
+   ====================================== */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  button, nav, .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* ======================================
+   28. تحسينات إضافية للتجاوب
+   ====================================== */
+
+/* ضمان أن جميع الصور تتجاوب */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ضمان أن جميع الفيديوهات تتجاوب */
+video, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* تحسين الجداول */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+  table {
+    font-size: 0.875rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  table {
+    font-size: 1.125rem;
+  }
+
+  th, td {
+    padding: 1rem;
+  }
+}
+
+/* ======================================
+   29. تحسينات نهائية للتجاوب الكامل
+   ====================================== */
+
+/* التأكد من أن جميع العناصر تتجاوب بشكل صحيح */
+@media (max-width: 480px) {
+  /* شاشات صغيرة جداً */
+  body {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  /* شاشات صغيرة */
+  body {
+    font-size: 13.5px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* شاشات متوسطة */
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1440px) {
+  /* شاشات كبيرة */
+  body {
+    font-size: 14.5px;
+  }
+}
+
+@media (min-width: 1441px) and (max-width: 1920px) {
+  /* شاشات كبيرة جداً */
+  body {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1921px) {
+  /* شاشات فوق العادية */
+  body {
+    font-size: 16px;
+  }
+}
