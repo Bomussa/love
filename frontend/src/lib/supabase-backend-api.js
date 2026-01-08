@@ -83,11 +83,56 @@ export async function getClinics() {
   } catch (error) {
     console.error('[getClinics] Error:', error);
     return { success: false, error: error.message, clinics: [] };
+   }
+}
+
+export async function getQueuePosition(clinicId, patientId) {
+  try {
+    // جلب موقع المريض في الطابور
+    const { data: queueEntry, error } = await supabase
+      .from('queue')
+      .select('*')
+      .eq('clinic_id', clinicId)
+      .eq('patient_id', patientId)
+      .single();
+
+    if (error) throw error;
+
+    if (!queueEntry) {
+      return {
+        success: false,
+        error: 'Not in queue'
+      };
+    }
+
+    // حساب عدد المنتظرين قبله
+    const { count, error: countError } = await supabase
+      .from('queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('clinic_id', clinicId)
+      .eq('status', 'waiting')
+      .lt('position', queueEntry.position);
+
+    if (countError) throw countError;
+
+    return {
+      success: true,
+      position: queueEntry.position,
+      ahead: count || 0,
+      status: queueEntry.status,
+      display_number: queueEntry.display_number
+    };
+  } catch (error) {
+    console.error('[getQueuePosition] Error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
 // ==========================================
-// QUEUE MANAGEMENT - حقيقي بالكامل
+// QUEUE DONE - حقيقيحقيقي بالكامل
 // ==========================================
 
 export async function enterQueue(clinicId, patientId, patientName = 'مراجع') {
@@ -934,6 +979,7 @@ export default {
   // Queue
   enterQueue,
   getQueueStatus,
+  getQueuePosition,
   callNextPatient,
   queueDone,
   getPatientPosition,

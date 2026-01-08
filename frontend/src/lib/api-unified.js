@@ -41,6 +41,10 @@ class UnifiedApiService {
     return this.backend.callNextPatient(clinicId, pin);
   }
 
+  async getQueuePosition(clinicId, patientId) {
+    return this.backend.getQueuePosition(clinicId, patientId);
+  }
+
   // ==========================================
   // PIN MANAGEMENT
   // ==========================================
