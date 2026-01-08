@@ -72,10 +72,10 @@ class UnifiedApiService {
         .single();
 
       if (insertError) throw insertError;
-      return { success: true, patient: insertData };
+      return { success: true, data: { patientId, gender } };
     }
 
-    return { success: true, patient: data };
+    return { success: true, data: { patientId, gender } };
   }
 
   // ==========================================
