@@ -270,6 +270,7 @@ function App() {
           <ExamSelectionPage
             patientData={patientData}
             onExamSelect={async (examType) => {
+              console.log('[App] onExamSelect called with examType:', examType);
               try {
                 const clinics = require('./lib/clinic-pathways').default[examType]?.[patientData.gender] || []
                 if (clinics.length === 0) throw new Error('No clinics found')
