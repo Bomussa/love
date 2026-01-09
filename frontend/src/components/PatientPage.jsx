@@ -698,18 +698,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 text-center" data-test="queue-info">
+                  <div className="grid grid-cols-2 gap-6 text-center" data-test="queue-info">
                     <div>
-                      <div className="text-2xl font-bold text-white" data-test="current-number">{station.current}</div>
-                      <div className="text-gray-400 text-sm">{t('current', language)}</div>
+                      <div className="text-3xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
+                      <div className="text-sm text-gray-400 mt-1">{t('yourNumber', language)}</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-gray-400 text-sm">{t('yourNumber', language)}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-gray-400 text-sm">{t('ahead', language)}</div>
+                      <div className="text-3xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
+                      <div className="text-sm text-gray-400 mt-1">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
