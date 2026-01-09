@@ -1246,3 +1246,124 @@ table {
     font-size: 16px;
   }
 }
+
+
+/* ======================================
+   إصلاح تكبير أرقام الدور والنصوص للجوال
+   Mobile Queue Numbers & Text Scaling Fix
+   ====================================== */
+
+@media (max-width: 768px) {
+  /* تكبير أرقام الدور (رقمك، أمامك) */
+  .text-6xl {
+    font-size: 5rem !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+  }
+  
+  .text-5xl {
+    font-size: 4rem !important;
+    line-height: 1 !important;
+  }
+  
+  .text-4xl {
+    font-size: 3.5rem !important;
+    line-height: 1.1 !important;
+  }
+  
+  /* تكبير التسميات (رقمك، أمامك، الحالي) */
+  .text-sm.text-gray-400,
+  .text-sm.text-gray-500,
+  .text-sm.text-gray-600 {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+  }
+  
+  /* تكبير نصوص البطاقات */
+  .text-lg {
+    font-size: 1.5rem !important;
+  }
+  
+  .text-base {
+    font-size: 1.25rem !important;
+  }
+  
+  /* تكبير الأزرار */
+  button {
+    padding: 1.25rem 2rem !important;
+    font-size: 1.25rem !important;
+    min-height: 3.5rem !important;
+  }
+  
+  /* تكبير زر "دخول العيادة" */
+  button[class*="bg-blue"],
+  button[class*="bg-green"] {
+    padding: 1.5rem 2.5rem !important;
+    font-size: 1.5rem !important;
+    min-height: 4rem !important;
+  }
+  
+  /* تكبير الإشعارات */
+  .fixed.top-4,
+  .fixed.top-8 {
+    padding: 1.5rem !important;
+    font-size: 1.25rem !important;
+  }
+  
+  .fixed.top-4 .text-sm,
+  .fixed.top-8 .text-sm {
+    font-size: 1.125rem !important;
+  }
+  
+  /* تكبير العناوين */
+  h1 {
+    font-size: 2.5rem !important;
+  }
+  
+  h2 {
+    font-size: 2rem !important;
+  }
+  
+  h3 {
+    font-size: 1.75rem !important;
+  }
+  
+  /* تكبير الأيقونات */
+  svg {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+  
+  /* تكبير padding البطاقات */
+  .p-4 {
+    padding: 2rem !important;
+  }
+  
+  .p-6 {
+    padding: 2.5rem !important;
+  }
+  
+  /* تكبير gaps */
+  .gap-2 {
+    gap: 1rem !important;
+  }
+  
+  .gap-4 {
+    gap: 1.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* تكبير أكثر للشاشات الصغيرة جداً */
+  .text-6xl {
+    font-size: 4.5rem !important;
+  }
+  
+  .text-5xl {
+    font-size: 3.5rem !important;
+  }
+  
+  .text-4xl {
+    font-size: 3rem !important;
+  }
+}
