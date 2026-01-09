@@ -74,12 +74,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
-          currentNumber: positionData.display_number, // تحديث "الحالي" ليعرض رقم المراجع
-          ahead: 0, // لا يوجد أحد أمامه لأنه يُفحص الآن
+          currentNumber: positionData.current_number || positionData.display_number, // استخدام current_number من API
+          ahead: positionData.ahead || 0,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
-          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
+          entered_at: positionData.entered_at || new Date().toISOString()
         } : s))
       }
       

@@ -81,6 +81,18 @@ const api = {
 
       if (entryError) throw entryError;
 
+      // جلب رقم من يُفحص الآن (serving)
+      const { data: servingEntry, error: servingError } = await supabase
+        .from('queues')
+        .select('display_number')
+        .eq('clinic_id', clinicId)
+        .eq('status', 'serving')
+        .order('called_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const currentNumber = servingEntry ? servingEntry.display_number : 0;
+
       const { count, error: countError } = await supabase
         .from('queues')
         .select('*', { count: 'exact', head: true })
@@ -93,9 +105,11 @@ const api = {
       return {
         success: true,
         display_number: patientEntry.display_number,
+        current_number: currentNumber,
         ahead: count || 0,
         status: patientEntry.status,
-        entered_at: patientEntry.entered_at
+        entered_at: patientEntry.entered_at,
+        total_waiting: count || 0
       };
     } catch (error) {
       console.error('Get Position Error:', error);
