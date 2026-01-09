@@ -277,8 +277,9 @@ const api = {
   /**
    * نظام التمرير التلقائي للمراجعين الذين لم يحضروا خلال دقيقتين
    * - يفحص كل المراجعين بحالة 'waiting' الذين مر على استدعائهم (called_at) أكثر من دقيقتين
-   * - يتم تمريرهم تلقائياً وإعطائهم رقم جديد في آخر الدور
+   * - يتم تمريرهم تلقائياً (تحديث الحالة إلى 'skipped' فقط)
    * - يتم استدعاء المراجع التالي تلقائياً
+   * - لا يتم إنشاء سجل جديد لتجنب تضخم عدد المنتظرين
    */
   async checkAndSkipStaleQueues() {
     try {
@@ -301,39 +302,19 @@ const api = {
 
       // معالجة كل مراجع متأخر
       for (const queue of staleQueues) {
-        // 1. تحديث الحالة إلى 'skipped'
+        // تحديث الحالة إلى 'skipped' فقط (بدون إنشاء سجل جديد)
         await supabase
           .from('queues')
-          .update({ status: 'skipped' })
+          .update({ 
+            status: 'skipped',
+            completed_at: new Date().toISOString() // تسجيل وقت التمرير
+          })
           .eq('id', queue.id);
-
-        // 2. الحصول على آخر رقم في العيادة
-        const { data: lastEntry } = await supabase
-          .from('queues')
-          .select('display_number')
-          .eq('clinic_id', queue.clinic_id)
-          .order('display_number', { ascending: false })
-          .limit(1)
-          .single();
-
-        const newNumber = (lastEntry?.display_number || 0) + 1;
-
-        // 3. إنشاء سجل جديد للمراجع في آخر الدور
-        await supabase
-          .from('queues')
-          .insert([{
-            clinic_id: queue.clinic_id,
-            patient_id: queue.patient_id,
-            display_number: newNumber,
-            status: 'waiting',
-            entered_at: new Date().toISOString()
-          }]);
 
         skippedPatients.push({
           patient_id: queue.patient_id,
           clinic_id: queue.clinic_id,
-          old_number: queue.display_number,
-          new_number: newNumber
+          display_number: queue.display_number
         });
       }
 

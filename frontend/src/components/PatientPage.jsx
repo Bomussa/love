@@ -262,8 +262,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             setCurrentNotice({
               type: 'skipped',
               message: language === 'ar' 
-                ? `تم تمرير دورك لعدم الحضور، رقمك الجديد: ${skippedPatient.new_number}`
-                : `Your turn was skipped for not showing up, your new number: ${skippedPatient.new_number}`,
+                ? `تم تمرير دورك لعدم الحضور. الرجاء العودة للطابور للحصول على رقم جديد.`
+                : `Your turn was skipped for not showing up. Please return to the queue to get a new number.`,
               clinic: stations.find(s => s.id === skippedPatient.clinic_id)?.nameAr || ''
             });
             setTimeout(() => setCurrentNotice(null), 10000); // 10 ثواني
