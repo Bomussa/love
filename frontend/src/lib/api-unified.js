@@ -3,7 +3,7 @@
  * المصدر الوحيد للحقيقة: توجيه كافة الطلبات عبر Backend API
  * يمنع الاتصال المباشر بـ Supabase من الواجهة الأمامية لضمان الأمان وتوحيد المنطق.
  */
-const API_BASE_URL = 'https://love-leb4rvayg-bomussa.vercel.app/api/v1';
+const API_BASE_URL = 'https://api.mmc-mms.com/api/v1';
 class UnifiedApiService {
   constructor() {
     this.baseUrl = API_BASE_URL;
@@ -36,8 +36,8 @@ class UnifiedApiService {
       body: JSON.stringify({ clinicId, patientId, isAutoEntry }),
     });
   }
-  async getQueueStatus(clinicId) {
-    return this.request(`/queue/status/${clinicId}`);
+  async getQueueStatus(clinicId, patientId) {
+    return this.request(`/queue/status?clinicId=${clinicId}&patientId=${patientId}`);
   }
   async queueDone(clinicId, patientId, pin) {
     return this.request('/queue/done', {
@@ -61,7 +61,7 @@ class UnifiedApiService {
     });
   }
   async verifyPin(clinicId, pin) {
-    return this.request('/pin/verify', {
+    return this.request('/pin/validate', {
       method: 'POST',
       body: JSON.stringify({ clinicId, pin }),
     });
