@@ -238,6 +238,110 @@ const api = {
     return { success: !error, data, error };
   },
 
+  async getAdminStatus() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      // 1. Total Patients Today
+      const { count: totalToday, error: totalError } = await supabase
+        .from('queues')
+        .select('*', { count: 'exact', head: true })
+        .gte('entered_at', todayISO);
+
+      // 2. Waiting Patients
+      const { count: waiting, error: waitingError } = await supabase
+        .from('queues')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'waiting');
+
+      // 3. Completed Today
+      const { count: completed, error: completedError } = await supabase
+        .from('queues')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('completed_at', todayISO);
+
+      // 4. Active Clinics (with serving patients)
+      const { data: activeData, error: activeError } = await supabase
+        .from('queues')
+        .select('clinic_id')
+        .eq('status', 'serving');
+      
+      const activeQueues = activeData ? new Set(activeData.map(q => q.clinic_id)).size : 0;
+
+      if (totalError || waitingError || completedError || activeError) {
+        throw new Error('Error fetching stats');
+      }
+
+      return {
+        success: true,
+        data: {
+          totalPatients: totalToday || 0,
+          waitingPatients: waiting || 0,
+          completedToday: completed || 0,
+          activeQueues: activeQueues || 0
+        }
+      };
+    } catch (error) {
+      console.error('Get Admin Status Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getQueueStatus(clinicId) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      const { data, error } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .gte('entered_at', todayISO)
+        .order('entered_at', { ascending: true });
+
+      if (error) throw error;
+
+      const waiting = data.filter(q => q.status === 'waiting').map(q => ({
+        ticket: q.display_number,
+        visitId: q.patient_id,
+        issuedAt: q.entered_at
+      }));
+
+      const inService = data.filter(q => q.status === 'serving').map(q => ({
+        ticket: q.display_number,
+        visitId: q.patient_id,
+        calledAt: q.called_at
+      }));
+
+      const done = data.filter(q => q.status === 'completed').map(q => ({
+        ticket: q.display_number,
+        visitId: q.patient_id,
+        doneAt: q.completed_at
+      }));
+
+      return {
+        success: true,
+        waiting,
+        in: inService,
+        done,
+        stats: {
+          totalWaiting: waiting.length,
+          totalIn: inService.length,
+          totalDone: done.length,
+          totalToday: data.length
+        },
+        dateKey: today.toLocaleDateString()
+      };
+    } catch (error) {
+      console.error('Get Queue Status Error:', error);
+      throw error;
+    }
+  },
+
   // --- Pathway ---
   async getRoute(patientId) {
     try {
