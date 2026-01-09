@@ -127,16 +127,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         // محاولة جلب المسار المحفوظ أولاً
         // TODO: إضافة دالة getRoute في API
-        // try {
-        //   const savedRoute = await api.getRoute(patientData.id)
-        //   if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
-        //     examStations = savedRoute.route.stations
-        //   }
-        // } catch (err) {
-        //   
-        // }
+        // محاولة استرجاع المسار المحفوظ من قاعدة البيانات
+        try {
+          const savedRoute = await api.getRoute(patientData.id)
+          if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
+            examStations = savedRoute.route.stations
+          }
+        } catch (err) {
+          // لا يوجد مسار محفوظ - سيتم حساب مسار جديد
+        }
         
-        // إذا لم يوجد مسار محفوظ، احسب مسار جديد
+        // إذا لم يوجد مسار محفوظ، احسب مسار جديد حسب الأوزان الحالية
         if (!examStations) {
           examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
           
@@ -148,9 +149,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               patientData.gender,
               examStations
             )
-
           } catch (err) {
-            // console.error('❌ Failed to save route:', err)
+            console.error('Failed to save route:', err)
           }
         }
         
