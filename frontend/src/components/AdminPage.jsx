@@ -150,7 +150,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden w-full">
+        <main className="flex-1 p-3 md:p-6 overflow-x-hidden w-full max-w-full">
           {error && (
             <div className="mb-4 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200">
               <AlertTriangle className="inline w-5 h-5 mr-2" />
@@ -158,7 +158,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             </div>
           )}
 
-          <div className="bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 min-h-[500px]">
+          <div className="bg-gray-800 rounded-xl p-3 md:p-6 border border-gray-700 min-h-[calc(100vh-120px)] w-full overflow-x-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
               <h2 className="text-xl font-bold text-white">
                 {menuItems.find(m => m.id === currentView)?.label || 'Dashboard'}
@@ -175,7 +175,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             </div>
 
             {currentView === 'dashboard' && (
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                   {/* Stat Cards */}
                   {[
                     { label: isRTL ? 'إجمالي المرضى' : 'Total Patients', value: stats.totalPatients || stats.totalToday || 0, icon: Users, color: 'bg-blue-500' },
@@ -183,13 +183,13 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
                     { label: isRTL ? 'مكتمل' : 'Completed', value: stats.completedToday || stats.completed || 0, icon: CheckCircle, color: 'bg-green-500' },
                     { label: isRTL ? 'نشط' : 'Active', value: stats.activeQueues || stats.activePins || 0, icon: Activity, color: 'bg-purple-500' }
                   ].map((stat, idx) => (
-                      <div key={idx} className="bg-gray-700 p-4 rounded-lg flex items-center justify-between">
-                          <div>
-                              <p className="text-gray-400 text-sm">{stat.label}</p>
-                              <p className="text-2xl font-bold text-white">{stat.value}</p>
+                      <div key={idx} className="bg-gray-700 p-3 md:p-4 rounded-lg flex items-center justify-between shadow-sm">
+                          <div className="overflow-hidden">
+                              <p className="text-gray-400 text-xs md:text-sm truncate">{stat.label}</p>
+                              <p className="text-xl md:text-2xl font-bold text-white">{stat.value}</p>
                           </div>
-                          <div className={`p-3 rounded-full ${stat.color} bg-opacity-20`}>
-                              <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
+                          <div className={`p-2 md:p-3 rounded-full ${stat.color} bg-opacity-20 flex-shrink-0`}>
+                              <stat.icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.color.replace('bg-', 'text-')}`} />
                           </div>
                       </div>
                   ))}
