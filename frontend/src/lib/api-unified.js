@@ -161,7 +161,31 @@ const api = {
 
   // --- Clinics & PIN ---
   async getPinStatus() {
-    return { success: true, pins: {} };
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, pin_code, pin_expires_at, is_active')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // تحويل البيانات إلى صيغة { clinic_id: pin_code }
+      const pins = {};
+      if (data && data.length > 0) {
+        data.forEach(clinic => {
+          // التحقق من صلاحية البن كود
+          const isExpired = clinic.pin_expires_at && new Date(clinic.pin_expires_at) < new Date();
+          if (!isExpired && clinic.pin_code) {
+            pins[clinic.id] = clinic.pin_code;
+          }
+        });
+      }
+
+      return { success: true, pins };
+    } catch (error) {
+      console.error('Get PIN Status Error:', error);
+      return { success: false, error: error.message, pins: {} };
+    }
   },
 
   async verifyPin(clinicId, pin) {
