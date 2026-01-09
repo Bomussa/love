@@ -103,6 +103,32 @@ const api = {
     }
   },
 
+  async updateQueueStatus(clinicId, patientId, newStatus) {
+    try {
+      const updateData = { status: newStatus };
+      if (newStatus === 'serving') {
+        updateData.called_at = new Date().toISOString();
+      } else if (newStatus === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      const { data, error } = await supabase
+        .from('queues')
+        .update(updateData)
+        .eq('clinic_id', clinicId)
+        .eq('patient_id', patientId)
+        .order('entered_at', { ascending: false })
+        .limit(1)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update Queue Status Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   async queueDone(clinicId, patientId, pin) {
     try {
       const { data, error } = await supabase

@@ -57,7 +57,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     try {
       setLoading(true)
       // دخول الدور مباشرة
-      await api.enterQueue(station.id, patientData.id, true)
+      const enterResult = await api.enterQueue(station.id, patientData.id, true)
+      
+      if (!enterResult || !enterResult.success) {
+        throw new Error('Failed to enter queue')
+      }
+      
+      // تحديث حالة الطابور إلى serving فوراً (المراجع يُفحص الآن)
+      await api.updateQueueStatus(station.id, patientData.id, 'serving')
       
       // جلب الموقع الفعلي من Backend
       const positionData = await api.getQueuePosition(station.id, patientData.id)
@@ -67,7 +74,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
-          ahead: positionData.ahead,
+          currentNumber: positionData.display_number, // تحديث "الحالي" ليعرض رقم المراجع
+          ahead: 0, // لا يوجد أحد أمامه لأنه يُفحص الآن
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
@@ -77,7 +85,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       setLoading(false)
     } catch (e) {
-      // console.error('Enter clinic failed:', e)
+      console.error('Enter clinic failed:', e)
       alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
       setLoading(false)
     }
@@ -431,8 +439,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         // تحديث العيادات: إكمال الحالية وفتح التالية
         setStations(prev => prev.map((s, i) => {
           if (i === currentIdx) {
-            // العيادة الحالية - مكتملة
-            return { ...s, status: 'completed', exitTime: new Date() }
+            // العيادة الحالية - مكتملة (إخفاء الأرقام)
+            return { 
+              ...s, 
+              status: 'completed', 
+              exitTime: new Date(),
+              yourNumber: null,
+              currentNumber: null,
+              ahead: null,
+              isEntered: false
+            }
           } else if (i === currentIdx + 1) {
             // العيادة التالية - مفتوحة لكن غير مدخولة (يجب على المراجع الدخول يدوياً)
             return { ...s, status: 'ready', isEntered: false }
@@ -451,9 +467,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         })
         setTimeout(() => setCurrentNotice(null), 5000)
       } else {
-        // لا توجد عيادة تالية - فقط نكمل العيادة الحالية
+        // لا توجد عيادة تالية - فقط نكمل العيادة الحالية (إخفاء الأرقام)
         setStations(prev => prev.map((s, i) => 
-          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
+          i === currentIdx ? { 
+            ...s, 
+            status: 'completed', 
+            exitTime: new Date(),
+            yourNumber: null,
+            currentNumber: null,
+            ahead: null,
+            isEntered: false
+          } : s
         ))
       }
 
