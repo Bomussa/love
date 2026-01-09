@@ -79,35 +79,35 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   return (
     <div className={`min-h-screen bg-gray-900 ${isRTL ? 'rtl' : 'ltr'} flex flex-col`} dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {/* Mobile Header */}
-      <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-md">
-        <div className="flex items-center gap-3">
+      {/* Slim Mobile Header */}
+      <header className="bg-gray-800 border-b border-gray-700 px-2 sm:px-4 py-2 flex items-center justify-between sticky top-0 z-50 shadow-md">
+        <div className="flex items-center gap-2">
           <button 
-            className="md:hidden text-white p-2 hover:bg-gray-700 rounded"
+            className="md:hidden text-white p-1.5 hover:bg-gray-700 rounded"
             onClick={() => setSidebarOpen(!isSidebarOpen)}
           >
-            {isSidebarOpen ? <X /> : <Menu />}
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <Shield className="w-6 h-6 text-blue-500" />
-          <h1 className="text-lg font-bold text-white hidden sm:block">
-            {isRTL ? 'لوحة الإدارة' : 'Admin'}
+          <Shield className="w-5 h-5 text-blue-500" />
+          <h1 className="text-base font-bold text-white hidden xs:block">
+            {isRTL ? 'الإدارة' : 'Admin'}
           </h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={toggleLanguage}
-            className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 rounded text-gray-300 text-sm hover:bg-gray-600"
+            className="flex items-center gap-1 px-2 py-1 bg-gray-700 rounded text-gray-300 text-xs hover:bg-gray-600"
           >
-            <Globe className="w-4 h-4" />
-            <span>{language === 'ar' ? 'English' : 'عربي'}</span>
+            <Globe size={14} />
+            <span>{language === 'ar' ? 'EN' : 'AR'}</span>
           </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-600/50 rounded text-sm hover:bg-red-600/30"
+            className="flex items-center gap-1 px-2 py-1 bg-red-600/20 text-red-400 border border-red-600/50 rounded text-xs hover:bg-red-600/30"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">{isRTL ? 'خروج' : 'Logout'}</span>
+            <LogOut size={14} />
+            <span>{isRTL ? 'خروج' : 'Exit'}</span>
           </button>
         </div>
       </header>
@@ -120,7 +120,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           ${isSidebarOpen ? 'translate-x-0' : (isRTL ? 'translate-x-full' : '-translate-x-full')}
           ${isRTL ? 'right-0 left-auto border-l border-r-0' : ''}
         `}>
-          <nav className="p-4 space-y-2">
+          <nav className="p-3 space-y-1">
             {menuItems.map((item) => (
               <button
                 key={item.id}
@@ -128,13 +128,13 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
                   setCurrentView(item.id)
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
                   currentView === item.id
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <item.icon className="w-5 h-5" />
+                <item.icon size={18} />
                 <span>{item.label}</span>
               </button>
             ))}
@@ -144,51 +144,51 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         {/* Overlay */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
+            className="fixed inset-0 bg-black/60 z-30 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto w-full bg-gray-900">
+        {/* Main Content - Reduced Padding for Mobile */}
+        <main className="flex-1 p-2 sm:p-4 md:p-6 overflow-y-auto w-full bg-gray-900">
           {error && (
-            <div className="mb-4 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200">
-              <AlertTriangle className="inline w-5 h-5 mr-2" />
+            <div className="mb-3 p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm">
+              <AlertTriangle className="inline w-4 h-4 mr-2" />
               {error}
             </div>
           )}
 
-          <div className="bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 shadow-xl min-h-full">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-              <h2 className="text-xl font-bold text-white border-b-2 border-blue-500 pb-1">
+          <div className="bg-gray-800 rounded-xl p-3 sm:p-5 md:p-6 border border-gray-700 shadow-xl min-h-full">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+              <h2 className="text-lg font-bold text-white border-b-2 border-blue-500 pb-0.5">
                 {menuItems.find(m => m.id === currentView)?.label || 'Dashboard'}
               </h2>
               <button
                 onClick={loadStats}
                 disabled={loading}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 rounded-lg text-white text-sm hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                {isRTL ? 'تحديث البيانات' : 'Refresh Data'}
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                {isRTL ? 'تحديث' : 'Refresh'}
               </button>
             </div>
 
             <div className="w-full">
               {currentView === 'dashboard' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {[
                     { label: isRTL ? 'إجمالي المرضى' : 'Total Patients', value: stats.totalPatients || stats.totalToday || 0, icon: Users, color: 'bg-blue-500' },
                     { label: isRTL ? 'في الانتظار' : 'Waiting', value: stats.waitingPatients || stats.waiting || 0, icon: Clock, color: 'bg-yellow-500' },
                     { label: isRTL ? 'مكتمل' : 'Completed', value: stats.completedToday || stats.completed || 0, icon: CheckCircle, color: 'bg-green-500' },
                     { label: isRTL ? 'نشط' : 'Active', value: stats.activeQueues || stats.activePins || 0, icon: Activity, color: 'bg-purple-500' }
                   ].map((stat, idx) => (
-                    <div key={idx} className="bg-gray-700/50 p-5 rounded-xl flex items-center justify-between shadow-md border border-gray-600/50 hover:bg-gray-700 transition-colors">
-                      <div>
-                        <p className="text-gray-400 text-sm font-medium mb-1">{stat.label}</p>
-                        <p className="text-3xl font-black text-white">{stat.value}</p>
+                    <div key={idx} className="bg-gray-700/40 p-3 sm:p-4 rounded-xl flex items-center justify-between shadow-md border border-gray-600/30 hover:bg-gray-700/60 transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-gray-400 text-[10px] sm:text-xs font-medium mb-0.5 truncate">{stat.label}</p>
+                        <p className="text-xl sm:text-2xl font-black text-white">{stat.value}</p>
                       </div>
-                      <div className={`p-3 rounded-xl ${stat.color} bg-opacity-20`}>
-                        <stat.icon className={`w-7 h-7 ${stat.color.replace('bg-', 'text-')}`} />
+                      <div className={`p-2 sm:p-2.5 rounded-lg ${stat.color} bg-opacity-20 flex-shrink-0`}>
+                        <stat.icon size={20} className={stat.color.replace('bg-', 'text-')} />
                       </div>
                     </div>
                   ))}
@@ -196,9 +196,9 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
               )}
 
               {currentView === 'queues' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <select 
-                    className="w-full md:w-64 bg-gray-700 text-white p-2 rounded border border-gray-600"
+                    className="w-full md:w-64 bg-gray-700 text-white p-2 rounded border border-gray-600 text-sm"
                     value={selectedClinic}
                     onChange={(e) => setSelectedClinic(e.target.value)}
                   >
@@ -209,9 +209,9 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
               )}
 
               {currentView === 'pins' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <select 
-                    className="w-full md:w-64 bg-gray-700 text-white p-2 rounded border border-gray-600"
+                    className="w-full md:w-64 bg-gray-700 text-white p-2 rounded border border-gray-600 text-sm"
                     value={selectedClinic}
                     onChange={(e) => setSelectedClinic(e.target.value)}
                   >
