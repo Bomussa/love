@@ -1,6 +1,7 @@
 /**
  * Supabase Client Configuration
- * This file initializes the Supabase client for the frontend
+ * تكوين عميل Supabase مع Health Check
+ * الإضافات الحرجة: فصل القراءة عن التشغيل + Health Check
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -23,12 +24,53 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Helper function to check connection
+/**
+ * Health Check - فحص صحة الاتصال بـ Supabase
+ * يجب تنفيذه عند إقلاع التطبيق
+ */
+export async function healthCheck() {
+  try {
+    // فحص الاتصال بقاعدة البيانات
+    const { data: clinicsData, error: clinicsError } = await supabase
+      .from('clinics')
+      .select('id')
+      .limit(1);
+    
+    if (clinicsError) throw new Error('DB_CONNECTION_FAILED: ' + clinicsError.message);
+
+    // فحص Kill Switch العام
+    const { data: configData, error: configError } = await supabase
+      .from('system_config')
+      .select('value')
+      .eq('key', 'system_enabled')
+      .single();
+
+    const systemEnabled = configData?.value !== false;
+
+    console.log('✅ Supabase Health Check passed');
+    return {
+      status: 'OK',
+      systemEnabled,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('❌ Supabase Health Check failed:', error);
+    return {
+      status: 'ERROR',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Test Connection - اختبار الاتصال
+ */
 export async function testConnection() {
   try {
     const { data, error } = await supabase.from('clinics').select('count');
     if (error) throw error;
-    ;
+    console.log('✅ Supabase connection successful');
     return true;
   } catch (error) {
     console.error('❌ Supabase connection failed:', error);

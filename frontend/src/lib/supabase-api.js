@@ -12,8 +12,12 @@ class SupabaseApiClient {
 
     async getCurrentPin(clinicId) {
         try {
-            // جدول pins يستخدم clinic_code وليس clinic_id
-            const { data, error } = await supabase
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayISO = today.toISOString();
+
+            // 1. Get current active PIN
+            const { data: current, error: currentError } = await supabase
                 .from('pins')
                 .select('id, clinic_code, pin, is_active, generated_at, expires_at')
                 .eq('clinic_code', clinicId)
@@ -22,16 +26,29 @@ class SupabaseApiClient {
                 .limit(1)
                 .maybeSingle();
 
-            if (error) throw error;
+            if (currentError) throw currentError;
+
+            // 2. Get all PINs issued today for this clinic
+            const { data: allToday, error: allTodayError } = await supabase
+                .from('pins')
+                .select('pin')
+                .eq('clinic_code', clinicId)
+                .gte('generated_at', todayISO)
+                .order('generated_at', { ascending: true });
+
+            if (allTodayError) throw allTodayError;
 
             return {
                 success: true,
-                currentPin: data ? data.pin : null,
-                pinId: data ? data.id : null,
-                clinicCode: data ? data.clinic_code : clinicId,
-                isActive: data ? data.is_active : false,
-                generatedAt: data ? data.generated_at : null,
-                expiresAt: data ? data.expires_at : null
+                currentPin: current ? current.pin : null,
+                pinId: current ? current.id : null,
+                clinicCode: current ? current.clinic_code : clinicId,
+                isActive: current ? current.is_active : false,
+                generatedAt: current ? current.generated_at : null,
+                expiresAt: current ? current.expires_at : null,
+                totalIssued: allToday ? allToday.length : 0,
+                allPins: allToday ? allToday.map(p => p.pin) : [],
+                dateKey: today.toLocaleDateString()
             };
         } catch (error) {
             console.error('[supabase-api] getCurrentPin error:', error);

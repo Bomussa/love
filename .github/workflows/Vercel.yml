@@ -1,0 +1,42 @@
+name: Build and deploy frontend to Vercel
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy-frontend:
+    name: Deploy frontend to Vercel
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: <LaTex>${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: $</LaTex>{{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install dependencies
+        run: pnpm install
+      - name: Deploy to Vercel (production)
+        run: |
+          npx vercel --prod --yes --token ${{ secrets.VERCEL_TOKEN }} \
+            -m githubCommitSha=<LaTex>${{ github.sha }} \
+            -m githubCommitAuthorName="$</LaTex>{{ github.actor }}" \
+            -m githubCommitAuthorLogin="<LaTex>${{ github.actor }}" \
+            -m githubDeployment=1 \
+            -m githubOrg=$</LaTex>{{ github.repository_owner }} \
+            -m githubRepo=<LaTex>${{ github.repository }} \
+            -m githubCommitOrg=$</LaTex>{{ github.repository_owner }} \
+            -m githubCommitRepo=<LaTex>${{ github.repository }} \
+            -m githubCommitMessage="$</LaTex>{{ github.event.head_commit.message }}" \
+            -m githubCommitRef=${{ github.ref }}

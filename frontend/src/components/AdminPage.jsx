@@ -150,7 +150,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden w-full">
+        <main className="flex-1 p-2 sm:p-4 md:p-6 overflow-x-hidden w-full max-w-full flex flex-col">
           {error && (
             <div className="mb-4 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200">
               <AlertTriangle className="inline w-5 h-5 mr-2" />
@@ -158,43 +158,44 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             </div>
           )}
 
-          <div className="bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 min-h-[500px]">
+          <div className="bg-gray-800 rounded-xl p-3 sm:p-4 md:p-6 border border-gray-700 flex-1 w-full overflow-x-auto shadow-xl">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-lg md:text-xl font-bold text-white border-b-2 border-blue-500 pb-1">
                 {menuItems.find(m => m.id === currentView)?.label || 'Dashboard'}
               </h2>
               {/* Refresh Button */}
               <button
                 onClick={loadStats}
                 disabled={loading}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                {isRTL ? 'تحديث' : 'Refresh'}
+                {isRTL ? 'تحديث البيانات' : 'Refresh Data'}
               </button>
             </div>
 
-            {currentView === 'dashboard' && (
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Stat Cards */}
-                  {[
-                    { label: isRTL ? 'إجمالي المرضى' : 'Total Patients', value: stats.totalPatients || stats.totalToday || 0, icon: Users, color: 'bg-blue-500' },
-                    { label: isRTL ? 'في الانتظار' : 'Waiting', value: stats.waitingPatients || stats.waiting || 0, icon: Clock, color: 'bg-yellow-500' },
-                    { label: isRTL ? 'مكتمل' : 'Completed', value: stats.completedToday || stats.completed || 0, icon: CheckCircle, color: 'bg-green-500' },
-                    { label: isRTL ? 'نشط' : 'Active', value: stats.activeQueues || stats.activePins || 0, icon: Activity, color: 'bg-purple-500' }
-                  ].map((stat, idx) => (
-                      <div key={idx} className="bg-gray-700 p-4 rounded-lg flex items-center justify-between">
-                          <div>
-                              <p className="text-gray-400 text-sm">{stat.label}</p>
-                              <p className="text-2xl font-bold text-white">{stat.value}</p>
-                          </div>
-                          <div className={`p-3 rounded-full ${stat.color} bg-opacity-20`}>
-                              <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
-                          </div>
-                      </div>
-                  ))}
-              </div>
-            )}
+            <div className="w-full">
+              {currentView === 'dashboard' && (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    {/* Stat Cards */}
+                    {[
+                      { label: isRTL ? 'إجمالي المرضى' : 'Total Patients', value: stats.totalPatients || stats.totalToday || 0, icon: Users, color: 'bg-blue-500' },
+                      { label: isRTL ? 'في الانتظار' : 'Waiting', value: stats.waitingPatients || stats.waiting || 0, icon: Clock, color: 'bg-yellow-500' },
+                      { label: isRTL ? 'مكتمل' : 'Completed', value: stats.completedToday || stats.completed || 0, icon: CheckCircle, color: 'bg-green-500' },
+                      { label: isRTL ? 'نشط' : 'Active', value: stats.activeQueues || stats.activePins || 0, icon: Activity, color: 'bg-purple-500' }
+                    ].map((stat, idx) => (
+                        <div key={idx} className="bg-gray-700/50 p-4 rounded-xl flex items-center justify-between shadow-md border border-gray-600/50 hover:bg-gray-700 transition-colors">
+                            <div className="overflow-hidden">
+                                <p className="text-gray-400 text-xs md:text-sm font-medium truncate mb-1">{stat.label}</p>
+                                <p className="text-2xl md:text-3xl font-black text-white">{stat.value}</p>
+                            </div>
+                            <div className={`p-3 rounded-xl ${stat.color} bg-opacity-20 flex-shrink-0 shadow-inner`}>
+                                <stat.icon className={`w-6 h-6 md:w-7 md:h-7 ${stat.color.replace('bg-', 'text-')}`} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+              )}
 
             {currentView === 'queues' && (
               <div className="space-y-4">

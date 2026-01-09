@@ -1,5 +1,5 @@
 // Supabase Edge Function: queue-enter
-// Allows patient to enter a clinic queue
+// دخول الطابور مع القفل التنافسي والإضافات الحرجة
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,9 +7,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req: Request) => {
@@ -30,20 +30,96 @@ serve(async (req: Request) => {
     if (!clinic_id || !patient_id) {
       return new Response(
         JSON.stringify({ success: false, error: "clinic and user are required" }),
-        { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Use the enter_queue_v2 function which handles all the logic
+    // التحقق من Kill Switch العام
+    const { data: configData } = await db
+      .from("system_config")
+      .select("value")
+      .eq("key", "system_enabled")
+      .single();
+
+    if (configData && configData.value === false) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          status: "ABORTED",
+          error: "SYSTEM_DISABLED",
+          message: "النظام متوقف مؤقتًا"
+        }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // التحقق من حالة العيادة
+    const { data: clinicData } = await db
+      .from("clinics")
+      .select("system_enabled, is_active")
+      .eq("id", clinic_id)
+      .single();
+
+    if (clinicData && (clinicData.system_enabled === false || clinicData.is_active === false)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          status: "ABORTED", 
+          error: "CLINIC_DISABLED",
+          message: "العيادة متوقفة مؤقتًا"
+        }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // استخدام الدالة الآمنة مع القفل التنافسي
     const { data: result, error: rpcError } = await db
-      .rpc('enter_queue_v2', {
+      .rpc('enter_queue_safe', {
         p_clinic_id: clinic_id,
         p_patient_id: patient_id,
         p_patient_name: patient_name,
         p_exam_type: exam_type
       });
 
-    if (rpcError) throw rpcError;
+    if (rpcError) {
+      // إذا لم تكن الدالة موجودة، استخدم enter_queue_v2
+      const { data: fallbackResult, error: fallbackError } = await db
+        .rpc('enter_queue_v2', {
+          p_clinic_id: clinic_id,
+          p_patient_id: patient_id,
+          p_patient_name: patient_name,
+          p_exam_type: exam_type
+        });
+
+      if (fallbackError) throw fallbackError;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            clinic_id: fallbackResult.clinic,
+            patient_id: fallbackResult.user,
+            position: fallbackResult.number,
+            status: fallbackResult.status,
+            message: fallbackResult.message || 'Entered queue successfully'
+          },
+        }),
+        { headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // التحقق من نتيجة الدالة الآمنة
+    if (result.status === 'ABORTED') {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: result.status,
+          error: result.reason,
+          message: result.reason
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     return new Response(
       JSON.stringify({
@@ -56,14 +132,19 @@ serve(async (req: Request) => {
           message: result.message || 'Entered queue successfully'
         },
       }),
-      { headers: { "content-type": "application/json", ...corsHeaders } }
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (err: any) {
     const errorMessage = err?.message || err?.error?.message || JSON.stringify(err) || String(err);
     console.error("queue-enter error:", errorMessage, err);
+    
     return new Response(
-      JSON.stringify({ success: false, error: "An unexpected error occurred" }),
-      { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
+      JSON.stringify({ 
+        success: false, 
+        status: "ABORTED",
+        error: errorMessage
+      }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });
