@@ -28,7 +28,11 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     strictPort: false,
-    allowedHosts: 'all'
+    cors: true,
+    hmr: {
+      clientPort: 443,
+      protocol: 'wss'
+    }
   },
   build: {
     outDir: 'dist',
