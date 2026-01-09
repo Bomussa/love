@@ -52,11 +52,27 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
-  // دخول يدوي لأي عيادة
+  // دخول يدوي لأي عيادة (مع التحقق من البن كود)
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
-      // دخول الدور
+      
+      // التحقق من إدخال PIN
+      if (!pinInput || !pinInput.trim()) {
+        alert(language === 'ar' ? 'الرجاء إدخال رقم PIN اليومي للعيادة' : 'Please enter clinic daily PIN')
+        setLoading(false)
+        return
+      }
+      
+      // التحقق من صحة البن كود
+      const expectedPin = clinicPins[station.id]
+      if (!expectedPin || pinInput.trim() !== String(expectedPin).trim()) {
+        alert(language === 'ar' ? 'رقم PIN غير صحيح. الرجاء التأكد من الرقم والمحاولة مرة أخرى.' : 'Incorrect PIN. Please verify and try again.')
+        setLoading(false)
+        return
+      }
+      
+      // دخول الدور بعد التحقق من البن كود
       await api.enterQueue(station.id, patientData.id, true)
       
       // جلب الموقع الفعلي من Backend
@@ -73,6 +89,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           isEntered: true,
           entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
         } : s))
+        
+        // مسح البن كود بعد الدخول الناجح
+        setPinInput('')
+        setSelectedStation(null)
       }
       
       setLoading(false)
@@ -711,17 +731,28 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-4 pt-4 border-t border-gray-600">
-                      <Button
-                        variant="gradientPrimary"
-                        onClick={() => handleEnterClinic(station)}
-                        disabled={loading}
-                        className="w-full"
-                        data-test="enter-clinic-btn"
-                      >
-                        <LogIn className="icon icon-md me-2" />
-                        {t('enterClinic', language)}
-                      </Button>
+                    <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <Input
+                          type="text"
+                          placeholder={language === 'ar' ? 'أدخل رقم PIN اليومي للعيادة' : 'Enter clinic daily PIN'}
+                          value={selectedStation?.id === station.id ? pinInput : ''}
+                          onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
+                          className="bg-gray-600 border-gray-500 text-white flex-1"
+                          maxLength={6}
+                          data-test="pin-input-enter"
+                        />
+                        <Button
+                          variant="gradientPrimary"
+                          onClick={() => handleEnterClinic(station)}
+                          disabled={loading || !pinInput.trim()}
+                          title={t('enterClinic', language)}
+                          data-test="enter-clinic-btn"
+                        >
+                          <LogIn className="icon icon-md me-2" />
+                          {t('enterClinic', language)}
+                        </Button>
+                      </div>
                     </div>
                   )}
 
