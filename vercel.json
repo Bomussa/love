@@ -1,13 +1,18 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
+  "framework": "vite",
   "rewrites": [
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/clinic/(.*)", "destination": "/index.html" },
+    { "source": "/qr", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "buildCommand": "npm run build --workspace frontend",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "cleanUrls": true,
-  "trailingSlash": false
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
 }
