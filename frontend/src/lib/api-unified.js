@@ -229,13 +229,37 @@ const api = {
   },
 
   async verifyPin(clinicId, pin) {
-    // التحقق من البن كود عبر RPC أو منطق محلي إذا كان ثابتاً
-    return { success: true, isValid: pin === "1234" };
+    try {
+      const { data, error } = await supabase
+        .from('pins')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('pin_code', pin)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        return { success: true, isValid: true, session: { clinicId, pin, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
+      }
+      
+      return { success: true, isValid: false };
+    } catch (error) {
+      console.error('Verify PIN Error:', error);
+      return { success: false, error: error.message };
+    }
   },
 
   async getClinics() {
-    const { data, error } = await supabase.from('clinics').select('*').eq('is_active', true);
-    return { success: !error, data, error };
+    try {
+      const { data, error } = await supabase.from('clinics').select('*').eq('is_active', true);
+      if (error) throw error;
+      return { success: true, clinics: data };
+    } catch (error) {
+      console.error('Get Clinics Error:', error);
+      return { success: false, error: error.message, clinics: [] };
+    }
   },
 
   async getAdminStatus() {

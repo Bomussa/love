@@ -38,18 +38,14 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     setError(null)
 
     try {
-      // Use verifyPin from API (needs to be implemented in api-unified)
-      // Or just try to access a protected resource
-      // For now, we assume a simple PIN check via API
-      
-      // Since api.verifyPin might not be exposed, let's use a workaround or check api-unified
-      // We will assume the parent component handles the actual validation or we call a new method
-      
-      // Let's assume onLogin handles the API call
-      await onLogin(selectedClinic, pin)
-      
+      const response = await api.verifyPin(selectedClinic, pin)
+      if (response.success && response.isValid) {
+        onLogin(response.session)
+      } else {
+        setError(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN')
+      }
     } catch (err) {
-      setError(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN')
+      setError(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error')
     } finally {
       setLoading(false)
     }

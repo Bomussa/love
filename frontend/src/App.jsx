@@ -4,7 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { LoginPage } from './components/LoginPage.jsx'
 import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
 import { PatientPage } from './components/PatientPage.jsx'
-import { AdminPage } from './components/AdminPage.jsx'
+import { AdminDashboardV2 } from './components/AdminDashboardV2.jsx'
 import { QrScanPage } from './components/QrScanPage.jsx'
 import api from './lib/api-unified'
 import authService from './lib/auth-service'
@@ -89,11 +89,11 @@ function App() {
     }
     
     // Priority 2: Admin routes
-    if (path.includes('/admin')) {
+    if (path === '/admin' || path.startsWith('/admin/')) {
       if (isAdmin) {
         setCurrentView('admin');
       } else {
-        // Redirect to login with admin flag
+        // We stay on login but can show admin login UI if needed
         setCurrentView('login');
       }
       return;
@@ -106,7 +106,7 @@ function App() {
     }
     
     // Priority 3: Clinic routes
-    if (path.includes('/clinic/login')) {
+    if (path === '/clinic/login' || path === '/clinic/login/') {
       setCurrentView('clinic_login');
       return;
     }
@@ -114,7 +114,7 @@ function App() {
       setCurrentView('display');
       return;
     }
-    if (path.match(/\/clinic\/[^/]+$/)) {
+    if (path.startsWith('/clinic/')) {
       setCurrentView(clinicSession ? 'clinic_dashboard' : 'clinic_login');
       return;
     }
@@ -321,7 +321,7 @@ function App() {
 
         {currentView === 'admin' && isAdmin && (
           <AdminErrorBoundary>
-            <AdminPage
+            <AdminDashboardV2
               onLogout={handleLogout}
               language={language}
               toggleLanguage={toggleLanguage}
