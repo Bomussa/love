@@ -820,3 +820,49 @@ body {
   }
 }
 
+
+
+/* ======================================
+   إصلاح المساحات البيضاء على الجوال
+   ====================================== */
+
+@media (max-width: 768px) {
+  /* إزالة max-width على الجوال لاستخدام كامل الشاشة */
+  .max-w-4xl,
+  .max-w-2xl,
+  .max-w-xl {
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* تكبير الأرقام على الجوال */
+  .text-5xl {
+    font-size: 3.5rem !important;
+  }
+  
+  .text-4xl {
+    font-size: 2.5rem !important;
+  }
+  
+  .text-3xl {
+    font-size: 2rem !important;
+  }
+  
+  .text-2xl {
+    font-size: 1.75rem !important;
+  }
+  
+  .text-xl {
+    font-size: 1.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .max-w-4xl,
+  .max-w-2xl,
+  .max-w-xl {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+}
