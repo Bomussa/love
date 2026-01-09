@@ -1254,116 +1254,116 @@ table {
    ====================================== */
 
 @media (max-width: 768px) {
-  /* تكبير أرقام الدور (رقمك، أمامك) */
+  /* أرقام الدور - معيار عالمي واضح */
   .text-6xl {
-    font-size: 5rem !important;
-    line-height: 1 !important;
+    font-size: 3rem !important;
+    line-height: 1.1 !important;
     font-weight: 700 !important;
   }
   
   .text-5xl {
-    font-size: 4rem !important;
-    line-height: 1 !important;
-  }
-  
-  .text-4xl {
-    font-size: 3.5rem !important;
+    font-size: 2.5rem !important;
     line-height: 1.1 !important;
   }
   
-  /* تكبير التسميات (رقمك، أمامك، الحالي) */
+  .text-4xl {
+    font-size: 2rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* التسميات - معيار عالمي */
   .text-sm.text-gray-400,
   .text-sm.text-gray-500,
   .text-sm.text-gray-600 {
-    font-size: 1.25rem !important;
-    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
   }
   
-  /* تكبير نصوص البطاقات */
+  /* نصوص البطاقات - معيار عالمي */
   .text-lg {
-    font-size: 1.5rem !important;
+    font-size: 1.125rem !important;
   }
   
   .text-base {
-    font-size: 1.25rem !important;
+    font-size: 1rem !important;
   }
   
-  /* تكبير الأزرار */
+  /* الأزرار - معيار عالمي */
   button {
-    padding: 1.25rem 2rem !important;
-    font-size: 1.25rem !important;
-    min-height: 3.5rem !important;
+    padding: 0.75rem 1.5rem !important;
+    font-size: 1rem !important;
+    min-height: 2.75rem !important;
   }
   
-  /* تكبير زر "دخول العيادة" */
+  /* زر دخول العيادة - أكبر قليلاً */
   button[class*="bg-blue"],
   button[class*="bg-green"] {
-    padding: 1.5rem 2.5rem !important;
-    font-size: 1.5rem !important;
-    min-height: 4rem !important;
+    padding: 1rem 2rem !important;
+    font-size: 1.125rem !important;
+    min-height: 3rem !important;
   }
   
-  /* تكبير الإشعارات */
+  /* الإشعارات - معيار عالمي */
   .fixed.top-4,
   .fixed.top-8 {
-    padding: 1.5rem !important;
-    font-size: 1.25rem !important;
+    padding: 1rem !important;
+    font-size: 1rem !important;
   }
   
   .fixed.top-4 .text-sm,
   .fixed.top-8 .text-sm {
-    font-size: 1.125rem !important;
+    font-size: 0.875rem !important;
   }
   
-  /* تكبير العناوين */
+  /* العناوين - معيار عالمي */
   h1 {
-    font-size: 2.5rem !important;
+    font-size: 1.875rem !important;
   }
   
   h2 {
-    font-size: 2rem !important;
+    font-size: 1.5rem !important;
   }
   
   h3 {
-    font-size: 1.75rem !important;
+    font-size: 1.25rem !important;
   }
   
-  /* تكبير الأيقونات */
+  /* الأيقونات - معيار عالمي */
   svg {
-    width: 2rem !important;
-    height: 2rem !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
   }
   
-  /* تكبير padding البطاقات */
+  /* padding البطاقات - معيار عالمي */
   .p-4 {
-    padding: 2rem !important;
+    padding: 1rem !important;
   }
   
   .p-6 {
-    padding: 2.5rem !important;
+    padding: 1.5rem !important;
   }
   
-  /* تكبير gaps */
+  /* gaps - معيار عالمي */
   .gap-2 {
-    gap: 1rem !important;
+    gap: 0.5rem !important;
   }
   
   .gap-4 {
-    gap: 1.5rem !important;
+    gap: 1rem !important;
   }
 }
 
 @media (max-width: 480px) {
-  /* تكبير أكثر للشاشات الصغيرة جداً */
+  /* تعديل بسيط للشاشات الصغيرة جداً */
   .text-6xl {
-    font-size: 4.5rem !important;
+    font-size: 2.5rem !important;
   }
   
   .text-5xl {
-    font-size: 3.5rem !important;
+    font-size: 2rem !important;
   }
   
   .text-4xl {
-    font-size: 3rem !important;
+    font-size: 1.75rem !important;
   }
 }
