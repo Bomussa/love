@@ -88,8 +88,19 @@ function App() {
       return;
     }
     
-    // Priority 2: Admin
-    if (isAdmin) {
+    // Priority 2: Admin routes
+    if (path.includes('/admin')) {
+      if (isAdmin) {
+        setCurrentView('admin');
+      } else {
+        // Redirect to login with admin flag
+        setCurrentView('login');
+      }
+      return;
+    }
+    
+    // Priority 2.5: Admin session (without /admin path)
+    if (isAdmin && !path.includes('/clinic') && !path.includes('/qr')) {
       setCurrentView('admin');
       return;
     }
