@@ -747,12 +747,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       <Button
                         variant="gradientPrimary"
                         onClick={() => handleEnterClinic(station)}
-                        disabled={loading}
+                        disabled={loading || (station.ahead !== undefined && station.ahead > 0)}
                         className="w-full"
                         data-test="enter-clinic-btn"
                       >
                         <LogIn className="icon icon-md me-2" />
-                        {t('enterClinic', language)}
+                        {station.ahead > 0 
+                          ? (language === 'ar' ? `انتظر دورك (${station.ahead} قبلك)` : `Wait your turn (${station.ahead} ahead)`)
+                          : t('enterClinic', language)
+                        }
                       </Button>
                     </div>
                   )}
