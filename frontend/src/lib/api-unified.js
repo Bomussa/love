@@ -271,6 +271,77 @@ const api = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+
+  // --- Auto-Skip System ---
+  /**
+   * نظام التمرير التلقائي للمراجعين الذين لم يحضروا خلال دقيقتين
+   * - يفحص كل المراجعين بحالة 'waiting' الذين مر على استدعائهم (called_at) أكثر من دقيقتين
+   * - يتم تمريرهم تلقائياً وإعطائهم رقم جديد في آخر الدور
+   * - يتم استدعاء المراجع التالي تلقائياً
+   */
+  async checkAndSkipStaleQueues() {
+    try {
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      
+      // البحث عن المراجعين الذين مر على استدعائهم أكثر من دقيقتين
+      const { data: staleQueues, error: fetchError } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('status', 'waiting')
+        .not('called_at', 'is', null)
+        .lt('called_at', twoMinutesAgo);
+
+      if (fetchError) throw fetchError;
+      if (!staleQueues || staleQueues.length === 0) {
+        return { success: true, skipped: 0 };
+      }
+
+      const skippedPatients = [];
+
+      // معالجة كل مراجع متأخر
+      for (const queue of staleQueues) {
+        // 1. تحديث الحالة إلى 'skipped'
+        await supabase
+          .from('queues')
+          .update({ status: 'skipped' })
+          .eq('id', queue.id);
+
+        // 2. الحصول على آخر رقم في العيادة
+        const { data: lastEntry } = await supabase
+          .from('queues')
+          .select('display_number')
+          .eq('clinic_id', queue.clinic_id)
+          .order('display_number', { ascending: false })
+          .limit(1)
+          .single();
+
+        const newNumber = (lastEntry?.display_number || 0) + 1;
+
+        // 3. إنشاء سجل جديد للمراجع في آخر الدور
+        await supabase
+          .from('queues')
+          .insert([{
+            clinic_id: queue.clinic_id,
+            patient_id: queue.patient_id,
+            display_number: newNumber,
+            status: 'waiting',
+            entered_at: new Date().toISOString()
+          }]);
+
+        skippedPatients.push({
+          patient_id: queue.patient_id,
+          clinic_id: queue.clinic_id,
+          old_number: queue.display_number,
+          new_number: newNumber
+        });
+      }
+
+      return { success: true, skipped: skippedPatients.length, patients: skippedPatients };
+    } catch (error) {
+      console.error('Check and Skip Stale Queues Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 

@@ -253,6 +253,22 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       const start = Date.now();
       try {
+        // ✅ فحص التمرير التلقائي للمراجعين المتأخرين
+        const skipResult = await api.checkAndSkipStaleQueues();
+        if (skipResult && skipResult.success && skipResult.skipped > 0) {
+          // التحقق مما إذا كان المراجع الحالي من ضمن المتأخرين
+          const skippedPatient = skipResult.patients.find(p => p.patient_id === patientData.id);
+          if (skippedPatient) {
+            setCurrentNotice({
+              type: 'skipped',
+              message: language === 'ar' 
+                ? `تم تمرير دورك لعدم الحضور، رقمك الجديد: ${skippedPatient.new_number}`
+                : `Your turn was skipped for not showing up, your new number: ${skippedPatient.new_number}`,
+              clinic: stations.find(s => s.id === skippedPatient.clinic_id)?.nameAr || ''
+            });
+            setTimeout(() => setCurrentNotice(null), 10000); // 10 ثواني
+          }
+        }
         // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط (تقليل 429 Errors)
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
         
@@ -343,6 +359,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     // Adaptive Polling: يعمل فقط إذا SSE غير نشط
     // سيتم تفعيله/إيقافه تلقائياً حسب حالة SSE
     
+    // ✅ Auto-Skip Check: فحص كل 30 ثانية للتمرير التلقائي
+    const autoSkipInterval = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        await api.checkAndSkipStaleQueues();
+      } catch (err) {
+        // Silent fail
+      }
+    }, 30000); // 30 ثانية
+    
     // Heartbeat لمراقبة الصفحة (تحذير فقط، بدون إعادة تحميل)
     const heartbeatInterval = setInterval(() => {
       const now = Date.now();
@@ -355,6 +381,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
+      if (autoSkipInterval) clearInterval(autoSkipInterval);
       unsubscribeConnected();
       unsubscribeError();
       clearInterval(heartbeatInterval);
