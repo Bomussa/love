@@ -123,6 +123,20 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     // Get stations for the patient's exam type and gender with dynamic weighting
     const loadPathway = async () => {
       try {
+        // محاولة استعادة stations من localStorage أولاً
+        const savedStationsStr = localStorage.getItem(`mmc_stations_${patientData.id}`);
+        if (savedStationsStr) {
+          try {
+            const savedData = JSON.parse(savedStationsStr);
+            // التحقق من أن البيانات حديثة (أقل من 24 ساعة)
+            if (savedData.timestamp && (Date.now() - savedData.timestamp) < 86400000) {
+              setStations(savedData.stations);
+              return; // استخدام البيانات المحفوظة
+            }
+          } catch (e) {
+            console.error('Failed to restore stations from localStorage:', e);
+          }
+        }
         let examStations = null
         
         // محاولة جلب المسار المحفوظ أولاً
@@ -165,6 +179,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         }))
         
         setStations(initialStations)
+        
+        // حفظ stations في localStorage
+        localStorage.setItem(`mmc_stations_${patientData.id}`, JSON.stringify({
+          stations: initialStations,
+          timestamp: Date.now()
+        }))
         
         // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
         if (examStations.length > 0) {
