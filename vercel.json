@@ -8,6 +8,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/queue/(.*)", "destination": "/api/queue.js" },
     { "source": "/api/v1/(.*)", "destination": "/api/v1/index.js" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
