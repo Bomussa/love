@@ -165,16 +165,33 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
 
     const newPosition = (lastInQueue?.position || 0) + 1;
 
-    // الحصول على آخر display_number للعيادة (رقم تسلسلي ثابت)
-    const { data: lastDisplayNumber } = await supabase
-      .from('queue')
-      .select('display_number')
+    // استخدام clinic_counters للحصول على رقم تسلسلي ثابت لا يتكرر
+    const { data: counter, error: counterError } = await supabase
+      .from('clinic_counters')
+      .select('*')
       .eq('clinic_id', clinicId)
-      .order('display_number', { ascending: false })
-      .limit(1)
       .maybeSingle();
 
-    const newDisplayNumber = (lastDisplayNumber?.display_number || 0) + 1;
+    let newDisplayNumber;
+    
+    if (!counter) {
+      // إنشاء عداد جديد للعيادة
+      const { data: newCounter } = await supabase
+        .from('clinic_counters')
+        .insert([{ clinic_id: clinicId, counter: 1 }])
+        .select()
+        .single();
+      newDisplayNumber = 1;
+    } else {
+      // زيادة العداد
+      const { data: updatedCounter } = await supabase
+        .from('clinic_counters')
+        .update({ counter: counter.counter + 1 })
+        .eq('clinic_id', clinicId)
+        .select()
+        .single();
+      newDisplayNumber = updatedCounter.counter;
+    }
 
     // إضافة للطابور
     const { data: queueEntry, error } = await supabase
