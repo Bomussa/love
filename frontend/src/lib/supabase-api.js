@@ -33,7 +33,7 @@ class SupabaseApiClient {
                 expiresInSeconds: 300 // Approximation
             }
         } catch (error) {
-            console.error('[supabase-api] getCurrentPin error:', error)
+            console.warn('[supabase-api] getCurrentPin error:', error)
             // Fallback? No, if API fails, we can't get secret PIN.
             throw error
         }
@@ -60,7 +60,7 @@ class SupabaseApiClient {
                 message: 'New PIN generated successfully'
             }
         } catch (error) {
-            console.error('[supabase-api] issuePin error:', error)
+            console.warn('[supabase-api] issuePin error:', error)
             throw error
         }
     }
@@ -98,7 +98,7 @@ class SupabaseApiClient {
                 }
             }
         } catch (error) {
-            console.error('Error getting queue status:', error)
+            console.warn('Error getting queue status:', error)
             throw error
         }
     }

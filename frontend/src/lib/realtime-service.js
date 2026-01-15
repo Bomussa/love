@@ -170,7 +170,7 @@ export function trackPatientPosition(clinicId, patientId, callback) {
         callback(position);
       }
     } catch (error) {
-      console.error('Error tracking position:', error);
+      console.warn('Error tracking position:', error);
     }
   };
 
@@ -259,7 +259,7 @@ export async function testRealtimeConnection() {
             testChannel.unsubscribe();
             resolve(true);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('❌ Real-time connection failed');
+            console.warn('❌ Real-time connection failed');
             testChannel.unsubscribe();
             resolve(false);
           }
@@ -272,7 +272,7 @@ export async function testRealtimeConnection() {
       }, 5000);
     });
   } catch (error) {
-    console.error('❌ Real-time connection test failed:', error);
+    console.warn('❌ Real-time connection test failed:', error);
     return false;
   }
 }

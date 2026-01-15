@@ -1,5 +1,5 @@
 // محرك المسارات الديناميكية (Path Engine) - النظام الرسمي
-import settings from '../../data/settings.json'
+import settings from '@/data/settings.json'
 
 // المسارات الأساسية حسب النوع
 const BASE_EXAM_PATHS = {

@@ -68,7 +68,7 @@ export function NotificationsPage({ language, patientId }) {
         .limit(50)
 
       if (fetchError) {
-        console.error('[Notifications] Error fetching:', fetchError)
+        console.warn('[Notifications] Error fetching:', fetchError)
         setError(fetchError.message)
         setNotifications([])
         return
@@ -89,7 +89,7 @@ export function NotificationsPage({ language, patientId }) {
 
       setNotifications(transformedNotifications)
     } catch (err) {
-      console.error('[Notifications] Failed to load:', err)
+      console.warn('[Notifications] Failed to load:', err)
       setError(err.message)
       setNotifications([])
     } finally {
@@ -134,7 +134,7 @@ export function NotificationsPage({ language, patientId }) {
         .eq('id', id)
 
       if (updateError) {
-        console.error('[Notifications] Error marking as read:', updateError)
+        console.warn('[Notifications] Error marking as read:', updateError)
         return
       }
 
@@ -145,7 +145,7 @@ export function NotificationsPage({ language, patientId }) {
         )
       )
     } catch (err) {
-      console.error('[Notifications] Failed to mark as read:', err)
+      console.warn('[Notifications] Failed to mark as read:', err)
     }
   }
 
@@ -161,7 +161,7 @@ export function NotificationsPage({ language, patientId }) {
         .eq('read', false)
 
       if (updateError) {
-        console.error('[Notifications] Error marking all as read:', updateError)
+        console.warn('[Notifications] Error marking all as read:', updateError)
         return
       }
 
@@ -170,7 +170,7 @@ export function NotificationsPage({ language, patientId }) {
         prev.map(notif => ({ ...notif, read: true }))
       )
     } catch (err) {
-      console.error('[Notifications] Failed to mark all as read:', err)
+      console.warn('[Notifications] Failed to mark all as read:', err)
     }
   }
 
@@ -183,14 +183,14 @@ export function NotificationsPage({ language, patientId }) {
         .eq('id', id)
 
       if (deleteError) {
-        console.error('[Notifications] Error deleting:', deleteError)
+        console.warn('[Notifications] Error deleting:', deleteError)
         return
       }
 
       // حذف محلياً
       setNotifications(prev => prev.filter(notif => notif.id !== id))
     } catch (err) {
-      console.error('[Notifications] Failed to delete:', err)
+      console.warn('[Notifications] Failed to delete:', err)
     }
   }
 
@@ -205,14 +205,14 @@ export function NotificationsPage({ language, patientId }) {
         .eq('patient_id', patientId)
 
       if (deleteError) {
-        console.error('[Notifications] Error clearing all:', deleteError)
+        console.warn('[Notifications] Error clearing all:', deleteError)
         return
       }
 
       // حذف محلياً
       setNotifications([])
     } catch (err) {
-      console.error('[Notifications] Failed to clear all:', err)
+      console.warn('[Notifications] Failed to clear all:', err)
     }
   }
 

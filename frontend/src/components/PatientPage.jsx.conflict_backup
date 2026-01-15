@@ -47,7 +47,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
       }
     } catch (e) {
-      console.error('Get ticket for first clinic failed:', e)
+      console.warn('Get ticket for first clinic failed:', e)
       // في حالة الفشل، العيادة تبقى جاهزة بدون رقم
     }
   }
@@ -77,7 +77,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       setLoading(false)
     } catch (e) {
-      // console.error('Enter clinic failed:', e)
+      // console.warn('Enter clinic failed:', e)
       alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
       setLoading(false)
     }
@@ -101,7 +101,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         }
       } catch (err) {
-        // console.error('Failed to fetch daily PINs:', err)
+        // console.warn('Failed to fetch daily PINs:', err)
       }
     }
     
@@ -142,7 +142,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             )
 
           } catch (err) {
-            // console.error('❌ Failed to save route:', err)
+            // console.warn('❌ Failed to save route:', err)
           }
         }
         
@@ -174,7 +174,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         }
       } catch (err) {
-        // console.error('Failed to load pathway:', err)
+        // console.warn('Failed to load pathway:', err)
       }
     }
     
@@ -322,7 +322,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           // إعادة المحاولة بعد تأخير
           setTimeout(updateQueueStatus, RECOVERY_DELAY);
         } else {
-          // console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
+          // console.warn('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
           // إعادة تعيين العداد والانتظار على SSE
           retryCount = 0;
         }
@@ -371,7 +371,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
-        // console.error('Event bus parse error:', err);
+        // console.warn('Event bus parse error:', err);
       }
     };
     
@@ -455,7 +455,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
       alert(msg)
     } catch (e) {
-      // console.error('Complete clinic failed', e)
+      // console.warn('Complete clinic failed', e)
       const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
       alert(msg)
     } finally {

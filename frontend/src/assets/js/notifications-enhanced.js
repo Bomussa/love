@@ -206,7 +206,7 @@ class EnhancedNotificationSystem {
           const notification = JSON.parse(event.data)
           this.handleNotification(notification)
         } catch (e) {
-          console.error('❌ خطأ في معالجة الإشعار:', e)
+          console.warn('❌ خطأ في معالجة الإشعار:', e)
         }
       })
 
@@ -224,7 +224,7 @@ class EnhancedNotificationSystem {
         }
       }
     } catch (e) {
-      console.error('❌ خطأ في الاتصال بتدفق الأحداث:', e)
+      console.warn('❌ خطأ في الاتصال بتدفق الأحداث:', e)
     }
   }
 

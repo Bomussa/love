@@ -1,7 +1,7 @@
 // queue-engine-fixed.js - نظام الدور المحسّن
 import eventBus from './event-bus.js'
 import notificationEngine from './notification-engine.js'
-import settings from '../../data/settings.json'
+import settings from '@/data/settings.json'
 
 // استيراد API client
 const API_BASE = import.meta.env.VITE_API_URL || 'https://mmc-mms.com/api/v1'
@@ -104,7 +104,7 @@ class QueueEngine {
 
       throw new Error('Invalid API response')
     } catch (error) {
-      console.error('Error getting queue number:', error)
+      console.warn('Error getting queue number:', error)
       
       // Fallback: استخدام النظام القديم في حالة فشل API
       return this.addToQueueLegacy(clinicId, patientId)
@@ -187,7 +187,7 @@ class QueueEngine {
 
       return null
     } catch (error) {
-      console.error('Error getting queue status:', error)
+      console.warn('Error getting queue status:', error)
       
       // Fallback: استخدام البيانات المحلية
       return this.getQueueStatusLocal(patientId, clinicId)
@@ -275,7 +275,7 @@ class QueueEngine {
         })
       })
     } catch (error) {
-      console.error('Error updating queue status:', error)
+      console.warn('Error updating queue status:', error)
     }
     
     // إرسال إشعار "حان دورك"
@@ -319,7 +319,7 @@ class QueueEngine {
           })
         })
       } catch (error) {
-        console.error('Error updating queue status:', error)
+        console.warn('Error updating queue status:', error)
       }
       
       eventBus.emit('queue:completed', {

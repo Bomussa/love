@@ -6,7 +6,7 @@ import { User, Globe, Shield, QrCode } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { QRScanner } from './QRScanner'
-import featuresConfig from '../../config/features.json'
+import featuresConfig from '@/config/features.json'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -43,7 +43,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     try {
       await onLogin({ patientId: patientId.trim(), gender })
     } catch (error) {
-      // console.error('Login error:', error)
+      // console.warn('Login error:', error)
     } finally {
       setLoading(false)
     }
@@ -58,7 +58,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       // إرسال username:password كرمز واحد
       await onAdminLogin(`${adminUsername.trim()}:${adminPassword.trim()}`)
     } catch (error) {
-      // console.error('Admin login error:', error)
+      // console.warn('Admin login error:', error)
       alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
     } finally {
       setLoading(false)

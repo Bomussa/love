@@ -1,5 +1,5 @@
 // lib/workflow.js - مدير تدفق العمل الشامل للمراجعين
-import db from '../../../src/lib/supabase-db.js';
+import db from '@/../src/lib/supabase-db.js';
 import { createPatientRoute, moveToNextStep, pickClinicForNextStep, markDistributed } from './routingManager.js';
 import { completeClinicForPatient } from './queueManager.js';
 import { getSystemConfig } from './settings.js';
@@ -80,7 +80,7 @@ export async function enqueuePatient(patientData) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // console.error('Error enqueuing patient:', error);
+    // console.warn('Error enqueuing patient:', error);
     return {
       success: false,
       reason: 'database_error',
@@ -133,7 +133,7 @@ export async function enqueuePatientToClinic(patientId, clinicId, options = {}) 
     };
 
   } catch (error) {
-    // console.error('Error enqueuing patient to clinic:', error);
+    // console.warn('Error enqueuing patient to clinic:', error);
     return {
       success: false,
       reason: 'database_error',
@@ -231,7 +231,7 @@ export async function routeToNextClinic(patientId, currentClinicId) {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    // console.error('Error routing to next clinic:', error);
+    // console.warn('Error routing to next clinic:', error);
     return {
       success: false,
       reason: 'database_error',
@@ -340,7 +340,7 @@ export async function processClinicCode(clinicCode, patientId) {
     };
 
   } catch (error) {
-    // console.error('Error processing clinic code:', error);
+    // console.warn('Error processing clinic code:', error);
     return {
       success: false,
       reason: 'database_error',
@@ -437,7 +437,7 @@ export async function getPatientStatus(patientId) {
     };
 
   } catch (error) {
-    // console.error(`Error getting patient status for ${patientId}:`, error);
+    // console.warn(`Error getting patient status for ${patientId}:`, error);
     return {
       exists: false,
       error: error.message,
@@ -488,7 +488,7 @@ export async function handleEmergency(patientId, emergencyCode) {
     };
 
   } catch (error) {
-    // console.error('Error handling emergency:', error);
+    // console.warn('Error handling emergency:', error);
     return {
       success: false,
       reason: 'database_error',

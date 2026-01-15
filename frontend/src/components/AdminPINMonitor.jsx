@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import supabaseApi from '../../../lib/supabase-api'
+import supabaseApi from '@/../lib/supabase-api'
 
 /**
  * Admin PIN Monitor Component
@@ -24,7 +24,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setLastRefresh(new Date())
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to fetch PIN:', err)
+            // console.warn('Failed to fetch PIN:', err)
         } finally {
             setLoading(false)
         }
@@ -44,7 +44,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             await fetchCurrentPin()
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to issue PIN:', err)
+            // console.warn('Failed to issue PIN:', err)
         } finally {
             setIssuing(false)
         }

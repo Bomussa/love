@@ -1,6 +1,6 @@
 // المسارات الديناميكية - تعمل sync ثم تعيد// ديناميك المسارات
-import routeMap from '../../config/routeMap.json' assert { type: 'json' }
-import clinicsData from '../../config/clinics.json' assert { type: 'json' }
+import routeMap from '@/config/routeMap.json' assert { type: 'json' }
+import clinicsData from '@/config/clinics.json' assert { type: 'json' }
 import { queueQueries } from './supabase-queries'
 
 // تحويل رموز العيادات إلى كائنات كاملة

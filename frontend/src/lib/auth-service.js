@@ -33,7 +33,7 @@ class AuthService {
         return { success: false, error: response.message || 'Invalid credentials' };
       }
     } catch (error) {
-      console.error('[Auth] Login error:', error);
+      console.warn('[Auth] Login error:', error);
       // Fallback for network errors if credentials match emergency
       if (username === 'admin' && password === 'admin123') {
           const session = this.createSession(username, 'SUPER_ADMIN');

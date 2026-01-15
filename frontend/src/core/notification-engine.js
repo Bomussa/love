@@ -153,7 +153,7 @@ class RealtimeNotificationEngine {
         try {
           callback(fullNotification)
         } catch (e) {
-          // console.error('Error in notification callback:', e)
+          // console.warn('Error in notification callback:', e)
         }
       })
     }
@@ -192,7 +192,7 @@ class RealtimeNotificationEngine {
       try {
         callback(fullNotification)
       } catch (e) {
-        // console.error('Error in admin notification callback:', e)
+        // console.warn('Error in admin notification callback:', e)
       }
     })
 
@@ -494,7 +494,7 @@ class RealtimeNotificationEngine {
         const notifications = JSON.parse(stored)
         this.notifications.set(patientId, notifications)
       } catch (e) {
-        // console.error('Error loading notifications:', e)
+        // console.warn('Error loading notifications:', e)
       }
     }
   }
@@ -505,7 +505,7 @@ class RealtimeNotificationEngine {
       try {
         this.adminNotifications = JSON.parse(stored)
       } catch (e) {
-        // console.error('Error loading admin notifications:', e)
+        // console.warn('Error loading admin notifications:', e)
       }
     }
   }

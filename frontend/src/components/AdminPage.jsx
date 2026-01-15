@@ -39,7 +39,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       try {
           const res = await api.getClinics()
           if(res.success) setClinics(res.clinics)
-      } catch(e) { console.error(e) }
+      } catch(e) { console.warn(e) }
   }
 
   const loadStats = async () => {
@@ -50,7 +50,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         setStats(response.data || response)
       }
     } catch (err) {
-      // console.error('[AdminPage] Error loading stats:', err)
+      // console.warn('[AdminPage] Error loading stats:', err)
       // setError('فشل في تحميل الإحصائيات') // Silent fail improved UI
     } finally {
       setLoading(false)

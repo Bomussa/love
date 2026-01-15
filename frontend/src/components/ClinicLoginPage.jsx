@@ -26,7 +26,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
         setClinics(response.clinics)
       }
     } catch (err) {
-      console.error('Failed to load clinics', err)
+      console.warn('Failed to load clinics', err)
     }
   }
 

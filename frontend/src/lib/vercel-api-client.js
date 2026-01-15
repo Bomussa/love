@@ -42,7 +42,7 @@ async function callAPI(endpoint, options = {}) {
 
     return await response.json();
   } catch (error) {
-    console.error(`[Vercel API] ${endpoint} failed:`, error);
+    console.warn(`[Vercel API] ${endpoint} failed:`, error);
     throw error;
   }
 }

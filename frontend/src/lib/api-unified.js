@@ -43,7 +43,7 @@ class UnifiedApiService {
       const result = await this.backend.patientLogin(patientId, gender);
       return result;
     } catch (error) {
-      console.error('Error in patientLogin:', error);
+      console.warn('Error in patientLogin:', error);
       return { success: false, error: error.message };
     }
   }
@@ -57,7 +57,7 @@ class UnifiedApiService {
       const result = await this.backend.enterQueue(clinic, user, isAutoEntry);
       return result;
     } catch (error) {
-      console.error('Error in enterQueue:', error);
+      console.warn('Error in enterQueue:', error);
       return { success: false, error: error.message };
     }
   }
@@ -67,7 +67,7 @@ class UnifiedApiService {
       const result = await this.backend.getQueueStatus(clinic);
       return result;
     } catch (error) {
-      console.error('Error in getQueueStatus:', error);
+      console.warn('Error in getQueueStatus:', error);
       return { success: false, error: error.message };
     }
   }
@@ -77,7 +77,7 @@ class UnifiedApiService {
       const result = await this.backend.queueDone(clinic, user, String(pin));
       return result;
     } catch (error) {
-      console.error('Error in queueDone:', error);
+      console.warn('Error in queueDone:', error);
       return { success: false, error: error.message };
     }
   }
@@ -102,7 +102,7 @@ class UnifiedApiService {
         };
       }
     } catch (error) {
-      console.error('Error in getQueuePosition:', error);
+      console.warn('Error in getQueuePosition:', error);
       return { success: false, error: error.message };
     }
   }
@@ -116,7 +116,7 @@ class UnifiedApiService {
       const result = await this.backend.getPinStatus();
       return result;
     } catch (error) {
-      console.error('Error in getPinStatus:', error);
+      console.warn('Error in getPinStatus:', error);
       return { success: false, error: error.message };
     }
   }
@@ -135,7 +135,7 @@ class UnifiedApiService {
         return this.backend.choosePath(gender);
       }
     } catch (error) {
-      console.error('Error in choosePath:', error);
+      console.warn('Error in choosePath:', error);
       return { success: false, error: error.message };
     }
   }
@@ -149,7 +149,7 @@ class UnifiedApiService {
         return { success: false, error: 'No saved route found' };
       }
     } catch (error) {
-      console.error('Error in getRoute:', error);
+      console.warn('Error in getRoute:', error);
       return { success: false, error: error.message };
     }
   }
@@ -163,7 +163,7 @@ class UnifiedApiService {
       const result = await this.backend.getNotifications(patientId, unreadOnly);
       return result;
     } catch (error) {
-      console.error('Error in getNotifications:', error);
+      console.warn('Error in getNotifications:', error);
       return { success: false, error: error.message };
     }
   }
@@ -173,7 +173,7 @@ class UnifiedApiService {
       const result = await this.backend.addNotification(patientId, message, type);
       return result;
     } catch (error) {
-      console.error('Error in addNotification:', error);
+      console.warn('Error in addNotification:', error);
       return { success: false, error: error.message };
     }
   }
@@ -191,7 +191,7 @@ class UnifiedApiService {
         return this.backend.getClinics();
       }
     } catch (error) {
-      console.error('Error in getClinics:', error);
+      console.warn('Error in getClinics:', error);
       return { success: false, error: error.message };
     }
   }
@@ -205,7 +205,7 @@ class UnifiedApiService {
       const result = await this.backend.getDailyReport(date);
       return result;
     } catch (error) {
-      console.error('Error in getDailyReport:', error);
+      console.warn('Error in getDailyReport:', error);
       return { success: false, error: error.message };
     }
   }
@@ -218,7 +218,7 @@ class UnifiedApiService {
         return { success: false, error: 'Weekly report not implemented for Supabase yet' };
       }
     } catch (error) {
-      console.error('Error in getWeeklyReport:', error);
+      console.warn('Error in getWeeklyReport:', error);
       return { success: false, error: error.message };
     }
   }
@@ -231,7 +231,7 @@ class UnifiedApiService {
         return { success: false, error: 'Monthly report not implemented for Supabase yet' };
       }
     } catch (error) {
-      console.error('Error in getMonthlyReport:', error);
+      console.warn('Error in getMonthlyReport:', error);
       return { success: false, error: error.message };
     }
   }
@@ -244,7 +244,7 @@ class UnifiedApiService {
         return { success: false, error: 'Annual report not implemented for Supabase yet' };
       }
     } catch (error) {
-      console.error('Error in getAnnualReport:', error);
+      console.warn('Error in getAnnualReport:', error);
       return { success: false, error: error.message };
     }
   }
@@ -254,7 +254,7 @@ class UnifiedApiService {
       const result = await this.backend.getAdminStatus();
       return result;
     } catch (error) {
-      console.error('Error in getAdminStatus:', error);
+      console.warn('Error in getAdminStatus:', error);
       return { success: false, error: error.message };
     }
   }
@@ -283,7 +283,7 @@ class UnifiedApiService {
         return { success: true, queues };
       }
     } catch (error) {
-      console.error('Error in getQueues:', error);
+      console.warn('Error in getQueues:', error);
       return { success: false, error: error.message };
     }
   }
@@ -408,7 +408,7 @@ class UnifiedApiService {
         }
       }
     } catch (error) {
-      console.error('Error generating PIN:', error)
+      console.warn('Error generating PIN:', error)
       return {
         success: false,
         error: error.message
@@ -425,7 +425,7 @@ class UnifiedApiService {
         return { success: true }; // Local mock
       }
     } catch (error) {
-      console.error('Error in verifyPin:', error);
+      console.warn('Error in verifyPin:', error);
       return { success: false, error: error.message };
     }
   }
@@ -462,7 +462,7 @@ class UnifiedApiService {
         pins: pins
       }
     } catch (error) {
-      console.error('Error getting active PINs:', error)
+      console.warn('Error getting active PINs:', error)
       return {
         success: false,
         pins: [],
@@ -492,7 +492,7 @@ class UnifiedApiService {
       const result = await this.backend.getSystemSettings();
       return result;
     } catch (error) {
-      console.error('Error in getSystemSettings:', error);
+      console.warn('Error in getSystemSettings:', error);
       return { success: false, error: error.message };
     }
   }
@@ -502,7 +502,7 @@ class UnifiedApiService {
       const result = await this.backend.updateSystemSettings(settings);
       return result;
     } catch (error) {
-      console.error('Error in updateSystemSettings:', error);
+      console.warn('Error in updateSystemSettings:', error);
       return { success: false, error: error.message };
     }
   }
@@ -512,7 +512,7 @@ class UnifiedApiService {
       const result = await this.backend.resetSystemSettings();
       return result;
     } catch (error) {
-      console.error('Error in resetSystemSettings:', error);
+      console.warn('Error in resetSystemSettings:', error);
       return { success: false, error: error.message };
     }
   }
@@ -530,7 +530,7 @@ class UnifiedApiService {
           callback({ type: 'queue_update', data: status });
         }
       } catch (e) {
-        console.error('Polling error:', e);
+        console.warn('Polling error:', e);
       }
     }, 5000);
 

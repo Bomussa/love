@@ -17,7 +17,7 @@ export async function patientLogin(id, gender) {
   try {
     return await invokeFunction('patient-login', { patientId: id, gender });
   } catch (error) {
-    console.error('Error in patientLogin:', error);
+    console.warn('Error in patientLogin:', error);
     return { success: false, error: error.message };
   }
 }
@@ -35,7 +35,7 @@ export async function getClinics() {
     if (error) throw error;
     return { success: true, clinics: data };
   } catch (error) {
-    console.error('Error in getClinics:', error);
+    console.warn('Error in getClinics:', error);
     return { success: false, error: error.message };
   }
 }
@@ -75,7 +75,7 @@ export async function getPinStatus() {
 
     return { success: true, pins: pinStatus };
   } catch (error) {
-    console.error('Error in getPinStatus:', error);
+    console.warn('Error in getPinStatus:', error);
     return { success: false, error: error.message };
   }
 }
@@ -84,7 +84,7 @@ export async function issuePin(clinicId) {
     try {
         return await invokeFunction('issue-pin', { clinic_id: clinicId });
     } catch (error) {
-        console.error('Error issuing PIN:', error);
+        console.warn('Error issuing PIN:', error);
         return { success: false, error: error.message };
     }
 }
@@ -145,7 +145,7 @@ export async function createPathway(patientId, gender) {
       }
       return { success: true, pathway: data };
   } catch (error) {
-      console.error('Error in createPathway:', error);
+      console.warn('Error in createPathway:', error);
       return { success: false, error: error.message };
   }
 }
@@ -165,7 +165,7 @@ export async function getPathway(patientId) {
       if (routeError) throw routeError;
       return { success: true, pathway: route };
   } catch (error) {
-    console.error('Error in getPathway:', error);
+    console.warn('Error in getPathway:', error);
     return { success: false, error: error.message };
   }
 }
@@ -178,7 +178,7 @@ export async function enterQueue(clinicId, patientId) {
   try {
     return await invokeFunction('queue-enter', { clinic_id: clinicId, patient_id: patientId });
   } catch (error) {
-    console.error('Error in enterQueue:', error);
+    console.warn('Error in enterQueue:', error);
     return { success: false, error: error.message };
   }
 }
@@ -206,7 +206,7 @@ export async function getQueueStatus(clinicId) {
       done: [] 
     };
   } catch (error) {
-    console.error('Error in getQueueStatus:', error);
+    console.warn('Error in getQueueStatus:', error);
     return { success: false, error: error.message };
   }
 }
@@ -215,7 +215,7 @@ export async function callNextPatient(clinicId, pin) {
     try {
         return await invokeFunction('call-next-patient', { clinic_id: clinicId, pin: pin });
     } catch (error) {
-        console.error('Error calling next patient:', error);
+        console.warn('Error calling next patient:', error);
         return { success: false, error: error.message };
     }
 }
@@ -236,7 +236,7 @@ export async function queueDone(clinicId, patientId, pin) {
       if (error) throw error;
       return { success: true, queue: data };
   } catch (error) {
-    console.error('Error in queueDone:', error);
+    console.warn('Error in queueDone:', error);
     return { success: false, error: error.message };
   }
 }

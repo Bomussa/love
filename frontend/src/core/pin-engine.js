@@ -1,5 +1,5 @@
 // محرك البنكود (PIN Engine) - النظام الرسمي
-import settings from '../../data/settings.json'
+import settings from '@/data/settings.json'
 
 class PinEngine {
   constructor() {

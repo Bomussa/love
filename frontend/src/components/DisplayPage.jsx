@@ -25,7 +25,7 @@ export function DisplayPage({ clinicId, language }) {
         } else {
             setCurrentStep({ assigned: null })
         }
-    } catch (e) { console.error(e) }
+    } catch (e) { console.warn(e) }
   }
 
   return (

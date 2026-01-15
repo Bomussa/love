@@ -49,7 +49,7 @@ class RealtimeConnectionManager {
             try {
                 listener(newStatus)
             } catch (err) {
-                console.error('[Realtime] Error in status listener:', err)
+                console.warn('[Realtime] Error in status listener:', err)
             }
         })
     }
@@ -118,7 +118,7 @@ class RealtimeConnectionManager {
             this.channels.set(channelName, channel)
             return channel
         } catch (err) {
-            console.error(`[Realtime] Error subscribing to ${channelName}:`, err)
+            console.warn(`[Realtime] Error subscribing to ${channelName}:`, err)
             this._notifyStatusChange('error')
             if (callbacks.onError) {
                 callbacks.onError(err)
@@ -170,7 +170,7 @@ class RealtimeConnectionManager {
             this.channels.set(channelName, channel)
             return channel
         } catch (err) {
-            console.error(`[Realtime] Error subscribing to ${channelName}:`, err)
+            console.warn(`[Realtime] Error subscribing to ${channelName}:`, err)
             if (callbacks.onError) {
                 callbacks.onError(err)
             }
@@ -210,7 +210,7 @@ class RealtimeConnectionManager {
             this.channels.set(channelName, channel)
             return channel
         } catch (err) {
-            console.error('[Realtime] Error subscribing to PIN updates:', err)
+            console.warn('[Realtime] Error subscribing to PIN updates:', err)
             return null
         }
     }
@@ -244,7 +244,7 @@ class RealtimeConnectionManager {
      */
     _handleReconnect(clinicId, callbacks) {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('[Realtime] Max reconnect attempts reached')
+            console.warn('[Realtime] Max reconnect attempts reached')
             this._notifyStatusChange('error')
             return
         }

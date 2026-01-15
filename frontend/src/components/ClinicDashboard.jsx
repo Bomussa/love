@@ -27,7 +27,7 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
         setCurrentTicket(serving || null)
       }
     } catch (err) {
-      console.error(err)
+      console.warn(err)
     }
   }
 
@@ -59,7 +59,7 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
         refreshStatus()
       }
     } catch (err) {
-      console.error(err)
+      console.warn(err)
     } finally {
       setLoading(false)
     }

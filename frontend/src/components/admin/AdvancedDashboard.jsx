@@ -15,8 +15,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../Card';
-import authService from '../../lib/auth-service';
-import dashboardApi from '../../lib/supabase-dashboard-api';
+import authService from '@/lib/auth-service';
+import dashboardApi from '@/lib/supabase-dashboard-api';
 
 /**
  * Advanced Admin Dashboard - لوحة التحكم المتقدمة
@@ -92,7 +92,7 @@ export const AdvancedDashboard = ({ language = 'ar' }) => {
       setLastUpdate(new Date());
       setLoading(false);
     } catch (err) {
-      console.error('[Dashboard] Error loading data:', err);
+      console.warn('[Dashboard] Error loading data:', err);
       setError(err.message);
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 // محرك الطوابير (Queue Engine) - النظام الرسمي
 import eventBus from './event-bus.js'
 import notificationEngine from './notification-engine.js'
-import settings from '../../data/settings.json'
+import settings from '@/data/settings.json'
 
 class QueueEngine {
   constructor() {

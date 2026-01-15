@@ -24,7 +24,7 @@ export default function Home() {
       const num = await takeQueueNumber(clinicId);
       setQueueNumber(num);
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

@@ -43,7 +43,7 @@ class DashboardApiClient {
             const data = await response.json()
             return data
         } catch (error) {
-            console.error(`[Dashboard API] Error calling ${functionName}:`, error)
+            console.warn(`[Dashboard API] Error calling ${functionName}:`, error)
             throw error
         }
     }
@@ -100,7 +100,7 @@ class DashboardApiClient {
 
             return transformedData
         } catch (error) {
-            console.error('[Dashboard API] Failed to fetch stats:', error)
+            console.warn('[Dashboard API] Failed to fetch stats:', error)
             
             // Return empty data on error
             return {
@@ -155,7 +155,7 @@ class DashboardApiClient {
             const avgWaitMinutes = Math.round(totalWaitMinutes / data.length)
             return avgWaitMinutes
         } catch (error) {
-            console.error('[Dashboard API] Failed to calculate avg wait time:', error)
+            console.warn('[Dashboard API] Failed to calculate avg wait time:', error)
             return 0
         }
     }
@@ -222,7 +222,7 @@ class DashboardApiClient {
 
             return events
         } catch (error) {
-            console.error('[Dashboard API] Failed to fetch recent activity:', error)
+            console.warn('[Dashboard API] Failed to fetch recent activity:', error)
             return []
         }
     }
