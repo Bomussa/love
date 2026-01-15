@@ -26,6 +26,34 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
 
+  // حفظ stations في localStorage عند التحديث
+  useEffect(() => {
+    if (stations.length > 0 && patientData?.id) {
+      const stationsData = {
+        patientId: patientData.id,
+        stations: stations,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('mmc_patient_stations', JSON.stringify(stationsData));
+    }
+  }, [stations, patientData?.id]);
+
+  // استعادة stations من localStorage عند التحميل
+  useEffect(() => {
+    const storedStations = localStorage.getItem('mmc_patient_stations');
+    if (storedStations && patientData?.id) {
+      try {
+        const data = JSON.parse(storedStations);
+        // التحقق من أن البيانات للمريض نفسه وليست قديمة جداً (أقل من 24 ساعة)
+        if (data.patientId === patientData.id && (Date.now() - data.timestamp) < 86400000) {
+          setStations(data.stations);
+        }
+      } catch (e) {
+        console.error('Failed to restore stations:', e);
+      }
+    }
+  }, []);
+
   // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
   const handleGetTicketForFirstClinic = async (station) => {
     try {
