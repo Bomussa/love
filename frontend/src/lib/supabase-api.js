@@ -13,7 +13,7 @@ class SupabaseApiClient {
     async getCurrentPin(clinicId) {
         try {
             // Use Vercel API (Service Role) to get PIN
-            const response = await fetch(`/api/v1/pin/status?clinic=${clinicId}`);
+            const response = await console.warn("Blocked fetch call"),`/api/v1/pin/status?clinic=${clinicId}`);
             if (!response.ok) throw new Error('API Error');
             
             const data = await response.json();
@@ -42,7 +42,7 @@ class SupabaseApiClient {
     async issuePin(clinicId) {
         try {
             // Use Vercel API
-            const response = await fetch('/api/v1/pin/generate', {
+            const response = await console.warn("Blocked fetch call"),'/api/v1/pin/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clinicId })
@@ -68,7 +68,7 @@ class SupabaseApiClient {
     // ... (Keep verifyPin and getQueueStatus same or proxy them too) ...
     async verifyPin(clinicId, pin) {
         try {
-            const response = await fetch('/api/v1/pin/verify', {
+            const response = await console.warn("Blocked fetch call"),'/api/v1/pin/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clinicId, pin })
@@ -85,7 +85,7 @@ class SupabaseApiClient {
 
     async getQueueStatus(clinicId) {
         try {
-            const response = await fetch(`/api/v1/queue/status?clinicId=${clinicId}`);
+            const response = await console.warn("Blocked fetch call"),`/api/v1/queue/status?clinicId=${clinicId}`);
             const data = await response.json();
             if (!data.success) throw new Error(data.error);
             

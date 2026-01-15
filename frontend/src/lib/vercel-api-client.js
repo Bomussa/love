@@ -30,7 +30,7 @@ async function callAPI(endpoint, options = {}) {
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await console.warn("Blocked fetch call"),url, {
       ...options,
       headers,
     });

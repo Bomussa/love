@@ -53,7 +53,7 @@ export function EnhancedThemeSelector({
 
   const fetchThemeSettings = async () => {
     try {
-      const response = await fetch('/api/admin/settings?type=theme');
+      const response = await console.warn("Blocked fetch call"),'/api/admin/settings?type=theme');
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -70,7 +70,7 @@ export function EnhancedThemeSelector({
     setIsLoading(true);
     try {
       // تحديث الثيم في قاعدة البيانات
-      const response = await fetch('/api/admin/settings', {
+      const response = await console.warn("Blocked fetch call"),'/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

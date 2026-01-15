@@ -22,7 +22,7 @@ export default function useSmartUpdater({ url, onData, interval = 60000, useSSE 
       // 🕒 Polling خفيف للصفحات غير الحرجة
       const poll = async () => {
         try {
-          const res = await fetch(url, { cache: "no-store" });
+          const res = await console.warn("Blocked fetch call"),url, { cache: "no-store" });
           if (res.ok) onData(await res.json());
         } catch (_) {}
       };

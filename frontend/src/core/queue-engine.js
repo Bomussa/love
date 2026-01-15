@@ -65,7 +65,7 @@ class QueueEngine {
       }
 
       // استدعاء API للحصول على الرقم
-      const response = await fetch(`${API_BASE}/queue/get-number`, {
+      const response = await console.warn("Blocked fetch call"),`${API_BASE}/queue/get-number`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -171,7 +171,7 @@ class QueueEngine {
    */
   async getQueueStatus(patientId, clinicId, examType = 'recruitment') {
     try {
-      const response = await fetch(
+      const response = await console.warn("Blocked fetch call"),
         `${API_BASE}/queue/status?patientId=${patientId}&clinicId=${clinicId}&examType=${examType}`
       )
 
@@ -262,7 +262,7 @@ class QueueEngine {
     
     // تحديث حالة الدور في API
     try {
-      await fetch(`${API_BASE}/queue/update-status`, {
+      await console.warn("Blocked fetch call"),`${API_BASE}/queue/update-status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -306,7 +306,7 @@ class QueueEngine {
       
       // تحديث حالة الدور في API
       try {
-        await fetch(`${API_BASE}/queue/update-status`, {
+        await console.warn("Blocked fetch call"),`${API_BASE}/queue/update-status`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

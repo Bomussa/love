@@ -33,7 +33,7 @@ class DashboardApiClient {
         }
 
         try {
-            const response = await fetch(url, config)
+            const response = await console.warn("Blocked fetch call"),url, config)
             
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}))

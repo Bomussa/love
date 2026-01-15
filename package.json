@@ -1,23 +1,17 @@
 {
-  "name": "mmc-mms-monorepo",
+  "name": "mmc-mms-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "Medical Committee Integrated Application monorepo (frontend + api proxy).",
-  "workspaces": [
-    "frontend",
-    "api"
-  ],
+  "description": "Medical Committee Integrated Application - Frontend Only",
   "scripts": {
-    "dev": "npm run dev --workspace frontend",
-    "build": "npm run build --workspace frontend",
-    "preview": "npm run preview --workspace frontend",
-    "lint": "npm run lint --workspace frontend",
-    "test": "npm run test --workspace frontend"
+    "prebuild": "node scripts/check-env.js",
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "test": "npm run test --prefix frontend"
   },
   "engines": {
-    "node": "20.x"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-legacy": "^7.2.1"
+    "node": ">=18"
   }
 }

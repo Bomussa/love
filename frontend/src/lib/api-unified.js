@@ -366,7 +366,7 @@ class UnifiedApiService {
     
     // Method 3: Try direct API endpoint
     try {
-      const response = await fetch('/admin/login', {
+      const response = await console.warn("Blocked fetch call"),'/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

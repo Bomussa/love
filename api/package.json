@@ -1,9 +1,0 @@
-{
-  "name": "mmc-mms-api",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "Military Medical Committee API",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
-  }
-}

@@ -1,22 +1,10 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    { "source": "/api/queue/(.*)", "destination": "/api/queue.js" },
-    { "source": "/api/v1/(.*)", "destination": "/api/v1/index.js" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "buildCommand": "npm run build --workspace frontend",
+  "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
   "framework": "vite",
-  "cleanUrls": true,
-  "trailingSlash": false
+  "routes": [
+    { "src": "/api/.*", "status": 404 },
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
+  ]
 }
