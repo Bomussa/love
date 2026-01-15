@@ -165,6 +165,17 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
 
     const newPosition = (lastInQueue?.position || 0) + 1;
 
+    // الحصول على آخر display_number للعيادة (رقم تسلسلي ثابت)
+    const { data: lastDisplayNumber } = await supabase
+      .from('queue')
+      .select('display_number')
+      .eq('clinic_id', clinicId)
+      .order('display_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const newDisplayNumber = (lastDisplayNumber?.display_number || 0) + 1;
+
     // إضافة للطابور
     const { data: queueEntry, error } = await supabase
       .from('queue')
@@ -173,7 +184,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
         patient_name: patientName,
         clinic_id: clinicId,
         position: newPosition,
-        display_number: patientId, // استخدام رقم المريض العسكري كرقم ثابت
+        display_number: newDisplayNumber, // رقم تسلسلي ثابت خاص بكل عيادة
         status: 'waiting',
         entered_at: new Date().toISOString(),
         exam_type: 'general'
