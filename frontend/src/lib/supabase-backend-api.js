@@ -173,6 +173,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
         patient_name: patientName,
         clinic_id: clinicId,
         position: newPosition,
+        display_number: patientId, // استخدام رقم المريض العسكري كرقم ثابت
         status: 'waiting',
         entered_at: new Date().toISOString(),
         exam_type: 'general'
