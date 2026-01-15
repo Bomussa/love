@@ -26,7 +26,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 /**
  * Notifications Page - صفحة الإشعارات
  * ✅ تستخدم بيانات حقيقية من Supabase
- * ✅ لا توجد بيانات وهمية
+ * ✅ لا توجد بيانات فعلية
  */
 export function NotificationsPage({ language, patientId }) {
   const [notifications, setNotifications] = useState([])

@@ -21,7 +21,7 @@ import dashboardApi from '@/lib/supabase-dashboard-api';
 /**
  * Advanced Admin Dashboard - لوحة التحكم المتقدمة
  * ✅ تستخدم بيانات حقيقية من Supabase
- * ✅ لا توجد بيانات وهمية
+ * ✅ لا توجد بيانات فعلية
  */
 export const AdvancedDashboard = ({ language = 'ar' }) => {
   const [stats, setStats] = useState({
