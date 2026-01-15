@@ -119,6 +119,145 @@ export default async function handler(req, res) {
       }));
     }
 
+    // ==================== QUEUE SYSTEM ====================
+    // Get queue number for patient
+    if (pathname.includes('/queue/get-number') && method === 'POST') {
+      const { patientId, clinicId, examType } = body;
+      
+      if (!patientId || !clinicId || !examType) {
+        return res.status(400).json(formatError('Missing required fields', 'MISSING_FIELDS'));
+      }
+
+      try {
+        // Call RPC function
+        const { data, error } = await supabase.rpc('get_next_queue_number', {
+          p_patient_id: patientId,
+          p_clinic_id: clinicId,
+          p_exam_type: examType
+        });
+
+        if (error) {
+          console.error('RPC Error:', error);
+          return res.status(500).json(formatError('Failed to get queue number', 'RPC_ERROR'));
+        }
+
+        return res.status(200).json(formatSuccess({
+          patientId,
+          clinicId,
+          examType,
+          queueNumber: data || 0,
+          date: new Date().toISOString().split('T')[0]
+        }));
+      } catch (error) {
+        console.error('Queue Error:', error);
+        return res.status(500).json(formatError(error.message, 'QUEUE_ERROR'));
+      }
+    }
+
+    // Get queue status
+    if (pathname.includes('/queue/status') && method === 'GET') {
+      const { patientId, clinicId, examType } = query;
+      
+      if (!patientId || !clinicId || !examType) {
+        return res.status(400).json(formatError('Missing required fields', 'MISSING_FIELDS'));
+      }
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('patient_queue_numbers')
+          .select('*')
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinicId)
+          .eq('exam_type', examType)
+          .eq('date', today)
+          .single();
+
+        if (error || !data) {
+          return res.status(200).json(formatSuccess({
+            hasQueue: false,
+            message: 'No queue number assigned yet'
+          }));
+        }
+
+        // Count waiting ahead
+        const { count } = await supabase
+          .from('patient_queue_numbers')
+          .select('*', { count: 'exact', head: true })
+          .eq('clinic_id', clinicId)
+          .eq('exam_type', examType)
+          .eq('date', today)
+          .lt('queue_number', data.queue_number)
+          .in('status', ['assigned', 'active']);
+
+        return res.status(200).json(formatSuccess({
+          hasQueue: true,
+          queueNumber: data.queue_number,
+          status: data.status,
+          waitingAhead: count || 0,
+          assignedAt: data.assigned_at,
+          activatedAt: data.activated_at,
+          completedAt: data.completed_at
+        }));
+      } catch (error) {
+        console.error('Queue Status Error:', error);
+        return res.status(500).json(formatError(error.message, 'QUEUE_STATUS_ERROR'));
+      }
+    }
+
+    // Update queue status
+    if (pathname.includes('/queue/update-status') && method === 'POST') {
+      const { patientId, clinicId, examType, status } = body;
+      
+      if (!patientId || !clinicId || !examType || !status) {
+        return res.status(400).json(formatError('Missing required fields', 'MISSING_FIELDS'));
+      }
+
+      const validStatuses = ['assigned', 'active', 'completed', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json(formatError('Invalid status', 'INVALID_STATUS'));
+      }
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const updateData = {
+          status,
+          updated_at: new Date().toISOString()
+        };
+
+        if (status === 'active') {
+          updateData.activated_at = new Date().toISOString();
+        } else if (status === 'completed') {
+          updateData.completed_at = new Date().toISOString();
+        }
+
+        const { data, error } = await supabase
+          .from('patient_queue_numbers')
+          .update(updateData)
+          .eq('patient_id', patientId)
+          .eq('clinic_id', clinicId)
+          .eq('exam_type', examType)
+          .eq('date', today)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Update Error:', error);
+          return res.status(500).json(formatError('Failed to update status', 'UPDATE_ERROR'));
+        }
+
+        return res.status(200).json(formatSuccess({
+          success: true,
+          message: 'Queue status updated successfully',
+          data
+        }));
+      } catch (error) {
+        console.error('Queue Update Error:', error);
+        return res.status(500).json(formatError(error.message, 'QUEUE_UPDATE_ERROR'));
+      }
+    }
+
     // ==================== ADMIN STATUS ====================
     if (pathname.includes('/admin/status') && method === 'GET') {
         return res.status(200).json(formatSuccess({
