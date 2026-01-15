@@ -4,12 +4,11 @@
   "private": true,
   "description": "Medical Committee Integrated Application - Frontend Only",
   "scripts": {
-    "prebuild": "node scripts/check-env.js",
-    "dev": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "preview": "npm run preview --prefix frontend",
-    "lint": "npm run lint --prefix frontend",
-    "test": "npm run test --prefix frontend"
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "lint": "cd frontend && npm run lint",
+    "test": "cd frontend && npm run test"
   },
   "engines": {
     "node": ">=18"
