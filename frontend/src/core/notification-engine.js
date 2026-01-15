@@ -7,44 +7,38 @@ let toast;
     toast = importedToast;
   } catch (err) {
     toast = {
-      success: (msg) => console.info('[Toast ✅]', msg),
-      error: (msg) => console.error('[Toast ❌]', msg),
+      success: (msg) => console.log('[Toast ✅]', msg),
+      error: (msg) => console.log('[Toast ❌]', msg),
       loading: (msg) => console.info('[Toast ⏳]', msg),
     };
+
   }
 
   // Real-time listeners for frontend notifications
   eventBus.on('queue:near_turn', (data) => {
-    if (toast) toast.success(`يقترب دورك في ${data?.clinicName || 'العيادة'}`);
+    toast.success(`يقترب دورك في ${data?.clinicName || 'العيادة'}`);
   });
 
   eventBus.on('queue:your_turn', (data) => {
-    if (toast) {
-      toast.loading(`الآن دورك في ${data?.clinicName || 'العيادة'}`);
-      if (navigator.vibrate) navigator.vibrate(200);
-      new Audio('/sounds/notify.mp3').play().catch(() => { });
-    }
+    toast.loading(`الآن دورك في ${data?.clinicName || 'العيادة'}`);
+    if (navigator.vibrate) navigator.vibrate(200);
+    new Audio('/sounds/notify.mp3').play().catch(() => { });
   });
 
   eventBus.on('queue:step_done', (data) => {
-    if (toast) {
-      toast.success(
-        data?.nextClinic
-          ? `تم إنهاء الفحص، توجه إلى ${data.nextClinic}`
-          : `تم إنهاء الفحص، انتظر التعليمات`
-      );
-    }
+    toast.success(
+      data?.nextClinic
+        ? `تم إنهاء الفحص، توجه إلى ${data.nextClinic}`
+        : `تم إنهاء الفحص، انتظر التعليمات`
+    );
   });
 
   // Manual test helper
   window.testNotify = () => {
-    if (toast) {
-      toast.success('🔔 اختبار إشعار ناجح!');
-      if (navigator.vibrate) navigator.vibrate(100);
-    }
+    toast.success('🔔 اختبار إشعار ناجح!');
+    if (navigator.vibrate) navigator.vibrate(100);
   };
 })();
-
 // محرك الإشعارات الفوري - Real-time Notifications
 // يعمل لحظياً بدون أي تأخير
 
@@ -93,6 +87,8 @@ class RealtimeNotificationEngine {
 
     // تحميل الإشعارات السابقة من localStorage
     this.loadFromStorage(patientId)
+
+    // لا نرسل إشعار ترحيب تلقائياً - فقط عند الطلب الصريح
 
     // إرجاع دالة إلغاء الاشتراك
     return () => {
@@ -378,81 +374,69 @@ class RealtimeNotificationEngine {
    */
   playSound(priority = 'normal') {
     try {
-      const audio = new Audio(priority === 'urgent' ? '/sounds/urgent.mp3' : '/sounds/notify.mp3')
-      audio.play().catch(e => {
-        // console.warn('Audio play failed:', e)
-      })
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      // تحديد التردد والصوت حسب الأولوية
+      switch (priority) {
+        case 'urgent':
+          oscillator.frequency.value = 880 // A5
+          gainNode.gain.value = 0.3
+          oscillator.start()
+          setTimeout(() => {
+            oscillator.frequency.value = 1046 // C6
+          }, 100)
+          setTimeout(() => oscillator.stop(), 300)
+          break
+
+        case 'high':
+          oscillator.frequency.value = 659 // E5
+          gainNode.gain.value = 0.2
+          oscillator.start()
+          setTimeout(() => oscillator.stop(), 200)
+          break
+
+        default:
+          oscillator.frequency.value = 523 // C5
+          gainNode.gain.value = 0.15
+          oscillator.start()
+          setTimeout(() => oscillator.stop(), 150)
+      }
     } catch (e) {
-      // console.error('Error playing sound:', e)
+
     }
   }
 
   /**
-   * إظهار إشعار المتصفح
+   * عرض إشعار المتصفح
    */
-  showBrowserNotification(notification) {
-    if (!('Notification' in window)) return
-
-    if (Notification.permission === 'granted') {
+  async showBrowserNotification(notification) {
+    if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(notification.title, {
         body: notification.message,
-        icon: '/logo.png'
+        icon: '/logo.png',
+        badge: '/logo.png',
+        tag: notification.id,
+        requireInteraction: notification.priority === 'urgent'
       })
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          new Notification(notification.title, {
-            body: notification.message,
-            icon: '/logo.png'
-          })
-        }
-      })
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission()
     }
   }
 
-  // === إدارة التخزين ===
+  // === إدارة الإشعارات ===
 
-  saveToStorage(patientId) {
-    const data = this.notifications.get(patientId) || []
-    localStorage.setItem(`notifications_${patientId}`, JSON.stringify(data))
-  }
-
-  loadFromStorage(patientId) {
-    try {
-      const data = localStorage.getItem(`notifications_${patientId}`)
-      if (data) {
-        this.notifications.set(patientId, JSON.parse(data))
-      }
-    } catch (e) {
-      // console.error('Error loading notifications:', e)
-    }
-  }
-
-  loadAdminNotifications() {
-    try {
-      const data = localStorage.getItem('admin_notifications')
-      if (data) {
-        this.adminNotifications = JSON.parse(data)
-      }
-    } catch (e) {
-      // console.error('Error loading admin notifications:', e)
-    }
-  }
-
-  // === وظائف مساعدة ===
-
-  getNotifications(patientId) {
-    return this.notifications.get(patientId) || []
-  }
-
-  getAdminNotifications() {
-    return this.adminNotifications
-  }
-
+  /**
+   * وضع علامة مقروء
+   */
   markAsRead(patientId, notificationId) {
-    const data = this.notifications.get(patientId)
-    if (data) {
-      const notification = data.find(n => n.id === notificationId)
+    const notifications = this.notifications.get(patientId)
+    if (notifications) {
+      const notification = notifications.find(n => n.id === notificationId)
       if (notification) {
         notification.read = true
         this.saveToStorage(patientId)
@@ -460,28 +444,113 @@ class RealtimeNotificationEngine {
     }
   }
 
-  markAdminAsRead(notificationId) {
-    const notification = this.adminNotifications.find(n => n.id === notificationId)
-    if (notification) {
-      notification.read = true
-      localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications))
+  /**
+   * وضع علامة مقروء على الكل
+   */
+  markAllAsRead(patientId) {
+    const notifications = this.notifications.get(patientId)
+    if (notifications) {
+      notifications.forEach(n => n.read = true)
+      this.saveToStorage(patientId)
     }
   }
 
-  clearNotifications(patientId) {
+  /**
+   * الحصول على جميع الإشعارات
+   */
+  getNotifications(patientId) {
+    return this.notifications.get(patientId) || []
+  }
+
+  /**
+   * الحصول على الإشعارات غير المقروءة
+   */
+  getUnreadNotifications(patientId) {
+    const notifications = this.notifications.get(patientId) || []
+    return notifications.filter(n => !n.read)
+  }
+
+  /**
+   * مسح جميع الإشعارات
+   */
+  clearAll(patientId) {
     this.notifications.delete(patientId)
     localStorage.removeItem(`notifications_${patientId}`)
   }
 
+  // === التخزين ===
+
+  saveToStorage(patientId) {
+    const notifications = this.notifications.get(patientId)
+    if (notifications) {
+      localStorage.setItem(`notifications_${patientId}`, JSON.stringify(notifications))
+    }
+  }
+
+  loadFromStorage(patientId) {
+    const stored = localStorage.getItem(`notifications_${patientId}`)
+    if (stored) {
+      try {
+        const notifications = JSON.parse(stored)
+        this.notifications.set(patientId, notifications)
+      } catch (e) {
+        // console.error('Error loading notifications:', e)
+      }
+    }
+  }
+
+  loadAdminNotifications() {
+    const stored = localStorage.getItem('admin_notifications')
+    if (stored) {
+      try {
+        this.adminNotifications = JSON.parse(stored)
+      } catch (e) {
+        // console.error('Error loading admin notifications:', e)
+      }
+    }
+  }
+
+  // === Event Bus Integration ===
+
   setupEventBusListeners() {
-    // الاستماع لأحداث النظام العامة وتحويلها لإشعارات
-    eventBus.on('system:reset', () => this.sendResetDone())
-    eventBus.on('clinic:opened', (data) => this.sendClinicOpened(data.name, data.pin))
-    eventBus.on('clinic:closed', (data) => this.sendClinicClosed(data.name))
-    eventBus.on('pin:generated', (data) => this.sendPINGenerated(data.clinicName, data.pin))
+    // الاستماع للأحداث من أجزاء أخرى من التطبيق
+    eventBus.on('queue:near_turn', ({ patientId, clinicName, position }) => {
+      this.sendNearTurn(patientId, clinicName, position)
+    })
+
+    eventBus.on('queue:your_turn', ({ patientId, clinicName, number }) => {
+      this.sendYourTurn(patientId, clinicName, number)
+    })
+
+    eventBus.on('queue:step_done', ({ patientId, currentClinic, nextClinic }) => {
+      this.sendStepDone(patientId, currentClinic, nextClinic)
+    })
+
+    eventBus.on('queue:update', ({ patientId, clinicName, position, totalWaiting }) => {
+      this.sendQueueUpdate(patientId, clinicName, position, totalWaiting)
+    })
+
+    eventBus.on('clinic:opened', ({ clinicName, pin }) => {
+      this.sendClinicOpened(clinicName, pin)
+    })
+
+    eventBus.on('clinic:closed', ({ clinicName }) => {
+      this.sendClinicClosed(clinicName)
+    })
+
+    eventBus.on('pin:generated', ({ clinicName, pin }) => {
+      this.sendPINGenerated(clinicName, pin)
+    })
+
+    eventBus.on('system:reset', () => {
+      this.sendResetDone()
+    })
   }
 }
 
-// تصدير نسخة وحيدة (Singleton)
+// Singleton instance
 const notificationEngine = new RealtimeNotificationEngine()
+
 export default notificationEngine
+export { RealtimeNotificationEngine, NOTIFICATION_TYPES }
+

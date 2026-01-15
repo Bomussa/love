@@ -1,17 +1,21 @@
+// Ensure notification listeners are active globally
 import './core/notification-engine.js';
 import React, { useState, useEffect } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
-import { LoginPage } from './components/LoginPage.jsx'
-import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
-import { PatientPage } from './components/PatientPage.jsx'
-import { AdminDashboardV2 } from './components/AdminDashboardV2.jsx'
-import { QrScanPage } from './components/QrScanPage.jsx'
+import { LoginPage } from './components/LoginPage'
+import { ExamSelectionPage } from './components/ExamSelectionPage'
+import { PatientPage } from './components/PatientPage'
+import { AdminPage } from './components/AdminPage'
+// import { AdminPageSimple as AdminPage } from './components/AdminPageSimple'
+import { QrScanPage } from './components/QrScanPage'
+import EnhancedThemeSelector from './components/EnhancedThemeSelector'
 import api from './lib/api-unified'
+import enhancedApi from './lib/api-unified'
+import { validateAdminCredentials } from './config/admin-credentials'
 import authService from './lib/auth-service'
 import { DisplayPage } from './components/DisplayPage'
-import { ClinicLoginPage } from './components/ClinicLoginPage'
-import { ClinicDashboard } from './components/ClinicDashboard'
-import getDynamicMedicalPathway from './lib/dynamic-pathways'
+
+import { themes, medicalPathways } from './lib/utils'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 
@@ -21,13 +25,16 @@ class AdminErrorBoundary extends React.Component {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
+
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
+
   componentDidCatch(error, errorInfo) {
     console.error('[AdminErrorBoundary] Error caught:', error, errorInfo);
     this.setState({ errorInfo });
   }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -37,6 +44,9 @@ class AdminErrorBoundary extends React.Component {
           <pre className="bg-black p-4 rounded overflow-auto text-sm">
             {this.state.error?.stack}
           </pre>
+          <pre className="bg-black p-4 rounded overflow-auto text-sm mt-4">
+            {this.state.errorInfo?.componentStack}
+          </pre>
         </div>
       );
     }
@@ -44,95 +54,259 @@ class AdminErrorBoundary extends React.Component {
   }
 }
 
+import { ClinicLoginPage } from './components/ClinicLoginPage'
+import { ClinicDashboard } from './components/ClinicDashboard'
+
 function App() {
-  // ============= STATE MANAGEMENT =============
+  // ... existing states ...
   const [clinicSession, setClinicSession] = useState(() => {
     try {
       const stored = localStorage.getItem('mmc_clinic_session')
-      return stored ? JSON.parse(stored) : null
-    } catch(e) { return null }
+      if (stored) {
+        const session = JSON.parse(stored)
+        // Check expiry?
+        return session
+      }
+    } catch(e) {}
+    return null
   })
 
+  useEffect(() => {
+    // ... existing ...
+    
+    // Check for clinic login URL
+    if (window.location.pathname.includes('/clinic/login')) {
+        setCurrentView('clinic_login')
+        return
+    }
+    // Check for clinic dashboard URL
+    if (window.location.pathname.match(/\/clinic\/[^/]+$/)) {
+        if (clinicSession) {
+             setCurrentView('clinic_dashboard')
+        } else {
+             setCurrentView('clinic_login')
+        }
+    }
+  }, [])
+
+
+  const handleClinicLogin = async (clinicId, pin) => {
+      try {
+        const result = await api.verifyPin(clinicId, pin)
+        
+        if (result.success) {
+            const session = { clinicId, pin, loginTime: Date.now() }
+            setClinicSession(session)
+            localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
+            setCurrentView('clinic_dashboard')
+            showNotification(language === 'ar' ? 'تم الدخول بنجاح' : 'Login successful', 'success')
+        } else {
+            showNotification(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN', 'error')
+        }
+      } catch (e) {
+        console.error(e)
+        showNotification(language === 'ar' ? 'حدث خطأ' : 'Error occurred', 'error')
+      }
+  }
+
+  
+  const handleClinicLogout = () => {
+      setClinicSession(null)
+      localStorage.removeItem('mmc_clinic_session')
+      setCurrentView('clinic_login')
+  }
+
+  const [currentView, setCurrentView] = useState(() => {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return 'admin';
+      }
+      // Check for existing admin session
+      const adminSession = localStorage.getItem('mmc_admin_session');
+      if (adminSession) {
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return 'admin';
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Check for display URL
+    if (window.location.pathname.match(/\/clinic\/[^/]+\/display$/)) {
+        setCurrentView('display')
+        return
+    }
+
+    return 'login';
+  })
   const [patientData, setPatientData] = useState(() => {
     try {
       const storedData = localStorage.getItem('patientData');
       return storedData ? JSON.parse(storedData) : null;
-    } catch (error) { return null }
+    } catch (error) {
+      return null;
+    }
   })
-
   const [isAdmin, setIsAdmin] = useState(() => {
-    try {
+    // Check URL for admin access
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        return true;
+      }
+      // Check for existing admin session
       const adminSession = localStorage.getItem('mmc_admin_session');
       if (adminSession) {
-        const session = JSON.parse(adminSession);
-        return new Date(session.expiresAt) > new Date();
+        try {
+          const session = JSON.parse(adminSession);
+          if (new Date(session.expiresAt) > new Date()) {
+            return true;
+          }
+        } catch (e) {}
       }
-    } catch (e) { return false }
-    return false
+    }
+    return false;
   })
-
-  const [currentView, setCurrentView] = useState('login')
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional') // استخدام الثيم الطبي الاحترافي كافتراضي
   const [language, setLanguage] = useState(getCurrentLanguage())
+  const [showThemeSelector, setShowThemeSelector] = useState(false)
+  const [themeSettings, setThemeSettings] = useState({
+    enableThemeSelector: true,
+    showThemePreview: true
+  })
+  const [notif, setNotif] = useState(null)
+  const [systemHealth, setSystemHealth] = useState({ status: 'checking', message: t('system_checking') })
 
-  // ============= ROUTING LOGIC =============
   useEffect(() => {
+    console.log('[App] useEffect running...');
+    // Set initial language and direction
     setCurrentLanguage(language)
-    
-    const path = window.location.pathname;
-    
-    // Priority 1: Patient flow
-    if (patientData) {
-      // If patient is logged in, they MUST NOT see admin screen
-      setCurrentView(patientData.queueType || patientData.examType ? 'patient' : 'examSelection');
-      return;
-    }
-    
-    // Priority 2: Admin routes
-    if (path === '/admin' || path.startsWith('/admin/')) {
-      if (isAdmin) {
-        setCurrentView('admin');
-      } else {
-        // We stay on login but can show admin login UI if needed
-        setCurrentView('login');
-      }
-      return;
-    }
-    
-    // Priority 2.5: Admin session (without /admin path)
-    if (isAdmin && !path.includes('/clinic') && !path.includes('/qr')) {
-      setCurrentView('admin');
-      return;
-    }
-    
-    // Priority 3: Clinic routes
-    if (path === '/clinic/login' || path === '/clinic/login/') {
-      setCurrentView('clinic_login');
-      return;
-    }
-    if (path.match(/\/clinic\/[^/]+\/display$/)) {
-      setCurrentView('display');
-      return;
-    }
-    if (path.startsWith('/clinic/')) {
-      setCurrentView(clinicSession ? 'clinic_dashboard' : 'clinic_login');
-      return;
-    }
-    
-    // Priority 4: QR Scan
-    if (path.includes('/qr')) {
-      setCurrentView('qrscan');
-      return;
-    }
-    
-    // Default: Login
-    setCurrentView('login');
-  }, [language, isAdmin, patientData, clinicSession])
 
-  // ============= THEME MANAGEMENT =============
+    // Check for Maintenance Mode first
+    checkForMaintenanceMode()
+
+    // Check URL for QR scan
+    if (window.location.pathname.includes('/qr') || window.location.search.includes('token=')) {
+      setCurrentView('qrscan')
+      return
+    }
+
+    // Check URL for admin access OR existing admin session
+    const adminSession = localStorage.getItem('mmc_admin_session');
+    console.log('[App] Checking admin session:', !!adminSession);
+    console.log('[App] URL includes admin:', window.location.search.includes('admin=true'));
+    if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true') || adminSession) {
+      try {
+        if (adminSession) {
+          const session = JSON.parse(adminSession);
+          console.log('[App] Session expires:', session.expiresAt);
+          console.log('[App] Session valid:', new Date(session.expiresAt) > new Date());
+          // Check if session is still valid
+          if (new Date(session.expiresAt) > new Date()) {
+            console.log('[App] Setting admin view...');
+            setCurrentView('admin');
+            setIsAdmin(true);
+            console.log('[App] Admin view set!');
+            return;
+          }
+        }
+      } catch (e) {
+        console.log('[App] Invalid admin session:', e);
+      }
+      // If URL has admin parameter, set admin mode
+      if (window.location.pathname.includes('/admin') || window.location.search.includes('admin=true')) {
+        console.log('[App] Setting admin from URL param');
+        setCurrentView('admin');
+        setIsAdmin(true);
+      }
+    }
+
+    // Check for existing patient session
+    if (patientData) {
+      if (patientData.examType || patientData.queueType) {
+        setCurrentView('patient')
+      } else {
+        setCurrentView('examSelection')
+      }
+    }
+  }, [language])
+  // SSE notifications with sound (fallback-friendly)
+  useEffect(() => {
+    let es
+    let connected = false
+    let fallbackTimers = []
+
+    // Create notification sound using Web Audio API
+    const playNotificationSound = () => {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+
+        // Create a simple beep sound
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+
+        // Configure the sound
+        oscillator.frequency.value = 800 // Frequency in Hz (800 Hz = pleasant notification tone)
+        oscillator.type = 'sine' // Sine wave for smooth sound
+
+        // Set volume envelope (fade in/out for smooth sound)
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01)
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1)
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2)
+
+        // Play the sound
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.2)
+      } catch (e) {
+        // Audio generation failed silently
+      }
+    }
+
+    try {
+      es = new EventSource('/api/v1/events/stream')
+      es.onopen = () => { connected = true }
+      es.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data || '{}')
+          if (data?.type === 'NEAR_TURN') {
+            const msg = language === 'ar' ? 'اقترب دورك' : 'Near your turn'
+            setNotif(msg)
+            showNotification(msg, 'info')
+            playNotificationSound()
+          }
+          if (data?.type === 'YOUR_TURN') {
+            const msg = language === 'ar' ? 'دورك الآن' : 'Your turn now'
+            setNotif(msg)
+            showNotification(msg, 'success')
+            playNotificationSound()
+          }
+        } catch { }
+      }
+      es.onerror = () => {
+        // Auto-retry after short delay
+        setTimeout(() => {
+          try { es && es.close() } catch { }
+          // new EventSource will be created by effect rerun only on mount; keep it simple
+        }, 3000)
+      }
+    } catch { }
+
+    // Cleanup on unmount
+    return () => {
+      try { es && es.close() } catch { }
+    }
+  }, [language])
+
+  // تطبيق الثيم عند تغييره
   useEffect(() => {
     applyTheme(currentTheme)
-    localStorage.setItem('selectedTheme', currentTheme)
+    try { localStorage.setItem('selectedTheme', currentTheme) } catch (e) { }
   }, [currentTheme])
 
   const applyTheme = (themeId) => {
@@ -140,111 +314,229 @@ function App() {
     if (!theme) return
 
     const themeCSS = generateThemeCSS(themeId)
-    const existingStyle = document.getElementById('enhanced-theme-style')
-    if (existingStyle) existingStyle.remove()
 
+    // Applying theme
+
+    // إزالة الثيم السابق
+    const existingStyle = document.getElementById('enhanced-theme-style')
+    if (existingStyle) {
+      existingStyle.remove()
+    }
+
+    // إضافة الثيم الجديد
     const style = document.createElement('style')
     style.id = 'enhanced-theme-style'
     style.textContent = themeCSS
     document.head.appendChild(style)
+
+    // تطبيق الخلفية من الثيم على body
     document.body.style.background = theme.gradients.background
     document.body.className = `theme-${themeId}`
+
+    // Theme applied successfully
   }
 
-  // ============= NOTIFICATION SYSTEM =============
+  const handleThemeChange = (themeId) => {
+    setCurrentTheme(themeId)
+  }
+
   const showNotification = (message, type = 'info') => {
+    // إنشاء إشعار مؤقت
     const notification = document.createElement('div')
-    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-      type === 'success' ? 'bg-green-500 text-white' : type === 'error' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
-    }`
+    notification.className = `
+      fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300
+      ${type === 'success' ? 'bg-green-500 text-white' :
+        type === 'error' ? 'bg-red-500 text-white' :
+          'bg-blue-500 text-white'}
+    `
     notification.textContent = message
+
     document.body.appendChild(notification)
+
     setTimeout(() => {
       notification.style.opacity = '0'
-      setTimeout(() => { if (document.body.contains(notification)) document.body.removeChild(notification) }, 300)
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification)
+        }
+      }, 300)
     }, 3000)
   }
 
-  // ============= LOGIN HANDLERS =============
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      ;
-      const res = await api.patientLogin(patientId, gender)
-      ;
-      
-      if (res.success) {
-        // Clear admin session when patient logs in to prevent conflicts
-        localStorage.removeItem('mmc_admin_session');
-        setIsAdmin(false);
-        
-        setPatientData(res.data)
-        localStorage.setItem('patientData', JSON.stringify(res.data))
-        setCurrentView('examSelection')
-        showNotification(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful', 'success')
+      // First login the patient
+      const loginResponse = await api.patientLogin(patientId, gender)
+      if (loginResponse.success) {
+        setPatientData(loginResponse.data)
+        localStorage.setItem('patientData', JSON.stringify(loginResponse.data)) // حفظ بيانات المراجع
+        setCurrentView("examSelection")
+        showNotification(
+          language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful',
+          'success'
+        )
       } else {
-        showNotification(language === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed', 'error')
+        throw new Error(loginResponse.error || 'Login failed')
       }
     } catch (error) {
-      console.error('[App] Patient login error:', error);
-      showNotification(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error')
+      // Login failed - show notification
+      showNotification(
+        language === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed',
+        'error'
+      )
+    }
+  }
+
+  const handleExamSelection = async (examType) => {
+    try {
+      console.log('Exam selection:', examType, 'Gender:', patientData.gender)
+      
+      // Update patient data with exam type and navigate to patient page
+      // The PatientPage will handle pathway loading using dynamic pathways
+      setPatientData({
+        ...patientData,
+        examType: examType,
+        queueType: examType
+      })
+      
+      setCurrentView('patient')
+      
+      showNotification(
+        language === 'ar' ? 'تم اخ��يار نوع الفحص بنجاح' : 'Exam type selected successfully',
+        'success'
+      )
+    } catch (error) {
+      // console.error('Exam selection failed:', error)
+      showNotification(
+        language === 'ar' ? 'فشل اختيار نوع الفحص' : 'Failed to select exam type',
+        'error'
+      )
+    }
+  }
+
+  const checkForMaintenanceMode = async () => {
+    try {
+      // Try maintenance endpoint first
+      const response = await fetch('/api/maintenance');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.maintenance_active) {
+          setSystemHealth({ status: 'maintenance', message: data.message || t('system_maintenance') });
+          return;
+        }
+      }
+      // If maintenance check passes or endpoint not found, system is operational
+      setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+    } catch (error) {
+      // If maintenance endpoint fails, try the main API status
+      try {
+        const statusResponse = await fetch('/api/v1/status');
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.success && statusData.status === 'healthy') {
+            setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+            return;
+          }
+        }
+      } catch (statusError) {
+        // Both endpoints failed
+      }
+      // Fallback: assume system is operational to allow usage
+      setSystemHealth({ status: 'healthy', message: t('system_healthy') });
+      console.log('Maintenance check skipped, assuming system is operational');
+    }
+  }
+
+  const checkSystemHealth = async () => {
+    try {
+      const response = await api.getHealthStatus()
+      if (response.success && response.status === 'operational') {
+        setSystemHealth({ status: 'healthy', message: t('system_healthy') })
+      } else {
+        setSystemHealth({ status: 'degraded', message: t('system_degraded') })
+      }
+    } catch (error) {
+      setSystemHealth({ status: 'down', message: t('system_down') })
+      showNotification(
+        language === 'ar' ? 'فشل الاتصال بالخادم. سيتم استخدام وضع الصيانة.' : 'Server connection failed. Maintenance mode will be used.',
+        'error'
+      )
     }
   }
 
   const handleAdminLogin = async (credentials) => {
-    try {
-      ;
-      const [username, password] = credentials.split(':')
-      
-      if (!username || !password) {
-        showNotification(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password', 'error')
-        return;
-      }
-      
-      const result = await authService.login(username, password)
-      ;
-      
-      if (result.success) {
-        // Clear patient data when admin logs in
-        localStorage.removeItem('patientData');
-        setPatientData(null);
-        
-        setIsAdmin(true)
-        setCurrentView('admin')
-        showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
-      } else {
-        showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error')
-      }
-    } catch (error) {
-      console.error('[App] Admin login error:', error);
-      showNotification(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error')
+    console.log('[App] handleAdminLogin called with:', credentials)
+    // credentials format: "username:password"
+    const [username, password] = credentials.split(':')
+    console.log('[App] Parsed username:', username, 'password length:', password?.length)
+
+    // التحقق من صحة البيانات المدخلة
+    if (!username || !password) {
+      console.log('[App] Missing username or password')
+      showNotification(
+        language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password',
+        'error'
+      )
+      return
+    }
+
+    // استخدام auth-service للتحقق من بيانات الدخول
+    console.log('[App] Calling authService.login...')
+    const result = await authService.login(username, password)
+    console.log('[App] authService.login result:', result)
+    
+    if (result.success) {
+      console.log('[App] Login successful! Setting isAdmin=true and currentView=admin')
+      setIsAdmin(true)
+      setCurrentView('admin')
+      console.log('[App] State updated. isAdmin:', true, 'currentView:', 'admin')
+      showNotification(
+        language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful',
+        'success'
+      )
+      // Force re-render by reloading with admin parameter
+      setTimeout(() => {
+        window.location.href = window.location.pathname + '?admin=true';
+      }, 500);
+    } else {
+      showNotification(
+        language === 'ar' ? `❌ ${result.error}` : `❌ ${result.error}`,
+        'error'
+      )
     }
   }
 
-  // ============= LOGOUT HANDLER =============
   const handleLogout = () => {
     setPatientData(null)
+    localStorage.removeItem('patientData') // مسح بيانات المراجع
     setIsAdmin(false)
     setCurrentView('login')
-    localStorage.removeItem('patientData')
-    localStorage.removeItem('mmc_admin_session')
-    window.history.pushState({}, '', '/')
+    // Clear URL parameters
+    window.history.pushState({}, '', window.location.pathname)
   }
 
-  // ============= LANGUAGE TOGGLE =============
   const toggleLanguage = () => {
     const newLang = language === 'ar' ? 'en' : 'ar'
     setLanguage(newLang)
     setCurrentLanguage(newLang)
   }
 
-  // ============= RENDER =============
-  const theme = enhancedMedicalThemes.find(t => t.id === currentTheme)
-  
   return (
-    <div className="min-h-screen" style={{ background: theme?.gradients?.background || '#0b0b0f' }}>
+    <div className="min-h-screen"
+      style={{
+        background: enhancedMedicalThemes.find(t => t.id === currentTheme)?.gradients?.background || '#0b0b0f'
+      }}
+    >
+
+      {/* المحتوى الرئيسي */}
       <main className="relative z-10">
+        {/* Debug info - remove after fixing */}
+        <div style={{display: 'none'}} data-debug={JSON.stringify({currentView, isAdmin, hasSession: !!localStorage.getItem('mmc_admin_session')})}>Debug</div>
         {currentView === 'qrscan' && (
-          <QrScanPage language={language} toggleLanguage={toggleLanguage} />
+          <QrScanPage
+            language={language}
+            toggleLanguage={toggleLanguage}
+          />
         )}
 
         {currentView === 'login' && (
@@ -252,7 +544,7 @@ function App() {
             onLogin={handleLogin}
             onAdminLogin={handleAdminLogin}
             currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
+            onThemeChange={handleThemeChange}
             language={language}
             toggleLanguage={toggleLanguage}
           />
@@ -261,50 +553,8 @@ function App() {
         {currentView === 'examSelection' && patientData && (
           <ExamSelectionPage
             patientData={patientData}
-            onExamSelect={async (examType) => {
-              ;
-              try {
-                // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
-                const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
-                
-                if (!clinics || clinics.length === 0) {
-                  console.error('[App] No clinics found for:', examType, patientData.gender);
-                  throw new Error('No clinics found');
-                }
-                
-                const firstClinic = clinics[0].id
-                ;
-                
-                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
-                ;
-                
-                if (queueRes.success) {
-                  const updatedPatientData = {
-                    ...patientData,
-                    queueType: examType,
-                    currentClinic: firstClinic,
-                    queueNumber: queueRes.display_number || queueRes.number,
-                    ahead: queueRes.ahead || 0,
-                    pathway: clinics
-                  };
-                  
-                  setPatientData(updatedPatientData)
-                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
-                  setCurrentView('patient')
-                  showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
-                } else {
-                  throw new Error(queueRes.error || 'Failed to enter queue')
-                }
-              } catch (error) {
-                console.error('[App] Exam select error:', error);
-                showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
-              }
-            }}
-            onBack={() => {
-              localStorage.removeItem('patientData');
-              setPatientData(null);
-              setCurrentView('login');
-            }}
+            onExamSelect={handleExamSelection}
+            onBack={() => setCurrentView('login')}
             language={language}
             toggleLanguage={toggleLanguage}
           />
@@ -319,25 +569,9 @@ function App() {
           />
         )}
 
-        {currentView === 'admin' && isAdmin && (
-          <AdminErrorBoundary>
-            <AdminDashboardV2
-              onLogout={handleLogout}
-              language={language}
-              toggleLanguage={toggleLanguage}
-              currentTheme={currentTheme}
-              onThemeChange={setCurrentTheme}
-            />
-          </AdminErrorBoundary>
-        )}
-
         {currentView === 'clinic_login' && (
           <ClinicLoginPage
-            onLogin={(session) => {
-              setClinicSession(session)
-              localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
-              setCurrentView('clinic_dashboard')
-            }}
+            onLogin={handleClinicLogin}
             language={language}
             toggleLanguage={toggleLanguage}
           />
@@ -345,24 +579,65 @@ function App() {
 
         {currentView === 'clinic_dashboard' && clinicSession && (
           <ClinicDashboard
-            session={clinicSession}
-            onLogout={() => {
-              setClinicSession(null)
-              localStorage.removeItem('mmc_clinic_session')
-              setCurrentView('clinic_login')
-            }}
+            clinicId={clinicSession.clinicId}
+            pin={clinicSession.pin}
+            onLogout={handleClinicLogout}
             language={language}
-            toggleLanguage={toggleLanguage}
           />
         )}
 
         {currentView === 'display' && (
-          <DisplayPage language={language} />
+          <DisplayPage
+            clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
+            language={language}
+          />
         )}
+
+        {console.log('[App] Render - currentView:', currentView, 'isAdmin:', isAdmin)}
+        {/* Show AdminPage - with Error Boundary */}
+        {(currentView === 'admin' && isAdmin) && (
+          <AdminErrorBoundary>
+            <AdminPage
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+              currentTheme={currentTheme}
+              onThemeChange={handleThemeChange}
+              systemHealth={systemHealth}
+            />
+          </AdminErrorBoundary>
+        )}
+
+        {currentView === 'clinic_login' && (
+            <ClinicLoginPage
+                onLogin={handleClinicLogin}
+                language={language}
+                toggleLanguage={toggleLanguage}
+            />
+        )}
+
+        {currentView === 'clinic_dashboard' && clinicSession && (
+            <ClinicDashboard
+                clinicId={clinicSession.clinicId}
+                pin={clinicSession.pin}
+                onLogout={handleClinicLogout}
+                language={language}
+            />
+        )}
+
+        {currentView === 'display' && (
+            <DisplayPage
+                clinicId={window.location.pathname.split('/')[2]} // Extract ID from URL
+                language={language}
+            />
+        )}
+
       </main>
+
       <SpeedInsights />
     </div>
   )
 }
 
 export default App
+// Trigger rebuild Wed Dec 17 22:01:32 EST 2025

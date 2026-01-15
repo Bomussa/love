@@ -16,33 +16,21 @@ export const queueQueries = {
    */
   async getStatus(clinicId) {
     const { data, error } = await supabase
-      .from('queues')
+      .from('queue')
       .select('*')
       .eq('clinic_id', clinicId)
-      .order('entered_at', { ascending: true })
+      .order('position', { ascending: true })
     
     if (error) throw error
     
     const waiting = data.filter(q => q.status === 'waiting')
-    const serving = data.filter(q => q.status === 'serving')
-    const completed = data.filter(q => q.status === 'completed')
-    const skipped = data.filter(q => q.status === 'skipped')
+    const inService = data.filter(q => q.status === 'in_service')
     
     return {
       waiting: waiting.length,
-      serving: serving.length,
-      completed: completed.length,
-      skipped: skipped.length,
+      inService: inService.length,
       total: data.length,
-      queue: waiting,
-      // للإحصائيات والتقارير
-      stats: {
-        waiting: waiting.length,
-        serving: serving.length,
-        completed: completed.length,
-        skipped: skipped.length,
-        total: data.length
-      }
+      queue: waiting
     }
   },
 
@@ -57,7 +45,7 @@ export const queueQueries = {
         {
           event: '*',
           schema: 'public',
-          table: 'queues',
+          table: 'queue',
           filter: `clinic_id=eq.${clinicId}`
         },
         callback

@@ -31,7 +31,7 @@ class EnhancedNotificationSystem {
     // تحميل الإشعارات المحفوظة
     this.loadStoredNotifications()
     
-    
+    console.log('✅ نظام الإشعارات المحسّن جاهز')
   }
 
   /**
@@ -198,7 +198,7 @@ class EnhancedNotificationSystem {
       this.eventSource.onopen = () => {
         this.isConnected = true
         this.reconnectAttempts = 0
-        
+        console.log('✅ متصل بتدفق الأحداث')
       }
 
       this.eventSource.addEventListener('notification', (event) => {
@@ -218,7 +218,7 @@ class EnhancedNotificationSystem {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++
           setTimeout(() => {
-            
+            console.log(`🔄 محاولة إعادة الاتصال (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
             this.connectToEventStream()
           }, 3000 * this.reconnectAttempts)
         }
@@ -593,6 +593,6 @@ window.testNotification = (type = 'normal') => {
   notificationSystem.handleNotification(notification)
 }
 
-
-
+console.log('✅ نظام الإشعارات المحسّن تم تحميله بنجاح')
+console.log('💡 للاختبار: testNotification("normal") أو testNotification("near") أو testNotification("your_turn") أو testNotification("done")')
 

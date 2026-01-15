@@ -1,0 +1,290 @@
+/**
+ * إصلاح مشاكل مقاسات الشاشة والهوية البصرية
+ * تاريخ: 15 يناير 2026
+ * 
+ * المشكلة: عناصر الواجهة تظهر بمقاسات غير صحيحة على صفحة العيادات الأولية
+ * الحل: تطبيق أنماط ثابتة ومتسقة لجميع العناصر
+ */
+
+/* ========== إصلاح الحاويات الرئيسية ========== */
+.min-h-screen {
+  min-height: 100vh !important;
+  min-height: 100dvh !important; /* للأجهزة المحمولة */
+}
+
+/* ========== إصلاح البطاقات (Cards) ========== */
+.card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.card-content {
+  padding: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .card-content {
+    padding: 1rem;
+  }
+}
+
+/* ========== إصلاح الأزرار ========== */
+button {
+  min-height: 44px; /* معيار إمكانية الوصول */
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+button.btn-sm {
+  min-height: 36px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+button.btn-lg {
+  min-height: 52px;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+}
+
+/* ========== إصلاح حقول الإدخال ========== */
+input[type="text"],
+input[type="number"],
+input[type="password"] {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ========== إصلاح الأيقونات ========== */
+.icon {
+  flex-shrink: 0;
+}
+
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-md {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.icon-lg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon-xl {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* ========== إصلاح الشبكات (Grids) ========== */
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 640px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ========== إصلاح الأرقام الكبيرة ========== */
+.text-2xl {
+  font-size: 1.5rem !important;
+  line-height: 2rem !important;
+}
+
+.text-3xl {
+  font-size: 1.875rem !important;
+  line-height: 2.25rem !important;
+}
+
+.text-4xl {
+  font-size: 2.25rem !important;
+  line-height: 2.5rem !important;
+}
+
+/* ========== إصلاح المسافات ========== */
+.space-y-4 > * + * {
+  margin-top: 1rem !important;
+}
+
+.space-y-6 > * + * {
+  margin-top: 1.5rem !important;
+}
+
+.gap-3 {
+  gap: 0.75rem !important;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+/* ========== إصلاح الشعار ========== */
+img[alt*="قيادة الخدمات الطبية"],
+img[alt*="Medical Services"] {
+  width: 6rem;
+  height: 6rem;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+/* ========== إصلاح الإشعارات ========== */
+.notification-banner {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  max-width: 90%;
+  width: auto;
+  min-width: 300px;
+}
+
+@media (max-width: 640px) {
+  .notification-banner {
+    max-width: 95%;
+    min-width: 280px;
+  }
+}
+
+/* ========== إصلاح الحالات (Status Badges) ========== */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ========== إصلاح التخطيط المرن ========== */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+/* ========== إصلاح الحاويات المحدودة ========== */
+.max-w-4xl {
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.max-w-2xl {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ========== إصلاح الانتقالات ========== */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* ========== إصلاح التمرير ========== */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* ========== إصلاح الخطوط ========== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== إصلاح RTL للعربية ========== */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .flex {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+/* ========== إصلاح Loading States ========== */
+.loading-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========== إصلاح Focus States ========== */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--theme-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* ========== إصلاح Hover States ========== */
+@media (hover: hover) {
+  button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+}
+
+/* ========== إصلاح الطباعة ========== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

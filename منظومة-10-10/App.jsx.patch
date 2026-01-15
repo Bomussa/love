@@ -1,0 +1,44 @@
+/**
+ * تعديلات على App.jsx لإصلاح مشكلة مقاسات الشاشة
+ * تاريخ: 15 يناير 2026
+ * 
+ * التعديلات المطلوبة:
+ * 1. إضافة import لـ LoadingScreen و useAppReady
+ * 2. إضافة حالة التحميل في بداية المكون
+ * 3. عرض LoadingScreen قبل عرض المحتوى الرئيسي
+ */
+
+// ========== الإضافات في بداية الملف ==========
+// بعد السطر 1 (import './core/notification-engine.js')
+import LoadingScreen from './components/LoadingScreen'
+import { useAppReady } from './hooks/useAppReady'
+
+// ========== التعديلات داخل function App() ==========
+// في بداية المكون، بعد تعريف الـ states الموجودة
+
+function App() {
+  // إضافة هذا السطر في البداية
+  const { isReady, progress } = useAppReady()
+
+  // ... باقي الـ states الموجودة ...
+
+  // ========== إضافة هذا الكود قبل return الرئيسي ==========
+  // عرض شاشة التحميل حتى يصبح التطبيق جاهزاً
+  if (!isReady) {
+    return <LoadingScreen language={currentLanguage} progress={progress} />
+  }
+
+  // ========== باقي الكود الموجود يبقى كما هو ==========
+  return (
+    // ... الكود الموجود ...
+  )
+}
+
+// ========== ملاحظات التطبيق ==========
+/**
+ * 1. انسخ LoadingScreen.jsx إلى /frontend/src/components/
+ * 2. انسخ useAppReady.js إلى /frontend/src/hooks/
+ * 3. طبق التعديلات أعلاه على /frontend/src/App.jsx
+ * 4. أضف ملف 01-fix-layout-sizing.css إلى /frontend/src/styles/
+ * 5. استورد ملف CSS في App.jsx: import './styles/01-fix-layout-sizing.css'
+ */

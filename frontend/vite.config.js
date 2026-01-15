@@ -1,4 +1,3 @@
-// Build timestamp: 2026-01-08-07:05:00 - Force cache bust
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
@@ -28,12 +27,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     strictPort: false,
-    cors: true,
-    allowedHosts: true,
-    hmr: {
-      clientPort: 443,
-      protocol: 'wss'
-    }
+    allowedHosts: 'all'
   },
   build: {
     outDir: 'dist',
@@ -41,10 +35,10 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false,
+        drop_console: true,
         drop_debugger: true,
         // تحسينات إضافية
-        // pure_funcs: ['console.log', 'console.info', 'console.debug'],
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
         passes: 2,
         unsafe: true,
         unsafe_comps: true,
