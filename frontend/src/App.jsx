@@ -168,11 +168,32 @@ function App() {
   // ============= LOGIN HANDLERS =============
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      ;
+      // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم
+      const today = new Date().toISOString().split('T')[0];
+      const deviceKey = `mmc_device_login_${today}`;
+      const lastLogin = localStorage.getItem(deviceKey);
+      
+      if (lastLogin && lastLogin !== patientId) {
+        showNotification(
+          language === 'ar' 
+            ? 'لا يمكن استخدام هذا الجهاز لتسجيل رقم آخر اليوم. الرقم المسجل: ' + lastLogin
+            : 'This device cannot register another number today. Registered: ' + lastLogin,
+          'error'
+        );
+        return;
+      }
+      
       const res = await api.patientLogin(patientId, gender)
-      ;
       
       if (res.success) {
+        // حفظ الرقم المسجل لهذا الجهاز اليوم
+        localStorage.setItem(deviceKey, patientId);
+        // تنظيف المفاتيح القديمة
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('mmc_device_login_') && key !== deviceKey) {
+            localStorage.removeItem(key);
+          }
+        });
         // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);

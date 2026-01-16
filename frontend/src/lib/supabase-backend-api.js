@@ -34,6 +34,30 @@ function getTodayDateKey() {
 
 export async function patientLogin(patientId, gender) {
   try {
+    // التحقق من عدم تكرار الرقم العسكري/الشخصي في نفس اليوم
+    const todayStart = getTodayDateKey() + 'T00:00:00';
+    const todayEnd = getTodayDateKey() + 'T23:59:59';
+    
+    const { data: existingEntry, error: checkError } = await supabase
+      .from('queue')
+      .select('id, patient_id, entered_at')
+      .eq('patient_id', patientId)
+      .gte('entered_at', todayStart)
+      .lte('entered_at', todayEnd)
+      .limit(1);
+    
+    if (checkError) {
+      console.error('[patientLogin] Check error:', checkError);
+    }
+    
+    if (existingEntry && existingEntry.length > 0) {
+      return {
+        success: false,
+        error: 'ALREADY_REGISTERED_TODAY',
+        message: 'هذا الرقم مسجل بالفعل اليوم. يمكنك الدخول لفحص جديد غداً.'
+      };
+    }
+    
     // استخدام API Router مباشرة
     const response = await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-router/patient/login', {
       method: 'POST',
