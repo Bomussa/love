@@ -109,24 +109,19 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
         {/* Logo and Title */}
         <div className="text-center space-y-4">
-          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-32 h-32 rounded-full shadow-lg" />
+          <img src="/logo.jpeg" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
 
           <div>
             <h1 className="text-3xl font-bold text-white">
-              {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
+              {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xl text-gray-300 mt-2">
-              {language === 'ar' ? 'Medical Services' : 'قيادة الخدمات الطبية'}
+            <p className="text-xl text-[#C9A54C] font-semibold mt-2">
+              {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
             <p className="text-gray-400 mt-2">
               {language === 'ar'
-                ? 'المركز الطبي المتخصص العسكري - العطار - اللجنة الطبية'
-                : 'Military Specialized Medical Center – Al-Attar – Medical Committee'}
-            </p>
-            <p className="text-gray-500 text-sm">
-              {language === 'ar'
-                ? 'Military Specialized Medical Center – Al-Attar – Medical Committee'
-                : 'المركز الطبي المتخصص العسكري - العطار - اللجنة الطبية'}
+                ? 'المركز الطبي المتخصص العسكري - العطار'
+                : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
 

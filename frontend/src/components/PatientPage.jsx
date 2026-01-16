@@ -585,7 +585,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     return (
       <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
         <div className="max-w-2xl mx-auto space-y-6 text-center">
-          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-32 h-32 object-contain rounded-full shadow-lg" />
+          <img src="/logo.jpeg" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 object-contain rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
 
           <div className="text-green-400">
             <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -720,14 +720,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         </div>
 
         <div className="text-center space-y-4">
-          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg" />
+          <img src="/logo.jpeg" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
 
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
+              {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-lg text-gray-300">
-              {language === 'ar' ? 'Medical Services' : 'قيادة الخدمات الطبية'}
+            <p className="text-lg text-[#C9A54C] font-semibold">
+              {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
             <p className="text-gray-400 text-sm">
               {language === 'ar'

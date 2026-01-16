@@ -45,15 +45,18 @@ export function CompletePage({ patientData, onBackToHome, language }) {
               <div className="text-center pb-6 border-b border-gray-700">
                 <img
                   src="/logo.jpeg"
-                  alt="قيادة الخدمات الطبية"
-                  className="mx-auto w-20 h-20 rounded-full shadow-lg mb-4"
+                  alt="اللجنة الطبية العسكرية"
+                  className="mx-auto w-20 h-20 rounded-full shadow-lg mb-4 border-2 border-[#C9A54C]/30"
                 />
                 <h2 className="text-2xl font-bold text-white">
-                  {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
+                  {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
                 </h2>
-                <p className="text-gray-400 mt-1">
+                <p className="text-[#C9A54C] font-semibold mt-1">
+                  {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
                   {language === 'ar'
-                    ? 'المركز الطبي التخصصي العسكري - العطار'
+                    ? 'المركز الطبي المتخصص العسكري - العطار'
                     : 'Military Specialized Medical Center - Al-Attar'}
                 </p>
               </div>
