@@ -51,7 +51,7 @@ export async function patientLogin(patientId, gender) {
       const todayEnd = getTodayDateKey() + 'T23:59:59';
       
       const { data: existingEntry, error: checkError } = await supabase
-        .from('queue')
+        .from('queues')
         .select('id, patient_id, entered_at')
         .eq('patient_id', patientId)
         .gte('entered_at', todayStart)
@@ -127,7 +127,7 @@ export async function getQueuePosition(clinicId, patientId) {
   try {
     // جلب موقع المريض في الطابور
     const { data: queueEntry, error } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('patient_id', patientId)
@@ -144,7 +144,7 @@ export async function getQueuePosition(clinicId, patientId) {
 
     // حساب عدد المنتظرين قبله
     const { count, error: countError } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinicId)
       .eq('status', 'waiting')
@@ -176,7 +176,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
   try {
     // التحقق من عدم وجود المريض في الطابور بالفعل
     const { data: existing } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('patient_id', patientId)
@@ -193,7 +193,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
 
     // الحصول على آخر موقع في الطابور
     const { data: lastInQueue } = await supabase
-      .from('queue')
+      .from('queues')
       .select('position')
       .eq('clinic_id', clinicId)
       .order('position', { ascending: false })
@@ -232,7 +232,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
 
     // إضافة للطابور
     const { data: queueEntry, error } = await supabase
-      .from('queue')
+      .from('queues')
       .insert([{
         patient_id: patientId,
         patient_name: patientName,
@@ -265,7 +265,7 @@ export async function getQueueStatus(clinicId) {
     
     // جلب جميع عناصر الطابور للعيادة
     const { data: allQueue, error } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*')
       .eq('clinic_id', clinicId)
       .order('position', { ascending: true });
@@ -329,7 +329,7 @@ export async function callNextPatient(clinicId, pin) {
 
     // إنهاء أي مريض قيد الخدمة حالياً
     await supabase
-      .from('queue')
+      .from('queues')
       .update({ 
         status: 'completed', 
         completed_at: new Date().toISOString() 
@@ -339,7 +339,7 @@ export async function callNextPatient(clinicId, pin) {
 
     // جلب التالي في الانتظار
     const { data: nextPatient, error: fetchError } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('status', 'waiting')
@@ -355,7 +355,7 @@ export async function callNextPatient(clinicId, pin) {
 
     // تحديث حالة المريض التالي
     const { data: calledPatient, error: updateError } = await supabase
-      .from('queue')
+      .from('queues')
       .update({ 
         status: 'called', 
         called_at: new Date().toISOString() 
@@ -386,7 +386,7 @@ export async function queueDone(clinicId, patientId, pin) {
     }
 
     const { data, error } = await supabase
-      .from('queue')
+      .from('queues')
       .update({ 
         status: 'completed', 
         completed_at: new Date().toISOString() 
@@ -409,7 +409,7 @@ export async function queueDone(clinicId, patientId, pin) {
 export async function getPatientPosition(clinicId, patientId) {
   try {
     const { data: queue } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('status', 'waiting')
@@ -728,7 +728,7 @@ export async function getPathway(patientId) {
   try {
     // Get patient's exam type first
     const { data: queueEntry, error: queueError } = await supabase
-      .from('queue')
+      .from('queues')
       .select('exam_type')
       .eq('patient_id', patientId)
       .order('entered_at', { ascending: false })
@@ -810,7 +810,7 @@ export async function getAdminStatus() {
     
     // إحصائيات الطوابير
     const { data: queueStats } = await supabase
-      .from('queue')
+      .from('queues')
       .select('status')
       .gte('entered_at', `${today}T00:00:00`);
 
@@ -867,7 +867,7 @@ export async function getDailyReport(date = null) {
     
     // جلب بيانات الطوابير لليوم المحدد
     const { data: queueData, error } = await supabase
-      .from('queue')
+      .from('queues')
       .select('*, clinics(name_ar, name_en)')
       .gte('entered_at', `${targetDate}T00:00:00`)
       .lte('entered_at', `${targetDate}T23:59:59`)
@@ -936,7 +936,7 @@ export async function getWeeklyReport() {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const { data, error } = await supabase
-      .from('queue')
+      .from('queues')
       .select('entered_at, status, clinic_id')
       .gte('entered_at', weekAgo.toISOString())
       .order('entered_at', { ascending: true });
@@ -974,7 +974,7 @@ export async function getMonthlyReport() {
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
     const { data, error } = await supabase
-      .from('queue')
+      .from('queues')
       .select('entered_at, status, clinic_id')
       .gte('entered_at', monthAgo.toISOString())
       .order('entered_at', { ascending: true });
