@@ -4,7 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { LoginPage } from './components/LoginPage.jsx'
 import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
 import { PatientPage } from './components/PatientPage.jsx'
-import AdminDashboardComplete from './components/AdminDashboardComplete.jsx'
+import { AdminDashboardV2 } from './components/AdminDashboardV2.jsx'
 import { QrScanPage } from './components/QrScanPage.jsx'
 import api from './lib/api-unified'
 import authService from './lib/auth-service'
@@ -293,7 +293,22 @@ function App() {
                   throw new Error('No clinics found');
                 }
                 
-                const firstClinic = clinics[0].id
+                // حساب الأوزان - اختيار العيادة الأقل ازدحاماً
+                let firstClinic = clinics[0].id;
+                try {
+                  const queueCounts = await Promise.all(
+                    clinics.map(async (clinic) => {
+                      const count = await api.getQueueCount(clinic.id);
+                      return { id: clinic.id, count: count || 0 };
+                    })
+                  );
+                  // ترتيب العيادات حسب الأقل ازدحاماً
+                  queueCounts.sort((a, b) => a.count - b.count);
+                  firstClinic = queueCounts[0].id;
+                  console.log('[App] Weighted clinic selection:', queueCounts, 'Selected:', firstClinic);
+                } catch (weightError) {
+                  console.warn('[App] Weight calculation failed, using first clinic:', weightError);
+                }
                 ;
                 
                 const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
@@ -342,7 +357,13 @@ function App() {
 
         {currentView === 'admin' && isAdmin && (
           <AdminErrorBoundary>
-            <AdminDashboardComplete />
+            <AdminDashboardV2
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+            />
           </AdminErrorBoundary>
         )}
 

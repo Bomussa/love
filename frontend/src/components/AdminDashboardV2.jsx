@@ -41,11 +41,13 @@ const QueueManagement = ({ language, t }) => {
       setLoading(true);
       const { data, error } = await supabase
         .from('queues')
-        .select('*, clinics(name_ar, name_en)')
-        .order('created_at', { ascending: false });
+        .select('*')
+        .order('entered_at', { ascending: false });
       
       if (!error && data) {
         setQueues(data);
+      } else {
+        console.error('Error loading queues:', error);
       }
     } catch (e) {
       console.error('Error loading queues:', e);
@@ -214,7 +216,7 @@ const PINManagement = ({ language, t }) => {
       setLoading(true);
       const { data, error } = await supabase
         .from('pins')
-        .select('*, clinics(name_ar, name_en)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (!error && data) setPins(data);
@@ -233,10 +235,11 @@ const PINManagement = ({ language, t }) => {
     try {
       const pinCode = newPin.pin_code || generatePin();
       const { error } = await supabase.from('pins').insert({
-        pin_code: pinCode,
-        clinic_id: newPin.clinic_id,
-        patient_id: newPin.patient_id || null,
+        pin: pinCode,
+        clinic_code: newPin.clinic_id,
         is_active: true,
+        generated_at: new Date().toISOString(),
+        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
         created_at: new Date().toISOString()
       });
       
@@ -362,8 +365,8 @@ const PINManagement = ({ language, t }) => {
           <tbody>
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin_code}</td>
-                <td className="p-4">{pin.clinics ? (language === 'ar' ? pin.clinics.name_ar : pin.clinics.name_en) : '-'}</td>
+                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
+                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
@@ -741,7 +744,7 @@ const NotificationsManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*, clinics(name_ar, name_en)')
-        .order('created_at', { ascending: false });
+        .order('entered_at', { ascending: false });
       
       if (!error && data) setNotifications(data);
     } catch (e) {

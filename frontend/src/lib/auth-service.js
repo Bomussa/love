@@ -17,7 +17,7 @@ class AuthService {
     try {
       // 1. EMERGENCY FALLBACK (Deterministic Access)
       // This guarantees access even if API is down/misconfigured
-      if (username === 'admin' && password === 'admin123') {
+      if (username.toLowerCase() === 'admin' && password === 'admin123') {
           console.warn('[Auth] Using Emergency Fallback Credentials');
           const session = this.createSession(username, 'SUPER_ADMIN');
           return { success: true, session };
@@ -35,7 +35,7 @@ class AuthService {
     } catch (error) {
       console.error('[Auth] Login error:', error);
       // Fallback for network errors if credentials match emergency
-      if (username === 'admin' && password === 'admin123') {
+      if (username.toLowerCase() === 'admin' && password === 'admin123') {
           const session = this.createSession(username, 'SUPER_ADMIN');
           return { success: true, session };
       }

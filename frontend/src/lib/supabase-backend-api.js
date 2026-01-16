@@ -259,6 +259,26 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
   }
 }
 
+// دالة حساب عدد المنتظرين في العيادة
+export async function getQueueCount(clinicId) {
+  try {
+    const { count, error } = await supabase
+      .from('queues')
+      .select('*', { count: 'exact', head: true })
+      .eq('clinic_id', clinicId)
+      .eq('status', 'waiting');
+    
+    if (error) {
+      console.error('[getQueueCount] Error:', error);
+      return 0;
+    }
+    return count || 0;
+  } catch (error) {
+    console.error('[getQueueCount] Error:', error);
+    return 0;
+  }
+}
+
 export async function getQueueStatus(clinicId) {
   try {
     const today = getTodayDateKey();
@@ -1098,5 +1118,8 @@ export default {
   getMonthlyReport,
   
   // Admin
-  adminLogin
+  adminLogin,
+  
+  // Queue Count
+  getQueueCount
 };
