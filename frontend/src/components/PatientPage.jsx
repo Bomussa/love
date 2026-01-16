@@ -676,7 +676,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         allStationsCompleted={allStationsCompleted}
       />
 
-      <div className="w-full max-w-lg mx-auto space-y-4 px-3">
+      <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto space-y-4 px-4">
         <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
@@ -707,7 +707,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </div>
         </div>
 
-        <Card className="bg-gray-800/50 border-gray-700">
+        <Card className="bg-gray-800/50 border-gray-700 w-full">
           <CardHeader className="text-center">
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
