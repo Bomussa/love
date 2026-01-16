@@ -723,6 +723,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
+            </p>
           </div>
         </div>
 
