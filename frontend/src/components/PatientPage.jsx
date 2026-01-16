@@ -660,7 +660,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="w-full min-h-screen min-h-dvh p-4" data-test="patient-page" style={{width: '100%', maxWidth: '100vw'}}>
+    <div className="w-full min-h-screen min-h-dvh px-2 py-4" data-test="patient-page" style={{width: '100%', maxWidth: '100vw'}}>
       {currentNotice && (
         <ZFDBanner
           notice={currentNotice}
@@ -676,7 +676,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         allStationsCompleted={allStationsCompleted}
       />
 
-      <div className="w-full px-4 space-y-6">
+      <div className="w-full space-y-4">
         <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
