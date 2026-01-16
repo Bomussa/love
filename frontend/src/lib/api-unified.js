@@ -5,6 +5,27 @@ import { supabase } from './supabase-client';
  * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
  */
 
+// ============================================================================
+// إعدادات نظام الدور - Queue Settings
+// ============================================================================
+const DEFAULT_QUEUE_SETTINGS = {
+  queueIntervalSeconds: 120,        // 2 دقيقة - فترة النداء التلقائي
+  patientMaxWaitSeconds: 240,       // 4 دقائق - المهلة قبل الدخول
+  examMaxSeconds: 300,              // 5 دقائق - الحد الأقصى للفحص
+  timeoutHandlerEnabled: true,      // تفعيل التمرير التلقائي
+  examTimeoutEnabled: true          // تفعيل حد الفحص
+};
+
+function getQueueSettings() {
+  try {
+    const saved = localStorage.getItem('queueSystemSettings');
+    if (saved) {
+      return { ...DEFAULT_QUEUE_SETTINGS, ...JSON.parse(saved) };
+    }
+  } catch (e) {}
+  return { ...DEFAULT_QUEUE_SETTINGS };
+}
+
 const api = {
   // --- Patients ---
   async patientLogin(patientId, gender) {
@@ -420,50 +441,110 @@ const api = {
 
   // --- Auto-Skip System ---
   /**
-   * نظام التمرير التلقائي للمراجعين الذين لم يحضروا خلال دقيقتين
-   * - يفحص كل المراجعين بحالة 'waiting' الذين مر على استدعائهم (called_at) أكثر من دقيقتين
-   * - يتم تمريرهم تلقائياً (تحديث الحالة إلى 'skipped' فقط)
-   * - يتم استدعاء المراجع التالي تلقائياً
-   * - لا يتم إنشاء سجل جديد لتجنب تضخم عدد المنتظرين
+   * نظام التمرير التلقائي للمراجعين
+   * ============================================================================
+   * 1. المراجعين الذين لم يدخلوا خلال المهلة (patientMaxWaitSeconds = 4 دقائق افتراضياً)
+   * 2. المراجعين داخل العيادة الذين تجاوزوا الحد الأقصى (examMaxSeconds = 5 دقائق افتراضياً)
+   * ============================================================================
    */
   async checkAndSkipStaleQueues() {
     try {
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      // جلب الإعدادات من localStorage
+      const settings = getQueueSettings();
       
-      // البحث عن المراجعين الذين مر على استدعائهم أكثر من دقيقتين
-      const { data: staleQueues, error: fetchError } = await supabase
+      // التحقق من تفعيل النظام
+      if (!settings.timeoutHandlerEnabled) {
+        return { success: true, skipped: 0, message: 'نظام التمرير معطل' };
+      }
+      
+      const skippedPatients = [];
+      const completedExams = [];
+      
+      // ============================================================================
+      // 1. تمرير المراجعين الذين لم يدخلوا خلال المهلة
+      // ============================================================================
+      const waitTimeoutMs = settings.patientMaxWaitSeconds * 1000;
+      const waitTimeoutAgo = new Date(Date.now() - waitTimeoutMs).toISOString();
+      
+      const { data: staleWaiting, error: waitError } = await supabase
         .from('queues')
         .select('*')
         .eq('status', 'waiting')
         .not('called_at', 'is', null)
-        .lt('called_at', twoMinutesAgo);
+        .lt('called_at', waitTimeoutAgo);
 
-      if (fetchError) throw fetchError;
-      if (!staleQueues || staleQueues.length === 0) {
-        return { success: true, skipped: 0 };
+      if (waitError) throw waitError;
+      
+      // معالجة المراجعين المتأخرين عن الدخول
+      if (staleWaiting && staleWaiting.length > 0) {
+        for (const queue of staleWaiting) {
+          await supabase
+            .from('queues')
+            .update({ 
+              status: 'skipped',
+              completed_at: new Date().toISOString(),
+              skip_reason: 'timeout_before_entry'
+            })
+            .eq('id', queue.id);
+
+          skippedPatients.push({
+            patient_id: queue.patient_id,
+            clinic_id: queue.clinic_id,
+            display_number: queue.display_number,
+            reason: 'timeout_before_entry'
+          });
+        }
       }
-
-      const skippedPatients = [];
-
-      // معالجة كل مراجع متأخر
-      for (const queue of staleQueues) {
-        // تحديث الحالة إلى 'skipped' فقط (بدون إنشاء سجل جديد)
-        await supabase
+      
+      // ============================================================================
+      // 2. إنهاء فحص المراجعين الذين تجاوزوا الحد الأقصى داخل العيادة
+      // ============================================================================
+      if (settings.examTimeoutEnabled) {
+        const examTimeoutMs = settings.examMaxSeconds * 1000;
+        const examTimeoutAgo = new Date(Date.now() - examTimeoutMs).toISOString();
+        
+        const { data: staleExams, error: examError } = await supabase
           .from('queues')
-          .update({ 
-            status: 'skipped',
-            completed_at: new Date().toISOString() // تسجيل وقت التمرير
-          })
-          .eq('id', queue.id);
+          .select('*')
+          .eq('status', 'serving')
+          .not('entered_at', 'is', null)
+          .lt('entered_at', examTimeoutAgo);
 
-        skippedPatients.push({
-          patient_id: queue.patient_id,
-          clinic_id: queue.clinic_id,
-          display_number: queue.display_number
-        });
+        if (examError) throw examError;
+        
+        // معالجة المراجعين الذين تجاوزوا وقت الفحص
+        if (staleExams && staleExams.length > 0) {
+          for (const queue of staleExams) {
+            await supabase
+              .from('queues')
+              .update({ 
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                auto_completed: true
+              })
+              .eq('id', queue.id);
+
+            completedExams.push({
+              patient_id: queue.patient_id,
+              clinic_id: queue.clinic_id,
+              display_number: queue.display_number,
+              reason: 'exam_timeout'
+            });
+          }
+        }
       }
 
-      return { success: true, skipped: skippedPatients.length, patients: skippedPatients };
+      return { 
+        success: true, 
+        skipped: skippedPatients.length, 
+        completedExams: completedExams.length,
+        patients: skippedPatients,
+        exams: completedExams,
+        settings: {
+          waitTimeout: settings.patientMaxWaitSeconds,
+          examTimeout: settings.examMaxSeconds
+        }
+      };
     } catch (error) {
       console.error('Check and Skip Stale Queues Error:', error);
       return { success: false, error: error.message };

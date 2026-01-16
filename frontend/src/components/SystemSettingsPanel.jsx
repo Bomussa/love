@@ -9,7 +9,8 @@ export function SystemSettingsPanel({ language = 'ar' }) {
   const [settings, setSettings] = useState({
     // توقيتات النظام
     queueIntervalSeconds: 120,        // 2 دقيقة للنداء التلقائي
-    patientMaxWaitSeconds: 240,       // 4 دقائق للمراجع
+    patientMaxWaitSeconds: 240,       // 4 دقائق للمراجع قبل الدخول
+    examMaxSeconds: 300,               // 5 دقائق كحد أقصى للفحص داخل العيادة
     refreshIntervalSeconds: 30,       // تحديث البيانات
     nearTurnRefreshSeconds: 7,        // تحديث عند قرب الدور
     
@@ -34,17 +35,18 @@ export function SystemSettingsPanel({ language = 'ar' }) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
 
-  // تحميل الإعدادات من Backend
+  // تحميل الإعدادات من localStorage
   useEffect(() => {
     loadSettings()
   }, [])
 
-  const loadSettings = async () => {
+  const loadSettings = () => {
     setLoading(true)
     try {
-      const data = await api.getSystemSettings()
-      if (data && data.success) {
-        setSettings(prev => ({ ...prev, ...data.settings }))
+      const savedSettings = localStorage.getItem('queueSystemSettings')
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings)
+        setSettings(prev => ({ ...prev, ...parsed }))
       }
     } catch (error) {
       // console.error('Failed to load settings:', error)
@@ -54,15 +56,13 @@ export function SystemSettingsPanel({ language = 'ar' }) {
     }
   }
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setSaving(true)
     try {
-      const result = await api.updateSystemSettings(settings)
-      if (result && result.success) {
-        showMessage('تم حفظ الإعدادات بنجاح', 'success')
-      } else {
-        showMessage('فشل حفظ الإعدادات', 'error')
-      }
+      localStorage.setItem('queueSystemSettings', JSON.stringify(settings))
+      // إرسال حدث لتحديث الإعدادات في كل الشاشات
+      window.dispatchEvent(new CustomEvent('queueSettingsUpdated', { detail: settings }))
+      showMessage('تم حفظ الإعدادات بنجاح', 'success')
     } catch (error) {
       // console.error('Failed to save settings:', error)
       showMessage('فشل حفظ الإعدادات', 'error')
@@ -71,18 +71,34 @@ export function SystemSettingsPanel({ language = 'ar' }) {
     }
   }
 
-  const handleReset = async () => {
+  const handleReset = () => {
     if (!confirm('هل أنت متأكد من إعادة تعيين الإعدادات للقيم الافتراضية؟')) {
       return
     }
     
     setSaving(true)
     try {
-      const result = await api.resetSystemSettings()
-      if (result && result.success) {
-        setSettings(prev => ({ ...prev, ...result.settings }))
-        showMessage('تم إعادة تعيين الإعدادات', 'success')
+      const defaultSettings = {
+        queueIntervalSeconds: 120,
+        patientMaxWaitSeconds: 240,
+        examMaxSeconds: 300,
+        refreshIntervalSeconds: 30,
+        nearTurnRefreshSeconds: 7,
+        autoCallEnabled: true,
+        timeoutHandlerEnabled: true,
+        notificationsEnabled: true,
+        showCountdownTimer: true,
+        showQueuePosition: true,
+        showEstimatedWait: true,
+        showAheadCount: true,
+        notifyNearAhead: 3,
+        pinLateMinutes: 5,
+        noticeTtlSeconds: 30
       }
+      setSettings(defaultSettings)
+      localStorage.setItem('queueSystemSettings', JSON.stringify(defaultSettings))
+      window.dispatchEvent(new CustomEvent('queueSettingsUpdated', { detail: defaultSettings }))
+      showMessage('تم إعادة تعيين الإعدادات', 'success')
     } catch (error) {
       // console.error('Failed to reset settings:', error)
       showMessage('فشل إعادة التعيين', 'error')
@@ -159,7 +175,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                المهلة القصوى للمراجع (ثانية)
+                المهلة القصوى قبل الدخول (ثانية)
               </label>
               <Input
                 type="number"
@@ -171,6 +187,23 @@ export function SystemSettingsPanel({ language = 'ar' }) {
               />
               <p className="text-xs text-gray-500 mt-1">
                 الحالي: {settings.patientMaxWaitSeconds} ثانية ({Math.floor(settings.patientMaxWaitSeconds / 60)} دقيقة)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                الحد الأقصى للفحص داخل العيادة (ثانية)
+              </label>
+              <Input
+                type="number"
+                min="120"
+                max="900"
+                value={settings.examMaxSeconds}
+                onChange={(e) => updateSetting('examMaxSeconds', parseInt(e.target.value))}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                الحالي: {settings.examMaxSeconds} ثانية ({Math.floor(settings.examMaxSeconds / 60)} دقيقة) - بعدها يتم النداء على التالي
               </p>
             </div>
 
