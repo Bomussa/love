@@ -222,7 +222,7 @@ const ReportsPanel = ({ isOpen, onClose, language = 'ar' }) => {
       <body>
         <div class="header">
           <h1>قيادة الخدمات الطبية</h1>
-          <p>المركز الطبي المتخصص العسكري - العطار</p>
+          <p>المركز الطبي التخصصي العسكري - العطار</p>
           <p>تقرير ${periodLabels[period]} - ${new Date().toLocaleDateString('ar-SA')}</p>
         </div>
         

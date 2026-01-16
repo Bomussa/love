@@ -59,7 +59,7 @@ const OfficialHeader = ({
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
             <p className={`${s.subtitle} text-gray-400`}>
-              {language === 'ar' ? 'المركز الطبي المتخصص العسكري - العطار' : 'Military Specialized Medical Center - Al-Attar'}
+              {language === 'ar' ? 'المركز الطبي التخصصي العسكري - العطار' : 'Military Specialized Medical Center - Al-Attar'}
             </p>
           </>
         )}
@@ -109,7 +109,7 @@ export const OfficialHeaderPrint = ({ language = 'ar' }) => {
         color: '#666',
         margin: '5px 0'
       }}>
-        {language === 'ar' ? 'المركز الطبي المتخصص العسكري - العطار' : 'Military Specialized Medical Center - Al-Attar'}
+        {language === 'ar' ? 'المركز الطبي التخصصي العسكري - العطار' : 'Military Specialized Medical Center - Al-Attar'}
       </p>
     </div>
   );

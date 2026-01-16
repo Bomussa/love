@@ -731,7 +731,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             </p>
             <p className="text-gray-400 text-sm">
               {language === 'ar'
-                ? 'المركز الطبي المتخصص العسكري - العطار'
+                ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>

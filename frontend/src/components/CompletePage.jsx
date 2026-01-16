@@ -56,7 +56,7 @@ export function CompletePage({ patientData, onBackToHome, language }) {
                 </p>
                 <p className="text-gray-400 text-sm mt-1">
                   {language === 'ar'
-                    ? 'المركز الطبي المتخصص العسكري - العطار'
+                    ? 'المركز الطبي التخصصي العسكري - العطار'
                     : 'Military Specialized Medical Center - Al-Attar'}
                 </p>
               </div>

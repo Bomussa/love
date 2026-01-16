@@ -120,7 +120,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
             </p>
             <p className="text-gray-400 mt-2">
               {language === 'ar'
-                ? 'المركز الطبي المتخصص العسكري - العطار'
+                ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
