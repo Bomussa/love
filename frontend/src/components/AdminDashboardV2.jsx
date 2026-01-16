@@ -705,6 +705,557 @@ const ClinicsManagement = ({ language, t }) => {
   );
 };
 
+// مكون إدارة الإشعارات
+const NotificationsManagement = ({ language, t }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newNotification, setNewNotification] = useState({ title: '', message: '', type: 'info', target: 'all' });
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) setNotifications(data);
+    } catch (e) {
+      console.error('Error loading notifications:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addNotification = async () => {
+    try {
+      const { error } = await supabase.from('notifications').insert({
+        ...newNotification,
+        is_active: true,
+        created_at: new Date().toISOString()
+      });
+      
+      if (!error) {
+        loadNotifications();
+        setShowAddForm(false);
+        setNewNotification({ title: '', message: '', type: 'info', target: 'all' });
+      }
+    } catch (e) {
+      console.error('Error adding notification:', e);
+    }
+  };
+
+  const toggleNotification = async (id, currentStatus) => {
+    try {
+      await supabase.from('notifications').update({ is_active: !currentStatus }).eq('id', id);
+      loadNotifications();
+    } catch (e) {
+      console.error('Error toggling notification:', e);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    if (!window.confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
+    try {
+      await supabase.from('notifications').delete().eq('id', id);
+      loadNotifications();
+    } catch (e) {
+      console.error('Error deleting notification:', e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold">{t('إدارة الإشعارات', 'Notifications Management')}</h3>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+          >
+            <Plus size={18} />
+            {t('إضافة', 'Add')}
+          </button>
+          <button 
+            onClick={loadNotifications}
+            className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4">{t('إضافة إشعار جديد', 'Add New Notification')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('العنوان', 'Title')}</label>
+              <input
+                type="text"
+                value={newNotification.title}
+                onChange={(e) => setNewNotification({...newNotification, title: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('النوع', 'Type')}</label>
+              <select
+                value={newNotification.type}
+                onChange={(e) => setNewNotification({...newNotification, type: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              >
+                <option value="info">{t('معلومات', 'Info')}</option>
+                <option value="warning">{t('تحذير', 'Warning')}</option>
+                <option value="success">{t('نجاح', 'Success')}</option>
+                <option value="error">{t('خطأ', 'Error')}</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm text-gray-400 mb-2">{t('الرسالة', 'Message')}</label>
+              <textarea
+                value={newNotification.message}
+                onChange={(e) => setNewNotification({...newNotification, message: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white h-24"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={addNotification} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+              {t('حفظ', 'Save')}
+            </button>
+            <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
+              {t('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-white/5">
+            <tr>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('العنوان', 'Title')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('النوع', 'Type')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الإجراءات', 'Actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {notifications.map(notif => (
+              <tr key={notif.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
+                <td className="p-4 font-medium">{notif.title}</td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    notif.type === 'info' ? 'bg-blue-500/20 text-blue-400' :
+                    notif.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                    notif.type === 'success' ? 'bg-green-500/20 text-green-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {notif.type}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    notif.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {notif.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                  </span>
+                </td>
+                <td className="p-4">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => toggleNotification(notif.id, notif.is_active)}
+                      className={`p-2 rounded-lg transition-all ${
+                        notif.is_active ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                      }`}
+                    >
+                      {notif.is_active ? <Pause size={16} /> : <Play size={16} />}
+                    </button>
+                    <button
+                      onClick={() => deleteNotification(notif.id)}
+                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {notifications.length === 0 && (
+          <div className="p-8 text-center text-gray-400">
+            {t('لا توجد إشعارات', 'No notifications found')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// مكون إدارة المسارات
+const RoutesManagement = ({ language, t }) => {
+  const [routes, setRoutes] = useState([]);
+  const [clinics, setClinics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newRoute, setNewRoute] = useState({ name_ar: '', name_en: '', clinics: [], order: 1, is_active: true });
+
+  useEffect(() => {
+    loadRoutes();
+    loadClinics();
+  }, []);
+
+  const loadClinics = async () => {
+    const { data } = await supabase.from('clinics').select('*').order('name_ar');
+    if (data) setClinics(data);
+  };
+
+  const loadRoutes = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('routes')
+        .select('*')
+        .order('order_num', { ascending: true });
+      
+      if (!error && data) setRoutes(data);
+    } catch (e) {
+      console.error('Error loading routes:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addRoute = async () => {
+    try {
+      const { error } = await supabase.from('routes').insert({
+        name_ar: newRoute.name_ar,
+        name_en: newRoute.name_en,
+        clinic_ids: newRoute.clinics,
+        order_num: newRoute.order,
+        is_active: true,
+        created_at: new Date().toISOString()
+      });
+      
+      if (!error) {
+        loadRoutes();
+        setShowAddForm(false);
+        setNewRoute({ name_ar: '', name_en: '', clinics: [], order: 1, is_active: true });
+      }
+    } catch (e) {
+      console.error('Error adding route:', e);
+    }
+  };
+
+  const toggleRoute = async (id, currentStatus) => {
+    try {
+      await supabase.from('routes').update({ is_active: !currentStatus }).eq('id', id);
+      loadRoutes();
+    } catch (e) {
+      console.error('Error toggling route:', e);
+    }
+  };
+
+  const deleteRoute = async (id) => {
+    if (!window.confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
+    try {
+      await supabase.from('routes').delete().eq('id', id);
+      loadRoutes();
+    } catch (e) {
+      console.error('Error deleting route:', e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold">{t('إدارة المسارات الطبية', 'Medical Routes Management')}</h3>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+          >
+            <Plus size={18} />
+            {t('إضافة مسار', 'Add Route')}
+          </button>
+          <button 
+            onClick={loadRoutes}
+            className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4">{t('إضافة مسار جديد', 'Add New Route')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('اسم المسار (عربي)', 'Route Name (Arabic)')}</label>
+              <input
+                type="text"
+                value={newRoute.name_ar}
+                onChange={(e) => setNewRoute({...newRoute, name_ar: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('اسم المسار (إنجليزي)', 'Route Name (English)')}</label>
+              <input
+                type="text"
+                value={newRoute.name_en}
+                onChange={(e) => setNewRoute({...newRoute, name_en: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الترتيب', 'Order')}</label>
+              <input
+                type="number"
+                value={newRoute.order}
+                onChange={(e) => setNewRoute({...newRoute, order: parseInt(e.target.value)})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('العيادات', 'Clinics')}</label>
+              <select
+                multiple
+                value={newRoute.clinics}
+                onChange={(e) => setNewRoute({...newRoute, clinics: Array.from(e.target.selectedOptions, o => o.value)})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white h-32"
+              >
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={addRoute} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+              {t('حفظ', 'Save')}
+            </button>
+            <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
+              {t('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {routes.map(route => (
+          <div key={route.id} className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-bold text-lg">{language === 'ar' ? route.name_ar : route.name_en}</h4>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                route.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {route.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+              </span>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">{t('الترتيب:', 'Order:')} {route.order_num}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => toggleRoute(route.id, route.is_active)}
+                className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                  route.is_active ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                }`}
+              >
+                {route.is_active ? <><Pause size={16} /> {t('إيقاف', 'Disable')}</> : <><Play size={16} /> {t('تفعيل', 'Enable')}</>}
+              </button>
+              <button
+                onClick={() => deleteRoute(route.id)}
+                className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {routes.length === 0 && (
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-8 text-center text-gray-400">
+          {t('لا توجد مسارات. اضغط على "إضافة مسار" لإنشاء مسار جديد.', 'No routes found. Click "Add Route" to create a new route.')}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// مكون حالة النظام وقاعدة البيانات
+const SystemStatus = ({ language, t }) => {
+  const [status, setStatus] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkSystemStatus();
+  }, []);
+
+  const checkSystemStatus = async () => {
+    setLoading(true);
+    const results = {};
+    
+    // قائمة الجداول للفحص
+    const tables = [
+      { name: 'clinics', label: t('العيادات', 'Clinics') },
+      { name: 'queue', label: t('الطابور (queue)', 'Queue') },
+      { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
+      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
+      { name: 'settings', label: t('الإعدادات', 'Settings') },
+      { name: 'notifications', label: t('الإشعارات', 'Notifications') },
+      { name: 'routes', label: t('المسارات', 'Routes') },
+      { name: 'patients', label: t('المرضى', 'Patients') },
+      { name: 'admins', label: t('المسؤولين', 'Admins') },
+      { name: 'users', label: t('المستخدمين', 'Users') },
+      { name: 'sessions', label: t('الجلسات', 'Sessions') },
+    ];
+
+    for (const table of tables) {
+      try {
+        const { data, error, count } = await supabase
+          .from(table.name)
+          .select('*', { count: 'exact', head: false })
+          .limit(1);
+        
+        if (error) {
+          results[table.name] = { status: 'error', label: table.label, message: error.message, count: 0 };
+        } else {
+          const { count: totalCount } = await supabase.from(table.name).select('*', { count: 'exact', head: true });
+          results[table.name] = { status: 'ok', label: table.label, count: totalCount || 0 };
+        }
+      } catch (e) {
+        results[table.name] = { status: 'error', label: table.label, message: e.message, count: 0 };
+      }
+    }
+
+    setStatus(results);
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold">{t('حالة النظام وقاعدة البيانات', 'System & Database Status')}</h3>
+        <button 
+          onClick={checkSystemStatus}
+          className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+        >
+          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          {t('تحديث', 'Refresh')}
+        </button>
+      </div>
+
+      {/* ملخص الحالة */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 bg-green-500/20 rounded-xl">
+              <Activity className="text-green-400" size={24} />
+            </div>
+            <span className="text-gray-400">{t('الجداول النشطة', 'Active Tables')}</span>
+          </div>
+          <div className="text-3xl font-bold text-green-400">
+            {Object.values(status).filter(s => s.status === 'ok').length}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 bg-red-500/20 rounded-xl">
+              <XCircle className="text-red-400" size={24} />
+            </div>
+            <span className="text-gray-400">{t('الجداول المعطلة', 'Failed Tables')}</span>
+          </div>
+          <div className="text-3xl font-bold text-red-400">
+            {Object.values(status).filter(s => s.status === 'error').length}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 bg-blue-500/20 rounded-xl">
+              <BarChart3 className="text-blue-400" size={24} />
+            </div>
+            <span className="text-gray-400">{t('إجمالي السجلات', 'Total Records')}</span>
+          </div>
+          <div className="text-3xl font-bold text-blue-400">
+            {Object.values(status).reduce((acc, s) => acc + (s.count || 0), 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* تفاصيل الجداول */}
+      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+        <div className="p-4 bg-white/5 border-b border-white/10">
+          <h4 className="font-bold">{t('تفاصيل الجداول', 'Table Details')}</h4>
+        </div>
+        <table className="w-full">
+          <thead className="bg-white/5">
+            <tr>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الجدول', 'Table')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('عدد السجلات', 'Records')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الملاحظات', 'Notes')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(status).map(([key, value]) => (
+              <tr key={key} className="border-t border-white/5 hover:bg-white/5 transition-all">
+                <td className="p-4">
+                  <div className="flex items-center gap-2">
+                    <code className="text-gold-400 bg-gold-500/10 px-2 py-1 rounded text-sm">{key}</code>
+                    <span className="text-gray-400 text-sm">({value.label})</span>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${
+                    value.status === 'ok' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {value.status === 'ok' ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                    {value.status === 'ok' ? t('متصل', 'Connected') : t('خطأ', 'Error')}
+                  </span>
+                </td>
+                <td className="p-4 font-mono text-lg">{value.count || 0}</td>
+                <td className="p-4 text-sm text-gray-400">
+                  {value.status === 'error' ? value.message : 
+                    value.count === 0 ? t('فارغ', 'Empty') : t('يعمل بشكل طبيعي', 'Working normally')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* معلومات الاتصال */}
+      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <h4 className="font-bold mb-4">{t('معلومات الاتصال', 'Connection Info')}</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-white/5 rounded-xl">
+            <span className="text-gray-400 text-sm">{t('عنوان Supabase', 'Supabase URL')}</span>
+            <p className="font-mono text-sm mt-1 text-gold-400">rujwuruuosffcxazymit.supabase.co</p>
+          </div>
+          <div className="p-4 bg-white/5 rounded-xl">
+            <span className="text-gray-400 text-sm">{t('حالة الاتصال', 'Connection Status')}</span>
+            <p className="font-medium text-green-400 mt-1 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              {t('متصل', 'Connected')}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // مكون الإعدادات
 const SettingsSection = ({ language, t }) => {
   const [settings, setSettings] = useState({});
@@ -798,6 +1349,45 @@ const SettingsSection = ({ language, t }) => {
               settings.notifications_enabled === 'true' ? 'translate-x-7' : 'translate-x-1'
             }`} />
           </button>
+        </div>
+
+        {/* إعدادات منع التكرار */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات التسجيل', 'Registration Settings')}</h4>
+          
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl mb-4">
+            <div>
+              <h4 className="font-medium">{t('منع تكرار الرقم العسكري', 'Prevent Duplicate Patient ID')}</h4>
+              <p className="text-sm text-gray-400">{t('منع تسجيل نفس الرقم مرتين في نفس اليوم', 'Prevent same ID registration twice daily')}</p>
+            </div>
+            <button
+              onClick={() => updateSetting('prevent_duplicate_patient_daily', !settings.prevent_duplicate_patient_daily)}
+              className={`w-14 h-8 rounded-full transition-all ${
+                settings.prevent_duplicate_patient_daily ? 'bg-green-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${
+                settings.prevent_duplicate_patient_daily ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+            <div>
+              <h4 className="font-medium">{t('منع تكرار الجهاز', 'Prevent Duplicate Device')}</h4>
+              <p className="text-sm text-gray-400">{t('منع نفس الجهاز من التسجيل مرة أخرى', 'Prevent same device from registering again')}</p>
+            </div>
+            <button
+              onClick={() => updateSetting('prevent_duplicate_device_daily', !settings.prevent_duplicate_device_daily)}
+              className={`w-14 h-8 rounded-full transition-all ${
+                settings.prevent_duplicate_device_daily ? 'bg-green-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${
+                settings.prevent_duplicate_device_daily ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -910,8 +1500,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
     { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
+    { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
+    { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
-    { id: 'clinics', icon: MapPin, label: t('العيادات', 'Clinics') },
+    { id: 'clinics', icon: Activity, label: t('العيادات', 'Clinics') },
+    { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
     { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') },
   ];
 
@@ -1100,8 +1693,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
+        {activeTab === 'notifications' && <NotificationsManagement language={language} t={t} />}
+        {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'reports' && <ReportsSection language={language} t={t} />}
         {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} />}
+        {activeTab === 'system' && <SystemStatus language={language} t={t} />}
         {activeTab === 'settings' && <SettingsSection language={language} t={t} />}
       </main>
     </div>
