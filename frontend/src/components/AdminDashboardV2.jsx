@@ -40,7 +40,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('queue')
+        .from('queues')
         .select('*, clinics(name_ar, name_en)')
         .order('created_at', { ascending: false });
       
@@ -64,7 +64,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       await supabase
-        .from('queue')
+        .from('queues')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -77,7 +77,7 @@ const QueueManagement = ({ language, t }) => {
   const completePatient = async (queueId) => {
     try {
       await supabase
-        .from('queue')
+        .from('queues')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', queueId);
       loadQueues();
@@ -89,7 +89,7 @@ const QueueManagement = ({ language, t }) => {
   const skipPatient = async (queueId) => {
     try {
       await supabase
-        .from('queue')
+        .from('queues')
         .update({ status: 'skipped' })
         .eq('id', queueId);
       loadQueues();
@@ -112,7 +112,7 @@ const QueueManagement = ({ language, t }) => {
         <h3 className="text-xl font-bold">{t('إدارة الطوابير', 'Queue Management')}</h3>
         <button 
           onClick={loadQueues}
-          className="p-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all"
+          className="p-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
         >
           <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
         </button>
@@ -120,7 +120,7 @@ const QueueManagement = ({ language, t }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {queuesByClinic.map(clinic => (
-          <div key={clinic.id} className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+          <div key={clinic.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-4 bg-gradient-to-r from-gold-500/20 to-transparent border-b border-white/10">
               <h4 className="font-bold text-lg">{language === 'ar' ? clinic.name_ar : clinic.name_en}</h4>
               <div className="flex gap-4 mt-2 text-sm">
@@ -142,7 +142,7 @@ const QueueManagement = ({ language, t }) => {
               <div className="flex gap-2">
                 <button
                   onClick={() => callNext(clinic.id)}
-                  className="flex-1 py-2 bg-gold-500 text-black rounded-lg font-medium hover:bg-gold-400 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-2 bg-[#C9A54C] text-black rounded-lg font-medium hover:bg-[#B8943D] transition-all flex items-center justify-center gap-2"
                 >
                   <Play size={16} />
                   {t('التالي', 'Next')}
@@ -279,14 +279,14 @@ const PINManagement = ({ language, t }) => {
         <div className="flex gap-2">
           <button 
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
           >
             <Plus size={18} />
             {t('إضافة', 'Add')}
           </button>
           <button 
             onClick={loadPins}
-            className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+            className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -294,7 +294,7 @@ const PINManagement = ({ language, t }) => {
       </div>
 
       {showAddForm && (
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <h4 className="font-bold mb-4">{t('إضافة رقم سري جديد', 'Add New PIN')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -334,7 +334,7 @@ const PINManagement = ({ language, t }) => {
           <div className="flex gap-2 mt-4">
             <button
               onClick={addPin}
-              className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all"
+              className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
             >
               {t('حفظ', 'Save')}
             </button>
@@ -348,7 +348,7 @@ const PINManagement = ({ language, t }) => {
         </div>
       )}
 
-      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
         <table className="w-full">
           <thead className="bg-white/5">
             <tr>
@@ -362,7 +362,7 @@ const PINManagement = ({ language, t }) => {
           <tbody>
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-mono text-lg font-bold text-gold-400">{pin.pin_code}</td>
+                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin_code}</td>
                 <td className="p-4">{pin.clinics ? (language === 'ar' ? pin.clinics.name_ar : pin.clinics.name_en) : '-'}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -431,13 +431,13 @@ const ReportsSection = ({ language, t }) => {
 
       // إحصائيات اليوم
       const { data: todayData } = await supabase
-        .from('queue')
+        .from('queues')
         .select('*')
         .gte('created_at', today.toISOString());
 
       // إحصائيات الأسبوع
       const { data: weekData } = await supabase
-        .from('queue')
+        .from('queues')
         .select('*')
         .gte('created_at', weekAgo.toISOString());
 
@@ -495,7 +495,7 @@ const ReportsSection = ({ language, t }) => {
         <h3 className="text-xl font-bold">{t('التقارير والإحصائيات', 'Reports & Statistics')}</h3>
         <button 
           onClick={exportReport}
-          className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+          className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
         >
           <Download size={18} />
           {t('تصدير', 'Export')}
@@ -503,7 +503,7 @@ const ReportsSection = ({ language, t }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-blue-500/20 rounded-xl">
               <Users className="text-blue-400" size={24} />
@@ -513,7 +513,7 @@ const ReportsSection = ({ language, t }) => {
           <div className="text-3xl font-bold">{stats.todayPatients}</div>
         </div>
 
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-purple-500/20 rounded-xl">
               <Calendar className="text-purple-400" size={24} />
@@ -523,7 +523,7 @@ const ReportsSection = ({ language, t }) => {
           <div className="text-3xl font-bold">{stats.weekPatients}</div>
         </div>
 
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-yellow-500/20 rounded-xl">
               <Clock className="text-yellow-400" size={24} />
@@ -533,7 +533,7 @@ const ReportsSection = ({ language, t }) => {
           <div className="text-3xl font-bold">{stats.avgWaitTime} <span className="text-lg text-gray-400">{t('دقيقة', 'min')}</span></div>
         </div>
 
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-green-500/20 rounded-xl">
               <CheckCircle className="text-green-400" size={24} />
@@ -604,7 +604,7 @@ const ClinicsManagement = ({ language, t }) => {
         <h3 className="text-xl font-bold">{t('إدارة العيادات', 'Clinics Management')}</h3>
         <button 
           onClick={loadClinics}
-          className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+          className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
         >
           <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
         </button>
@@ -612,7 +612,7 @@ const ClinicsManagement = ({ language, t }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clinics.map(clinic => (
-          <div key={clinic.id} className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <div key={clinic.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h4 className="font-bold text-lg">{language === 'ar' ? clinic.name_ar : clinic.name_en}</h4>
@@ -649,7 +649,7 @@ const ClinicsManagement = ({ language, t }) => {
 
       {editingClinic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
             <h4 className="font-bold text-lg mb-4">{t('تعديل العيادة', 'Edit Clinic')}</h4>
             <div className="space-y-4">
               <div>
@@ -687,7 +687,7 @@ const ClinicsManagement = ({ language, t }) => {
                   name_en: editingClinic.name_en,
                   floor: editingClinic.floor
                 })}
-                className="flex-1 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all font-medium"
+                className="flex-1 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all font-medium"
               >
                 {t('حفظ', 'Save')}
               </button>
@@ -856,14 +856,14 @@ const NotificationsManagement = ({ language, t }) => {
         <div className="flex gap-2">
           <button 
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
           >
             <Plus size={18} />
             {t('إضافة إشعار', 'Add Notification')}
           </button>
           <button 
             onClick={loadNotifications}
-            className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+            className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -872,7 +872,7 @@ const NotificationsManagement = ({ language, t }) => {
 
       {/* نموذج إضافة إشعار جديد */}
       {showAddForm && (
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <h4 className="font-bold mb-4">{t('إضافة إشعار جديد', 'Add New Notification')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -925,7 +925,7 @@ const NotificationsManagement = ({ language, t }) => {
             <button 
               onClick={addNotification} 
               disabled={!newNotification.title || !newNotification.message}
-              className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t('حفظ', 'Save')}
             </button>
@@ -938,8 +938,8 @@ const NotificationsManagement = ({ language, t }) => {
 
       {/* نموذج تعديل إشعار */}
       {editingNotification && (
-        <div className="bg-[#1a1a24] rounded-2xl border border-gold-500/50 p-6">
-          <h4 className="font-bold mb-4 text-gold-400">{t('تعديل الإشعار', 'Edit Notification')}</h4>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-[#C9A54C]/50 p-6">
+          <h4 className="font-bold mb-4 text-[#B8943D]">{t('تعديل الإشعار', 'Edit Notification')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-2">{t('العنوان', 'Title')}</label>
@@ -947,7 +947,7 @@ const NotificationsManagement = ({ language, t }) => {
                 type="text"
                 value={editingNotification.title}
                 onChange={(e) => setEditingNotification({...editingNotification, title: e.target.value})}
-                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+                className="w-full bg-white/5 border border-[#C9A54C]/30 rounded-xl px-4 py-2 text-white"
               />
             </div>
             <div>
@@ -955,7 +955,7 @@ const NotificationsManagement = ({ language, t }) => {
               <select
                 value={editingNotification.clinic_id || ''}
                 onChange={(e) => setEditingNotification({...editingNotification, clinic_id: e.target.value || null})}
-                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+                className="w-full bg-white/5 border border-[#C9A54C]/30 rounded-xl px-4 py-2 text-white"
               >
                 <option value="">{t('جميع العيادات', 'All Clinics')}</option>
                 {clinics.map(c => (
@@ -968,7 +968,7 @@ const NotificationsManagement = ({ language, t }) => {
               <select
                 value={editingNotification.status}
                 onChange={(e) => setEditingNotification({...editingNotification, status: e.target.value})}
-                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+                className="w-full bg-white/5 border border-[#C9A54C]/30 rounded-xl px-4 py-2 text-white"
               >
                 <option value="queued">{t('في الانتظار', 'Queued')}</option>
                 <option value="sent">{t('مرسل', 'Sent')}</option>
@@ -980,12 +980,12 @@ const NotificationsManagement = ({ language, t }) => {
               <textarea
                 value={editingNotification.message}
                 onChange={(e) => setEditingNotification({...editingNotification, message: e.target.value})}
-                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white h-24"
+                className="w-full bg-white/5 border border-[#C9A54C]/30 rounded-xl px-4 py-2 text-white h-24"
               />
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={updateNotification} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+            <button onClick={updateNotification} className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all">
               {t('تحديث', 'Update')}
             </button>
             <button onClick={() => setEditingNotification(null)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
@@ -996,7 +996,7 @@ const NotificationsManagement = ({ language, t }) => {
       )}
 
       {/* جدول الإشعارات */}
-      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-white/5">
@@ -1158,14 +1158,14 @@ const RoutesManagement = ({ language, t }) => {
         <div className="flex gap-2">
           <button 
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
           >
             <Plus size={18} />
             {t('إضافة مسار', 'Add Route')}
           </button>
           <button 
             onClick={loadRoutes}
-            className="p-2 bg-[#1a1a24] border border-white/10 rounded-xl hover:bg-[#22222e] transition-all"
+            className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -1173,7 +1173,7 @@ const RoutesManagement = ({ language, t }) => {
       </div>
 
       {showAddForm && (
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <h4 className="font-bold mb-4">{t('إضافة مسار جديد', 'Add New Route')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -1218,7 +1218,7 @@ const RoutesManagement = ({ language, t }) => {
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={addRoute} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+            <button onClick={addRoute} className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all">
               {t('حفظ', 'Save')}
             </button>
             <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
@@ -1230,7 +1230,7 @@ const RoutesManagement = ({ language, t }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {routes.map(route => (
-          <div key={route.id} className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+          <div key={route.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-bold text-lg">{language === 'ar' ? route.name_ar : route.name_en}</h4>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1261,7 +1261,7 @@ const RoutesManagement = ({ language, t }) => {
       </div>
 
       {routes.length === 0 && (
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-8 text-center text-gray-400">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-8 text-center text-gray-400">
           {t('لا توجد مسارات. اضغط على "إضافة مسار" لإنشاء مسار جديد.', 'No routes found. Click "Add Route" to create a new route.')}
         </div>
       )}
@@ -1325,7 +1325,7 @@ const SystemStatus = ({ language, t }) => {
         <h3 className="text-xl font-bold">{t('حالة النظام وقاعدة البيانات', 'System & Database Status')}</h3>
         <button 
           onClick={checkSystemStatus}
-          className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
+          className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
         >
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           {t('تحديث', 'Refresh')}
@@ -1334,7 +1334,7 @@ const SystemStatus = ({ language, t }) => {
 
       {/* ملخص الحالة */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 bg-green-500/20 rounded-xl">
               <Activity className="text-green-400" size={24} />
@@ -1346,7 +1346,7 @@ const SystemStatus = ({ language, t }) => {
           </div>
         </div>
 
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 bg-red-500/20 rounded-xl">
               <XCircle className="text-red-400" size={24} />
@@ -1358,7 +1358,7 @@ const SystemStatus = ({ language, t }) => {
           </div>
         </div>
 
-        <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 bg-blue-500/20 rounded-xl">
               <BarChart3 className="text-blue-400" size={24} />
@@ -1372,7 +1372,7 @@ const SystemStatus = ({ language, t }) => {
       </div>
 
       {/* تفاصيل الجداول */}
-      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
         <div className="p-4 bg-white/5 border-b border-white/10">
           <h4 className="font-bold">{t('تفاصيل الجداول', 'Table Details')}</h4>
         </div>
@@ -1390,7 +1390,7 @@ const SystemStatus = ({ language, t }) => {
               <tr key={key} className="border-t border-white/5 hover:bg-white/5 transition-all">
                 <td className="p-4">
                   <div className="flex items-center gap-2">
-                    <code className="text-gold-400 bg-gold-500/10 px-2 py-1 rounded text-sm">{key}</code>
+                    <code className="text-[#B8943D] bg-[#C9A54C]/10 px-2 py-1 rounded text-sm">{key}</code>
                     <span className="text-gray-400 text-sm">({value.label})</span>
                   </div>
                 </td>
@@ -1414,12 +1414,12 @@ const SystemStatus = ({ language, t }) => {
       </div>
 
       {/* معلومات الاتصال */}
-      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
         <h4 className="font-bold mb-4">{t('معلومات الاتصال', 'Connection Info')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-white/5 rounded-xl">
             <span className="text-gray-400 text-sm">{t('عنوان Supabase', 'Supabase URL')}</span>
-            <p className="font-mono text-sm mt-1 text-gold-400">rujwuruuosffcxazymit.supabase.co</p>
+            <p className="font-mono text-sm mt-1 text-[#B8943D]">rujwuruuosffcxazymit.supabase.co</p>
           </div>
           <div className="p-4 bg-white/5 rounded-xl">
             <span className="text-gray-400 text-sm">{t('حالة الاتصال', 'Connection Status')}</span>
@@ -1480,7 +1480,7 @@ const SettingsSection = ({ language, t }) => {
     <div className="space-y-6">
       <h3 className="text-xl font-bold">{t('الإعدادات', 'Settings')}</h3>
 
-      <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6 space-y-6">
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 space-y-6">
         <div>
           <label className="block text-sm text-gray-400 mb-2">{t('اسم المركز', 'Center Name')}</label>
           <input
@@ -1520,7 +1520,7 @@ const SettingsSection = ({ language, t }) => {
           <button
             onClick={() => updateSetting('notifications_enabled', settings.notifications_enabled === 'true' ? 'false' : 'true')}
             className={`w-14 h-8 rounded-full transition-all ${
-              settings.notifications_enabled === 'true' ? 'bg-gold-500' : 'bg-white/20'
+              settings.notifications_enabled === 'true' ? 'bg-[#C9A54C]' : 'bg-white/20'
             }`}
           >
             <div className={`w-6 h-6 bg-white rounded-full transition-all ${
@@ -1598,7 +1598,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     try {
       // استخدام جدول queue الصحيح
       const { data: queueData, error: queueError } = await supabase
-        .from('queue')
+        .from('queues')
         .select('patient_id, status, created_at, called_at, completed_at');
       
       if (queueError) {
@@ -1663,7 +1663,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     
     try {
       // حذف من كلا الجدولين
-      await supabase.from('queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('queues').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('queues').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       loadAllData();
       alert(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));
@@ -1687,11 +1687,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   ];
 
   return (
-    <div className="min-h-screen min-h-[-webkit-fill-available] bg-[#0b0b0f] text-white font-sans selection:bg-gold-500/30">
+    <div className="min-h-screen min-h-[-webkit-fill-available] bg-[#0b0b0f] text-white font-sans selection:bg-[#C9A54C]/30">
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 right-4 z-[60] p-3 bg-[#1a1a24] rounded-xl border border-white/10"
+        className="lg:hidden fixed top-4 right-4 z-[60] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10"
       >
         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
@@ -1774,7 +1774,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           <div className="flex items-center gap-3 flex-wrap">
             <button 
               onClick={toggleLanguage}
-              className="px-4 py-2 bg-[#1a1a24] border border-white/5 rounded-xl hover:bg-[#22222e] transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/5 rounded-xl hover:bg-[#8A1538] transition-all flex items-center gap-2"
             >
               <Activity size={18} className="text-yellow-500" />
               <span>{language === 'ar' ? 'English' : 'العربية'}</span>
