@@ -714,7 +714,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </CardHeader>
           <CardContent className="space-y-4">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-700/50 border-gray-600">
+              <Card key={station.id} className="bg-gray-800/50 border-gray-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
