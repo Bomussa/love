@@ -3,8 +3,7 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, BarChart3 } from 'lucide-react'
-import LiveStatisticsPanel from './LiveStatisticsPanel'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
 import { logClinicEntry, logClinicExit, logPatientSkipped } from '../lib/activityLogger'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
@@ -27,7 +26,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
-  const [showStatistics, setShowStatistics] = useState(false) // عرض الإحصائيات
+
 
   // حفظ stations في localStorage عند التحديث
   useEffect(() => {
@@ -703,15 +702,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             variant="ghost"
             size="sm"
             className="text-gray-300 hover:text-white hover:bg-gray-800/50"
-            onClick={() => setShowStatistics(true)}
-            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
-          >
-            <BarChart3 className="icon icon-md" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
             onClick={toggleLanguage}
           >
             <Globe className="icon icon-md me-2" />
@@ -720,20 +710,19 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         </div>
 
         <div className="text-center space-y-2">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 object-cover rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-16 h-16 object-contain" />
 
           <div>
-            <h1 className="text-lg font-bold text-white">
+            <h1 className="text-base font-semibold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-sm text-[#C9A54C] font-semibold">
+            <p className="text-xs text-[#C9A54C]">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-400 text-xs">
+            <p className="text-gray-400 text-[10px]">
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
-            </p>
           </div>
         </div>
 
@@ -783,14 +772,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-6 text-center" data-test="queue-info">
+                  <div className="grid grid-cols-2 gap-12 text-center py-4" data-test="queue-info">
                     <div>
                       <div className="text-3xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-sm text-gray-400 mt-1">{t('yourNumber', language)}</div>
+                      <div className="text-sm text-gray-400 mt-2">{t('yourNumber', language)}</div>
                     </div>
                     <div>
                       <div className="text-3xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-sm text-gray-400 mt-1">{t('ahead', language)}</div>
+                      <div className="text-sm text-gray-400 mt-2">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
@@ -811,13 +800,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   
                   {/* عرض الوقت المتوقع قبل الدخول */}
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
+                    <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-300 text-sm">
                           🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
                         </span>
-                        <span className="text-blue-400 font-bold">
-                          {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                        <span className="text-blue-400 font-bold text-lg">
+                          {station.ahead > 0 ? `~${station.ahead * 2} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
                         </span>
                       </div>
                     </div>
@@ -903,11 +892,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         </div>
       </div>
 
-      {/* شاشة الإحصائيات */}
-      <LiveStatisticsPanel
-        isOpen={showStatistics}
-        onClose={() => setShowStatistics(false)}
-      />
+
     </div>
   )
 }
