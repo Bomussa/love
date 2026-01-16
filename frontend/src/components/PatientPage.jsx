@@ -3,7 +3,9 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, BarChart3 } from 'lucide-react'
+import LiveStatisticsPanel from './LiveStatisticsPanel'
+import { logClinicEntry, logClinicExit, logPatientSkipped } from '../lib/activityLogger'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
@@ -25,6 +27,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
+  const [showStatistics, setShowStatistics] = useState(false) // عرض الإحصائيات
 
   // حفظ stations في localStorage عند التحديث
   useEffect(() => {
@@ -122,6 +125,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           entered_at: new Date().toISOString()
         } : s))
       }
+      
+      // تسجيل دخول العيادة
+      logClinicEntry(patientData, station, station.yourNumber)
       
       setLoading(false)
     } catch (e) {
@@ -548,6 +554,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         ))
       }
 
+      // تسجيل الخروج من العيادة
+      logClinicExit(patientData, station, station.yourNumber, station.entered_at, 'completed')
+      
       setPinInput('')
       setSelectedStation(null)
 
@@ -689,7 +698,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       />
 
       <div className="w-full space-y-4">
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+            onClick={() => setShowStatistics(true)}
+            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
+          >
+            <BarChart3 className="icon icon-md" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -884,6 +902,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
       </div>
+
+      {/* شاشة الإحصائيات */}
+      <LiveStatisticsPanel
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+      />
     </div>
   )
 }

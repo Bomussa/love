@@ -5,6 +5,7 @@ import { Input } from './Input'
 import { User, Globe, Shield, QrCode } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
+import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
 
@@ -41,6 +42,9 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
     setLoading(true)
     try {
+      // تسجيل دخول المراجع
+      logPatientRegistered({ militaryId: patientId.trim(), gender })
+      
       await onLogin({ patientId: patientId.trim(), gender })
     } catch (error) {
       // console.error('Login error:', error)
@@ -55,6 +59,9 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
     setLoading(true)
     try {
+      // تسجيل دخول الإدارة
+      logAdminLogin(adminUsername.trim())
+      
       // إرسال username:password كرمز واحد
       await onAdminLogin(`${adminUsername.trim()}:${adminPassword.trim()}`)
     } catch (error) {
