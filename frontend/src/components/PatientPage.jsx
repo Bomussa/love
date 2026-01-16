@@ -736,29 +736,29 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             {stations.map((station, index) => (
               <Card key={station.id} className="bg-gray-800/50 border-gray-700">
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
                       {station.status === 'ready' ? (
-                        <Unlock className="icon icon-lg icon-success" />
+                        <Unlock className="w-8 h-8 text-green-400" />
                       ) : station.status === 'completed' ? (
-                        <Lock className="icon icon-lg icon-primary" />
+                        <Lock className="w-8 h-8 text-blue-400" />
                       ) : (
-                        <Lock className="icon icon-lg icon-muted" />
+                        <Lock className="w-8 h-8 text-gray-500" />
                       )}
                       <div>
-                        <h3 className="text-white font-semibold">
+                        <h3 className="text-xl font-bold text-white">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-gray-400 text-sm">
-                          {t('floor', language)}: {language === 'ar' ? station.floor : station.floorCode}
+                        <p className="text-base text-gray-300 mt-1">
+                          {t('floor', language)}: <span className="text-yellow-400 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span>
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
-                        station.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-gray-500/20 text-gray-400'
+                      <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+                        station.status === 'ready' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                        station.status === 'completed' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                        'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                       }`}>
                         {station.status === 'ready' ? t('ready', language) :
                           station.status === 'completed' ? t('completed', language) :
@@ -773,14 +773,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-12 text-center py-4" data-test="queue-info">
-                    <div>
-                      <div className="text-3xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-sm text-gray-400 mt-2">{t('yourNumber', language)}</div>
+                  <div className="grid grid-cols-2 gap-8 text-center py-6 my-4" data-test="queue-info">
+                    <div className="bg-gray-700/30 rounded-xl p-4">
+                      <div className="text-4xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
+                      <div className="text-sm text-gray-400 mt-3">{t('yourNumber', language)}</div>
                     </div>
-                    <div>
-                      <div className="text-3xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-sm text-gray-400 mt-2">{t('ahead', language)}</div>
+                    <div className="bg-gray-700/30 rounded-xl p-4">
+                      <div className="text-4xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
+                      <div className="text-sm text-gray-400 mt-3">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
