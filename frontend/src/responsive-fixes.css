@@ -832,8 +832,7 @@ body {
   .max-w-2xl,
   .max-w-xl {
     max-width: 100% !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    /* تم إزالة padding لجعل البطاقات بعرض كامل */
   }
   
   /* تكبير الأرقام على الجوال */
@@ -862,7 +861,6 @@ body {
   .max-w-4xl,
   .max-w-2xl,
   .max-w-xl {
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
+    /* تم إزالة padding لجعل البطاقات بعرض كامل */
   }
 }

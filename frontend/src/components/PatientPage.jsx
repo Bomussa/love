@@ -84,11 +84,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
-      // دخول الدور مباشرة
-      const enterResult = await api.enterQueue(station.id, patientData.id, true)
       
-      if (!enterResult || !enterResult.success) {
-        throw new Error('Failed to enter queue')
+      // ✅ التحقق إذا كان المراجع لديه رقم دور مسبقاً - لا تنشئ رقم جديد
+      if (!station.yourNumber) {
+        // فقط إذا لم يكن لديه رقم، ننشئ واحد
+        const enterResult = await api.enterQueue(station.id, patientData.id, true)
+        if (!enterResult || !enterResult.success) {
+          throw new Error('Failed to enter queue')
+        }
       }
       
       // تحديث حالة الطابور إلى serving فوراً (المراجع يُفحص الآن)
@@ -102,12 +105,21 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
-          currentNumber: positionData.current_number || positionData.display_number, // استخدام current_number من API
+          currentNumber: positionData.current_number || positionData.display_number,
           ahead: positionData.ahead || 0,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
           entered_at: positionData.entered_at || new Date().toISOString()
+        } : s))
+      } else {
+        // إذا فشل جلب الموقع، استخدم الرقم الموجود
+        setActiveTicket({ clinicId: station.id, ticket: station.yourNumber })
+        setStations(prev => prev.map(s => s.id === station.id ? {
+          ...s,
+          status: 'ready',
+          isEntered: true,
+          entered_at: new Date().toISOString()
         } : s))
       }
       
