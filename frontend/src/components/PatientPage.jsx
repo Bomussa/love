@@ -660,7 +660,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="w-full min-h-screen min-h-dvh px-2 py-4" data-test="patient-page" style={{width: '100%', maxWidth: '100vw'}}>
+    <div className="w-full min-h-screen min-h-dvh" data-test="patient-page" style={{width: '100%', maxWidth: '100vw'}}>
       {currentNotice && (
         <ZFDBanner
           notice={currentNotice}
