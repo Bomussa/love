@@ -676,7 +676,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         allStationsCompleted={allStationsCompleted}
       />
 
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="w-full max-w-2xl mx-auto space-y-6 px-4 sm:px-6">
         <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
@@ -712,10 +712,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6 p-4 sm:p-6">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-700/50 border-gray-600">
-                <CardContent className="p-6">
+              <Card key={station.id} className="bg-gray-700/50 border-gray-600 w-full">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       {station.status === 'ready' ? (
