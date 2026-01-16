@@ -109,7 +109,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
         {/* Logo and Title */}
         <div className="text-center space-y-4">
-          <img src="/logo.jpeg" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
 
           <div>
             <h1 className="text-3xl font-bold text-white">

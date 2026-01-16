@@ -1701,12 +1701,10 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="p-6 flex items-center gap-3 border-b border-white/5">
-          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-500/20">
-            <Shield className="text-black w-6 h-6" />
-          </div>
+          <img src="/mms-logo.png" alt="قيادة الخدمات الطبية" className="w-12 h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
           <div>
             <h1 className="font-bold text-lg tracking-tight">{t('لوحة الإدارة', 'Admin Panel')}</h1>
-            <p className="text-[10px] text-yellow-500/70 uppercase tracking-widest font-medium">{t('نظام اللجنة الطبية', 'Medical System')}</p>
+            <p className="text-[10px] text-[#C9A54C]/70 uppercase tracking-widest font-medium">{t('قيادة الخدمات الطبية', 'Medical Services')}</p>
           </div>
         </div>
 

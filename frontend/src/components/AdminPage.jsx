@@ -676,7 +676,7 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <img src="/logo.jpeg" alt="اللجنة الطبية العسكرية" className="w-12 h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
+              <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="w-12 h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
               <div className="text-right">
                 <h1 className="text-white font-semibold text-lg">{language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}</h1>
                 <p className="text-[#C9A54C] text-sm font-semibold">{language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}</p>

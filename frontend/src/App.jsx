@@ -4,7 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { LoginPage } from './components/LoginPage.jsx'
 import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
 import { PatientPage } from './components/PatientPage.jsx'
-import { AdminDashboardV2 } from './components/AdminDashboardV2.jsx'
+import { AdminDashboardNew } from './components/AdminDashboardNew.jsx'
 import { QrScanPage } from './components/QrScanPage.jsx'
 import api from './lib/api-unified'
 import authService from './lib/auth-service'
@@ -342,7 +342,7 @@ function App() {
 
         {currentView === 'admin' && isAdmin && (
           <AdminErrorBoundary>
-            <AdminDashboardV2
+            <AdminDashboardNew
               onLogout={handleLogout}
               language={language}
               toggleLanguage={toggleLanguage}

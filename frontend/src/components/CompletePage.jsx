@@ -44,7 +44,7 @@ export function CompletePage({ patientData, onBackToHome, language }) {
             <div className="space-y-6">
               <div className="text-center pb-6 border-b border-gray-700">
                 <img
-                  src="/logo.jpeg"
+                  src="/mms-logo.png"
                   alt="اللجنة الطبية العسكرية"
                   className="mx-auto w-20 h-20 rounded-full shadow-lg mb-4 border-2 border-[#C9A54C]/30"
                 />

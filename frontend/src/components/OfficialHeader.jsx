@@ -41,7 +41,7 @@ const OfficialHeader = ({
       {/* الشعار */}
       <div className="flex justify-center mb-2">
         <img 
-          src="/logo.jpeg" 
+          src="/mms-logo.png" 
           alt="قيادة الخدمات الطبية العسكرية" 
           className={`${s.logo} object-contain rounded-full shadow-lg border-2 border-[#C9A54C]/30`}
         />
@@ -77,7 +77,7 @@ export const OfficialHeaderPrint = ({ language = 'ar' }) => {
       fontFamily: "'Cairo', 'Tajawal', 'Arial', sans-serif"
     }}>
       <img 
-        src="/logo.jpeg" 
+        src="/mms-logo.png" 
         alt="قيادة الخدمات الطبية العسكرية" 
         style={{ 
           width: '80px', 
