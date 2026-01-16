@@ -409,19 +409,31 @@ const PINManagement = ({ language, t }) => {
   );
 };
 
-// مكون التقارير
+// مكون التقارير - محدث لاستخدام حساب الأوزان
 const ReportsSection = ({ language, t }) => {
   const [stats, setStats] = useState({
     todayPatients: 0,
     weekPatients: 0,
     avgWaitTime: 0,
-    completionRate: 0
+    completionRate: 0,
+    avgWeightedCompletion: 0 // نسبة الإنجاز بالأوزان
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
   }, []);
+
+  // دالة حساب نسبة الإنجاز بالأوزان لمريض واحد
+  const calculateWeightedCompletion = (stations, currentIndex) => {
+    if (!stations || !Array.isArray(stations) || stations.length === 0) return 0;
+    
+    const totalWeight = stations.reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
+    if (totalWeight === 0) return 0;
+    
+    const completedWeight = stations.slice(0, currentIndex).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
+    return (completedWeight / totalWeight) * 100;
+  };
 
   const loadStats = async () => {
     try {
@@ -444,6 +456,12 @@ const ReportsSection = ({ language, t }) => {
         .select('*')
         .gte('created_at', weekAgo.toISOString());
 
+      // جلب مسارات المرضى لحساب نسبة الإنجاز بالأوزان
+      const { data: patientRoutes } = await supabase
+        .from('patient_routes')
+        .select('patient_id, stations, current_station_index, status')
+        .gte('created_at', weekAgo.toISOString());
+
       const completed = weekData?.filter(q => q.status === 'completed') || [];
       const avgWait = completed.length > 0
         ? completed.reduce((acc, q) => {
@@ -454,13 +472,27 @@ const ReportsSection = ({ language, t }) => {
           }, 0) / completed.length / 60000
         : 0;
 
+      // حساب متوسط نسبة الإنجاز بالأوزان
+      let avgWeightedCompletion = 0;
+      if (patientRoutes && patientRoutes.length > 0) {
+        const totalCompletion = patientRoutes.reduce((sum, route) => {
+          const stations = typeof route.stations === 'string' 
+            ? JSON.parse(route.stations) 
+            : route.stations;
+          const currentIndex = route.current_station_index || 0;
+          return sum + calculateWeightedCompletion(stations, currentIndex);
+        }, 0);
+        avgWeightedCompletion = Math.round(totalCompletion / patientRoutes.length);
+      }
+
       setStats({
         todayPatients: todayData?.length || 0,
         weekPatients: weekData?.length || 0,
         avgWaitTime: Math.round(avgWait),
         completionRate: weekData?.length > 0 
           ? Math.round((completed.length / weekData.length) * 100) 
-          : 0
+          : 0,
+        avgWeightedCompletion
       });
     } catch (e) {
       console.error('Error loading stats:', e);
@@ -481,7 +513,8 @@ const ReportsSection = ({ language, t }) => {
 إحصائيات الأسبوع:
 - إجمالي المرضى: ${stats.weekPatients}
 - متوسط وقت الانتظار: ${stats.avgWaitTime} دقيقة
-- نسبة الإنجاز: ${stats.completionRate}%
+- نسبة إكمال الطوابير: ${stats.completionRate}%
+- نسبة الإنجاز بالأوزان: ${stats.avgWeightedCompletion}%
     `;
     
     const blob = new Blob([reportData], { type: 'text/plain;charset=utf-8' });
@@ -541,9 +574,12 @@ const ReportsSection = ({ language, t }) => {
             <div className="p-3 bg-green-500/20 rounded-xl">
               <CheckCircle className="text-green-400" size={24} />
             </div>
-            <span className="text-gray-400">{t('نسبة الإنجاز', 'Completion Rate')}</span>
+            <span className="text-gray-400">{t('نسبة الإنجاز (بالأوزان)', 'Completion Rate (Weighted)')}</span>
           </div>
-          <div className="text-3xl font-bold">{stats.completionRate}%</div>
+          <div className="text-3xl font-bold">{stats.avgWeightedCompletion}%</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {t('إكمال الطوابير', 'Queue Completion')}: {stats.completionRate}%
+          </div>
         </div>
       </div>
     </div>
