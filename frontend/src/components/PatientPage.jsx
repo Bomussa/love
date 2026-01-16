@@ -676,7 +676,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         allStationsCompleted={allStationsCompleted}
       />
 
-      <div className="w-full max-w-2xl mx-auto space-y-6 px-4 sm:px-6">
+      <div className="w-full max-w-lg mx-auto space-y-4 px-3">
         <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
