@@ -705,23 +705,42 @@ const ClinicsManagement = ({ language, t }) => {
   );
 };
 
-// مكون إدارة الإشعارات
+// مكون إدارة الإشعارات - متكامل
 const NotificationsManagement = ({ language, t }) => {
   const [notifications, setNotifications] = useState([]);
+  const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newNotification, setNewNotification] = useState({ title: '', message: '', type: 'info', target: 'all' });
+  const [editingNotification, setEditingNotification] = useState(null);
+  const [newNotification, setNewNotification] = useState({ 
+    title: '', 
+    message: '', 
+    status: 'queued',
+    clinic_id: null,
+    priority: 'normal',
+    metadata: {}
+  });
 
   useEffect(() => {
     loadNotifications();
+    loadClinics();
   }, []);
+
+  const loadClinics = async () => {
+    try {
+      const { data } = await supabase.from('clinics').select('id, name_ar, name_en').order('name_ar');
+      if (data) setClinics(data);
+    } catch (e) {
+      console.error('Error loading clinics:', e);
+    }
+  };
 
   const loadNotifications = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('*, clinics(name_ar, name_en)')
         .order('created_at', { ascending: false });
       
       if (!error && data) setNotifications(data);
@@ -734,28 +753,81 @@ const NotificationsManagement = ({ language, t }) => {
 
   const addNotification = async () => {
     try {
-      const { error } = await supabase.from('notifications').insert({
-        ...newNotification,
-        is_active: true,
-        created_at: new Date().toISOString()
-      });
+      const notifData = {
+        title: newNotification.title,
+        message: newNotification.message,
+        status: newNotification.status || 'queued',
+        clinic_id: newNotification.clinic_id || null,
+        is_read: false,
+        metadata: {
+          priority: newNotification.priority || 'normal',
+          ...newNotification.metadata
+        }
+      };
       
-      if (!error) {
-        loadNotifications();
-        setShowAddForm(false);
-        setNewNotification({ title: '', message: '', type: 'info', target: 'all' });
+      const { error } = await supabase.from('notifications').insert(notifData);
+      
+      if (error) {
+        console.error('Error adding notification:', error);
+        alert(t('خطأ في إضافة الإشعار', 'Error adding notification'));
+        return;
       }
+      
+      loadNotifications();
+      setShowAddForm(false);
+      setNewNotification({ title: '', message: '', status: 'queued', clinic_id: null, priority: 'normal', metadata: {} });
+      alert(t('تم إضافة الإشعار بنجاح', 'Notification added successfully'));
     } catch (e) {
       console.error('Error adding notification:', e);
     }
   };
 
-  const toggleNotification = async (id, currentStatus) => {
+  const updateNotification = async () => {
+    if (!editingNotification) return;
     try {
-      await supabase.from('notifications').update({ is_active: !currentStatus }).eq('id', id);
+      const { error } = await supabase.from('notifications').update({
+        title: editingNotification.title,
+        message: editingNotification.message,
+        status: editingNotification.status,
+        clinic_id: editingNotification.clinic_id,
+        metadata: {
+          ...editingNotification.metadata,
+          priority: editingNotification.priority || 'normal'
+        }
+      }).eq('id', editingNotification.id);
+      
+      if (!error) {
+        loadNotifications();
+        setEditingNotification(null);
+        alert(t('تم تحديث الإشعار بنجاح', 'Notification updated successfully'));
+      }
+    } catch (e) {
+      console.error('Error updating notification:', e);
+    }
+  };
+
+  const sendNotification = async (id) => {
+    try {
+      await supabase.from('notifications').update({ 
+        status: 'sent',
+        sent_at: new Date().toISOString()
+      }).eq('id', id);
+      loadNotifications();
+      alert(t('تم إرسال الإشعار', 'Notification sent'));
+    } catch (e) {
+      console.error('Error sending notification:', e);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await supabase.from('notifications').update({ 
+        is_read: true,
+        read_at: new Date().toISOString()
+      }).eq('id', id);
       loadNotifications();
     } catch (e) {
-      console.error('Error toggling notification:', e);
+      console.error('Error marking as read:', e);
     }
   };
 
@@ -769,6 +841,14 @@ const NotificationsManagement = ({ language, t }) => {
     }
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleString('ar-QA', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -779,7 +859,7 @@ const NotificationsManagement = ({ language, t }) => {
             className="px-4 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all flex items-center gap-2"
           >
             <Plus size={18} />
-            {t('إضافة', 'Add')}
+            {t('إضافة إشعار', 'Add Notification')}
           </button>
           <button 
             onClick={loadNotifications}
@@ -790,43 +870,63 @@ const NotificationsManagement = ({ language, t }) => {
         </div>
       </div>
 
+      {/* نموذج إضافة إشعار جديد */}
       {showAddForm && (
         <div className="bg-[#1a1a24] rounded-2xl border border-white/10 p-6">
           <h4 className="font-bold mb-4">{t('إضافة إشعار جديد', 'Add New Notification')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('العنوان', 'Title')}</label>
+              <label className="block text-sm text-gray-400 mb-2">{t('العنوان', 'Title')} *</label>
               <input
                 type="text"
                 value={newNotification.title}
                 onChange={(e) => setNewNotification({...newNotification, title: e.target.value})}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                placeholder={t('عنوان الإشعار', 'Notification title')}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('النوع', 'Type')}</label>
+              <label className="block text-sm text-gray-400 mb-2">{t('العيادة', 'Clinic')}</label>
               <select
-                value={newNotification.type}
-                onChange={(e) => setNewNotification({...newNotification, type: e.target.value})}
+                value={newNotification.clinic_id || ''}
+                onChange={(e) => setNewNotification({...newNotification, clinic_id: e.target.value || null})}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
               >
-                <option value="info">{t('معلومات', 'Info')}</option>
-                <option value="warning">{t('تحذير', 'Warning')}</option>
-                <option value="success">{t('نجاح', 'Success')}</option>
-                <option value="error">{t('خطأ', 'Error')}</option>
+                <option value="">{t('جميع العيادات', 'All Clinics')}</option>
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                ))}
               </select>
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">{t('الرسالة', 'Message')}</label>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الأولوية', 'Priority')}</label>
+              <select
+                value={newNotification.priority}
+                onChange={(e) => setNewNotification({...newNotification, priority: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              >
+                <option value="low">{t('منخفضة', 'Low')}</option>
+                <option value="normal">{t('عادية', 'Normal')}</option>
+                <option value="high">{t('عالية', 'High')}</option>
+                <option value="urgent">{t('عاجلة', 'Urgent')}</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="block text-sm text-gray-400 mb-2">{t('الرسالة', 'Message')} *</label>
               <textarea
                 value={newNotification.message}
                 onChange={(e) => setNewNotification({...newNotification, message: e.target.value})}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white h-24"
+                placeholder={t('نص الإشعار', 'Notification message')}
               />
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={addNotification} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+            <button 
+              onClick={addNotification} 
+              disabled={!newNotification.title || !newNotification.message}
+              className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {t('حفظ', 'Save')}
             </button>
             <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
@@ -836,61 +936,139 @@ const NotificationsManagement = ({ language, t }) => {
         </div>
       )}
 
+      {/* نموذج تعديل إشعار */}
+      {editingNotification && (
+        <div className="bg-[#1a1a24] rounded-2xl border border-gold-500/50 p-6">
+          <h4 className="font-bold mb-4 text-gold-400">{t('تعديل الإشعار', 'Edit Notification')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('العنوان', 'Title')}</label>
+              <input
+                type="text"
+                value={editingNotification.title}
+                onChange={(e) => setEditingNotification({...editingNotification, title: e.target.value})}
+                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('العيادة', 'Clinic')}</label>
+              <select
+                value={editingNotification.clinic_id || ''}
+                onChange={(e) => setEditingNotification({...editingNotification, clinic_id: e.target.value || null})}
+                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+              >
+                <option value="">{t('جميع العيادات', 'All Clinics')}</option>
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الحالة', 'Status')}</label>
+              <select
+                value={editingNotification.status}
+                onChange={(e) => setEditingNotification({...editingNotification, status: e.target.value})}
+                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white"
+              >
+                <option value="queued">{t('في الانتظار', 'Queued')}</option>
+                <option value="sent">{t('مرسل', 'Sent')}</option>
+                <option value="read">{t('مقروء', 'Read')}</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="block text-sm text-gray-400 mb-2">{t('الرسالة', 'Message')}</label>
+              <textarea
+                value={editingNotification.message}
+                onChange={(e) => setEditingNotification({...editingNotification, message: e.target.value})}
+                className="w-full bg-white/5 border border-gold-500/30 rounded-xl px-4 py-2 text-white h-24"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={updateNotification} className="px-6 py-2 bg-gold-500 text-black rounded-xl hover:bg-gold-400 transition-all">
+              {t('تحديث', 'Update')}
+            </button>
+            <button onClick={() => setEditingNotification(null)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
+              {t('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* جدول الإشعارات */}
       <div className="bg-[#1a1a24] rounded-2xl border border-white/10 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-white/5">
-            <tr>
-              <th className="text-right p-4 text-gray-400 font-medium">{t('العنوان', 'Title')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{t('النوع', 'Type')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{t('الإجراءات', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notifications.map(notif => (
-              <tr key={notif.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-medium">{notif.title}</td>
-                <td className="p-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    notif.type === 'info' ? 'bg-blue-500/20 text-blue-400' :
-                    notif.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
-                    notif.type === 'success' ? 'bg-green-500/20 text-green-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {notif.type}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    notif.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {notif.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => toggleNotification(notif.id, notif.is_active)}
-                      className={`p-2 rounded-lg transition-all ${
-                        notif.is_active ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
-                      }`}
-                    >
-                      {notif.is_active ? <Pause size={16} /> : <Play size={16} />}
-                    </button>
-                    <button
-                      onClick={() => deleteNotification(notif.id)}
-                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-white/5">
+              <tr>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('العنوان', 'Title')}</th>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('العيادة', 'Clinic')}</th>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('وقت الإنشاء', 'Created')}</th>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('وقت الإرسال', 'Sent')}</th>
+                <th className="text-right p-4 text-gray-400 font-medium">{t('الإجراءات', 'Actions')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {notifications.map(notif => (
+                <tr key={notif.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
+                  <td className="p-4">
+                    <div className="font-medium">{notif.title}</div>
+                    <div className="text-sm text-gray-400 truncate max-w-xs">{notif.message}</div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm">
+                      {notif.clinics ? (language === 'ar' ? notif.clinics.name_ar : notif.clinics.name_en) : t('عام', 'General')}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      notif.status === 'sent' ? 'bg-green-500/20 text-green-400' :
+                      notif.status === 'read' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {notif.status === 'sent' ? t('مرسل', 'Sent') :
+                       notif.status === 'read' ? t('مقروء', 'Read') :
+                       t('في الانتظار', 'Queued')}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm text-gray-400">{formatDate(notif.created_at)}</td>
+                  <td className="p-4 text-sm text-gray-400">{formatDate(notif.sent_at)}</td>
+                  <td className="p-4">
+                    <div className="flex gap-1">
+                      {notif.status === 'queued' && (
+                        <button
+                          onClick={() => sendNotification(notif.id)}
+                          className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all"
+                          title={t('إرسال', 'Send')}
+                        >
+                          <Play size={16} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setEditingNotification({...notif, priority: notif.metadata?.priority || 'normal'})}
+                        className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all"
+                        title={t('تعديل', 'Edit')}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={() => deleteNotification(notif.id)}
+                        className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
+                        title={t('حذف', 'Delete')}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {notifications.length === 0 && (
           <div className="p-8 text-center text-gray-400">
+            <Bell size={48} className="mx-auto mb-4 opacity-50" />
             {t('لا توجد إشعارات', 'No notifications found')}
           </div>
         )}
