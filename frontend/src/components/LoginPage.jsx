@@ -108,17 +108,17 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
         )}
 
         {/* Logo and Title */}
-        <div className="text-center space-y-4">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+        <div className="text-center space-y-2">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
 
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-xl font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xl text-[#C9A54C] font-semibold mt-2">
+            <p className="text-sm text-[#C9A54C] font-semibold mt-1">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-400 mt-2">
+            <p className="text-gray-400 text-xs mt-1">
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}

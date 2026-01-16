@@ -719,17 +719,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
 
-        <div className="text-center space-y-4">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+        <div className="text-center space-y-2">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 object-cover rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
 
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-lg font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-lg text-[#C9A54C] font-semibold">
+            <p className="text-sm text-[#C9A54C] font-semibold">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-xs">
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
