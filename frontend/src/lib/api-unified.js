@@ -38,6 +38,23 @@ const api = {
   // --- Queue ---
   async enterQueue(clinicId, patientId, isAutoEnter = true) {
     try {
+      // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة
+      const { data: existingEntry, error: existingError } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('patient_id', patientId)
+        .in('status', ['waiting', 'serving']) // فقط الحالات النشطة
+        .order('entered_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // إذا وجد سجل موجود، أرجعه بدلاً من إنشاء جديد
+      if (existingEntry) {
+        console.log('[enterQueue] المراجع موجود مسبقاً برقم:', existingEntry.display_number);
+        return { success: true, ...existingEntry, alreadyExists: true };
+      }
+
       // Get next display number
       const { data: lastEntry, error: lastError } = await supabase
         .from('queues')
