@@ -4035,24 +4035,19 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // استخدام جدول queue الصحيح
+      // جلب بيانات الطوابير مع تفاصيل العيادة
       const { data: queueData, error: queueError } = await supabase
         .from('queues')
-        .select('patient_id, status, created_at, called_at, completed_at');
+        .select('patient_id, clinic_id, status, entered_at, called_at, completed_at');
       
-      if (queueError) {
-        console.error('Queue error:', queueError);
-        // محاولة استخدام جدول queues كبديل
-        const { data: queuesData, error: queuesError } = await supabase
-          .from('queues')
-          .select('patient_id, status, entered_at, called_at, completed_at');
-        
-        if (!queuesError && queuesData) {
-          processQueueData(queuesData, 'entered_at');
-        }
-      } else if (queueData) {
-        processQueueData(queueData, 'created_at');
+      if (!queueError && queueData) {
+        processQueueData(queueData, 'entered_at');
       }
+
+      // جلب بيانات العيادات
+      const { data: clinicsData } = await supabase
+        .from('clinics')
+        .select('id, name_ar, name_en, code');
 
       // Active PINs
       const { count: pinCount } = await supabase
@@ -4060,10 +4055,52 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
+      // حساب إحصائيات كل عيادة
+      const clinicStats = {};
+      if (queueData && clinicsData) {
+        clinicsData.forEach(clinic => {
+          const clinicQueues = queueData.filter(q => q.clinic_id === clinic.code || q.clinic_id === clinic.id);
+          const completed = clinicQueues.filter(q => q.status === 'completed');
+          const waiting = clinicQueues.filter(q => q.status === 'waiting');
+          
+          // حساب متوسط مدة الانتظار (من entered_at إلى called_at)
+          let avgWaitTime = 0;
+          const withWaitTime = completed.filter(q => q.entered_at && q.called_at);
+          if (withWaitTime.length > 0) {
+            const totalWait = withWaitTime.reduce((acc, q) => {
+              return acc + (new Date(q.called_at) - new Date(q.entered_at));
+            }, 0);
+            avgWaitTime = Math.round(totalWait / withWaitTime.length / 60000); // بالدقائق
+          }
+          
+          // حساب متوسط مدة البقاء داخل العيادة (من called_at إلى completed_at)
+          let avgStayTime = 0;
+          const withStayTime = completed.filter(q => q.called_at && q.completed_at);
+          if (withStayTime.length > 0) {
+            const totalStay = withStayTime.reduce((acc, q) => {
+              return acc + (new Date(q.completed_at) - new Date(q.called_at));
+            }, 0);
+            avgStayTime = Math.round(totalStay / withStayTime.length / 60000); // بالدقائق
+          }
+          
+          clinicStats[clinic.code || clinic.id] = {
+            name_ar: clinic.name_ar,
+            name_en: clinic.name_en,
+            code: clinic.code,
+            total: clinicQueues.length,
+            completed: completed.length,
+            waiting: waiting.length,
+            avgWaitTime,
+            avgStayTime
+          };
+        });
+      }
+
       setStats(prev => ({
         ...prev,
         activePins: pinCount || 0,
-        systemHealth: 100
+        systemHealth: 100,
+        clinicStats
       }));
       setLastUpdate(new Date());
     } catch (error) {
@@ -4252,7 +4289,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
               {[
                 { label: t('إجمالي المرضى', 'Total Patients'), value: stats.totalPatients, icon: Users, color: 'blue' },
                 { label: t('في الانتظار', 'Waiting'), value: stats.waiting, icon: Clock, color: 'yellow' },
-                { label: t('المكتملين', 'Completed'), value: stats.completed, icon: CheckCircle, color: 'green' },
+                { label: t('زيارات مكتملة', 'Completed Visits'), value: stats.completed, icon: CheckCircle, color: 'green' },
                 { label: t('الأرقام السرية', 'Active PINs'), value: stats.activePins, icon: Key, color: 'purple' },
               ].map((stat, i) => (
                 <div key={i} className="bg-[#12121a] p-4 lg:p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
@@ -4272,6 +4309,67 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                 </div>
               ))}
             </div>
+
+            {/* إحصائيات العيادات التفصيلية */}
+            {stats.clinicStats && Object.keys(stats.clinicStats).length > 0 && (
+              <div className="bg-[#12121a] rounded-2xl border border-white/5 p-6 mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <BarChart3 size={20} className="text-yellow-500" />
+                    {t('إحصائيات العيادات التفصيلية', 'Detailed Clinic Statistics')}
+                  </h3>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-right py-3 px-4 text-gray-400 font-medium">{t('العيادة', 'Clinic')}</th>
+                        <th className="text-center py-3 px-4 text-gray-400 font-medium">{t('إجمالي الزيارات', 'Total Visits')}</th>
+                        <th className="text-center py-3 px-4 text-gray-400 font-medium">{t('مكتملة', 'Completed')}</th>
+                        <th className="text-center py-3 px-4 text-gray-400 font-medium">{t('في الانتظار', 'Waiting')}</th>
+                        <th className="text-center py-3 px-4 text-gray-400 font-medium">{t('متوسط الانتظار', 'Avg Wait')}</th>
+                        <th className="text-center py-3 px-4 text-gray-400 font-medium">{t('متوسط البقاء', 'Avg Stay')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(stats.clinicStats)
+                        .filter(([_, data]) => data.total > 0)
+                        .sort((a, b) => b[1].total - a[1].total)
+                        .map(([code, data]) => (
+                          <tr key={code} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded font-mono">{code}</span>
+                                <span className="text-white">{language === 'ar' ? data.name_ar : data.name_en}</span>
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4 text-white font-bold">{data.total}</td>
+                            <td className="text-center py-3 px-4">
+                              <span className="text-green-500 font-medium">{data.completed}</span>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <span className="text-yellow-500 font-medium">{data.waiting}</span>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <span className="text-blue-400">{data.avgWaitTime} {t('د', 'min')}</span>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <span className="text-purple-400">{data.avgStayTime} {t('د', 'min')}</span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {Object.values(stats.clinicStats).every(c => c.total === 0) && (
+                  <div className="text-center py-8 text-gray-500">
+                    {t('لا توجد بيانات للعرض', 'No data to display')}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* System Health */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
