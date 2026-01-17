@@ -33,7 +33,7 @@
   * {
     @apply border-border;
     box-sizing: border-box;
-    font-family: 'Tajawal', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif !important;
+    font-family: 'Cairo', 'Roboto', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif !important;
   }
   html {
     width: 100%;
