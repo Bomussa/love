@@ -592,6 +592,8 @@ const ClinicsManagement = ({ language, t }) => {
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingClinic, setEditingClinic] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newClinic, setNewClinic] = useState({ name_ar: '', name_en: '', floor: '', code: '', weight: 1 });
 
   useEffect(() => {
     loadClinics();
@@ -638,17 +640,130 @@ const ClinicsManagement = ({ language, t }) => {
     }
   };
 
+  const addClinic = async () => {
+    if (!newClinic.name_ar || !newClinic.name_en) {
+      alert(t('يرجى إدخال اسم العيادة', 'Please enter clinic name'));
+      return;
+    }
+    try {
+      const { error } = await supabase.from('clinics').insert({
+        name_ar: newClinic.name_ar,
+        name_en: newClinic.name_en,
+        floor: newClinic.floor || 'الطابق الأول',
+        code: newClinic.code || newClinic.name_en.substring(0, 3).toUpperCase(),
+        weight: newClinic.weight || 1,
+        is_active: true,
+        created_at: new Date().toISOString()
+      });
+      if (!error) {
+        loadClinics();
+        setShowAddForm(false);
+        setNewClinic({ name_ar: '', name_en: '', floor: '', code: '', weight: 1 });
+        alert(t('تم إضافة العيادة بنجاح', 'Clinic added successfully'));
+      }
+    } catch (e) {
+      console.error('Error adding clinic:', e);
+    }
+  };
+
+  const deleteClinic = async (clinicId) => {
+    if (!window.confirm(t('هل أنت متأكد من حذف هذه العيادة؟', 'Are you sure you want to delete this clinic?'))) return;
+    try {
+      await supabase.from('clinics').delete().eq('id', clinicId);
+      loadClinics();
+    } catch (e) {
+      console.error('Error deleting clinic:', e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">{t('إدارة العيادات', 'Clinics Management')}</h3>
-        <button 
-          onClick={loadClinics}
-          className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
-        >
-          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
+          >
+            <Plus size={18} />
+            {t('إضافة عيادة', 'Add Clinic')}
+          </button>
+          <button 
+            onClick={loadClinics}
+            className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
+
+      {showAddForm && (
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4">{t('إضافة عيادة جديدة', 'Add New Clinic')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الاسم بالعربية', 'Arabic Name')} *</label>
+              <input
+                type="text"
+                value={newClinic.name_ar}
+                onChange={(e) => setNewClinic({...newClinic, name_ar: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                placeholder="عيادة العيون"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الاسم بالإنجليزية', 'English Name')} *</label>
+              <input
+                type="text"
+                value={newClinic.name_en}
+                onChange={(e) => setNewClinic({...newClinic, name_en: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                placeholder="Eye Clinic"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الرمز', 'Code')}</label>
+              <input
+                type="text"
+                value={newClinic.code}
+                onChange={(e) => setNewClinic({...newClinic, code: e.target.value.toUpperCase()})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                placeholder="EYE"
+                maxLength={5}
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الطابق', 'Floor')}</label>
+              <input
+                type="text"
+                value={newClinic.floor}
+                onChange={(e) => setNewClinic({...newClinic, floor: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                placeholder="الطابق الأول"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الوزن', 'Weight')}</label>
+              <input
+                type="number"
+                value={newClinic.weight}
+                onChange={(e) => setNewClinic({...newClinic, weight: parseInt(e.target.value) || 1})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                min="1"
+                max="10"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={addClinic} className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all">
+              {t('حفظ', 'Save')}
+            </button>
+            <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
+              {t('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clinics.map(clinic => (
@@ -681,6 +796,12 @@ const ClinicsManagement = ({ language, t }) => {
                 className="p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
               >
                 <Edit size={18} />
+              </button>
+              <button
+                onClick={() => deleteClinic(clinic.id)}
+                className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
+              >
+                <Trash2 size={18} />
               </button>
             </div>
           </div>
