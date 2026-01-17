@@ -435,11 +435,19 @@ const ReportsSection = ({ language, t }) => {
   const [stats, setStats] = useState({
     todayPatients: 0,
     weekPatients: 0,
+    monthPatients: 0,
+    yearPatients: 0,
     avgWaitTime: 0,
     completionRate: 0,
-    avgWeightedCompletion: 0 // نسبة الإنجاز بالأوزان
+    avgWeightedCompletion: 0,
+    clinicStats: [],
+    hourlyStats: []
   });
   const [loading, setLoading] = useState(true);
+  const [reportPeriod, setReportPeriod] = useState('today');
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
 
   useEffect(() => {
     loadStats();
@@ -464,6 +472,12 @@ const ReportsSection = ({ language, t }) => {
       
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      
+      const yearAgo = new Date();
+      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
 
       // إحصائيات اليوم
       const { data: todayData } = await supabase
@@ -476,6 +490,55 @@ const ReportsSection = ({ language, t }) => {
         .from('queues')
         .select('*')
         .gte('created_at', weekAgo.toISOString());
+
+      // إحصائيات الشهر
+      const { data: monthData } = await supabase
+        .from('queues')
+        .select('*')
+        .gte('created_at', monthAgo.toISOString());
+
+      // إحصائيات السنة
+      const { data: yearData } = await supabase
+        .from('queues')
+        .select('*')
+        .gte('created_at', yearAgo.toISOString());
+
+      // إحصائيات العيادات
+      const { data: clinicsData } = await supabase
+        .from('clinics')
+        .select('id, name_ar, name');
+
+      // حساب إحصائيات كل عيادة
+      const clinicStats = clinicsData?.map(clinic => {
+        const clinicQueues = todayData?.filter(q => q.clinic_id === clinic.id) || [];
+        const completed = clinicQueues.filter(q => q.status === 'completed');
+        const waiting = clinicQueues.filter(q => q.status === 'waiting');
+        const avgWait = completed.length > 0
+          ? completed.reduce((acc, q) => {
+              if (q.called_at && q.created_at) {
+                return acc + (new Date(q.called_at) - new Date(q.created_at));
+              }
+              return acc;
+            }, 0) / completed.length / 60000
+          : 0;
+        const avgStay = completed.length > 0
+          ? completed.reduce((acc, q) => {
+              if (q.completed_at && q.called_at) {
+                return acc + (new Date(q.completed_at) - new Date(q.called_at));
+              }
+              return acc;
+            }, 0) / completed.length / 60000
+          : 0;
+        return {
+          id: clinic.id,
+          name: clinic.name_ar || clinic.name,
+          total: clinicQueues.length,
+          completed: completed.length,
+          waiting: waiting.length,
+          avgWaitTime: Math.round(avgWait),
+          avgStayTime: Math.round(avgStay)
+        };
+      }) || [];
 
       // جلب مسارات المرضى لحساب نسبة الإنجاز بالأوزان
       const { data: patientRoutes } = await supabase
@@ -509,11 +572,14 @@ const ReportsSection = ({ language, t }) => {
       setStats({
         todayPatients: todayData?.length || 0,
         weekPatients: weekData?.length || 0,
+        monthPatients: monthData?.length || 0,
+        yearPatients: yearData?.length || 0,
         avgWaitTime: Math.round(avgWait),
         completionRate: weekData?.length > 0 
           ? Math.round((completed.length / weekData.length) * 100) 
           : 0,
-        avgWeightedCompletion
+        avgWeightedCompletion,
+        clinicStats
       });
     } catch (e) {
       console.error('Error loading stats:', e);
@@ -522,43 +588,241 @@ const ReportsSection = ({ language, t }) => {
     }
   };
 
-  const exportReport = () => {
+  const exportReport = (format = 'txt') => {
+    const periodLabel = {
+      today: 'اليوم',
+      week: 'الأسبوع',
+      month: 'الشهر',
+      year: 'السنة'
+    }[reportPeriod];
+    
+    const patientCount = {
+      today: stats.todayPatients,
+      week: stats.weekPatients,
+      month: stats.monthPatients,
+      year: stats.yearPatients
+    }[reportPeriod];
+
+    const clinicStatsTable = stats.clinicStats?.map(c => 
+      `| ${c.name} | ${c.total} | ${c.completed} | ${c.waiting} | ${c.avgWaitTime} د | ${c.avgStayTime} د |`
+    ).join('\n') || '';
+
     const reportData = `
-تقرير المركز الطبي التخصصي العسكري
-=====================================
+══════════════════════════════════════════════════
+       اللجنة الطبية العسكرية
+       Military Medical Committee
+══════════════════════════════════════════════════
+المركز الطبي التخصصي العسكري - العطار
+
+تقرير ${periodLabel}
 التاريخ: ${new Date().toLocaleDateString('ar-SA')}
+الوقت: ${new Date().toLocaleTimeString('ar-SA')}
 
-إحصائيات اليوم:
-- عدد المرضى: ${stats.todayPatients}
+──────────────────────────────────────────────────
+الإحصائيات العامة:
+──────────────────────────────────────────────────
+• عدد المراجعين: ${patientCount}
+• متوسط وقت الانتظار: ${stats.avgWaitTime} دقيقة
+• نسبة إكمال الطوابير: ${stats.completionRate}%
+• نسبة الإنجاز بالأوزان: ${stats.avgWeightedCompletion}%
 
-إحصائيات الأسبوع:
-- إجمالي المرضى: ${stats.weekPatients}
-- متوسط وقت الانتظار: ${stats.avgWaitTime} دقيقة
-- نسبة إكمال الطوابير: ${stats.completionRate}%
-- نسبة الإنجاز بالأوزان: ${stats.avgWeightedCompletion}%
+──────────────────────────────────────────────────
+إحصائيات العيادات:
+──────────────────────────────────────────────────
+| العيادة | إجمالي | مكتمل | انتظار | متوسط الانتظار | متوسط البقاء |
+|-------|------|------|------|-------------|------------|
+${clinicStatsTable}
+
+══════════════════════════════════════════════════
+تم إنشاء هذا التقرير آلياً بواسطة نظام إدارة الطوابير
     `;
     
     const blob = new Blob([reportData], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `report-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
+  };
+
+  const printReport = () => {
+    const periodLabel = {
+      today: 'اليوم',
+      week: 'الأسبوع',
+      month: 'الشهر',
+      year: 'السنة'
+    }[reportPeriod];
+    
+    const patientCount = {
+      today: stats.todayPatients,
+      week: stats.weekPatients,
+      month: stats.monthPatients,
+      year: stats.yearPatients
+    }[reportPeriod];
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>تقرير اللجنة الطبية العسكرية</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 20px; direction: rtl; }
+          .header { text-align: center; border-bottom: 3px double #8A1538; padding-bottom: 20px; margin-bottom: 20px; }
+          .logo { width: 80px; height: 80px; margin: 0 auto 10px; }
+          .title { color: #8A1538; font-size: 24px; font-weight: bold; margin: 10px 0; }
+          .subtitle { color: #666; font-size: 14px; }
+          .section { margin: 20px 0; }
+          .section-title { background: #8A1538; color: white; padding: 10px; font-weight: bold; }
+          table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+          th { background: #f5f5f5; }
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+          .stat-card { background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #ddd; }
+          .stat-value { font-size: 28px; font-weight: bold; color: #8A1538; }
+          .stat-label { color: #666; font-size: 12px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+          @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">اللجنة الطبية العسكرية</div>
+          <div class="subtitle">Military Medical Committee</div>
+          <div class="subtitle">المركز الطبي التخصصي العسكري - العطار</div>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">تقرير ${periodLabel} - ${new Date().toLocaleDateString('ar-SA')}</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${patientCount}</div>
+              <div class="stat-label">عدد المراجعين</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.avgWaitTime} د</div>
+              <div class="stat-label">متوسط الانتظار</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.completionRate}%</div>
+              <div class="stat-label">نسبة الإكمال</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.avgWeightedCompletion}%</div>
+              <div class="stat-label">نسبة الإنجاز</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">إحصائيات العيادات</div>
+          <table>
+            <thead>
+              <tr>
+                <th>العيادة</th>
+                <th>إجمالي الزيارات</th>
+                <th>مكتملة</th>
+                <th>في الانتظار</th>
+                <th>متوسط الانتظار</th>
+                <th>متوسط البقاء</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${stats.clinicStats?.map(c => `
+                <tr>
+                  <td>${c.name}</td>
+                  <td>${c.total}</td>
+                  <td>${c.completed}</td>
+                  <td>${c.waiting}</td>
+                  <td>${c.avgWaitTime} د</td>
+                  <td>${c.avgStayTime} د</td>
+                </tr>
+              `).join('') || ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer">
+          <p>تم إنشاء هذا التقرير آلياً بواسطة نظام إدارة الطوابير</p>
+          <p>${new Date().toLocaleString('ar-SA')}</p>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
+  const sendReportByEmail = async () => {
+    if (!emailAddress || !emailAddress.includes('@')) {
+      alert(t('يرجى إدخال بريد إلكتروني صحيح', 'Please enter a valid email'));
+      return;
+    }
+    // حفظ طلب الإرسال في قاعدة البيانات
+    try {
+      await supabase.from('email_queue').insert({
+        to_email: emailAddress,
+        subject: `تقرير اللجنة الطبية - ${new Date().toLocaleDateString('ar-SA')}`,
+        body: JSON.stringify(stats),
+        status: 'pending',
+        created_at: new Date().toISOString()
+      });
+      alert(t('تم إرسال التقرير بنجاح', 'Report sent successfully'));
+      setShowEmailModal(false);
+      setEmailAddress('');
+    } catch (e) {
+      console.error('Error sending email:', e);
+      alert(t('حدث خطأ أثناء الإرسال', 'Error sending report'));
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* العنوان وأزرار التحكم */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h3 className="text-xl font-bold">{t('التقارير والإحصائيات', 'Reports & Statistics')}</h3>
-        <button 
-          onClick={exportReport}
-          className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
-        >
-          <Download size={18} />
-          {t('تصدير', 'Export')}
-        </button>
+        
+        {/* تصنيف الفترة */}
+        <div className="flex items-center gap-2 bg-black/20 rounded-xl p-1">
+          {[{id: 'today', label: 'اليوم'}, {id: 'week', label: 'الأسبوع'}, {id: 'month', label: 'الشهر'}, {id: 'year', label: 'السنة'}].map(period => (
+            <button
+              key={period.id}
+              onClick={() => setReportPeriod(period.id)}
+              className={`px-4 py-2 rounded-lg transition-all ${reportPeriod === period.id ? 'bg-[#C9A54C] text-black' : 'text-gray-400 hover:text-white'}`}
+            >
+              {t(period.label, period.label)}
+            </button>
+          ))}
+        </div>
+
+        {/* أزرار الإجراءات */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={printReport}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2"
+          >
+            <Printer size={18} />
+            {t('طباعة', 'Print')}
+          </button>
+          <button 
+            onClick={() => exportReport()}
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
+          >
+            <Download size={18} />
+            {t('تصدير', 'Export')}
+          </button>
+          <button 
+            onClick={() => setShowEmailModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all flex items-center gap-2"
+          >
+            <Send size={18} />
+            {t('إرسال', 'Send')}
+          </button>
+        </div>
       </div>
 
+      {/* بطاقات الإحصائيات */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
           <div className="flex items-center gap-3 mb-4">
@@ -595,7 +859,7 @@ const ReportsSection = ({ language, t }) => {
             <div className="p-3 bg-green-500/20 rounded-xl">
               <CheckCircle className="text-green-400" size={24} />
             </div>
-            <span className="text-gray-400">{t('نسبة الإنجاز (بالأوزان)', 'Completion Rate (Weighted)')}</span>
+            <span className="text-gray-400">{t('نسبة الإنجاز', 'Completion Rate')}</span>
           </div>
           <div className="text-3xl font-bold">{stats.avgWeightedCompletion}%</div>
           <div className="text-sm text-gray-500 mt-1">
@@ -603,6 +867,69 @@ const ReportsSection = ({ language, t }) => {
           </div>
         </div>
       </div>
+
+      {/* جدول إحصائيات العيادات */}
+      {stats.clinicStats && stats.clinicStats.length > 0 && (
+        <div className="bg-black/20 rounded-2xl border border-white/10 p-6">
+          <h4 className="text-lg font-bold mb-4">{t('إحصائيات العيادات التفصيلية', 'Detailed Clinic Statistics')}</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-right p-3">{t('العيادة', 'Clinic')}</th>
+                  <th className="text-center p-3">{t('إجمالي', 'Total')}</th>
+                  <th className="text-center p-3">{t('مكتمل', 'Completed')}</th>
+                  <th className="text-center p-3">{t('انتظار', 'Waiting')}</th>
+                  <th className="text-center p-3">{t('متوسط الانتظار', 'Avg Wait')}</th>
+                  <th className="text-center p-3">{t('متوسط البقاء', 'Avg Stay')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.clinicStats.filter(c => c.total > 0).map((clinic, idx) => (
+                  <tr key={clinic.id} className={idx % 2 === 0 ? 'bg-white/5' : ''}>
+                    <td className="p-3 font-medium">{clinic.name}</td>
+                    <td className="text-center p-3">{clinic.total}</td>
+                    <td className="text-center p-3 text-green-400">{clinic.completed}</td>
+                    <td className="text-center p-3 text-yellow-400">{clinic.waiting}</td>
+                    <td className="text-center p-3">{clinic.avgWaitTime} {t('د', 'm')}</td>
+                    <td className="text-center p-3">{clinic.avgStayTime} {t('د', 'm')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة الإرسال بالبريد */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1a1a2e] rounded-2xl p-6 w-full max-w-md">
+            <h4 className="text-lg font-bold mb-4">{t('إرسال التقرير بالبريد الإلكتروني', 'Send Report by Email')}</h4>
+            <input
+              type="email"
+              value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)}
+              placeholder={t('البريد الإلكتروني', 'Email address')}
+              className="w-full p-3 bg-black/30 border border-white/10 rounded-xl mb-4 text-white"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={sendReportByEmail}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700"
+              >
+                {t('إرسال', 'Send')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
