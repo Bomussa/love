@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Bell, Plus, RefreshCw, Edit, Trash2, Play, Eye, Send, User, Clock, Palette, Type, Move, Timer, Square } from 'lucide-react';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import supabase from '../lib/supabase-client';
 
 // خيارات مواقع الظهور
 const POSITION_OPTIONS = [
