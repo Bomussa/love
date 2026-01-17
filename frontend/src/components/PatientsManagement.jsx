@@ -1,3 +1,8 @@
+/**
+ * إدارة المراجعين - بيانات حقيقية فقط من قاعدة البيانات
+ * ✅ لا توجد بيانات وهمية
+ * ✅ جميع البيانات من Supabase عبر نظام GDS
+ */
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
@@ -5,26 +10,22 @@ import { Input } from './Input'
 import {
   Users,
   Search,
-  Filter,
   Download,
-  Eye,
-  Edit,
   Trash2,
-  UserPlus,
   RefreshCw,
-  Calendar,
   Clock,
   Activity,
   CheckCircle,
-  XCircle
+  AlertCircle
 } from 'lucide-react'
-import { t } from '../lib/i18n'
+import { GDS, getQueues, getRoutes } from '../lib/guaranteed-data-system'
 
 export function PatientsManagement({ language }) {
   const [patients, setPatients] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     loadPatients()
@@ -32,51 +33,77 @@ export function PatientsManagement({ language }) {
 
   const loadPatients = async () => {
     setLoading(true)
-    // بيانات تجريبية
-    const mockPatients = [
-      {
-        id: 1,
-        militaryId: '12345',
-        name: language === 'ar' ? 'محمد أحمد' : 'Mohammed Ahmed',
-        gender: 'male',
-        examType: language === 'ar' ? 'فحص شامل' : 'Complete Exam',
-        status: 'in-progress',
-        currentClinic: language === 'ar' ? 'الباطنية' : 'Internal Medicine',
-        queueNumber: 15,
-        startTime: '09:30',
-        completedStations: 3,
-        totalStations: 6
-      },
-      {
-        id: 2,
-        militaryId: '67890',
-        name: language === 'ar' ? 'فاطمة علي' : 'Fatima Ali',
-        gender: 'female',
-        examType: language === 'ar' ? 'فحص دوري' : 'Periodic Exam',
-        status: 'completed',
-        currentClinic: '-',
-        queueNumber: 8,
-        startTime: '08:45',
-        completedStations: 5,
-        totalStations: 5
-      },
-      {
-        id: 3,
-        militaryId: '11223',
-        name: language === 'ar' ? 'خالد محمود' : 'Khaled Mahmoud',
-        gender: 'male',
-        examType: language === 'ar' ? 'فحص تخصصي' : 'Specialized Exam',
-        status: 'waiting',
-        currentClinic: language === 'ar' ? 'العيون' : 'Ophthalmology',
-        queueNumber: 3,
-        startTime: '10:15',
-        completedStations: 1,
-        totalStations: 4
-      }
-    ]
+    setError(null)
+    
+    try {
+      // جلب بيانات الطوابير من نظام GDS
+      const queuesResult = await getQueues()
+      const routesResult = await getRoutes()
 
-    setPatients(mockPatients)
-    setLoading(false)
+      if (queuesResult.error) throw new Error(queuesResult.error)
+
+      const patientsMap = new Map()
+
+      // معالجة بيانات الطوابير
+      if (queuesResult.data && queuesResult.data.length > 0) {
+        queuesResult.data.forEach(queue => {
+          const patientId = queue.patient_id
+          if (!patientsMap.has(patientId)) {
+            patientsMap.set(patientId, {
+              id: patientId,
+              militaryId: patientId.substring(0, 8),
+              status: queue.status,
+              currentClinic: queue.clinic_id,
+              queueNumber: queue.display_number,
+              startTime: queue.entered_at ? new Date(queue.entered_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : '-',
+              completedStations: 0,
+              totalStations: 0,
+              queues: [queue]
+            })
+          } else {
+            const patient = patientsMap.get(patientId)
+            patient.queues.push(queue)
+            if (queue.status === 'serving') {
+              patient.status = 'in-progress'
+              patient.currentClinic = queue.clinic_id
+            }
+          }
+        })
+      }
+
+      // إضافة بيانات المسارات
+      if (routesResult.data && routesResult.data.length > 0) {
+        routesResult.data.forEach(route => {
+          const patientId = route.patient_id
+          if (patientsMap.has(patientId)) {
+            const patient = patientsMap.get(patientId)
+            patient.examType = route.exam_type || '-'
+            patient.totalStations = route.stations ? route.stations.length : 0
+            patient.completedStations = route.current_station_index || 0
+            if (route.status === 'completed') {
+              patient.status = 'completed'
+            }
+          }
+        })
+      }
+
+      const patientsArray = Array.from(patientsMap.values())
+      
+      patientsArray.forEach(patient => {
+        if (patient.queues) {
+          patient.completedStations = patient.queues.filter(q => q.status === 'completed').length
+          patient.totalStations = Math.max(patient.totalStations, patient.queues.length)
+        }
+      })
+
+      setPatients(patientsArray)
+    } catch (err) {
+      console.error('Error loading patients:', err)
+      setError(language === 'ar' ? 'فشل في تحميل البيانات' : 'Failed to load data')
+      setPatients([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getStatusBadge = (status) => {
@@ -89,6 +116,7 @@ export function PatientsManagement({ language }) {
           </span>
         )
       case 'in-progress':
+      case 'serving':
         return (
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
             <Activity className="w-3 h-3" />
@@ -103,217 +131,149 @@ export function PatientsManagement({ language }) {
           </span>
         )
       default:
-        return null
+        return (
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+            <AlertCircle className="w-3 h-3" />
+            {status || '-'}
+          </span>
+        )
     }
   }
 
   const filteredPatients = patients.filter(patient => {
-    const matchesSearch = patient.militaryId.includes(searchTerm) ||
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = patient.militaryId?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filterStatus === 'all' || patient.status === filterStatus
     return matchesSearch && matchesFilter
   })
 
+  const handleExport = () => {
+    if (patients.length === 0) {
+      alert(language === 'ar' ? 'لا توجد بيانات للتصدير' : 'No data to export')
+      return
+    }
+
+    const csvContent = [
+      ['الرقم العسكري', 'الحالة', 'العيادة الحالية', 'رقم الدور', 'وقت البدء', 'العيادات المكتملة'].join(','),
+      ...filteredPatients.map(p => [
+        p.militaryId,
+        p.status,
+        p.currentClinic,
+        p.queueNumber,
+        p.startTime,
+        `${p.completedStations}/${p.totalStations}`
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `patients_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="icon icon-xl icon-brand" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {language === 'ar' ? 'إدارة المراجعين' : 'Patients Management'}
-            </h2>
-            <p className="text-sm text-gray-500">
-              {language === 'ar'
-                ? `${patients.length} مراجع`
-                : `${patients.length} patients`}
-            </p>
+    <Card className="bg-gray-800/50 border-gray-700">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-400" />
+            {language === 'ar' ? 'إدارة المراجعين' : 'Patients Management'}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={loadPatients} disabled={loading} className="border-gray-600 text-gray-300">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={patients.length === 0} className="border-gray-600 text-gray-300">
+              <Download className="w-4 h-4" />
+            </Button>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadPatients}
-            disabled={loading}
-            className="border-gray-300"
-          >
-            <RefreshCw className={`icon icon-md icon-brand ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-gray-300"
-          >
-            <Download className="icon icon-md icon-brand me-2" />
-            {language === 'ar' ? 'تصدير' : 'Export'}
-          </Button>
-
-          <Button
-            variant="default"
-            size="sm"
-            className="bg-[#8A1538] hover:bg-[#6B0F2A]"
-          >
-            <UserPlus className="icon icon-md me-2" />
-            {language === 'ar' ? 'مراجع جديد' : 'New Patient'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 icon icon-md icon-muted" />
-              <input
-                type="text"
-                placeholder={language === 'ar' ? 'بحث بالرقم العسكري أو الاسم...' : 'Search by ID or name...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8A1538] focus:border-transparent"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex gap-2">
-              <Button
-                variant={filterStatus === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('all')}
-                className={filterStatus === 'all' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'الكل' : 'All'}
-              </Button>
-              <Button
-                variant={filterStatus === 'waiting' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('waiting')}
-                className={filterStatus === 'waiting' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'انتظار' : 'Waiting'}
-              </Button>
-              <Button
-                variant={filterStatus === 'in-progress' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('in-progress')}
-                className={filterStatus === 'in-progress' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'جاري' : 'In Progress'}
-              </Button>
-              <Button
-                variant={filterStatus === 'completed' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterStatus('completed')}
-                className={filterStatus === 'completed' ? 'bg-[#8A1538] hover:bg-[#6B0F2A]' : 'border-gray-300'}
-              >
-                {language === 'ar' ? 'مكتمل' : 'Completed'}
-              </Button>
-            </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder={language === 'ar' ? 'بحث بالرقم العسكري...' : 'Search by military ID...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-gray-700 border-gray-600 text-white"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+          >
+            <option value="all">{language === 'ar' ? 'جميع الحالات' : 'All Status'}</option>
+            <option value="waiting">{language === 'ar' ? 'في الانتظار' : 'Waiting'}</option>
+            <option value="serving">{language === 'ar' ? 'جاري الفحص' : 'In Progress'}</option>
+            <option value="completed">{language === 'ar' ? 'مكتمل' : 'Completed'}</option>
+          </select>
+        </div>
 
-      {/* Patients Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+        {error && (
+          <div className="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-300 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'الرقم العسكري' : 'Military ID'}</th>
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'الحالة' : 'Status'}</th>
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'العيادة الحالية' : 'Current Clinic'}</th>
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'رقم الدور' : 'Queue #'}</th>
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'وقت البدء' : 'Start Time'}</th>
+                <th className="text-right py-3 px-4 text-gray-400 font-medium">{language === 'ar' ? 'التقدم' : 'Progress'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'الرقم العسكري' : 'Military ID'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'الاسم' : 'Name'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'نوع الفحص' : 'Exam Type'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'الحالة' : 'Status'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'العيادة الحالية' : 'Current Clinic'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'التقدم' : 'Progress'}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {language === 'ar' ? 'الإجراءات' : 'Actions'}
-                  </th>
+                  <td colSpan="6" className="text-center py-8 text-gray-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    {language === 'ar' ? 'جاري التحميل...' : 'Loading...'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPatients.map((patient) => (
-                  <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {patient.militaryId}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        <Clock className="icon icon-sm me-1 inline" />
-                        {patient.startTime}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{patient.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {patient.gender === 'male' ? '👨' : '👩'} {patient.gender === 'male' ? (language === 'ar' ? 'ذكر' : 'Male') : (language === 'ar' ? 'أنثى' : 'Female')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {patient.examType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(patient.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{patient.currentClinic}</div>
-                      {patient.queueNumber > 0 && (
-                        <div className="text-xs text-[#8A1538] font-semibold">
-                          #{patient.queueNumber}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+              ) : filteredPatients.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-8 text-gray-400">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    {language === 'ar' ? 'لا يوجد مراجعين' : 'No patients found'}
+                  </td>
+                </tr>
+              ) : (
+                filteredPatients.map((patient) => (
+                  <tr key={patient.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                    <td className="py-3 px-4 text-white font-mono">{patient.militaryId}</td>
+                    <td className="py-3 px-4">{getStatusBadge(patient.status)}</td>
+                    <td className="py-3 px-4 text-gray-300">{patient.currentClinic || '-'}</td>
+                    <td className="py-3 px-4 text-gray-300">{patient.queueNumber || '-'}</td>
+                    <td className="py-3 px-4 text-gray-300">{patient.startTime}</td>
+                    <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-[#8A1538] h-2 rounded-full transition-all"
-                            style={{ width: `${(patient.completedStations / patient.totalStations) * 100}%` }}
-                          ></div>
+                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 transition-all" style={{ width: patient.totalStations > 0 ? `${(patient.completedStations / patient.totalStations) * 100}%` : '0%' }} />
                         </div>
-                        <span className="text-xs text-gray-600 whitespace-nowrap">
-                          {patient.completedStations}/{patient.totalStations}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="text-[#8A1538] hover:bg-[#8A1538]/10">
-                          <Eye className="icon icon-md" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-[#C9A54C] hover:bg-[#C9A54C]/10">
-                          <Edit className="icon icon-md" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
-                          <Trash2 className="icon icon-md" />
-                        </Button>
+                        <span className="text-xs text-gray-400">{patient.completedStations}/{patient.totalStations}</span>
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-700 flex justify-between text-sm text-gray-400">
+          <span>{language === 'ar' ? 'إجمالي المراجعين:' : 'Total Patients:'} {patients.length}</span>
+          <span>{language === 'ar' ? 'معروض:' : 'Showing:'} {filteredPatients.length}</span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
-

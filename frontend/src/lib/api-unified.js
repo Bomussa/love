@@ -1,9 +1,17 @@
 import { supabase } from './supabase-client';
+import { GDS, initGDS } from './guaranteed-data-system';
 
 /**
  * Unified API Service - Direct Supabase Implementation
  * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
+ * 
+ * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
+ * ✅ إعادة المحاولة التلقائية (10 محاولات)
+ * ✅ بدون بيانات وهمية
  */
+
+// تهيئة نظام ضمان البيانات
+initGDS().catch(err => console.error('❌ فشل تهيئة GDS:', err));
 
 // ============================================================================
 // إعدادات نظام الدور - Queue Settings
