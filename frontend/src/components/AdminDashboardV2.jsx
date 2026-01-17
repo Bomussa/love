@@ -2882,6 +2882,61 @@ const SettingsSection = ({ language, t }) => {
             </button>
           </div>
         </div>
+
+        {/* إعدادات الترحيل والإلغاء */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات الترحيل والإلغاء', 'Postpone & Cancel Settings')}</h4>
+          
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl mb-4">
+            <div>
+              <h4 className="font-medium">{t('تفعيل نظام الترحيل', 'Enable Postpone System')}</h4>
+              <p className="text-sm text-gray-400">{t('ترحيل المراجع المتأخر لنهاية الدور برقم جديد', 'Move late patient to end of queue with new number')}</p>
+            </div>
+            <button
+              onClick={() => updateSetting('postpone_enabled', settings.postpone_enabled !== 'false' ? 'false' : 'true')}
+              className={`w-14 h-8 rounded-full transition-all ${settings.postpone_enabled !== 'false' ? 'bg-green-500' : 'bg-white/20'}`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.postpone_enabled !== 'false' ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('مهلة الانتظار قبل الترحيل (دقيقة)', 'Wait Time Before Postpone (minutes)')}</label>
+              <input
+                type="number"
+                value={settings.postpone_wait_minutes || 2}
+                onChange={(e) => updateSetting('postpone_wait_minutes', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="10"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('المدة قبل ترحيل المراجع لنهاية الدور', 'Time before moving patient to end')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الحد الأقصى لمرات الترحيل', 'Max Postpone Count')}</label>
+              <input
+                type="number"
+                value={settings.max_postpones || 3}
+                onChange={(e) => updateSetting('max_postpones', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="10"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('بعد هذا العدد يتم إلغاء المراجع نهائياً', 'After this count patient is cancelled')}</p>
+            </div>
+          </div>
+
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mt-4">
+            <h5 className="font-medium text-yellow-400 mb-2">{t('ملخص النظام', 'System Summary')}</h5>
+            <ul className="text-sm text-yellow-300/80 space-y-1">
+              <li>• {t('عند استدعاء المراجع: يبدأ عداد', 'When patient is called: timer starts')} {settings.postpone_wait_minutes || 2} {t('دقيقة', 'minutes')}</li>
+              <li>• {t('إذا لم يدخل: يتم ترحيله لنهاية الدور برقم جديد', 'If not entered: moved to end with new number')}</li>
+              <li>• {t('بعد', 'After')} {settings.max_postpones || 3} {t('ترحيلات لنفس العيادة: إلغاء نهائي', 'postpones for same clinic: permanent cancel')}</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
