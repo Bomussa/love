@@ -136,5 +136,28 @@ export async function getDynamicMedicalPathway(examType, gender) {
   return sortedClinics
 }
 
+// تحديث أسماء العيادات من البيانات المحفوظة لضمان عرض الأسماء الصحيحة
+export function enrichStationsWithClinicData(stations) {
+  if (!stations || !Array.isArray(stations)) return stations
+  
+  return stations.map(station => {
+    // البحث عن العيادة في clinicsData باستخدام id أو code
+    const clinicCode = station.code || station.id?.toUpperCase()
+    const clinic = clinicsData[clinicCode]
+    
+    if (clinic) {
+      return {
+        ...station,
+        name: clinic.name, // الاسم الإنجليزي
+        nameAr: clinic.nameAr || station.nameAr || station.name, // الاسم العربي
+        floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
+        floorCode: clinic.floor
+      }
+    }
+    
+    return station
+  })
+}
+
 export default getDynamicMedicalPathway
 

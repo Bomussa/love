@@ -7,7 +7,7 @@ import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
 import { logClinicEntry, logClinicExit, logPatientSkipped } from '../lib/activityLogger'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
-import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
+import { getDynamicMedicalPathway, enrichStationsWithClinicData } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import enhancedApi from '../lib/api-unified'
@@ -180,6 +180,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         } catch (err) {
           // لا يوجد مسار محفوظ - سيتم حساب مسار جديد
+        }
+        
+        // تحديث أسماء العيادات من البيانات المحفوظة لضمان عرض الأسماء الصحيحة
+        if (examStations) {
+          examStations = enrichStationsWithClinicData(examStations)
         }
         
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد حسب الأوزان الحالية
