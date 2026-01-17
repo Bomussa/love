@@ -5,7 +5,8 @@ import {
   Edit, Plus, LogOut, Home, AlertCircle, ChevronRight,
   Search, Filter, Download, MoreVertical, Shield, Play,
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
-  UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square
+  UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
+  UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2
 } from 'lucide-react';
 import NotificationsManagementV2 from './NotificationsManagementV2';
 import supabase from '../lib/supabase-client';
