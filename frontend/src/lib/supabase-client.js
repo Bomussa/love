@@ -218,3 +218,229 @@ export async function initializeAllConnections() {
 export { connectionManager, ServiceTypes };
 
 export default supabase;
+
+
+// ============================================================================
+// نظام تسجيل النشاط والتحقق من الأجهزة
+// ============================================================================
+
+/**
+ * توليد بصمة فريدة للجهاز
+ * تجمع بين عدة عوامل لإنشاء معرف فريد
+ */
+export function generateDeviceFingerprint() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillText('MMC-MMS-Fingerprint', 2, 2);
+  const canvasData = canvas.toDataURL();
+  
+  const fingerprint = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 'unknown',
+    canvasData.slice(-50)
+  ].join('|');
+  
+  // تحويل إلى hash بسيط
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return 'DEV_' + Math.abs(hash).toString(36).toUpperCase();
+}
+
+/**
+ * التحقق من تسجيل الجهاز لهذا اليوم
+ * @returns {Promise<{allowed: boolean, existingPatientId?: string}>}
+ */
+export async function checkDeviceLogin(patientId) {
+  try {
+    const deviceFingerprint = generateDeviceFingerprint();
+    const today = new Date().toISOString().split('T')[0];
+    
+    // التحقق من وجود تسجيل سابق لهذا الجهاز اليوم
+    const { data: existingLogin, error } = await supabase
+      .from('device_logins')
+      .select('patient_id')
+      .eq('device_fingerprint', deviceFingerprint)
+      .eq('login_date', today)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('خطأ في التحقق من الجهاز:', error);
+      // في حالة الخطأ، نسمح بالدخول مع تحذير
+      return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
+    }
+    
+    if (existingLogin && existingLogin.patient_id !== patientId) {
+      return { 
+        allowed: false, 
+        existingPatientId: existingLogin.patient_id,
+        message: 'هذا الجهاز مسجل برقم آخر اليوم'
+      };
+    }
+    
+    return { allowed: true };
+  } catch (error) {
+    console.error('خطأ في checkDeviceLogin:', error);
+    return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
+  }
+}
+
+/**
+ * تسجيل دخول الجهاز
+ */
+export async function registerDeviceLogin(patientId) {
+  try {
+    const deviceFingerprint = generateDeviceFingerprint();
+    
+    const { error } = await supabase
+      .from('device_logins')
+      .upsert({
+        device_fingerprint: deviceFingerprint,
+        patient_id: patientId,
+        login_date: new Date().toISOString().split('T')[0],
+        user_agent: navigator.userAgent
+      }, {
+        onConflict: 'device_fingerprint,login_date'
+      });
+    
+    if (error) {
+      console.error('خطأ في تسجيل الجهاز:', error);
+    }
+    
+    return !error;
+  } catch (error) {
+    console.error('خطأ في registerDeviceLogin:', error);
+    return false;
+  }
+}
+
+/**
+ * تسجيل نشاط يومي (يُمسح نهاية اليوم)
+ */
+export async function logDailyActivity(actionType, details = {}) {
+  try {
+    const { error } = await supabase
+      .from('daily_activity_logs')
+      .insert({
+        patient_id: details.patientId || null,
+        action_type: actionType,
+        action_details: details,
+        clinic_id: details.clinicId || null,
+        location: details.location || null,
+        performed_by: details.performedBy || 'system',
+        user_agent: navigator.userAgent
+      });
+    
+    if (error) {
+      console.error('خطأ في تسجيل النشاط اليومي:', error);
+    }
+    
+    return !error;
+  } catch (error) {
+    console.error('خطأ في logDailyActivity:', error);
+    return false;
+  }
+}
+
+/**
+ * تسجيل تعديل دائم (لا يُمسح)
+ */
+export async function logPermanentAudit(actionType, details) {
+  try {
+    const { error } = await supabase
+      .from('permanent_audit_logs')
+      .insert({
+        action_type: actionType,
+        action_details: details,
+        target_table: details.targetTable || null,
+        target_id: details.targetId || null,
+        old_value: details.oldValue || null,
+        new_value: details.newValue || null,
+        performed_by: details.performedBy || 'unknown',
+        performed_by_role: details.performedByRole || 'unknown',
+        user_agent: navigator.userAgent
+      });
+    
+    if (error) {
+      console.error('خطأ في تسجيل التدقيق الدائم:', error);
+    }
+    
+    return !error;
+  } catch (error) {
+    console.error('خطأ في logPermanentAudit:', error);
+    return false;
+  }
+}
+
+/**
+ * جلب سجلات النشاط اليومي
+ */
+export async function getDailyActivityLogs(filters = {}) {
+  try {
+    let query = supabase
+      .from('daily_activity_logs')
+      .select('*')
+      .eq('log_date', new Date().toISOString().split('T')[0])
+      .order('performed_at', { ascending: false });
+    
+    if (filters.patientId) {
+      query = query.eq('patient_id', filters.patientId);
+    }
+    if (filters.actionType) {
+      query = query.eq('action_type', filters.actionType);
+    }
+    if (filters.clinicId) {
+      query = query.eq('clinic_id', filters.clinicId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('خطأ في جلب السجلات اليومية:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * جلب سجلات التدقيق الدائمة
+ */
+export async function getPermanentAuditLogs(filters = {}) {
+  try {
+    let query = supabase
+      .from('permanent_audit_logs')
+      .select('*')
+      .order('performed_at', { ascending: false });
+    
+    if (filters.performedBy) {
+      query = query.eq('performed_by', filters.performedBy);
+    }
+    if (filters.actionType) {
+      query = query.eq('action_type', filters.actionType);
+    }
+    if (filters.targetTable) {
+      query = query.eq('target_table', filters.targetTable);
+    }
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('خطأ في جلب سجلات التدقيق:', error);
+    return { success: false, error: error.message };
+  }
+}
