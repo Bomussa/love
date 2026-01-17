@@ -6,7 +6,8 @@ import {
   Search, Filter, Download, MoreVertical, Shield, Play,
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
   UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
-  UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2
+  UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
+  UserPlus
 } from 'lucide-react';
 import NotificationsManagementV2 from './NotificationsManagementV2';
 import ReportsPanel from './ReportsPanel';
@@ -38,6 +39,11 @@ const QueueManagement = ({ language, t }) => {
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClinic, setSelectedClinic] = useState(null);
+  // حالات ميزة تمرير الدور
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
+  const [priorityClinicId, setPriorityClinicId] = useState(null);
+  const [priorityPatientId, setPriorityPatientId] = useState('');
+  const [priorityLoading, setPriorityLoading] = useState(false);
 
   useEffect(() => {
     loadQueues();
@@ -123,6 +129,96 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
+  // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
+  const priorityCallPatient = async () => {
+    if (!priorityPatientId.trim()) {
+      alert(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter military or personal ID'));
+      return;
+    }
+
+    try {
+      setPriorityLoading(true);
+      
+      // البحث عن المراجع في قائمة الانتظار
+      const { data: patientQueue, error: searchError } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', priorityClinicId)
+        .eq('status', 'waiting')
+        .or(`patient_id.eq.${priorityPatientId},military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId}`)
+        .single();
+
+      if (searchError || !patientQueue) {
+        // إذا لم يوجد في الانتظار، نبحث في جدول المرضى
+        const { data: patient, error: patientError } = await supabase
+          .from('patients')
+          .select('*')
+          .or(`military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
+          .single();
+
+        if (patientError || !patient) {
+          alert(t('لم يتم العثور على المراجع', 'Patient not found'));
+          return;
+        }
+
+        // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى"
+        const { error: insertError } = await supabase
+          .from('queues')
+          .insert({
+            clinic_id: priorityClinicId,
+            patient_id: patient.id,
+            military_id: patient.military_id,
+            personal_id: patient.personal_id,
+            status: 'called',
+            called_at: new Date().toISOString(),
+            is_priority: true,
+            priority_reason: 'تمرير دور مباشر',
+            queue_number: `P-${Date.now().toString().slice(-4)}`,
+            display_number: `أولوية`
+          });
+
+        if (insertError) {
+          console.error('Error inserting priority queue:', insertError);
+          alert(t('حدث خطأ أثناء تمرير الدور', 'Error processing priority call'));
+          return;
+        }
+
+        alert(t(`تم تمرير الدور للمراجع: ${patient.name || patient.military_id}`, `Priority call for: ${patient.name || patient.military_id}`));
+      } else {
+        // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
+        await supabase
+          .from('queues')
+          .update({ 
+            status: 'called', 
+            called_at: new Date().toISOString(),
+            is_priority: true,
+            priority_reason: 'تمرير دور من الإدارة'
+          })
+          .eq('id', patientQueue.id);
+
+        alert(t(`تم تمرير الدور للمراجع رقم: ${patientQueue.queue_number}`, `Priority call for queue: ${patientQueue.queue_number}`));
+      }
+
+      // إغلاق النافذة وتحديث البيانات
+      setShowPriorityModal(false);
+      setPriorityPatientId('');
+      setPriorityClinicId(null);
+      loadQueues();
+    } catch (e) {
+      console.error('Error in priority call:', e);
+      alert(t('حدث خطأ غير متوقع', 'Unexpected error occurred'));
+    } finally {
+      setPriorityLoading(false);
+    }
+  };
+
+  // فتح نافذة تمرير الدور
+  const openPriorityModal = (clinicId) => {
+    setPriorityClinicId(clinicId);
+    setPriorityPatientId('');
+    setShowPriorityModal(true);
+  };
+
   // تجميع الطوابير حسب العيادة
   const queuesByClinic = clinics.map(clinic => ({
     ...clinic,
@@ -172,6 +268,13 @@ const QueueManagement = ({ language, t }) => {
                   <Play size={16} />
                   {t('التالي', 'Next')}
                 </button>
+                <button
+                  onClick={() => openPriorityModal(clinic.id)}
+                  className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
+                  title={t('تمرير دور', 'Priority Call')}
+                >
+                  <UserPlus size={20} />
+                </button>
                 {clinic.called.length > 0 && (
                   <>
                     <button
@@ -212,6 +315,75 @@ const QueueManagement = ({ language, t }) => {
           </div>
         ))}
       </div>
+
+      {/* نافذة تمرير الدور */}
+      {showPriorityModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <UserPlus className="text-purple-400" size={24} />
+                {t('تمرير دور مراجع', 'Priority Patient Call')}
+              </h3>
+              <button
+                onClick={() => setShowPriorityModal(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  {t('الرقم العسكري أو الشخصي', 'Military or Personal ID')}
+                </label>
+                <input
+                  type="text"
+                  value={priorityPatientId}
+                  onChange={(e) => setPriorityPatientId(e.target.value)}
+                  placeholder={t('أدخل الرقم هنا...', 'Enter ID here...')}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-lg"
+                  autoFocus
+                />
+              </div>
+
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="text-purple-400 mt-0.5" size={20} />
+                  <div className="text-sm text-gray-300">
+                    <p className="font-medium text-purple-400 mb-1">{t('ملاحظة', 'Note')}</p>
+                    <p>{t('سيتم استدعاء المراجع مباشرة للعيادة بدون انتظار في الطابور.', 'The patient will be called directly to the clinic without waiting in queue.')}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowPriorityModal(false)}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  onClick={priorityCallPatient}
+                  disabled={priorityLoading || !priorityPatientId.trim()}
+                  className="flex-1 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {priorityLoading ? (
+                    <RefreshCw className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Play size={20} />
+                      {t('تمرير الدور', 'Call Now')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
