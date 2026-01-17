@@ -596,6 +596,9 @@ const ClinicsManagement = ({ language, t }) => {
   const [editingClinic, setEditingClinic] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newClinic, setNewClinic] = useState({ name_ar: '', name_en: '', floor: '', code: '', weight: 1, exam_duration: 5, call_interval: 2, late_threshold: 4 });
+  const [transferModal, setTransferModal] = useState(null);
+  const [transferReason, setTransferReason] = useState('');
+  const [targetClinicId, setTargetClinicId] = useState('');
 
   useEffect(() => {
     loadClinics();
@@ -619,9 +622,15 @@ const ClinicsManagement = ({ language, t }) => {
 
   const toggleClinicStatus = async (clinicId, currentStatus) => {
     try {
+      const updates = { is_active: !currentStatus };
+      if (!currentStatus) {
+        // عند فتح العيادة - مسح سبب الإغلاق
+        updates.closure_reason = null;
+        updates.closed_at = null;
+      }
       await supabase
         .from('clinics')
-        .update({ is_active: !currentStatus })
+        .update(updates)
         .eq('id', clinicId);
       loadClinics();
     } catch (e) {
@@ -811,23 +820,44 @@ const ClinicsManagement = ({ language, t }) => {
                 <h4 className="font-bold text-lg">{language === 'ar' ? (clinic.name_ar || clinic.name_en) : (clinic.name_en || clinic.name_ar)}</h4>
                 <p className="text-gray-400 text-sm">{clinic.floor || t('الطابق غير محدد', 'Floor not set')}</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                clinic.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-              }`}>
-                {clinic.is_active ? t('مفتوح', 'Open') : t('مغلق', 'Closed')}
-              </span>
+              <div className="text-right">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  clinic.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {clinic.is_active ? t('مفتوح', 'Open') : t('مغلق', 'Closed')}
+                </span>
+                {clinic.closure_reason && !clinic.is_active && (
+                  <p className="text-xs text-red-400 mt-1">{clinic.closure_reason}</p>
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2">
+            {/* إعدادات التوقيت */}
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+              <div className="bg-white/5 rounded-lg p-2">
+                <div className="text-gray-400">{t('الفحص', 'Exam')}</div>
+                <div className="font-bold">{clinic.exam_duration || 5} {t('د', 'm')}</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-2">
+                <div className="text-gray-400">{t('النداء', 'Call')}</div>
+                <div className="font-bold">{clinic.call_interval || 2} {t('د', 'm')}</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-2">
+                <div className="text-gray-400">{t('التأخير', 'Late')}</div>
+                <div className="font-bold">{clinic.late_threshold || 4} {t('د', 'm')}</div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => toggleClinicStatus(clinic.id, clinic.is_active)}
+                onClick={() => clinic.is_active ? setTransferModal(clinic) : toggleClinicStatus(clinic.id, clinic.is_active)}
                 className={`flex-1 py-2 rounded-lg font-medium transition-all ${
                   clinic.is_active 
-                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+                    ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' 
                     : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                 }`}
               >
-                {clinic.is_active ? t('إغلاق', 'Close') : t('فتح', 'Open')}
+                {clinic.is_active ? t('إغلاق/تحويل', 'Close/Transfer') : t('فتح', 'Open')}
               </button>
               <button
                 onClick={() => setEditingClinic(clinic)}
@@ -931,6 +961,102 @@ const ClinicsManagement = ({ language, t }) => {
               </button>
               <button
                 onClick={() => setEditingClinic(null)}
+                className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal التحويل */}
+      {transferModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <h4 className="font-bold text-lg mb-4">{t('إغلاق وتحويل العيادة', 'Close & Transfer Clinic')}</h4>
+            <p className="text-gray-400 mb-4">
+              {language === 'ar' ? (transferModal.name_ar || transferModal.name_en) : (transferModal.name_en || transferModal.name_ar)}
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">{t('سبب الإغلاق', 'Closure Reason')} *</label>
+                <select
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                >
+                  <option value="">{t('اختر السبب', 'Select reason')}</option>
+                  <option value="غياب الطبيب">{t('غياب الطبيب', 'Doctor absent')}</option>
+                  <option value="إجازة">{t('إجازة', 'On leave')}</option>
+                  <option value="صيانة">{t('صيانة', 'Maintenance')}</option>
+                  <option value="اجتماع">{t('اجتماع', 'Meeting')}</option>
+                  <option value="طوارئ">{t('طوارئ', 'Emergency')}</option>
+                  <option value="أخرى">{t('أخرى', 'Other')}</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">{t('تحويل المراجعين إلى', 'Transfer patients to')}</label>
+                <select
+                  value={targetClinicId}
+                  onChange={(e) => setTargetClinicId(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                >
+                  <option value="">{t('بدون تحويل', 'No transfer')}</option>
+                  {clinics.filter(c => c.id !== transferModal.id && c.is_active).map(c => (
+                    <option key={c.id} value={c.id}>
+                      {language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">{t('اختياري - لتحويل المراجعين المنتظرين', 'Optional - to transfer waiting patients')}</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={async () => {
+                  if (!transferReason) {
+                    alert(t('يرجى اختيار سبب الإغلاق', 'Please select closure reason'));
+                    return;
+                  }
+                  try {
+                    // تحديث حالة العيادة
+                    await supabase.from('clinics').update({
+                      is_active: false,
+                      closure_reason: transferReason,
+                      closed_at: new Date().toISOString()
+                    }).eq('id', transferModal.id);
+                    
+                    // تحويل المراجعين إذا تم اختيار عيادة
+                    if (targetClinicId) {
+                      await supabase.from('queues').update({
+                        clinic_id: targetClinicId,
+                        transferred_from: transferModal.id,
+                        transfer_reason: transferReason
+                      }).eq('clinic_id', transferModal.id).eq('status', 'waiting');
+                    }
+                    
+                    loadClinics();
+                    setTransferModal(null);
+                    setTransferReason('');
+                    setTargetClinicId('');
+                    alert(t('تم إغلاق العيادة بنجاح', 'Clinic closed successfully'));
+                  } catch (e) {
+                    console.error('Error:', e);
+                  }
+                }}
+                className="flex-1 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium"
+              >
+                {t('إغلاق العيادة', 'Close Clinic')}
+              </button>
+              <button
+                onClick={() => {
+                  setTransferModal(null);
+                  setTransferReason('');
+                  setTargetClinicId('');
+                }}
                 className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
               >
                 {t('إلغاء', 'Cancel')}
