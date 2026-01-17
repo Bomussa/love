@@ -1737,7 +1737,7 @@ const SettingsSection = ({ language, t }) => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('تمرير الدور بعد (دقيقة)', 'Skip Turn After (minutes)')}</label>
+              <label className="block text-sm text-gray-400 mb-2">{t('النداء التالي بعد (دقيقة)', 'Next Call After (minutes)')}</label>
               <input
                 type="number"
                 value={settings.queue_skip_time || 2}
@@ -1746,7 +1746,7 @@ const SettingsSection = ({ language, t }) => {
                 min="1"
                 max="10"
               />
-              <p className="text-xs text-gray-500 mt-1">{t('المدة قبل تمرير الدور للتالي', 'Time before skipping to next')}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('المدة قبل النداء للرقم التالي', 'Time before calling next number')}</p>
             </div>
 
             <div>
@@ -1821,7 +1821,7 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('وقت إيقاف التسجيل', 'Registration Stop Time')}</label>
               <input
                 type="time"
-                value={settings.registration_stop_time || '12:00'}
+                value={settings.registration_stop_time || '13:00'}
                 onChange={(e) => updateSetting('registration_stop_time', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               />
@@ -1832,7 +1832,7 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('وقت بدء التسجيل', 'Registration Start Time')}</label>
               <input
                 type="time"
-                value={settings.registration_start_time || '07:00'}
+                value={settings.registration_start_time || '06:00'}
                 onChange={(e) => updateSetting('registration_start_time', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               />
@@ -1848,6 +1848,42 @@ const SettingsSection = ({ language, t }) => {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white h-24"
               placeholder={t('نعتذر، تم إيقاف التسجيل لهذا اليوم. يرجى الحضور والتسجيل غداً.', 'Sorry, registration is closed for today. Please come back tomorrow.')}
             />
+          </div>
+
+          {/* أيام العمل */}
+          <div className="mt-4">
+            <label className="block text-sm text-gray-400 mb-2">{t('أيام العمل', 'Working Days')}</label>
+            <div className="grid grid-cols-7 gap-2">
+              {[
+                { key: 'sunday', ar: 'الأحد', en: 'Sun' },
+                { key: 'monday', ar: 'الاثنين', en: 'Mon' },
+                { key: 'tuesday', ar: 'الثلاثاء', en: 'Tue' },
+                { key: 'wednesday', ar: 'الأربعاء', en: 'Wed' },
+                { key: 'thursday', ar: 'الخميس', en: 'Thu' },
+                { key: 'friday', ar: 'الجمعة', en: 'Fri' },
+                { key: 'saturday', ar: 'السبت', en: 'Sat' }
+              ].map(day => {
+                const workingDays = settings.working_days ? settings.working_days.split(',') : ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+                const isActive = workingDays.includes(day.key);
+                return (
+                  <button
+                    key={day.key}
+                    onClick={() => {
+                      const newDays = isActive
+                        ? workingDays.filter(d => d !== day.key)
+                        : [...workingDays, day.key];
+                      updateSetting('working_days', newDays.join(','));
+                    }}
+                    className={`p-2 rounded-lg text-xs font-medium transition-all ${
+                      isActive ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-400'
+                    }`}
+                  >
+                    {language === 'ar' ? day.ar : day.en}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">{t('اضغط على اليوم لتفعيله أو إيقافه', 'Click on day to enable or disable')}</p>
           </div>
         </div>
 
