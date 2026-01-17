@@ -1730,6 +1730,157 @@ const SettingsSection = ({ language, t }) => {
             </button>
           </div>
         </div>
+
+        {/* إعدادات التوقيت */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات التوقيت', 'Timing Settings')}</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('تمرير الدور بعد (دقيقة)', 'Skip Turn After (minutes)')}</label>
+              <input
+                type="number"
+                value={settings.queue_skip_time || 2}
+                onChange={(e) => updateSetting('queue_skip_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="10"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('المدة قبل تمرير الدور للتالي', 'Time before skipping to next')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('نقل للنهاية بعد (دقيقة)', 'Move to End After (minutes)')}</label>
+              <input
+                type="number"
+                value={settings.queue_late_time || 4}
+                onChange={(e) => updateSetting('queue_late_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="15"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('المدة قبل نقل المراجع لنهاية الدور ووسمه متأخر', 'Time before moving patient to end and marking as late')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('مدة الفحص (دقيقة)', 'Exam Duration (minutes)')}</label>
+              <input
+                type="number"
+                value={settings.exam_duration || 5}
+                onChange={(e) => updateSetting('exam_duration', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="30"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('المدة المتوقعة للفحص داخل العيادة', 'Expected exam time inside clinic')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الحد الأقصى للمراجعين يومياً', 'Max Daily Patients')}</label>
+              <input
+                type="number"
+                value={settings.max_daily_patients || 150}
+                onChange={(e) => updateSetting('max_daily_patients', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                min="1"
+                max="500"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('بعد هذا العدد يتم إيقاف التسجيل', 'Registration stops after this number')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* إعدادات البن التلقائي */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات البن التلقائي', 'Auto PIN Settings')}</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('وقت إصدار البن (توقيت الدوحة)', 'PIN Generate Time (Doha Time)')}</label>
+              <input
+                type="time"
+                value={settings.pin_auto_generate_time || '05:00'}
+                onChange={(e) => updateSetting('pin_auto_generate_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإصدار أرقام البن الجديدة', 'Daily time to generate new PIN codes')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('وقت حذف البن', 'PIN Delete Time')}</label>
+              <input
+                type="time"
+                value={settings.pin_auto_delete_time || '00:00'}
+                onChange={(e) => updateSetting('pin_auto_delete_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لحذف أرقام البن القديمة', 'Daily time to delete old PIN codes')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('وقت إيقاف التسجيل', 'Registration Stop Time')}</label>
+              <input
+                type="time"
+                value={settings.registration_stop_time || '12:00'}
+                onChange={(e) => updateSetting('registration_stop_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإيقاف استقبال المراجعين', 'Daily time to stop accepting patients')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('وقت بدء التسجيل', 'Registration Start Time')}</label>
+              <input
+                type="time"
+                value={settings.registration_start_time || '07:00'}
+                onChange={(e) => updateSetting('registration_start_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لبدء استقبال المراجعين', 'Daily time to start accepting patients')}</p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm text-gray-400 mb-2">{t('رسالة إيقاف التسجيل', 'Registration Closed Message')}</label>
+            <textarea
+              value={settings.registration_closed_message || ''}
+              onChange={(e) => updateSetting('registration_closed_message', e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white h-24"
+              placeholder={t('نعتذر، تم إيقاف التسجيل لهذا اليوم. يرجى الحضور والتسجيل غداً.', 'Sorry, registration is closed for today. Please come back tomorrow.')}
+            />
+          </div>
+        </div>
+
+        {/* إعدادات أرقام الدور */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات أرقام الدور', 'Queue Number Settings')}</h4>
+          
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl mb-4">
+            <div>
+              <h4 className="font-medium">{t('أرقام منفصلة لكل عيادة', 'Separate Numbers Per Clinic')}</h4>
+              <p className="text-sm text-gray-400">{t('كل عيادة لها تسلسل أرقام منفصل يبدأ من 1', 'Each clinic has separate number sequence starting from 1')}</p>
+            </div>
+            <button
+              onClick={() => updateSetting('separate_queue_per_clinic', settings.separate_queue_per_clinic !== 'false' ? 'false' : 'true')}
+              className={`w-14 h-8 rounded-full transition-all ${settings.separate_queue_per_clinic !== 'false' ? 'bg-green-500' : 'bg-white/20'}`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.separate_queue_per_clinic !== 'false' ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+            <div>
+              <h4 className="font-medium">{t('إعادة تعيين الأرقام يومياً', 'Reset Numbers Daily')}</h4>
+              <p className="text-sm text-gray-400">{t('تبدأ الأرقام من 1 كل يوم جديد', 'Numbers start from 1 each new day')}</p>
+            </div>
+            <button
+              onClick={() => updateSetting('reset_queue_daily', settings.reset_queue_daily !== 'false' ? 'false' : 'true')}
+              className={`w-14 h-8 rounded-full transition-all ${settings.reset_queue_daily !== 'false' ? 'bg-green-500' : 'bg-white/20'}`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.reset_queue_daily !== 'false' ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
