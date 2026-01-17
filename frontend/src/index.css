@@ -48,10 +48,8 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    background: var(--theme-gradient-background, linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%));
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-    background-size: cover;
+    background: transparent;
+    /* Theme background is controlled by App.jsx div */
     min-height: 100vh;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
