@@ -228,7 +228,8 @@ const PINManagement = ({ language, t }) => {
   };
 
   const generatePin = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString();
+    // PIN من رقمين فقط (10-99)
+    return Math.floor(10 + Math.random() * 90).toString();
   };
 
   const addPin = async () => {
