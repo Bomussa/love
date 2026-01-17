@@ -15,7 +15,7 @@ function mapClinicCodes(codes) {
     return {
       id: clinic.id,
       name: clinic.name,
-      nameAr: clinic.name,
+      nameAr: clinic.nameAr || clinic.name,
       floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
       floorCode: clinic.floor,
       code: code
