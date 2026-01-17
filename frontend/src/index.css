@@ -1,5 +1,6 @@
 @import './styles/qr-safe.css';
 @import './admin-sidebar-fix.css';
+@import './fixed-sizing.css';
 
 @tailwind base;
 @tailwind components;
