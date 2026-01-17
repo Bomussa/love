@@ -12,6 +12,9 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { SRM, resilientFetch, registerService } from './service-resilience';
+import { OFS, setSupabaseClient, offlineRead, offlineCreate, offlineUpdate, offlineDelete } from './offline-first-system';
+import { DIS, validateData, safeSave, safeRead } from './data-integrity-system';
 
 // إعدادات Supabase
 const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
@@ -591,6 +594,9 @@ class GuaranteedDataSystem {
 
 // إنشاء مثيل واحد (Singleton)
 export const GDS = new GuaranteedDataSystem();
+
+// تهيئة نظام Offline مع Supabase
+setSupabaseClient(gdsClient);
 
 /**
  * ========================================
