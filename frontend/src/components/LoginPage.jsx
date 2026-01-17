@@ -2,12 +2,13 @@ import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { User, Globe, Shield, QrCode } from 'lucide-react'
+import { User, Globe, Shield, QrCode, BarChart3 } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
+import LiveStatisticsPanel from './LiveStatisticsPanel'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -17,6 +18,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [showQRScanner, setShowQRScanner] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
@@ -76,7 +78,16 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <div className="w-full max-w-md mx-auto space-y-8">
         {/* Language Selector (Left) and Admin Access (Right) */}
-        <div className="absolute top-4 left-4 z-50">
+        <div className="absolute top-4 left-4 z-50 flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+            onClick={() => setShowStatistics(true)}
+            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
+          >
+            <BarChart3 className="w-4 h-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -295,6 +306,13 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           onClose={() => setShowQRScanner(false)}
         />
       )}
+      
+      {/* Statistics Panel */}
+      <LiveStatisticsPanel
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+        language={language}
+      />
     </div>
   )
 }

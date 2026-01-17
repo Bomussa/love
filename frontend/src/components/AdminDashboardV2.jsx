@@ -9,6 +9,7 @@ import {
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2
 } from 'lucide-react';
 import NotificationsManagementV2 from './NotificationsManagementV2';
+import ReportsPanel from './ReportsPanel';
 import supabase from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
