@@ -674,17 +674,23 @@ const ClinicsManagement = ({ language, t }) => {
       return;
     }
     try {
+      // استخدام الرمز كـ ID أو إنشاء ID من الاسم الإنجليزي
+      const clinicId = newClinic.code || newClinic.name_en.substring(0, 5).toUpperCase().replace(/\s/g, '');
       const { error } = await supabase.from('clinics').insert({
+        id: clinicId,
+        name: newClinic.name_en,
         name_ar: newClinic.name_ar,
         name_en: newClinic.name_en,
         floor: newClinic.floor || 'الطابق الأول',
-        code: newClinic.code || newClinic.name_en.substring(0, 3).toUpperCase(),
-        weight: newClinic.weight || 1,
-        exam_duration: newClinic.exam_duration || 5,
         call_interval: newClinic.call_interval || 2,
-        late_threshold: newClinic.late_threshold || 4,
+        call_interval_seconds: (newClinic.call_interval || 2) * 60,
         is_active: true,
-        created_at: new Date().toISOString()
+        system_enabled: true,
+        category: 'clinic',
+        gender_constraint: 'mixed',
+        metadata: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
       if (!error) {
         loadClinics();
