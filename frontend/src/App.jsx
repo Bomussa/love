@@ -262,8 +262,18 @@ function App() {
   // ============= RENDER =============
   const theme = enhancedMedicalThemes.find(t => t.id === currentTheme)
   
+  // Apply theme background to body for full coverage
+  React.useEffect(() => {
+    if (theme?.gradients?.background) {
+      document.body.style.background = theme.gradients.background;
+      document.body.style.backgroundAttachment = 'fixed';
+      document.documentElement.style.background = theme.gradients.background;
+      document.documentElement.style.backgroundAttachment = 'fixed';
+    }
+  }, [theme]);
+  
   return (
-    <div className="min-h-screen" style={{ background: theme?.gradients?.background || '#0b0b0f' }}>
+    <div className="min-h-screen" style={{ background: 'transparent' }}>
       <main className="relative z-10">
         {currentView === 'qrscan' && (
           <QrScanPage language={language} toggleLanguage={toggleLanguage} />
