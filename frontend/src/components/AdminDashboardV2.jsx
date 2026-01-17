@@ -11,6 +11,23 @@ import {
 import NotificationsManagementV2 from './NotificationsManagementV2';
 import supabase from '../lib/supabase-client';
 
+// دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
+const logActivity = async (actionType, description, userId = null, metadata = {}) => {
+  try {
+    await supabase.from('activity_logs').insert([{
+      action_type: actionType,
+      description: description,
+      user_id: userId,
+      metadata: metadata,
+      ip_address: null,
+      user_agent: navigator.userAgent,
+      created_at: new Date().toISOString()
+    }]);
+  } catch (e) {
+    console.error('Error logging activity:', e);
+  }
+};
+
 // مكونات إدارة الطوابير
 const QueueManagement = ({ language, t }) => {
   const [queues, setQueues] = useState([]);
@@ -2128,12 +2145,43 @@ const UsersManagement = ({ language, t }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'STAFF', is_active: true });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
+  const [clinics, setClinics] = useState([]);
+  
+  // قائمة الصلاحيات المتاحة
+  const allPermissions = [
+    { id: 'dashboard', label: t('لوحة التحكم', 'Dashboard') },
+    { id: 'queues', label: t('إدارة الطوابير', 'Queue Management') },
+    { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
+    { id: 'notifications', label: t('الإشعارات', 'Notifications') },
+    { id: 'routes', label: t('المسارات', 'Routes') },
+    { id: 'reports', label: t('التقارير', 'Reports') },
+    { id: 'clinics', label: t('العيادات', 'Clinics') },
+    { id: 'system', label: t('حالة النظام', 'System Status') },
+    { id: 'settings', label: t('الإعدادات', 'Settings') },
+    { id: 'users', label: t('إدارة المستخدمين', 'Users') },
+    { id: 'activity', label: t('سجل النشاطات', 'Activity Log') },
+    { id: 'backup', label: t('النسخ والتصدير', 'Backup & Export') },
+    { id: 'offline', label: t('العمل أوفلاين', 'Offline Mode') },
+    { id: 'content', label: t('إدارة المحتوى', 'Content') },
+    { id: 'appearance', label: t('المظهر', 'Appearance') },
+    { id: 'database', label: t('قاعدة البيانات', 'Database') }
+  ];
   const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
     loadUsers();
+    loadClinics();
   }, []);
+
+  const loadClinics = async () => {
+    try {
+      const { data } = await supabase.from('clinics').select('id, name_ar, name_en');
+      if (data) setClinics(data);
+    } catch (e) {
+      console.error('Error loading clinics:', e);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -2153,23 +2201,43 @@ const UsersManagement = ({ language, t }) => {
 
   const addUser = async () => {
     try {
+      // السوبر أدمن له جميع الصلاحيات
+      const permissions = newUser.role === 'SUPER_ADMIN' 
+        ? allPermissions.map(p => p.id) 
+        : newUser.permissions;
+      
       const { error } = await supabase
         .from('admin_users')
         .insert([{
           username: newUser.username,
-          password_hash: newUser.password, // في الإنتاج يجب تشفير كلمة المرور
+          password_hash: newUser.password,
           role: newUser.role,
           is_active: true,
+          permissions: permissions,
+          assigned_clinic: newUser.assigned_clinic || null,
           created_at: new Date().toISOString()
         }]);
       
       if (!error) {
         setShowAddModal(false);
-        setNewUser({ username: '', password: '', role: 'STAFF', is_active: true });
+        setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
         loadUsers();
+        alert(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
       }
     } catch (e) {
       console.error('Error adding user:', e);
+    }
+  };
+
+  const updateUserPermissions = async (userId, permissions) => {
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ permissions })
+        .eq('id', userId);
+      loadUsers();
+    } catch (e) {
+      console.error('Error updating permissions:', e);
     }
   };
 
@@ -2287,10 +2355,10 @@ const UsersManagement = ({ language, t }) => {
 
       {/* Modal إضافة مستخدم */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110]">
-          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-md border border-white/10">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4 overflow-y-auto">
+          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-lg border border-white/10 my-4">
             <h4 className="text-lg font-bold mb-4">{t('إضافة مستخدم جديد', 'Add New User')}</h4>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
               <input
                 type="text"
                 placeholder={t('اسم المستخدم', 'Username')}
@@ -2307,26 +2375,143 @@ const UsersManagement = ({ language, t }) => {
               />
               <select
                 value={newUser.role}
-                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                onChange={(e) => setNewUser({...newUser, role: e.target.value, permissions: e.target.value === 'SUPER_ADMIN' ? allPermissions.map(p => p.id) : []})}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               >
-                <option value="STAFF">Staff</option>
-                <option value="ADMIN">Admin</option>
-                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="STAFF">{t('موظف', 'Staff')}</option>
+                <option value="ADMIN">{t('مدير', 'Admin')}</option>
+                <option value="SUPER_ADMIN">{t('سوبر أدمن', 'Super Admin')}</option>
               </select>
+              
+              {/* تعيين عيادة للطبيب/الموظف */}
+              {newUser.role !== 'SUPER_ADMIN' && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{t('تعيين عيادة (اختياري)', 'Assign Clinic (optional)')}</label>
+                  <select
+                    value={newUser.assigned_clinic}
+                    onChange={(e) => setNewUser({...newUser, assigned_clinic: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+                  >
+                    <option value="">{t('بدون تعيين', 'No assignment')}</option>
+                    {clinics.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* الصلاحيات */}
+              {newUser.role !== 'SUPER_ADMIN' && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{t('الصلاحيات', 'Permissions')}</label>
+                  <div className="grid grid-cols-2 gap-2 bg-white/5 rounded-xl p-3">
+                    {allPermissions.map(perm => (
+                      <label key={perm.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={newUser.permissions.includes(perm.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewUser({...newUser, permissions: [...newUser.permissions, perm.id]});
+                            } else {
+                              setNewUser({...newUser, permissions: newUser.permissions.filter(p => p !== perm.id)});
+                            }
+                          }}
+                          className="rounded border-white/20 bg-white/5 text-[#C9A54C]"
+                        />
+                        {perm.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({...newUser, permissions: allPermissions.map(p => p.id)})}
+                      className="text-xs text-[#C9A54C] hover:underline"
+                    >
+                      {t('تحديد الكل', 'Select All')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({...newUser, permissions: []})}
+                      className="text-xs text-gray-400 hover:underline"
+                    >
+                      {t('إلغاء الكل', 'Clear All')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {newUser.role === 'SUPER_ADMIN' && (
+                <div className="bg-purple-500/20 text-purple-300 p-3 rounded-xl text-sm">
+                  {t('السوبر أدمن له جميع الصلاحيات تلقائياً', 'Super Admin has all permissions automatically')}
+                </div>
+              )}
             </div>
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
+                }}
                 className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
               >
                 {t('إلغاء', 'Cancel')}
               </button>
               <button
                 onClick={addUser}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+                disabled={!newUser.username || !newUser.password}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl disabled:opacity-50"
               >
                 {t('إضافة', 'Add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تعديل صلاحيات المستخدم */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-lg border border-white/10">
+            <h4 className="text-lg font-bold mb-4">{t('تعديل صلاحيات', 'Edit Permissions')}: {editingUser.username}</h4>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 bg-white/5 rounded-xl p-3">
+                {allPermissions.map(perm => (
+                  <label key={perm.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 p-1 rounded">
+                    <input
+                      type="checkbox"
+                      checked={(editingUser.permissions || []).includes(perm.id)}
+                      onChange={(e) => {
+                        const newPerms = e.target.checked
+                          ? [...(editingUser.permissions || []), perm.id]
+                          : (editingUser.permissions || []).filter(p => p !== perm.id);
+                        setEditingUser({...editingUser, permissions: newPerms});
+                      }}
+                      className="rounded border-white/20 bg-white/5 text-[#C9A54C]"
+                    />
+                    {perm.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingUser(null)}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  updateUserPermissions(editingUser.id, editingUser.permissions);
+                  setEditingUser(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+              >
+                {t('حفظ', 'Save')}
               </button>
             </div>
           </div>
