@@ -56,7 +56,7 @@ export const enhancedMedicalThemes = [
     gradients: {
       primary: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
       secondary: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+      background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(5, 150, 105, 0.05)',
@@ -87,7 +87,7 @@ export const enhancedMedicalThemes = [
     gradients: {
       primary: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
       secondary: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)'
+      background: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #7dd3fc 100%)'
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(14, 165, 233, 0.05)',
@@ -118,7 +118,7 @@ export const enhancedMedicalThemes = [
     gradients: {
       primary: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
       secondary: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-      background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
+      background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)'
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(234, 88, 12, 0.05)',
@@ -149,7 +149,7 @@ export const enhancedMedicalThemes = [
     gradients: {
       primary: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
       secondary: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)'
+      background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)'
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(124, 58, 237, 0.05)',
@@ -180,7 +180,7 @@ export const enhancedMedicalThemes = [
     gradients: {
       primary: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
       secondary: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+      background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)'
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(30, 64, 175, 0.05)',
