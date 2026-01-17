@@ -5,8 +5,9 @@ import {
   Edit, Plus, LogOut, Home, AlertCircle, ChevronRight,
   Search, Filter, Download, MoreVertical, Shield, Play,
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
-  UserCheck, XCircle, Eye, Printer, Menu, X
+  UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square
 } from 'lucide-react';
+import NotificationsManagementV2 from './NotificationsManagementV2';
 import supabase from '../lib/supabase-client';
 
 // مكونات إدارة الطوابير
@@ -42,7 +43,7 @@ const QueueManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('queues')
         .select('*')
-        .order('entered_at', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (!error && data) {
         setQueues(data);
@@ -902,7 +903,7 @@ const NotificationsManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*, clinics(name_ar, name_en)')
-        .order('entered_at', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (!error && data) setNotifications(data);
     } catch (e) {
@@ -2030,7 +2031,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
-        {activeTab === 'notifications' && <NotificationsManagement language={language} t={t} />}
+        {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'reports' && <ReportsSection language={language} t={t} />}
         {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} />}
