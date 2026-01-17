@@ -1525,12 +1525,15 @@ const RoutesManagement = ({ language, t }) => {
   };
 
   const addRoute = async () => {
+    console.log('addRoute called with:', newRoute);
     if (!newRoute.exam_type || !newRoute.route_name) {
+      console.log('Validation failed - missing fields');
       alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
       return;
     }
     try {
-      const { error } = await supabase.from('routes').insert({
+      console.log('Inserting route...');
+      const { data, error } = await supabase.from('routes').insert({
         exam_type: newRoute.exam_type,
         route_name: newRoute.route_name,
         clinics: newRoute.clinics,
@@ -1540,7 +1543,9 @@ const RoutesManagement = ({ language, t }) => {
         updated_at: new Date().toISOString()
       });
       
+      console.log('Insert result - data:', data, 'error:', error);
       if (!error) {
+        console.log('Route added successfully!');
         await logActivity('route_created', `تم إنشاء مسار جديد: ${newRoute.route_name}`);
         loadRoutes();
         setShowAddForm(false);
