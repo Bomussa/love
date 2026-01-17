@@ -2,9 +2,15 @@
  * Supabase Client Configuration
  * تكوين عميل Supabase مع اتصال غير قابل للتوقف
  * الميزات: إعادة المحاولة التلقائية + Health Check + Realtime
+ * 
+ * ✅ اتصال دائم بدون انقطاع
+ * ✅ إعادة المحاولة التلقائية (10 محاولات)
+ * ✅ مراقبة مستمرة للاتصال
+ * ✅ معالجة جميع أنواع الأخطاء
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 
 // Supabase configuration - Production values
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
@@ -190,5 +196,25 @@ export function stopConnectionMonitor() {
     console.log('⏹️ إيقاف مراقبة الاتصال');
   }
 }
+
+// تهيئة نظام الاتصال الدائم عند بدء التطبيق
+let persistentConnectionInitialized = false;
+
+export async function initializeAllConnections() {
+  if (persistentConnectionInitialized) return;
+  
+  try {
+    console.log('🚀 تهيئة نظام الاتصال الدائم...');
+    await initializePersistentConnection();
+    startConnectionMonitor(15000); // مراقبة كل 15 ثانية
+    persistentConnectionInitialized = true;
+    console.log('✅ تم تهيئة نظام الاتصال الدائم بنجاح');
+  } catch (error) {
+    console.error('❌ فشل تهيئة نظام الاتصال:', error);
+  }
+}
+
+// تصدير مدير الاتصالات وأنواع الخدمات
+export { connectionManager, ServiceTypes };
 
 export default supabase;

@@ -3,7 +3,8 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, BarChart3 } from 'lucide-react'
+import LiveStatisticsPanel from './LiveStatisticsPanel'
 import { logClinicEntry, logClinicExit, logPatientSkipped } from '../lib/activityLogger'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
@@ -26,6 +27,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
+  const [showStatistics, setShowStatistics] = useState(false) // عرض الإحصائيات
 
 
   // حفظ stations في localStorage عند التحديث
@@ -707,6 +709,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             variant="ghost"
             size="sm"
             className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+            onClick={() => setShowStatistics(true)}
+            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
+          >
+            <BarChart3 className="icon icon-md" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
             onClick={toggleLanguage}
           >
             <Globe className="icon icon-md me-2" />
@@ -928,6 +939,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       </div>
 
 
+      {/* شاشة الإحصائيات */}
+      <LiveStatisticsPanel
+        isOpen={showStatistics}
+        onClose={() => setShowStatistics(false)}
+      />
     </div>
   )
 }
