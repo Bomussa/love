@@ -2513,24 +2513,27 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 right-4 z-[60] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10"
+        className="lg:hidden fixed top-4 left-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
+        aria-label="Toggle Menu"
       >
         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full w-64 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 ${
+      <aside className={`fixed left-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        <div className="p-6 flex items-center gap-3 border-b border-white/5">
-          <img src="/mms-logo.png" alt="قيادة الخدمات الطبية" className="w-12 h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
+        {/* Header */}
+        <div className="p-4 sm:p-6 flex items-center gap-3 border-b border-white/5 flex-shrink-0">
+          <img src="/mms-logo.png" alt="قيادة الخدمات الطبية" className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
           <div>
-            <h1 className="font-bold text-lg tracking-tight">{t('لوحة الإدارة', 'Admin Panel')}</h1>
-            <p className="text-[10px] text-[#C9A54C]/70 uppercase tracking-widest font-medium">{t('قيادة الخدمات الطبية', 'Medical Services')}</p>
+            <h1 className="font-bold text-base sm:text-lg tracking-tight">{t('لوحة الإدارة', 'Admin Panel')}</h1>
+            <p className="text-[9px] sm:text-[10px] text-[#C9A54C]/70 uppercase tracking-widest font-medium">{t('قيادة الخدمات الطبية', 'Medical Services')}</p>
           </div>
         </div>
 
-        <nav className="p-4 space-y-2">
+        {/* Scrollable Navigation */}
+        <nav className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1 sm:space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -2538,33 +2541,34 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                 setActiveTab(item.id);
                 setMobileMenuOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+              className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-300 touch-manipulation ${
                 activeTab === item.id 
                 ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shadow-lg shadow-yellow-500/5' 
-                : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                : 'text-gray-400 hover:bg-white/5 hover:text-white active:bg-white/10'
               }`}
             >
-              <item.icon size={20} />
-              <span className="font-medium">{item.label}</span>
-              {activeTab === item.id && <ChevronRight size={16} className="ml-auto" />}
+              <item.icon size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="font-medium text-sm sm:text-base truncate">{item.label}</span>
+              {activeTab === item.id && <ChevronRight size={14} className="ml-auto flex-shrink-0 sm:w-4 sm:h-4" />}
             </button>
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 w-full p-4 border-t border-white/5 space-y-2">
+        {/* Footer Buttons */}
+        <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/5 space-y-1 sm:space-y-2">
           <button 
             onClick={() => window.location.href = '/'}
-            className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all"
+            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-gray-400 hover:bg-white/5 hover:text-white active:bg-white/10 rounded-xl transition-all touch-manipulation"
           >
-            <Home size={20} />
-            <span>{t('الرئيسية', 'Home')}</span>
+            <Home size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-sm sm:text-base">{t('الرئيسية', 'Home')}</span>
           </button>
           <button 
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-red-400 hover:bg-red-500/10 active:bg-red-500/20 rounded-xl transition-all touch-manipulation"
           >
-            <LogOut size={20} />
-            <span>{t('تسجيل الخروج', 'Logout')}</span>
+            <LogOut size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="text-sm sm:text-base">{t('تسجيل الخروج', 'Logout')}</span>
           </button>
         </div>
       </aside>
@@ -2578,7 +2582,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       )}
 
       {/* Main Content */}
-      <main className="lg:mr-64 p-4 lg:p-8 pt-20 lg:pt-8">
+      <main className="lg:mr-64 lg:ml-0 p-3 sm:p-4 lg:p-8 pt-16 sm:pt-20 lg:pt-8 min-h-screen overflow-x-hidden">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
