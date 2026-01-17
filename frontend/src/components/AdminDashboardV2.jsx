@@ -4509,9 +4509,17 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       </button>
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
-        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
+      <aside 
+        data-sidebar="admin"
+        data-mobile-open={mobileMenuOpen}
+        className={`fixed left-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
+          mobileMenuOpen ? 'translate-x-0 sidebar-open' : '-translate-x-full lg:translate-x-0'
+        }`}
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y'
+        }}
+      >
         {/* Header */}
         <div className="p-4 sm:p-6 flex items-center gap-3 border-b border-white/5 flex-shrink-0">
           <img src="/mms-logo.png" alt="قيادة الخدمات الطبية" className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-full border-2 border-[#C9A54C]/30" />
@@ -4522,23 +4530,39 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         </div>
 
         {/* Scrollable Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1 sm:space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <nav 
+          className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1 sm:space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 setActiveTab(item.id);
                 setMobileMenuOpen(false);
               }}
-              className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-300 touch-manipulation ${
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setActiveTab(item.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-300 touch-manipulation select-none ${
                 activeTab === item.id 
                 ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shadow-lg shadow-yellow-500/5' 
                 : 'text-gray-400 hover:bg-white/5 hover:text-white active:bg-white/10'
               }`}
+              style={{ 
+                WebkitTapHighlightColor: 'rgba(201, 165, 76, 0.2)',
+                minHeight: '48px',
+                cursor: 'pointer'
+              }}
             >
-              <item.icon size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="font-medium text-sm sm:text-base truncate">{item.label}</span>
-              {activeTab === item.id && <ChevronRight size={14} className="ml-auto flex-shrink-0 sm:w-4 sm:h-4" />}
+              <item.icon size={18} className="sm:w-5 sm:h-5 flex-shrink-0 pointer-events-none" />
+              <span className="font-medium text-sm sm:text-base truncate pointer-events-none">{item.label}</span>
+              {activeTab === item.id && <ChevronRight size={14} className="ml-auto flex-shrink-0 sm:w-4 sm:h-4 pointer-events-none" />}
             </button>
           ))}
         </nav>
@@ -4546,18 +4570,44 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {/* Footer Buttons */}
         <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/5 space-y-1 sm:space-y-2">
           <button 
-            onClick={() => window.location.href = '/'}
-            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-gray-400 hover:bg-white/5 hover:text-white active:bg-white/10 rounded-xl transition-all touch-manipulation"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/';
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              window.location.href = '/';
+            }}
+            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-gray-400 hover:bg-white/5 hover:text-white active:bg-white/10 rounded-xl transition-all touch-manipulation select-none"
+            style={{ 
+              WebkitTapHighlightColor: 'rgba(255, 255, 255, 0.1)',
+              minHeight: '48px',
+              cursor: 'pointer'
+            }}
           >
-            <Home size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">{t('الرئيسية', 'Home')}</span>
+            <Home size={18} className="sm:w-5 sm:h-5 flex-shrink-0 pointer-events-none" />
+            <span className="text-sm sm:text-base pointer-events-none">{t('الرئيسية', 'Home')}</span>
           </button>
           <button 
-            onClick={onLogout}
-            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-red-400 hover:bg-red-500/10 active:bg-red-500/20 rounded-xl transition-all touch-manipulation"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onLogout();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onLogout();
+            }}
+            className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-red-400 hover:bg-red-500/10 active:bg-red-500/20 rounded-xl transition-all touch-manipulation select-none"
+            style={{ 
+              WebkitTapHighlightColor: 'rgba(239, 68, 68, 0.2)',
+              minHeight: '48px',
+              cursor: 'pointer'
+            }}
           >
-            <LogOut size={18} className="sm:w-5 sm:h-5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">{t('تسجيل الخروج', 'Logout')}</span>
+            <LogOut size={18} className="sm:w-5 sm:h-5 flex-shrink-0 pointer-events-none" />
+            <span className="text-sm sm:text-base pointer-events-none">{t('تسجيل الخروج', 'Logout')}</span>
           </button>
         </div>
       </aside>
