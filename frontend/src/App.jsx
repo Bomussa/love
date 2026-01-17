@@ -1,6 +1,7 @@
 import './core/notification-engine.js';
 import React, { useState, useEffect } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
+import { Analytics } from '@vercel/analytics/react'
 import { LoginPage } from './components/LoginPage.jsx'
 import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
 import { PatientPage } from './components/PatientPage.jsx'
@@ -397,6 +398,7 @@ function App() {
         )}
       </main>
       <SpeedInsights />
+      <Analytics />
     </div>
   )
 }
