@@ -727,7 +727,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </div>
         </div>
 
-        <Card className="bg-gray-800/50 border-gray-700">
+        <Card className="bg-gray-800/50 border-gray-700 w-full max-w-3xl mx-auto">
           <CardHeader className="text-center">
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
@@ -761,10 +761,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               );
             })()}
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 sm:px-6">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-800/50 border-gray-700">
-                <CardContent className="p-6">
+              <Card key={station.id} className="bg-gray-900/60 border-gray-600 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <CardContent className="p-6 sm:p-8">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                       {station.status === 'ready' ? (
@@ -775,10 +775,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         <Lock className="w-8 h-8 text-gray-500" />
                       )}
                       <div>
-                        <h3 className="text-xl font-bold text-white">
+                        <h3 className="text-xl sm:text-2xl font-bold text-white">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-base text-gray-300 mt-1">
+                        <p className="text-base sm:text-lg text-gray-300 mt-2">
                           {t('floor', language)}: <span className="text-yellow-400 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span>
                         </p>
                       </div>
@@ -802,14 +802,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-8 text-center py-6 my-4" data-test="queue-info">
+                  <div className="grid grid-cols-2 gap-6 sm:gap-10 text-center py-6 sm:py-8 my-4 sm:my-6" data-test="queue-info">
                     <div className="bg-gray-700/30 rounded-xl p-4">
-                      <div className="text-4xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-sm text-gray-400 mt-3">{t('yourNumber', language)}</div>
+                      <div className="text-5xl sm:text-6xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
+                      <div className="text-base sm:text-lg text-gray-400 mt-3 font-medium">{t('yourNumber', language)}</div>
                     </div>
                     <div className="bg-gray-700/30 rounded-xl p-4">
-                      <div className="text-4xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-sm text-gray-400 mt-3">{t('ahead', language)}</div>
+                      <div className="text-5xl sm:text-6xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
+                      <div className="text-base sm:text-lg text-gray-400 mt-3 font-medium">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
