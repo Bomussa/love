@@ -595,7 +595,7 @@ const ClinicsManagement = ({ language, t }) => {
   const [loading, setLoading] = useState(true);
   const [editingClinic, setEditingClinic] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newClinic, setNewClinic] = useState({ name_ar: '', name_en: '', floor: '', code: '', weight: 1 });
+  const [newClinic, setNewClinic] = useState({ name_ar: '', name_en: '', floor: '', code: '', weight: 1, exam_duration: 5, call_interval: 2, late_threshold: 4 });
 
   useEffect(() => {
     loadClinics();
@@ -654,13 +654,16 @@ const ClinicsManagement = ({ language, t }) => {
         floor: newClinic.floor || 'الطابق الأول',
         code: newClinic.code || newClinic.name_en.substring(0, 3).toUpperCase(),
         weight: newClinic.weight || 1,
+        exam_duration: newClinic.exam_duration || 5,
+        call_interval: newClinic.call_interval || 2,
+        late_threshold: newClinic.late_threshold || 4,
         is_active: true,
         created_at: new Date().toISOString()
       });
       if (!error) {
         loadClinics();
         setShowAddForm(false);
-        setNewClinic({ name_ar: '', name_en: '', floor: '', code: '', weight: 1 });
+        setNewClinic({ name_ar: '', name_en: '', floor: '', code: '', weight: 1, exam_duration: 5, call_interval: 2, late_threshold: 4 });
         alert(t('تم إضافة العيادة بنجاح', 'Clinic added successfully'));
       }
     } catch (e) {
@@ -755,6 +758,39 @@ const ClinicsManagement = ({ language, t }) => {
                 max="10"
               />
             </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('مدة الفحص (دقيقة)', 'Exam Duration (min)')}</label>
+              <input
+                type="number"
+                value={newClinic.exam_duration}
+                onChange={(e) => setNewClinic({...newClinic, exam_duration: parseInt(e.target.value) || 5})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                min="1"
+                max="60"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('النداء التالي (دقيقة)', 'Next Call (min)')}</label>
+              <input
+                type="number"
+                value={newClinic.call_interval}
+                onChange={(e) => setNewClinic({...newClinic, call_interval: parseInt(e.target.value) || 2})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                min="1"
+                max="15"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('التأخير (دقيقة)', 'Late After (min)')}</label>
+              <input
+                type="number"
+                value={newClinic.late_threshold}
+                onChange={(e) => setNewClinic({...newClinic, late_threshold: parseInt(e.target.value) || 4})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+                min="1"
+                max="30"
+              />
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={addClinic} className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all">
@@ -842,13 +878,52 @@ const ClinicsManagement = ({ language, t }) => {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
                 />
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{t('مدة الفحص', 'Exam')}</label>
+                  <input
+                    type="number"
+                    value={editingClinic.exam_duration || 5}
+                    onChange={(e) => setEditingClinic({...editingClinic, exam_duration: parseInt(e.target.value) || 5})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
+                    min="1"
+                    max="60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{t('النداء', 'Call')}</label>
+                  <input
+                    type="number"
+                    value={editingClinic.call_interval || 2}
+                    onChange={(e) => setEditingClinic({...editingClinic, call_interval: parseInt(e.target.value) || 2})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
+                    min="1"
+                    max="15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{t('التأخير', 'Late')}</label>
+                  <input
+                    type="number"
+                    value={editingClinic.late_threshold || 4}
+                    onChange={(e) => setEditingClinic({...editingClinic, late_threshold: parseInt(e.target.value) || 4})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
+                    min="1"
+                    max="30"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">{t('الأوقات بالدقائق - تلقائية وقابلة للتخصيص', 'Times in minutes - automatic and customizable')}</p>
             </div>
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => updateClinic(editingClinic.id, {
                   name_ar: editingClinic.name_ar,
                   name_en: editingClinic.name_en,
-                  floor: editingClinic.floor
+                  floor: editingClinic.floor,
+                  exam_duration: editingClinic.exam_duration || 5,
+                  call_interval: editingClinic.call_interval || 2,
+                  late_threshold: editingClinic.late_threshold || 4
                 })}
                 className="flex-1 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all font-medium"
               >
