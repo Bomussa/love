@@ -126,7 +126,7 @@ const QueueManagement = ({ language, t }) => {
         {queuesByClinic.map(clinic => (
           <div key={clinic.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
             <div className="p-4 bg-gradient-to-r from-gold-500/20 to-transparent border-b border-white/10">
-              <h4 className="font-bold text-lg">{language === 'ar' ? clinic.name_ar : clinic.name_en}</h4>
+              <h4 className="font-bold text-lg">{language === 'ar' ? (clinic.name_ar || clinic.name_en) : (clinic.name_en || clinic.name_ar)}</h4>
               <div className="flex gap-4 mt-2 text-sm">
                 <span className="text-yellow-400">{t('انتظار', 'Waiting')}: {clinic.waiting.length}</span>
                 <span className="text-green-400">{t('مكتمل', 'Done')}: {clinic.completed}</span>
@@ -322,7 +322,7 @@ const PINManagement = ({ language, t }) => {
               >
                 <option value="">{t('اختر العيادة', 'Select Clinic')}</option>
                 {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
                 ))}
               </select>
             </div>
@@ -772,7 +772,7 @@ const ClinicsManagement = ({ language, t }) => {
           <div key={clinic.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h4 className="font-bold text-lg">{language === 'ar' ? clinic.name_ar : clinic.name_en}</h4>
+                <h4 className="font-bold text-lg">{language === 'ar' ? (clinic.name_ar || clinic.name_en) : (clinic.name_en || clinic.name_ar)}</h4>
                 <p className="text-gray-400 text-sm">{clinic.floor || t('الطابق غير محدد', 'Floor not set')}</p>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -1057,7 +1057,7 @@ const NotificationsManagement = ({ language, t }) => {
               >
                 <option value="">{t('جميع العيادات', 'All Clinics')}</option>
                 {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
                 ))}
               </select>
             </div>
@@ -1122,7 +1122,7 @@ const NotificationsManagement = ({ language, t }) => {
               >
                 <option value="">{t('جميع العيادات', 'All Clinics')}</option>
                 {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
                 ))}
               </select>
             </div>
@@ -1181,7 +1181,7 @@ const NotificationsManagement = ({ language, t }) => {
                   </td>
                   <td className="p-4">
                     <span className="text-sm">
-                      {notif.clinics ? (language === 'ar' ? notif.clinics.name_ar : notif.clinics.name_en) : t('عام', 'General')}
+                      {notif.clinics ? (language === 'ar' ? (notif.clinics.name_ar || notif.clinics.name_en) : (notif.clinics.name_en || notif.clinics.name_ar)) : t('عام', 'General')}
                     </span>
                   </td>
                   <td className="p-4">
@@ -1375,7 +1375,7 @@ const RoutesManagement = ({ language, t }) => {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white h-32"
               >
                 {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{language === 'ar' ? c.name_ar : c.name_en}</option>
+                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
                 ))}
               </select>
             </div>
@@ -1395,7 +1395,7 @@ const RoutesManagement = ({ language, t }) => {
         {routes.map(route => (
           <div key={route.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-bold text-lg">{language === 'ar' ? route.name_ar : route.name_en}</h4>
+              <h4 className="font-bold text-lg">{language === 'ar' ? (route.name_ar || route.name_en) : (route.name_en || route.name_ar)}</h4>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                 route.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
               }`}>
