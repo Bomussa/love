@@ -100,11 +100,8 @@ function App() {
       return;
     }
     
-    // Priority 2.5: Admin session (without /admin path)
-    if (isAdmin && !path.includes('/clinic') && !path.includes('/qr')) {
-      setCurrentView('admin');
-      return;
-    }
+    // Priority 2.5: Admin session - يجب الدخول عبر /admin فقط
+    // لا يتم التوجيه التلقائي للإدارة - شاشة التسجيل هي الافتراضية دائماً
     
     // Priority 3: Clinic routes
     if (path === '/clinic/login' || path === '/clinic/login/') {

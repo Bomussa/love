@@ -4047,7 +4047,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       // جلب بيانات العيادات
       const { data: clinicsData } = await supabase
         .from('clinics')
-        .select('id, name_ar, name_en, code');
+        .select('id, name_ar, name_en');
 
       // Active PINs
       const { count: pinCount } = await supabase
@@ -4059,7 +4059,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       const clinicStats = {};
       if (queueData && clinicsData) {
         clinicsData.forEach(clinic => {
-          const clinicQueues = queueData.filter(q => q.clinic_id === clinic.code || q.clinic_id === clinic.id);
+          const clinicQueues = queueData.filter(q => q.clinic_id === clinic.id);
           const completed = clinicQueues.filter(q => q.status === 'completed');
           const waiting = clinicQueues.filter(q => q.status === 'waiting');
           
@@ -4083,10 +4083,10 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
             avgStayTime = Math.round(totalStay / withStayTime.length / 60000); // بالدقائق
           }
           
-          clinicStats[clinic.code || clinic.id] = {
+          clinicStats[clinic.id] = {
             name_ar: clinic.name_ar,
             name_en: clinic.name_en,
-            code: clinic.code,
+            id: clinic.id,
             total: clinicQueues.length,
             completed: completed.length,
             waiting: waiting.length,
@@ -4336,11 +4336,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                       {Object.entries(stats.clinicStats)
                         .filter(([_, data]) => data.total > 0)
                         .sort((a, b) => b[1].total - a[1].total)
-                        .map(([code, data]) => (
-                          <tr key={code} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        .map(([clinicId, data]) => (
+                          <tr key={clinicId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded font-mono">{code}</span>
+                                <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded font-mono">{clinicId}</span>
                                 <span className="text-white">{language === 'ar' ? data.name_ar : data.name_en}</span>
                               </div>
                             </td>
