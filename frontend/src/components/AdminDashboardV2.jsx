@@ -811,7 +811,7 @@ const ClinicsManagement = ({ language, t }) => {
       </div>
 
       {editingClinic && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
           <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
             <h4 className="font-bold text-lg mb-4">{t('تعديل العيادة', 'Edit Clinic')}</h4>
             <div className="space-y-4">
@@ -1735,6 +1735,661 @@ const SettingsSection = ({ language, t }) => {
   );
 };
 
+// مكون إدارة المستخدمين والصلاحيات
+const UsersManagement = ({ language, t }) => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'STAFF', is_active: true });
+  const [editingUser, setEditingUser] = useState(null);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) setUsers(data);
+    } catch (e) {
+      console.error('Error loading users:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addUser = async () => {
+    try {
+      const { error } = await supabase
+        .from('admin_users')
+        .insert([{
+          username: newUser.username,
+          password_hash: newUser.password, // في الإنتاج يجب تشفير كلمة المرور
+          role: newUser.role,
+          is_active: true,
+          created_at: new Date().toISOString()
+        }]);
+      
+      if (!error) {
+        setShowAddModal(false);
+        setNewUser({ username: '', password: '', role: 'STAFF', is_active: true });
+        loadUsers();
+      }
+    } catch (e) {
+      console.error('Error adding user:', e);
+    }
+  };
+
+  const updateUserStatus = async (userId, isActive) => {
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ is_active: isActive })
+        .eq('id', userId);
+      loadUsers();
+    } catch (e) {
+      console.error('Error updating user:', e);
+    }
+  };
+
+  const updateUserRole = async (userId, role) => {
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ role })
+        .eq('id', userId);
+      loadUsers();
+    } catch (e) {
+      console.error('Error updating role:', e);
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
+    try {
+      await supabase
+        .from('admin_users')
+        .delete()
+        .eq('id', userId);
+      loadUsers();
+    } catch (e) {
+      console.error('Error deleting user:', e);
+    }
+  };
+
+  const roleColors = {
+    'SUPER_ADMIN': 'bg-purple-500',
+    'ADMIN': 'bg-blue-500',
+    'STAFF': 'bg-green-500'
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <UserCog size={24} className="text-[#C9A54C]" />
+          {t('إدارة المستخدمين', 'Users Management')}
+        </h3>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+        >
+          <Plus size={18} /> {t('إضافة مستخدم', 'Add User')}
+        </button>
+      </div>
+
+      {/* جدول المستخدمين */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-black/20">
+            <tr>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('اسم المستخدم', 'Username')}</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الصلاحية', 'Role')}</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الحالة', 'Status')}</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('آخر دخول', 'Last Login')}</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الإجراءات', 'Actions')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {users.map(user => (
+              <tr key={user.id} className="hover:bg-white/5">
+                <td className="px-4 py-3 font-medium">{user.username}</td>
+                <td className="px-4 py-3">
+                  <select
+                    value={user.role}
+                    onChange={(e) => updateUserRole(user.id, e.target.value)}
+                    className={`px-2 py-1 rounded-lg text-white text-sm ${roleColors[user.role]} bg-opacity-80`}
+                  >
+                    <option value="SUPER_ADMIN">Super Admin</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="STAFF">Staff</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => updateUserStatus(user.id, !user.is_active)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                  >
+                    {user.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                  </button>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-400">
+                  {user.last_login ? new Date(user.last_login).toLocaleString('ar-QA') : '-'}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingUser(user)} className="p-2 hover:bg-white/10 rounded-lg">
+                      <Edit size={16} className="text-[#C9A54C]" />
+                    </button>
+                    <button onClick={() => deleteUser(user.id)} className="p-2 hover:bg-white/10 rounded-lg">
+                      <Trash2 size={16} className="text-red-400" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal إضافة مستخدم */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110]">
+          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-md border border-white/10">
+            <h4 className="text-lg font-bold mb-4">{t('إضافة مستخدم جديد', 'Add New User')}</h4>
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder={t('اسم المستخدم', 'Username')}
+                value={newUser.username}
+                onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <input
+                type="password"
+                placeholder={t('كلمة المرور', 'Password')}
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              >
+                <option value="STAFF">Staff</option>
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={addUser}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+              >
+                {t('إضافة', 'Add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// مكون سجل النشاطات
+const ActivityLog = ({ language, t }) => {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState({ type: 'all', date: '' });
+
+  useEffect(() => {
+    loadLogs();
+  }, [filter]);
+
+  const loadLogs = async () => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (filter.type !== 'all') {
+        query = query.eq('action_type', filter.type);
+      }
+      
+      const { data, error } = await query;
+      if (!error && data) setLogs(data);
+    } catch (e) {
+      console.error('Error loading logs:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportLogs = () => {
+    const csv = logs.map(log => 
+      `${log.created_at},${log.user_id},${log.action_type},${log.description}`
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `activity_log_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const actionIcons = {
+    'login': <Lock size={16} className="text-blue-400" />,
+    'logout': <Unlock size={16} className="text-gray-400" />,
+    'create': <Plus size={16} className="text-green-400" />,
+    'update': <Edit size={16} className="text-yellow-400" />,
+    'delete': <Trash2 size={16} className="text-red-400" />
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <History size={24} className="text-[#C9A54C]" />
+          {t('سجل النشاطات', 'Activity Log')}
+        </h3>
+        <div className="flex gap-3">
+          <select
+            value={filter.type}
+            onChange={(e) => setFilter({...filter, type: e.target.value})}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+          >
+            <option value="all">{t('الكل', 'All')}</option>
+            <option value="login">{t('تسجيل دخول', 'Login')}</option>
+            <option value="create">{t('إنشاء', 'Create')}</option>
+            <option value="update">{t('تعديل', 'Update')}</option>
+            <option value="delete">{t('حذف', 'Delete')}</option>
+          </select>
+          <button
+            onClick={exportLogs}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+          >
+            <Download size={18} /> {t('تصدير', 'Export')}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        <div className="max-h-[500px] overflow-y-auto">
+          {logs.length === 0 ? (
+            <div className="p-8 text-center text-gray-400">
+              {t('لا توجد سجلات', 'No logs found')}
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {logs.map(log => (
+                <div key={log.id} className="p-4 hover:bg-white/5 flex items-center gap-4">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    {actionIcons[log.action_type] || <Activity size={16} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{log.description}</p>
+                    <p className="text-sm text-gray-400">{log.user_id}</p>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {new Date(log.created_at).toLocaleString('ar-QA')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// مكون النسخ الاحتياطي والتصدير
+const BackupExport = ({ language, t }) => {
+  const [backups, setBackups] = useState([]);
+  const [exporting, setExporting] = useState(false);
+
+  const exportData = async (type) => {
+    setExporting(true);
+    try {
+      let data = [];
+      let filename = '';
+      
+      switch(type) {
+        case 'queues':
+          const { data: queuesData } = await supabase.from('queues').select('*');
+          data = queuesData;
+          filename = 'queues_export';
+          break;
+        case 'clinics':
+          const { data: clinicsData } = await supabase.from('clinics').select('*');
+          data = clinicsData;
+          filename = 'clinics_export';
+          break;
+        case 'patients':
+          const { data: patientsData } = await supabase.from('patients').select('*');
+          data = patientsData;
+          filename = 'patients_export';
+          break;
+        case 'all':
+          const { data: allQueues } = await supabase.from('queues').select('*');
+          const { data: allClinics } = await supabase.from('clinics').select('*');
+          const { data: allPatients } = await supabase.from('patients').select('*');
+          data = { queues: allQueues, clinics: allClinics, patients: allPatients };
+          filename = 'full_backup';
+          break;
+      }
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    } catch (e) {
+      console.error('Export error:', e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportToCSV = async (tableName) => {
+    try {
+      const { data } = await supabase.from(tableName).select('*');
+      if (!data || data.length === 0) return;
+      
+      const headers = Object.keys(data[0]).join(',');
+      const rows = data.map(row => Object.values(row).join(',')).join('\n');
+      const csv = headers + '\n' + rows;
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tableName}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    } catch (e) {
+      console.error('CSV export error:', e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold flex items-center gap-2">
+        <Database size={24} className="text-[#C9A54C]" />
+        {t('النسخ الاحتياطي والتصدير', 'Backup & Export')}
+      </h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* تصدير JSON */}
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4 flex items-center gap-2">
+            <Download size={20} /> {t('تصدير JSON', 'Export JSON')}
+          </h4>
+          <div className="space-y-3">
+            <button
+              onClick={() => exportData('queues')}
+              disabled={exporting}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('الطوابير', 'Queues')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportData('clinics')}
+              disabled={exporting}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('العيادات', 'Clinics')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportData('patients')}
+              disabled={exporting}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('المرضى', 'Patients')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportData('all')}
+              disabled={exporting}
+              className="w-full px-4 py-3 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl flex items-center justify-center gap-2"
+            >
+              <Save size={18} /> {t('نسخة احتياطية كاملة', 'Full Backup')}
+            </button>
+          </div>
+        </div>
+
+        {/* تصدير CSV */}
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4 flex items-center gap-2">
+            <FileText size={20} /> {t('تصدير CSV', 'Export CSV')}
+          </h4>
+          <div className="space-y-3">
+            <button
+              onClick={() => exportToCSV('queues')}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('الطوابير', 'Queues')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportToCSV('clinics')}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('العيادات', 'Clinics')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportToCSV('patients')}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('المرضى', 'Patients')}</span>
+              <Download size={16} />
+            </button>
+            <button
+              onClick={() => exportToCSV('settings')}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
+            >
+              <span>{t('الإعدادات', 'Settings')}</span>
+              <Download size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* إعدادات الطباعة */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+        <h4 className="font-bold mb-4 flex items-center gap-2">
+          <Printer size={20} /> {t('إعدادات الطباعة', 'Print Settings')}
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2"
+          >
+            <Printer size={18} /> {t('طباعة التقرير', 'Print Report')}
+          </button>
+          <button
+            onClick={() => {
+              const printWindow = window.open('', '_blank');
+              printWindow.document.write('<html><head><title>Queue Report</title></head><body>');
+              printWindow.document.write('<h1>تقرير الطوابير</h1>');
+              printWindow.document.write('</body></html>');
+              printWindow.print();
+            }}
+            className="px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2"
+          >
+            <FileText size={18} /> {t('طباعة الطوابير', 'Print Queues')}
+          </button>
+          <button
+            className="px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2"
+          >
+            <Share2 size={18} /> {t('مشاركة', 'Share')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// مكون إعدادات العمل أوفلاين
+const OfflineSettings = ({ language, t }) => {
+  const [offlineEnabled, setOfflineEnabled] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('synced');
+  const [storageUsed, setStorageUsed] = useState(0);
+
+  useEffect(() => {
+    checkOfflineStatus();
+    calculateStorage();
+  }, []);
+
+  const checkOfflineStatus = () => {
+    const enabled = localStorage.getItem('offline_mode') === 'true';
+    setOfflineEnabled(enabled);
+  };
+
+  const calculateStorage = () => {
+    let total = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        total += localStorage[key].length * 2; // UTF-16
+      }
+    }
+    setStorageUsed(total);
+  };
+
+  const toggleOfflineMode = () => {
+    const newValue = !offlineEnabled;
+    localStorage.setItem('offline_mode', newValue.toString());
+    setOfflineEnabled(newValue);
+  };
+
+  const syncNow = async () => {
+    setSyncStatus('syncing');
+    try {
+      // محاكاة المزامنة
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setSyncStatus('synced');
+    } catch (e) {
+      setSyncStatus('error');
+    }
+  };
+
+  const clearOfflineData = () => {
+    if (confirm(t('هل أنت متأكد من حذف البيانات المحلية؟', 'Are you sure you want to clear offline data?'))) {
+      localStorage.clear();
+      calculateStorage();
+    }
+  };
+
+  const formatBytes = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold flex items-center gap-2">
+        {navigator.onLine ? <Wifi size={24} className="text-green-400" /> : <WifiOff size={24} className="text-red-400" />}
+        {t('إعدادات العمل أوفلاين', 'Offline Settings')}
+      </h3>
+
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 space-y-6">
+        {/* حالة الاتصال */}
+        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+          <div className="flex items-center gap-3">
+            {navigator.onLine ? (
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+            ) : (
+              <div className="w-3 h-3 bg-red-500 rounded-full" />
+            )}
+            <div>
+              <h4 className="font-medium">{t('حالة الاتصال', 'Connection Status')}</h4>
+              <p className="text-sm text-gray-400">
+                {navigator.onLine ? t('متصل بالإنترنت', 'Online') : t('غير متصل', 'Offline')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* تفعيل الوضع أوفلاين */}
+        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+          <div>
+            <h4 className="font-medium">{t('تفعيل الوضع أوفلاين', 'Enable Offline Mode')}</h4>
+            <p className="text-sm text-gray-400">{t('حفظ البيانات محلياً للعمل بدون إنترنت', 'Save data locally for offline work')}</p>
+          </div>
+          <button
+            onClick={toggleOfflineMode}
+            className={`w-14 h-8 rounded-full transition-all ${offlineEnabled ? 'bg-green-500' : 'bg-white/20'}`}
+          >
+            <div className={`w-6 h-6 bg-white rounded-full transition-all ${offlineEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        {/* حالة المزامنة */}
+        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+          <div>
+            <h4 className="font-medium">{t('حالة المزامنة', 'Sync Status')}</h4>
+            <p className="text-sm text-gray-400">
+              {syncStatus === 'synced' && t('متزامن', 'Synced')}
+              {syncStatus === 'syncing' && t('جاري المزامنة...', 'Syncing...')}
+              {syncStatus === 'error' && t('خطأ في المزامنة', 'Sync Error')}
+            </p>
+          </div>
+          <button
+            onClick={syncNow}
+            disabled={syncStatus === 'syncing'}
+            className="px-4 py-2 bg-[#C9A54C] text-black font-medium rounded-xl flex items-center gap-2"
+          >
+            <RefreshCw size={16} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+            {t('مزامنة الآن', 'Sync Now')}
+          </button>
+        </div>
+
+        {/* التخزين المستخدم */}
+        <div className="p-4 bg-white/5 rounded-xl">
+          <div className="flex justify-between mb-2">
+            <h4 className="font-medium">{t('التخزين المستخدم', 'Storage Used')}</h4>
+            <span className="text-[#C9A54C]">{formatBytes(storageUsed)}</span>
+          </div>
+          <div className="w-full bg-white/10 rounded-full h-2">
+            <div 
+              className="bg-[#C9A54C] h-2 rounded-full" 
+              style={{ width: `${Math.min((storageUsed / (5 * 1024 * 1024)) * 100, 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">{t('الحد الأقصى: 5 MB', 'Max: 5 MB')}</p>
+        </div>
+
+        {/* حذف البيانات المحلية */}
+        <button
+          onClick={clearOfflineData}
+          className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl flex items-center justify-center gap-2"
+        >
+          <Trash2 size={18} /> {t('حذف البيانات المحلية', 'Clear Offline Data')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // المكون الرئيسي
 export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -1847,6 +2502,10 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'clinics', icon: Activity, label: t('العيادات', 'Clinics') },
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
     { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') },
+    { id: 'users', icon: UserCog, label: t('إدارة المستخدمين', 'Users') },
+    { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
+    { id: 'backup', icon: Database, label: t('النسخ والتصدير', 'Backup & Export') },
+    { id: 'offline', icon: Wifi, label: t('العمل أوفلاين', 'Offline Mode') },
   ];
 
   return (
@@ -1860,7 +2519,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       </button>
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full w-64 bg-[#12121a] border-r border-white/5 z-50 transform transition-transform duration-300 ${
+      <aside className={`fixed left-0 top-0 h-full w-64 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="p-6 flex items-center gap-3 border-b border-white/5">
@@ -1913,7 +2572,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 z-[90]"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -2038,6 +2697,10 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} />}
         {activeTab === 'system' && <SystemStatus language={language} t={t} />}
         {activeTab === 'settings' && <SettingsSection language={language} t={t} />}
+        {activeTab === 'users' && <UsersManagement language={language} t={t} />}
+        {activeTab === 'activity' && <ActivityLog language={language} t={t} />}
+        {activeTab === 'backup' && <BackupExport language={language} t={t} />}
+        {activeTab === 'offline' && <OfflineSettings language={language} t={t} />}
       </main>
     </div>
   );
