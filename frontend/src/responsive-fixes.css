@@ -340,14 +340,14 @@ img {
   }
 }
 
-/* تحسين الأزرار الثابتة */
-.fixed {
+/* تحسين الأزرار الثابتة - استثناء القائمة الجانبية */
+.fixed:not(aside):not([class*="sidebar"]) {
   z-index: 9999;
 }
 
-/* تحسين القوائم المنسدلة */
+/* تحسين القوائم المنسدلة - استثناء القائمة الجانبية */
 @media (max-width: 768px) {
-  .absolute {
+  .absolute:not(aside):not([class*="sidebar"]) {
     position: fixed !important;
     left: 0.5rem !important;
     right: 0.5rem !important;
@@ -782,9 +782,9 @@ body {
    20. تحسينات نهائية للتجاوب
    ====================================== */
 
-/* التأكد من أن جميع العناصر المطلقة لا تتداخل */
+/* التأكد من أن جميع العناصر المطلقة لا تتداخل - استثناء القائمة الجانبية */
 @media (max-width: 768px) {
-  .absolute {
+  .absolute:not(aside):not([class*="sidebar"]) {
     z-index: 100;
   }
 

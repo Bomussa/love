@@ -1,0 +1,239 @@
+/* ======================================
+   إصلاحات القائمة الجانبية للإدارة على الهواتف
+   Admin Sidebar Mobile Fixes
+   تاريخ الإنشاء: 2026-01-17
+   ====================================== */
+
+/* ======================================
+   1. إصلاح z-index للقائمة الجانبية
+   ====================================== */
+
+/* القائمة الجانبية الرئيسية */
+aside.fixed[class*="translate"] {
+  z-index: 100 !important;
+  position: fixed !important;
+  top: 0 !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* زر فتح/إغلاق القائمة */
+button[aria-label="Toggle Menu"] {
+  z-index: 120 !important;
+  position: fixed !important;
+}
+
+/* طبقة التعتيم خلف القائمة */
+div.lg\:hidden.fixed.inset-0[class*="bg-black"] {
+  z-index: 90 !important;
+}
+
+/* ======================================
+   2. إصلاح مشكلة pointer-events
+   ====================================== */
+
+/* التأكد من أن القائمة قابلة للنقر */
+aside.fixed nav,
+aside.fixed nav button,
+aside.fixed button,
+aside.fixed a {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: rgba(201, 165, 76, 0.2);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* التأكد من أن الأزرار داخل القائمة تعمل */
+aside.fixed nav button:active,
+aside.fixed button:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* ======================================
+   3. إصلاح التمرير داخل القائمة
+   ====================================== */
+
+aside.fixed nav {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* ======================================
+   4. إصلاحات الهاتف المحمول
+   ====================================== */
+
+@media (max-width: 1024px) {
+  /* القائمة المخفية */
+  aside.fixed.-translate-x-full {
+    transform: translateX(-100%) !important;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  
+  /* القائمة المفتوحة */
+  aside.fixed.translate-x-0 {
+    transform: translateX(0) !important;
+    visibility: visible;
+    pointer-events: auto !important;
+  }
+  
+  /* جميع العناصر داخل القائمة المفتوحة قابلة للنقر */
+  aside.fixed.translate-x-0 * {
+    pointer-events: auto !important;
+  }
+  
+  /* التأكد من أن القائمة تظهر بالكامل */
+  aside.fixed.translate-x-0 {
+    left: 0 !important;
+    width: 16rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  aside.fixed.translate-x-0 {
+    width: 100% !important;
+    max-width: 18rem !important;
+  }
+}
+
+/* ======================================
+   5. تحسين تجربة اللمس
+   ====================================== */
+
+aside.fixed button {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* تحسين hover و active states */
+aside.fixed nav button:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+aside.fixed nav button:active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ======================================
+   6. إصلاح RTL (العربية)
+   ====================================== */
+
+[dir="rtl"] aside.fixed {
+  left: auto !important;
+  right: 0 !important;
+}
+
+[dir="rtl"] aside.fixed.-translate-x-full {
+  transform: translateX(100%) !important;
+}
+
+[dir="rtl"] aside.fixed.translate-x-0 {
+  transform: translateX(0) !important;
+}
+
+[dir="rtl"] button[aria-label="Toggle Menu"] {
+  left: auto !important;
+  right: 1rem !important;
+}
+
+/* ======================================
+   7. إصلاح main content margin
+   ====================================== */
+
+@media (min-width: 1024px) {
+  main.lg\:mr-64 {
+    margin-right: 0 !important;
+    margin-left: 16rem !important;
+  }
+  
+  main.lg\:ml-64 {
+    margin-left: 16rem !important;
+  }
+  
+  [dir="rtl"] main.lg\:mr-64 {
+    margin-left: 0 !important;
+    margin-right: 16rem !important;
+  }
+}
+
+/* ======================================
+   8. إصلاح مشكلة overflow عند فتح القائمة
+   ====================================== */
+
+/* منع التمرير في الخلفية عند فتح القائمة */
+body:has(aside.fixed.translate-x-0) {
+  overflow: hidden;
+}
+
+/* بديل للمتصفحات التي لا تدعم :has */
+body.sidebar-open {
+  overflow: hidden;
+}
+
+/* ======================================
+   9. تحسينات الأداء والانتقالات
+   ====================================== */
+
+aside.fixed {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* تقليل الحركة للمستخدمين الذين يفضلون ذلك */
+@media (prefers-reduced-motion: reduce) {
+  aside.fixed {
+    transition-duration: 0.1s !important;
+  }
+}
+
+/* ======================================
+   10. إصلاح مشكلة iOS Safari
+   ====================================== */
+
+@supports (-webkit-touch-callout: none) {
+  aside.fixed {
+    height: -webkit-fill-available;
+  }
+  
+  aside.fixed.translate-x-0 {
+    position: fixed !important;
+  }
+}
+
+/* ======================================
+   11. تحسين الأيقونات في القائمة
+   ====================================== */
+
+aside.fixed nav button svg,
+aside.fixed button svg {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* ======================================
+   12. إصلاح مشكلة التداخل مع العناصر الأخرى
+   ====================================== */
+
+/* التأكد من أن القائمة فوق كل شيء عند فتحها */
+aside.fixed.translate-x-0 {
+  z-index: 100 !important;
+}
+
+/* طبقة التعتيم */
+aside.fixed.translate-x-0 ~ div[class*="bg-black"] {
+  z-index: 90 !important;
+}
+
+/* المحتوى الرئيسي */
+main {
+  z-index: 1;
+}
