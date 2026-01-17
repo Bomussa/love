@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import NotificationsManagementV2 from './NotificationsManagementV2';
 import ReportsPanel from './ReportsPanel';
+import AdvancedNotificationsManager from './AdvancedNotificationsManager';
+import FeatureControlPanel from './FeatureControlPanel';
+import EnhancedClinicsManager from './EnhancedClinicsManager';
 import supabase from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
@@ -4495,6 +4498,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'content', icon: Type, label: t('إدارة المحتوى', 'Content Management') },
     { id: 'appearance', icon: Palette, label: t('المظهر', 'Appearance') },
     { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
+    { id: 'features', icon: Settings, label: t('التحكم بالميزات', 'Feature Control') },
   ];
 
   return (
@@ -4808,6 +4812,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'content' && <ContentManagement language={language} t={t} />}
         {activeTab === 'appearance' && <AppearanceManagement language={language} t={t} />}
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
+        {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
+        {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
     </div>
   );
