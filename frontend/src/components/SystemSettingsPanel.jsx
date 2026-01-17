@@ -9,14 +9,18 @@ export function SystemSettingsPanel({ language = 'ar' }) {
   const [settings, setSettings] = useState({
     // توقيتات النظام
     queueIntervalSeconds: 120,        // 2 دقيقة للنداء التلقائي
-    patientMaxWaitSeconds: 240,       // 4 دقائق للمراجع قبل الدخول
+    patientMaxWaitSeconds: 120,       // 2 دقيقة للمراجع قبل الدخول
     examMaxSeconds: 300,               // 5 دقائق كحد أقصى للفحص داخل العيادة
     refreshIntervalSeconds: 30,       // تحديث البيانات
     nearTurnRefreshSeconds: 7,        // تحديث عند قرب الدور
     
+    // إعدادات الترحيل
+    maxPostpones: 3,                  // الحد الأقصى لمرات الترحيل قبل الإلغاء
+    postponeEnabled: true,            // تفعيل نظام الترحيل
+    
     // تفعيل/تعطيل الأنظمة
     autoCallEnabled: true,            // النداء التلقائي
-    timeoutHandlerEnabled: true,      // نقل المراجع بعد 4 دقائق
+    timeoutHandlerEnabled: true,      // نقل المراجع بعد انتهاء المهلة
     notificationsEnabled: true,       // الإشعارات
     
     // إظهار/إخفاء للمراجعين
@@ -26,7 +30,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
     showAheadCount: true,             // عرض عدد المنتظرين قبله
     
     // إعدادات إضافية
-    notifyNearAhead: 3,               // إشعار للـ3 التاليين
+    notifyNearAhead: 3,               // إشعار لل؀3 التاليين
     pinLateMinutes: 5,                // مهلة تأخير PIN
     noticeTtlSeconds: 30              // مدة عرض الإشعار
   })
@@ -80,10 +84,12 @@ export function SystemSettingsPanel({ language = 'ar' }) {
     try {
       const defaultSettings = {
         queueIntervalSeconds: 120,
-        patientMaxWaitSeconds: 240,
+        patientMaxWaitSeconds: 120,
         examMaxSeconds: 300,
         refreshIntervalSeconds: 30,
         nearTurnRefreshSeconds: 7,
+        maxPostpones: 3,
+        postponeEnabled: true,
         autoCallEnabled: true,
         timeoutHandlerEnabled: true,
         notificationsEnabled: true,
@@ -238,6 +244,69 @@ export function SystemSettingsPanel({ language = 'ar' }) {
         </CardContent>
       </Card>
 
+      {/* إعدادات الترحيل */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            إعدادات الترحيل والإلغاء
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ToggleRow
+            label="تفعيل نظام الترحيل"
+            description="ترحيل المراجع المتأخر لنهاية الدور برقم جديد"
+            enabled={settings.postponeEnabled}
+            onToggle={() => toggleSetting('postponeEnabled')}
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                الحد الأقصى لمرات الترحيل
+              </label>
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                value={settings.maxPostpones}
+                onChange={(e) => updateSetting('maxPostpones', parseInt(e.target.value))}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                بعد {settings.maxPostpones} مرات ترحيل لنفس العيادة يتم إلغاء المراجع نهائياً
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                مهلة الانتظار قبل الترحيل (ثانية)
+              </label>
+              <Input
+                type="number"
+                min="30"
+                max="300"
+                value={settings.patientMaxWaitSeconds}
+                onChange={(e) => updateSetting('patientMaxWaitSeconds', parseInt(e.target.value))}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                الحالي: {settings.patientMaxWaitSeconds} ثانية ({Math.floor(settings.patientMaxWaitSeconds / 60)} دقيقة)
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+            <h4 className="font-semibold text-yellow-800 mb-2">ملخص النظام:</h4>
+            <ul className="text-sm text-yellow-700 space-y-1">
+              <li>• عند استدعاء المراجع: يبدأ عداد {Math.floor(settings.patientMaxWaitSeconds / 60)} دقيقة</li>
+              <li>• إذا لم يدخل: يتم ترحيله لنهاية الدور برقم جديد</li>
+              <li>• بعد {settings.maxPostpones} ترحيلات لنفس العيادة: إلغاء نهائي</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* تفعيل/تعطيل الأنظمة */}
       <Card>
         <CardHeader>
@@ -257,7 +326,7 @@ export function SystemSettingsPanel({ language = 'ar' }) {
 
             <ToggleRow
               label="نقل المراجع المتأخر لنهاية الدور"
-              description="يتم نقل المراجع تلقائياً بعد 4 دقائق"
+              description={`يتم نقل المراجع تلقائياً بعد ${Math.floor(settings.patientMaxWaitSeconds / 60)} دقيقة`}
               enabled={settings.timeoutHandlerEnabled}
               onToggle={() => toggleSetting('timeoutHandlerEnabled')}
             />

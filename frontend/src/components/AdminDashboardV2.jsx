@@ -4614,7 +4614,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   };
 
   const processQueueData = (data, dateField) => {
-    const uniquePatients = new Set(data.map(item => item.patient_id)).size;
+    // إجمالي المرضى = عدد السجلات الكلي (مجموع جميع الزيارات)
+    const totalPatients = data.length;
+    // في الانتظار = مجموع المنتظرين في جميع العيادات
     const waitingCount = data.filter(item => item.status === 'waiting').length;
     const completedCount = data.filter(item => item.status === 'completed').length;
 
@@ -4630,7 +4632,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
     setStats(prev => ({
       ...prev,
-      totalPatients: uniquePatients,
+      totalPatients: totalPatients,
       waiting: waitingCount,
       completed: completedCount,
       avgWaitTime: avgWait

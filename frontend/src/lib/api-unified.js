@@ -557,6 +557,296 @@ const api = {
       console.error('Check and Skip Stale Queues Error:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // --- Postpone Patient System ---
+  /**
+   * ترحيل المراجع المتأخر لنهاية الدور
+   * ============================================================================
+   * 1. التحقق من عدد مرات الترحيل (3 فرص كحد أقصى)
+   * 2. إذا تجاوز 3 مرات → إلغاء من الفحص نهائياً
+   * 3. إلغاء الرقم الحالي وتسجيل ملاحظة
+   * 4. إنشاء سجل جديد برقم دور جديد في نهاية الطابور
+   * ============================================================================
+   */
+  async postponePatient(clinicId, patientId, reason = 'تأخر عن الحضور', maxPostpones = 3) {
+    try {
+      // 1. جلب السجل الحالي للمراجع
+      const { data: currentQueue, error: fetchError } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('patient_id', patientId)
+        .in('status', ['waiting', 'called', 'serving'])
+        .single();
+
+      if (fetchError || !currentQueue) {
+        return { success: false, error: 'لم يتم العثور على سجل المراجع' };
+      }
+
+      const oldDisplayNumber = currentQueue.display_number;
+      const currentPostponeCount = currentQueue.postpone_count || 0;
+
+      // 2. التحقق من عدد مرات الترحيل
+      if (currentPostponeCount >= maxPostpones) {
+        // إلغاء المراجع نهائياً من هذه العيادة
+        const { error: cancelError } = await supabase
+          .from('queues')
+          .update({
+            status: 'cancelled',
+            completed_at: new Date().toISOString(),
+            notes: `ملغى نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات). الرقم: ${oldDisplayNumber}`
+          })
+          .eq('id', currentQueue.id);
+
+        if (cancelError) throw cancelError;
+
+        // تسجيل الحركة في سجل النشاطات
+        await supabase
+          .from('activity_logs')
+          .insert({
+            action: 'patient_cancelled_max_postpones',
+            patient_id: patientId,
+            clinic_id: clinicId,
+            details: JSON.stringify({
+              display_number: oldDisplayNumber,
+              postpone_count: currentPostponeCount,
+              reason: `تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`
+            }),
+            created_at: new Date().toISOString()
+          });
+
+        return {
+          success: true,
+          cancelled: true,
+          data: {
+            oldNumber: oldDisplayNumber,
+            postponeCount: currentPostponeCount
+          },
+          message: `تم إلغاء المراجع نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`
+        };
+      }
+
+      // 3. إلغاء الرقم الحالي مع تسجيل ملاحظة
+      const newPostponeCount = currentPostponeCount + 1;
+      const { error: cancelError } = await supabase
+        .from('queues')
+        .update({
+          status: 'postponed',
+          completed_at: new Date().toISOString(),
+          notes: `مُرحّل (${newPostponeCount}/${maxPostpones}) - ${reason}. الرقم السابق: ${oldDisplayNumber}`
+        })
+        .eq('id', currentQueue.id);
+
+      if (cancelError) throw cancelError;
+
+      // 4. حساب رقم الدور الجديد (آخر رقم + 1)
+      const { data: lastQueue, error: lastError } = await supabase
+        .from('queues')
+        .select('display_number')
+        .eq('clinic_id', clinicId)
+        .order('display_number', { ascending: false })
+        .limit(1)
+        .single();
+
+      const newDisplayNumber = (lastQueue?.display_number || 0) + 1;
+
+      // 5. إنشاء سجل جديد برقم دور جديد في نهاية الطابور
+      const { data: newQueue, error: insertError } = await supabase
+        .from('queues')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: patientId,
+          display_number: newDisplayNumber,
+          status: 'waiting',
+          entered_at: new Date().toISOString(),
+          postpone_count: newPostponeCount,
+          notes: `مُرحّل من الرقم ${oldDisplayNumber} (${newPostponeCount}/${maxPostpones}) - ${reason}`
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // 6. تسجيل الحركة في سجل النشاطات
+      await supabase
+        .from('activity_logs')
+        .insert({
+          action: 'patient_postponed',
+          patient_id: patientId,
+          clinic_id: clinicId,
+          details: JSON.stringify({
+            old_number: oldDisplayNumber,
+            new_number: newDisplayNumber,
+            postpone_count: newPostponeCount,
+            max_postpones: maxPostpones,
+            reason: reason
+          }),
+          created_at: new Date().toISOString()
+        });
+
+      return {
+        success: true,
+        cancelled: false,
+        data: {
+          oldNumber: oldDisplayNumber,
+          newNumber: newDisplayNumber,
+          postponeCount: newPostponeCount,
+          maxPostpones: maxPostpones,
+          remainingChances: maxPostpones - newPostponeCount,
+          newQueue: newQueue
+        },
+        message: `تم ترحيل المراجع من رقم ${oldDisplayNumber} إلى رقم ${newDisplayNumber} (${newPostponeCount}/${maxPostpones})`
+      };
+    } catch (error) {
+      console.error('Postpone Patient Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * ترحيل المراجع المتأخر واستدعاء التالي تلقائياً
+   */
+  async postponeAndCallNext(clinicId, patientId, pin, reason = 'تأخر عن الحضور', maxPostpones = 3) {
+    try {
+      // 1. ترحيل المراجع المتأخر
+      const postponeResult = await this.postponePatient(clinicId, patientId, reason, maxPostpones);
+      if (!postponeResult.success) {
+        return postponeResult;
+      }
+
+      // 2. إذا تم إلغاء المراجع نهائياً، استدعاء التالي فقط
+      if (postponeResult.cancelled) {
+        const callResult = await this.callNextPatient(clinicId, pin);
+        return {
+          success: true,
+          cancelled: true,
+          postponed: postponeResult.data,
+          nextPatient: callResult.success ? callResult.data : null,
+          message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : '')
+        };
+      }
+
+      // 3. استدعاء المراجع التالي
+      const callResult = await this.callNextPatient(clinicId, pin);
+
+      return {
+        success: true,
+        cancelled: false,
+        postponed: postponeResult.data,
+        nextPatient: callResult.success ? callResult.data : null,
+        message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : '')
+      };
+    } catch (error) {
+      console.error('Postpone and Call Next Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- System Settings Management ---
+  /**
+   * جلب إعدادات النظام من قاعدة البيانات
+   */
+  async getSystemSettings(category = 'queue') {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('category', category)
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // تحويل البيانات إلى كائن سهل الاستخدام
+      const settings = {};
+      data.forEach(item => {
+        settings[item.id] = {
+          value: item.value,
+          description: item.description,
+          is_active: item.is_active
+        };
+      });
+
+      return { success: true, data: settings };
+    } catch (error) {
+      console.error('Get System Settings Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * تحديث إعداد معين
+   */
+  async updateSystemSetting(settingId, newValue, updatedBy = 'admin') {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({
+          value: newValue,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', settingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data, message: `تم تحديث الإعداد: ${settingId}` };
+    } catch (error) {
+      console.error('Update System Setting Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * تفعيل/تعطيل إعداد معين
+   */
+  async toggleSystemSetting(settingId, isActive, updatedBy = 'admin') {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({
+          is_active: isActive,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', settingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { 
+        success: true, 
+        data, 
+        message: `تم ${isActive ? 'تفعيل' : 'تعطيل'} الإعداد: ${settingId}` 
+      };
+    } catch (error) {
+      console.error('Toggle System Setting Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب قيمة إعداد معين
+   */
+  async getSettingValue(settingId, defaultValue = null) {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value, is_active')
+        .eq('id', settingId)
+        .single();
+
+      if (error || !data) return defaultValue;
+      if (!data.is_active) return defaultValue;
+
+      return data.value;
+    } catch (error) {
+      console.error('Get Setting Value Error:', error);
+      return defaultValue;
+    }
   }
 };
 
