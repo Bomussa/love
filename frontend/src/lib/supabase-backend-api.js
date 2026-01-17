@@ -1017,10 +1017,28 @@ export async function getMonthlyReport() {
 // ==========================================
 
 export async function adminLogin(username, password) {
-  // تسجيل دخول الإدارة - يمكن تحسينه لاحقاً
-  if (username === 'admin' && password === 'admin123') {
-    return { success: true, token: 'admin-token-' + Date.now() };
+  // تسجيل دخول الإدارة - السوبر أدمن: Bomussa / 14490
+  // اسم المستخدم غير حساس لحالة الأحرف
+  if (username.toLowerCase() === 'bomussa' && password === '14490') {
+    return { success: true, token: 'admin-token-' + Date.now(), role: 'SUPER_ADMIN' };
   }
+  
+  // التحقق من المستخدمين الآخرين من قاعدة البيانات
+  try {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .ilike('username', username)
+      .eq('is_active', true)
+      .single();
+    
+    if (data && data.password === password) {
+      return { success: true, token: 'admin-token-' + Date.now(), role: data.role || 'ADMIN' };
+    }
+  } catch (e) {
+    console.log('[AdminLogin] DB check failed, using fallback');
+  }
+  
   return { success: false, error: 'بيانات الدخول غير صحيحة' };
 }
 

@@ -6,9 +6,9 @@
  */
 
 export const ADMIN_CREDENTIALS = {
-  // بيانات الدخول الرئيسية - من environment variables
-  username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
-  password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
+  // بيانات الدخول الرئيسية - السوبر أدمن
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'Bomussa',
+  password: import.meta.env.VITE_ADMIN_PASSWORD || '14490',
   
   // بيانات إضافية للتحقق
   roles: ['admin', 'super_admin'],
@@ -18,26 +18,39 @@ export const ADMIN_CREDENTIALS = {
     'pin_management',
     'reports',
     'clinic_configuration',
-    'settings'
+    'settings',
+    'user_management',
+    'activity_logs',
+    'backup_export',
+    'offline_mode',
+    'content_management',
+    'appearance',
+    'database_management'
   ],
   
   // معلومات النظام
   systemInfo: {
     projectName: 'مشروع 2027',
     version: '2.0.0',
-    lastUpdate: '2025-10-23'
+    lastUpdate: '2026-01-17'
   }
 }
 
 /**
  * التحقق من بيانات الدخول
+ * اسم المستخدم غير حساس لحالة الأحرف (case-insensitive)
+ * كلمة المرور حساسة لحالة الأحرف (case-sensitive)
  * @param {string} username - اسم المستخدم
  * @param {string} password - كلمة المرور
  * @returns {boolean} - نتيجة التحقق
  */
 export function validateAdminCredentials(username, password) {
-  return username === ADMIN_CREDENTIALS.username && 
-         password === ADMIN_CREDENTIALS.password
+  // اسم المستخدم غير حساس لحالة الأحرف
+  const isUsernameValid = username.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase()
+  // كلمة المرور حساسة لحالة الأحرف
+  const isPasswordValid = password === ADMIN_CREDENTIALS.password
+  
+  return isUsernameValid && isPasswordValid
 }
 
 /**
@@ -50,4 +63,3 @@ export function hasPermission(permission) {
 }
 
 export default ADMIN_CREDENTIALS
-

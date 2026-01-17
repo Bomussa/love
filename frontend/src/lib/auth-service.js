@@ -1,45 +1,47 @@
 /**
  * Auth Service - Authentication System
  * Updated with Emergency Access and Robust Error Handling
+ * السوبر أدمن: Bomussa / 14490
  */
 
 import api from './api-unified';
+import { validateAdminCredentials } from '../config/admin-credentials';
 
 class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
-    this.maxAttempts = 5; // Increased for usability
-    this.lockoutDuration = 5 * 60 * 1000; // Reduced to 5 mins
+    this.maxAttempts = 5;
+    this.lockoutDuration = 5 * 60 * 1000; // 5 mins
     this.sessionTimeout = 60 * 60 * 1000; // 60 mins
   }
 
   async login(username, password) {
     try {
-      // 1. EMERGENCY FALLBACK (Deterministic Access)
-      // This guarantees access even if API is down/misconfigured
-      if (username.toLowerCase() === 'admin' && password === 'admin123') {
-          console.warn('[Auth] Using Emergency Fallback Credentials');
+      // 1. التحقق من السوبر أدمن (Bomussa)
+      // اسم المستخدم غير حساس لحالة الأحرف
+      if (validateAdminCredentials(username, password)) {
+          console.log('[Auth] Super Admin Login - Bomussa');
           const session = this.createSession(username, 'SUPER_ADMIN');
           return { success: true, session };
       }
 
-      // 2. Try API Login
+      // 2. Try API Login for other users
       const response = await api.adminLogin(username, password);
 
       if (response.success) {
-        const session = this.createSession(username, 'ADMIN'); // Default role
+        const session = this.createSession(username, response.role || 'ADMIN');
         return { success: true, session };
       } else {
         return { success: false, error: response.message || 'Invalid credentials' };
       }
     } catch (error) {
       console.error('[Auth] Login error:', error);
-      // Fallback for network errors if credentials match emergency
-      if (username.toLowerCase() === 'admin' && password === 'admin123') {
+      // Fallback for network errors - check super admin credentials
+      if (validateAdminCredentials(username, password)) {
           const session = this.createSession(username, 'SUPER_ADMIN');
           return { success: true, session };
       }
-      return { success: false, error: 'Connection failed. Try admin/admin123' };
+      return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
     }
   }
 
@@ -75,6 +77,15 @@ class AuthService {
 
   saveSession(session) {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
+  }
+
+  isAuthenticated() {
+    return this.getSession() !== null;
+  }
+
+  isSuperAdmin() {
+    const session = this.getSession();
+    return session && session.role === 'SUPER_ADMIN';
   }
 }
 
