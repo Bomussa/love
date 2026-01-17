@@ -1458,13 +1458,31 @@ const NotificationsManagement = ({ language, t }) => {
   );
 };
 
-// مكون إدارة المسارات
+// مكون إدارة المسارات - محدث ليتوافق مع هيكل قاعدة البيانات
 const RoutesManagement = ({ language, t }) => {
   const [routes, setRoutes] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newRoute, setNewRoute] = useState({ name_ar: '', name_en: '', clinics: [], order: 1, is_active: true });
+  const [editingRoute, setEditingRoute] = useState(null);
+  const [newRoute, setNewRoute] = useState({ 
+    exam_type: '', 
+    route_name: '', 
+    clinics: [], 
+    order_sequence: 1, 
+    is_active: true 
+  });
+
+  // أنواع الفحوصات المتاحة
+  const examTypes = [
+    { id: 'general', name_ar: 'فحص عام', name_en: 'General Exam' },
+    { id: 'periodic', name_ar: 'فحص دوري', name_en: 'Periodic Exam' },
+    { id: 'pre_employment', name_ar: 'فحص ما قبل التوظيف', name_en: 'Pre-Employment Exam' },
+    { id: 'fitness', name_ar: 'فحص اللياقة', name_en: 'Fitness Exam' },
+    { id: 'specialized', name_ar: 'فحص تخصصي', name_en: 'Specialized Exam' },
+    { id: 'follow_up', name_ar: 'متابعة', name_en: 'Follow-up' },
+    { id: 'emergency', name_ar: 'طوارئ', name_en: 'Emergency' }
+  ];
 
   useEffect(() => {
     loadRoutes();
@@ -1472,8 +1490,22 @@ const RoutesManagement = ({ language, t }) => {
   }, []);
 
   const loadClinics = async () => {
-    const { data } = await supabase.from('clinics').select('*').order('name_ar');
-    if (data) setClinics(data);
+    try {
+      const { data } = await supabase.from('clinics').select('*').order('name_ar');
+      if (data) {
+        // إزالة التكرارات بناءً على الاسم العربي
+        const uniqueClinics = data.reduce((acc, clinic) => {
+          const existingClinic = acc.find(c => c.name_ar === clinic.name_ar);
+          if (!existingClinic) {
+            acc.push(clinic);
+          }
+          return acc;
+        }, []);
+        setClinics(uniqueClinics);
+      }
+    } catch (e) {
+      console.error('Error loading clinics:', e);
+    }
   };
 
   const loadRoutes = async () => {
@@ -1482,7 +1514,7 @@ const RoutesManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('routes')
         .select('*')
-        .order('order_num', { ascending: true });
+        .order('order_sequence', { ascending: true });
       
       if (!error && data) setRoutes(data);
     } catch (e) {
@@ -1493,29 +1525,63 @@ const RoutesManagement = ({ language, t }) => {
   };
 
   const addRoute = async () => {
+    if (!newRoute.exam_type || !newRoute.route_name) {
+      alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
+      return;
+    }
     try {
       const { error } = await supabase.from('routes').insert({
-        name_ar: newRoute.name_ar,
-        name_en: newRoute.name_en,
-        clinic_ids: newRoute.clinics,
-        order_num: newRoute.order,
+        exam_type: newRoute.exam_type,
+        route_name: newRoute.route_name,
+        clinics: newRoute.clinics,
+        order_sequence: newRoute.order_sequence || 1,
         is_active: true,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
       
       if (!error) {
+        await logActivity('route_created', `تم إنشاء مسار جديد: ${newRoute.route_name}`);
         loadRoutes();
         setShowAddForm(false);
-        setNewRoute({ name_ar: '', name_en: '', clinics: [], order: 1, is_active: true });
+        setNewRoute({ exam_type: '', route_name: '', clinics: [], order_sequence: 1, is_active: true });
+      } else {
+        console.error('Error adding route:', error);
+        alert(t('حدث خطأ أثناء إضافة المسار', 'Error adding route'));
       }
     } catch (e) {
       console.error('Error adding route:', e);
     }
   };
 
+  const updateRoute = async () => {
+    if (!editingRoute) return;
+    try {
+      const { error } = await supabase.from('routes').update({
+        exam_type: editingRoute.exam_type,
+        route_name: editingRoute.route_name,
+        clinics: editingRoute.clinics,
+        order_sequence: editingRoute.order_sequence,
+        updated_at: new Date().toISOString()
+      }).eq('id', editingRoute.id);
+      
+      if (!error) {
+        await logActivity('route_updated', `تم تحديث المسار: ${editingRoute.route_name}`);
+        loadRoutes();
+        setEditingRoute(null);
+      }
+    } catch (e) {
+      console.error('Error updating route:', e);
+    }
+  };
+
   const toggleRoute = async (id, currentStatus) => {
     try {
-      await supabase.from('routes').update({ is_active: !currentStatus }).eq('id', id);
+      await supabase.from('routes').update({ 
+        is_active: !currentStatus,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+      await logActivity('route_toggled', `تم ${!currentStatus ? 'تفعيل' : 'تعطيل'} المسار`);
       loadRoutes();
     } catch (e) {
       console.error('Error toggling route:', e);
@@ -1526,20 +1592,178 @@ const RoutesManagement = ({ language, t }) => {
     if (!window.confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
     try {
       await supabase.from('routes').delete().eq('id', id);
+      await logActivity('route_deleted', 'تم حذف مسار');
       loadRoutes();
     } catch (e) {
       console.error('Error deleting route:', e);
     }
   };
 
+  const toggleClinicSelection = (clinicId, isEditing = false) => {
+    if (isEditing && editingRoute) {
+      const currentClinics = editingRoute.clinics || [];
+      const newClinics = currentClinics.includes(clinicId)
+        ? currentClinics.filter(id => id !== clinicId)
+        : [...currentClinics, clinicId];
+      setEditingRoute({...editingRoute, clinics: newClinics});
+    } else {
+      const currentClinics = newRoute.clinics || [];
+      const newClinics = currentClinics.includes(clinicId)
+        ? currentClinics.filter(id => id !== clinicId)
+        : [...currentClinics, clinicId];
+      setNewRoute({...newRoute, clinics: newClinics});
+    }
+  };
+
+  const getClinicName = (clinicId) => {
+    const clinic = clinics.find(c => c.id === clinicId);
+    return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicId;
+  };
+
+  const getExamTypeName = (examType) => {
+    const type = examTypes.find(t => t.id === examType);
+    return type ? (language === 'ar' ? type.name_ar : type.name_en) : examType;
+  };
+
+  // نموذج إضافة/تعديل المسار
+  const RouteForm = ({ route, isEditing, onSave, onCancel }) => {
+    const currentRoute = isEditing ? editingRoute : newRoute;
+    const setCurrentRoute = isEditing ? setEditingRoute : setNewRoute;
+
+    return (
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+        <h4 className="font-bold mb-4 text-lg">
+          {isEditing ? t('تعديل المسار', 'Edit Route') : t('إضافة مسار جديد', 'Add New Route')}
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* نوع الفحص */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              {t('نوع الفحص', 'Exam Type')} <span className="text-red-400">*</span>
+            </label>
+            <select
+              value={currentRoute?.exam_type || ''}
+              onChange={(e) => setCurrentRoute({...currentRoute, exam_type: e.target.value})}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+            >
+              <option value="">{t('اختر نوع الفحص', 'Select Exam Type')}</option>
+              {examTypes.map(type => (
+                <option key={type.id} value={type.id}>
+                  {language === 'ar' ? type.name_ar : type.name_en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* اسم المسار */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              {t('اسم المسار', 'Route Name')} <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={currentRoute?.route_name || ''}
+              onChange={(e) => setCurrentRoute({...currentRoute, route_name: e.target.value})}
+              placeholder={t('مثال: مسار الفحص الشامل', 'Example: Complete Exam Route')}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+
+          {/* الترتيب */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">{t('الترتيب', 'Order')}</label>
+            <input
+              type="number"
+              min="1"
+              value={currentRoute?.order_sequence || 1}
+              onChange={(e) => setCurrentRoute({...currentRoute, order_sequence: parseInt(e.target.value) || 1})}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+            />
+          </div>
+
+          {/* العيادات المحددة */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              {t('العيادات المحددة', 'Selected Clinics')}: {(currentRoute?.clinics || []).length}
+            </label>
+            <div className="flex flex-wrap gap-2 min-h-[48px] bg-white/5 border border-white/10 rounded-xl p-2">
+              {(currentRoute?.clinics || []).map(clinicId => (
+                <span 
+                  key={clinicId} 
+                  className="px-2 py-1 bg-[#C9A54C]/20 text-[#C9A54C] rounded-lg text-sm flex items-center gap-1"
+                >
+                  {getClinicName(clinicId)}
+                  <button 
+                    onClick={() => toggleClinicSelection(clinicId, isEditing)}
+                    className="hover:text-red-400"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+              {(currentRoute?.clinics || []).length === 0 && (
+                <span className="text-gray-500 text-sm">{t('لم يتم اختيار عيادات', 'No clinics selected')}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* قائمة العيادات للاختيار */}
+        <div className="mt-4">
+          <label className="block text-sm text-gray-400 mb-2">
+            {t('اختر العيادات (اضغط للإضافة/الإزالة)', 'Select Clinics (Click to add/remove)')}
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto bg-white/5 border border-white/10 rounded-xl p-3">
+            {clinics.map(clinic => {
+              const isSelected = (currentRoute?.clinics || []).includes(clinic.id);
+              return (
+                <button
+                  key={clinic.id}
+                  onClick={() => toggleClinicSelection(clinic.id, isEditing)}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all text-right ${
+                    isSelected 
+                      ? 'bg-[#C9A54C] text-black font-medium' 
+                      : 'bg-white/5 text-white hover:bg-white/10'
+                  }`}
+                >
+                  {language === 'ar' ? clinic.name_ar : clinic.name_en}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* أزرار الحفظ والإلغاء */}
+        <div className="flex gap-2 mt-6">
+          <button 
+            onClick={onSave} 
+            className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all font-medium flex items-center gap-2"
+          >
+            <Save size={18} />
+            {t('حفظ', 'Save')}
+          </button>
+          <button 
+            onClick={onCancel} 
+            className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+          >
+            {t('إلغاء', 'Cancel')}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h3 className="text-xl font-bold">{t('إدارة المسارات الطبية', 'Medical Routes Management')}</h3>
         <div className="flex gap-2">
           <button 
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
+            onClick={() => {
+              setShowAddForm(true);
+              setEditingRoute(null);
+            }}
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2 font-medium"
           >
             <Plus size={18} />
             {t('إضافة مسار', 'Add Route')}
@@ -1553,82 +1777,84 @@ const RoutesManagement = ({ language, t }) => {
         </div>
       </div>
 
-      {showAddForm && (
-        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
-          <h4 className="font-bold mb-4">{t('إضافة مسار جديد', 'Add New Route')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('اسم المسار (عربي)', 'Route Name (Arabic)')}</label>
-              <input
-                type="text"
-                value={newRoute.name_ar}
-                onChange={(e) => setNewRoute({...newRoute, name_ar: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('اسم المسار (إنجليزي)', 'Route Name (English)')}</label>
-              <input
-                type="text"
-                value={newRoute.name_en}
-                onChange={(e) => setNewRoute({...newRoute, name_en: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('الترتيب', 'Order')}</label>
-              <input
-                type="number"
-                value={newRoute.order}
-                onChange={(e) => setNewRoute({...newRoute, order: parseInt(e.target.value)})}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('العيادات', 'Clinics')}</label>
-              <select
-                multiple
-                value={newRoute.clinics}
-                onChange={(e) => setNewRoute({...newRoute, clinics: Array.from(e.target.selectedOptions, o => o.value)})}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white h-32"
-              >
-                {clinics.map(c => (
-                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button onClick={addRoute} className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all">
-              {t('حفظ', 'Save')}
-            </button>
-            <button onClick={() => setShowAddForm(false)} className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all">
-              {t('إلغاء', 'Cancel')}
-            </button>
-          </div>
-        </div>
+      {/* نموذج إضافة مسار جديد */}
+      {showAddForm && !editingRoute && (
+        <RouteForm 
+          route={newRoute} 
+          isEditing={false} 
+          onSave={addRoute} 
+          onCancel={() => {
+            setShowAddForm(false);
+            setNewRoute({ exam_type: '', route_name: '', clinics: [], order_sequence: 1, is_active: true });
+          }} 
+        />
       )}
 
+      {/* نموذج تعديل المسار */}
+      {editingRoute && (
+        <RouteForm 
+          route={editingRoute} 
+          isEditing={true} 
+          onSave={updateRoute} 
+          onCancel={() => setEditingRoute(null)} 
+        />
+      )}
+
+      {/* قائمة المسارات */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {routes.map(route => (
           <div key={route.id} className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-bold text-lg">{language === 'ar' ? (route.name_ar || route.name_en) : (route.name_en || route.name_ar)}</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-bold text-lg">{route.route_name}</h4>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                 route.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
               }`}>
                 {route.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
               </span>
             </div>
-            <p className="text-gray-400 text-sm mb-4">{t('الترتيب:', 'Order:')} {route.order_num}</p>
+            
+            <div className="space-y-2 mb-4">
+              <p className="text-gray-400 text-sm">
+                <span className="text-[#C9A54C]">{t('نوع الفحص:', 'Exam Type:')}</span> {getExamTypeName(route.exam_type)}
+              </p>
+              <p className="text-gray-400 text-sm">
+                <span className="text-[#C9A54C]">{t('الترتيب:', 'Order:')}</span> {route.order_sequence}
+              </p>
+              <div className="text-gray-400 text-sm">
+                <span className="text-[#C9A54C]">{t('العيادات:', 'Clinics:')}</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(route.clinics || []).slice(0, 3).map(clinicId => (
+                    <span key={clinicId} className="px-2 py-0.5 bg-white/10 rounded text-xs">
+                      {getClinicName(clinicId)}
+                    </span>
+                  ))}
+                  {(route.clinics || []).length > 3 && (
+                    <span className="px-2 py-0.5 bg-white/10 rounded text-xs">
+                      +{(route.clinics || []).length - 3} {t('أخرى', 'more')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button
+                onClick={() => {
+                  setEditingRoute(route);
+                  setShowAddForm(false);
+                }}
+                className="flex-1 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all flex items-center justify-center gap-2"
+              >
+                <Edit size={16} />
+                {t('تعديل', 'Edit')}
+              </button>
+              <button
                 onClick={() => toggleRoute(route.id, route.is_active)}
-                className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                className={`p-2 rounded-lg transition-all ${
                   route.is_active ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
                 }`}
               >
-                {route.is_active ? <><Pause size={16} /> {t('إيقاف', 'Disable')}</> : <><Play size={16} /> {t('تفعيل', 'Enable')}</>}
+                {route.is_active ? <Pause size={16} /> : <Play size={16} />}
               </button>
               <button
                 onClick={() => deleteRoute(route.id)}
@@ -1641,9 +1867,16 @@ const RoutesManagement = ({ language, t }) => {
         ))}
       </div>
 
-      {routes.length === 0 && (
+      {routes.length === 0 && !loading && (
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-8 text-center text-gray-400">
-          {t('لا توجد مسارات. اضغط على "إضافة مسار" لإنشاء مسار جديد.', 'No routes found. Click "Add Route" to create a new route.')}
+          <MapPin size={48} className="mx-auto mb-4 opacity-50" />
+          <p>{t('لا توجد مسارات. اضغط على "إضافة مسار" لإنشاء مسار جديد.', 'No routes found. Click "Add Route" to create a new route.')}</p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex justify-center py-8">
+          <RefreshCw size={32} className="animate-spin text-[#C9A54C]" />
         </div>
       )}
     </div>
