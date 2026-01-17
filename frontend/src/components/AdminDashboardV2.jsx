@@ -2390,6 +2390,810 @@ const OfflineSettings = ({ language, t }) => {
   );
 };
 
+// مكون إدارة المحتوى - تحكم كامل في جميع النصوص
+const ContentManagement = ({ language, t }) => {
+  const [contents, setContents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingItem, setEditingItem] = useState(null);
+  const [activeCategory, setActiveCategory] = useState('general');
+
+  const categories = [
+    { id: 'general', label: t('عام', 'General'), icon: Type },
+    { id: 'clinics', label: t('العيادات', 'Clinics'), icon: Activity },
+    { id: 'messages', label: t('الرسائل', 'Messages'), icon: Bell },
+    { id: 'buttons', label: t('الأزرار', 'Buttons'), icon: Square },
+    { id: 'labels', label: t('التسميات', 'Labels'), icon: FileText },
+  ];
+
+  const defaultContents = {
+    general: [
+      { key: 'app_title', ar: 'اللجنة الطبية العسكرية', en: 'Military Medical Committee', description: 'عنوان التطبيق' },
+      { key: 'center_name', ar: 'المركز الطبي العسكري التخصصي', en: 'Military Specialized Medical Center', description: 'اسم المركز' },
+      { key: 'welcome_message', ar: 'مرحباً بك', en: 'Welcome', description: 'رسالة الترحيب' },
+      { key: 'footer_text', ar: 'جميع الحقوق محفوظة', en: 'All Rights Reserved', description: 'نص التذييل' },
+    ],
+    clinics: [
+      { key: 'clinic_dermatology', ar: 'الجلدية', en: 'Dermatology', description: 'عيادة الجلدية' },
+      { key: 'clinic_internal', ar: 'الباطنية', en: 'Internal Medicine', description: 'عيادة الباطنية' },
+      { key: 'clinic_orthopedics', ar: 'العظام', en: 'Orthopedics', description: 'عيادة العظام' },
+      { key: 'clinic_ophthalmology', ar: 'العيون', en: 'Ophthalmology', description: 'عيادة العيون' },
+      { key: 'clinic_dental', ar: 'الأسنان', en: 'Dentistry', description: 'عيادة الأسنان' },
+      { key: 'clinic_lab', ar: 'المختبر', en: 'Laboratory', description: 'المختبر' },
+      { key: 'clinic_radiology', ar: 'الأشعة', en: 'Radiology', description: 'قسم الأشعة' },
+    ],
+    messages: [
+      { key: 'msg_success', ar: 'تمت العملية بنجاح', en: 'Operation successful', description: 'رسالة النجاح' },
+      { key: 'msg_error', ar: 'حدث خطأ', en: 'An error occurred', description: 'رسالة الخطأ' },
+      { key: 'msg_confirm', ar: 'هل أنت متأكد؟', en: 'Are you sure?', description: 'رسالة التأكيد' },
+      { key: 'msg_loading', ar: 'جاري التحميل...', en: 'Loading...', description: 'رسالة التحميل' },
+      { key: 'msg_no_data', ar: 'لا توجد بيانات', en: 'No data found', description: 'رسالة عدم وجود بيانات' },
+      { key: 'msg_wait', ar: 'يرجى الانتظار', en: 'Please wait', description: 'رسالة الانتظار' },
+    ],
+    buttons: [
+      { key: 'btn_save', ar: 'حفظ', en: 'Save', description: 'زر الحفظ' },
+      { key: 'btn_cancel', ar: 'إلغاء', en: 'Cancel', description: 'زر الإلغاء' },
+      { key: 'btn_delete', ar: 'حذف', en: 'Delete', description: 'زر الحذف' },
+      { key: 'btn_edit', ar: 'تعديل', en: 'Edit', description: 'زر التعديل' },
+      { key: 'btn_add', ar: 'إضافة', en: 'Add', description: 'زر الإضافة' },
+      { key: 'btn_next', ar: 'التالي', en: 'Next', description: 'زر التالي' },
+      { key: 'btn_back', ar: 'رجوع', en: 'Back', description: 'زر الرجوع' },
+      { key: 'btn_confirm', ar: 'تأكيد', en: 'Confirm', description: 'زر التأكيد' },
+    ],
+    labels: [
+      { key: 'lbl_patient_id', ar: 'الرقم العسكري', en: 'Military ID', description: 'تسمية الرقم العسكري' },
+      { key: 'lbl_queue_number', ar: 'رقم الدور', en: 'Queue Number', description: 'تسمية رقم الدور' },
+      { key: 'lbl_status', ar: 'الحالة', en: 'Status', description: 'تسمية الحالة' },
+      { key: 'lbl_waiting', ar: 'بانتظار', en: 'Waiting', description: 'حالة الانتظار' },
+      { key: 'lbl_called', ar: 'تم الاستدعاء', en: 'Called', description: 'حالة الاستدعاء' },
+      { key: 'lbl_completed', ar: 'مكتمل', en: 'Completed', description: 'حالة الاكتمال' },
+    ],
+  };
+
+  useEffect(() => {
+    loadContents();
+  }, [activeCategory]);
+
+  const loadContents = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('app_contents')
+        .select('*')
+        .eq('category', activeCategory);
+      
+      if (!error && data && data.length > 0) {
+        setContents(data);
+      } else {
+        // استخدام القيم الافتراضية
+        setContents(defaultContents[activeCategory] || []);
+      }
+    } catch (e) {
+      setContents(defaultContents[activeCategory] || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveContent = async (item) => {
+    try {
+      const { error } = await supabase
+        .from('app_contents')
+        .upsert({
+          key: item.key,
+          category: activeCategory,
+          value_ar: item.ar,
+          value_en: item.en,
+          description: item.description,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+      
+      if (!error) {
+        setEditingItem(null);
+        loadContents();
+      }
+    } catch (e) {
+      console.error('Error saving content:', e);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Type size={24} className="text-[#C9A54C]" />
+          {t('إدارة المحتوى', 'Content Management')}
+        </h3>
+      </div>
+
+      {/* تبويبات الفئات */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
+              activeCategory === cat.id
+                ? 'bg-[#C9A54C] text-black font-medium'
+                : 'bg-white/5 hover:bg-white/10'
+            }`}
+          >
+            <cat.icon size={16} />
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* قائمة المحتوى */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center">
+            <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+            {t('جاري التحميل...', 'Loading...')}
+          </div>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {contents.map((item, index) => (
+              <div key={item.key || index} className="p-4 hover:bg-white/5">
+                {editingItem?.key === item.key ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">{t('العربية', 'Arabic')}</label>
+                        <input
+                          type="text"
+                          value={editingItem.ar}
+                          onChange={(e) => setEditingItem({...editingItem, ar: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-right"
+                          dir="rtl"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">{t('الإنجليزية', 'English')}</label>
+                        <input
+                          type="text"
+                          value={editingItem.en}
+                          onChange={(e) => setEditingItem({...editingItem, en: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setEditingItem(null)}
+                        className="px-4 py-2 bg-white/10 rounded-lg"
+                      >
+                        {t('إلغاء', 'Cancel')}
+                      </button>
+                      <button
+                        onClick={() => saveContent(editingItem)}
+                        className="px-4 py-2 bg-[#C9A54C] text-black font-medium rounded-lg flex items-center gap-2"
+                      >
+                        <Save size={16} /> {t('حفظ', 'Save')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-400 mb-1">{item.description}</p>
+                      <div className="flex gap-4">
+                        <span className="text-white" dir="rtl">{item.ar}</span>
+                        <span className="text-gray-300">|</span>
+                        <span className="text-gray-300">{item.en}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setEditingItem({...item})}
+                      className="p-2 hover:bg-white/10 rounded-lg"
+                    >
+                      <Edit size={18} className="text-[#C9A54C]" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// مكون إدارة المظهر - تحكم كامل في الألوان والخطوط
+const AppearanceManagement = ({ language, t }) => {
+  const [settings, setSettings] = useState({
+    primaryColor: '#8A1538',
+    secondaryColor: '#C9A54C',
+    backgroundColor: '#0b0b0f',
+    textColor: '#ffffff',
+    fontFamily: 'Inter, Cairo',
+    fontSize: 'medium',
+    borderRadius: 'rounded',
+    darkMode: true,
+    rtlSupport: true,
+    logoUrl: '/mms-logo.png',
+    faviconUrl: '/favicon.ico',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('category', 'appearance')
+        .single();
+      
+      if (!error && data) {
+        setSettings({...settings, ...data.value});
+      }
+    } catch (e) {
+      console.error('Error loading appearance settings:', e);
+    }
+  };
+
+  const saveSettings = async () => {
+    setSaving(true);
+    try {
+      await supabase
+        .from('app_settings')
+        .upsert({
+          key: 'appearance',
+          category: 'appearance',
+          value: settings,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+      
+      // تطبيق التغييرات مباشرة
+      document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
+      document.documentElement.style.setProperty('--secondary-color', settings.secondaryColor);
+      document.documentElement.style.setProperty('--bg-color', settings.backgroundColor);
+      
+      alert(t('تم حفظ الإعدادات', 'Settings saved'));
+    } catch (e) {
+      console.error('Error saving settings:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const colorPresets = [
+    { name: t('قطري', 'Qatari'), primary: '#8A1538', secondary: '#C9A54C' },
+    { name: t('أزرق', 'Blue'), primary: '#1e40af', secondary: '#3b82f6' },
+    { name: t('أخضر', 'Green'), primary: '#166534', secondary: '#22c55e' },
+    { name: t('بنفسجي', 'Purple'), primary: '#7c3aed', secondary: '#a855f7' },
+    { name: t('برتقالي', 'Orange'), primary: '#c2410c', secondary: '#f97316' },
+  ];
+
+  const fontSizes = [
+    { id: 'small', label: t('صغير', 'Small') },
+    { id: 'medium', label: t('متوسط', 'Medium') },
+    { id: 'large', label: t('كبير', 'Large') },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Palette size={24} className="text-[#C9A54C]" />
+          {t('إدارة المظهر', 'Appearance Management')}
+        </h3>
+        <button
+          onClick={saveSettings}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
+        >
+          <Save size={18} /> {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ التغييرات', 'Save Changes')}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* الألوان */}
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4 flex items-center gap-2">
+            <Palette size={18} /> {t('الألوان', 'Colors')}
+          </h4>
+          
+          {/* قوالب جاهزة */}
+          <div className="mb-4">
+            <label className="text-sm text-gray-400 mb-2 block">{t('قوالب جاهزة', 'Presets')}</label>
+            <div className="flex flex-wrap gap-2">
+              {colorPresets.map(preset => (
+                <button
+                  key={preset.name}
+                  onClick={() => setSettings({...settings, primaryColor: preset.primary, secondaryColor: preset.secondary})}
+                  className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg hover:bg-white/20"
+                >
+                  <div className="w-4 h-4 rounded-full" style={{backgroundColor: preset.primary}} />
+                  <div className="w-4 h-4 rounded-full" style={{backgroundColor: preset.secondary}} />
+                  <span className="text-sm">{preset.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">{t('اللون الرئيسي', 'Primary Color')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={settings.primaryColor}
+                  onChange={(e) => setSettings({...settings, primaryColor: e.target.value})}
+                  className="w-12 h-10 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={settings.primaryColor}
+                  onChange={(e) => setSettings({...settings, primaryColor: e.target.value})}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">{t('اللون الثانوي', 'Secondary Color')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={settings.secondaryColor}
+                  onChange={(e) => setSettings({...settings, secondaryColor: e.target.value})}
+                  className="w-12 h-10 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={settings.secondaryColor}
+                  onChange={(e) => setSettings({...settings, secondaryColor: e.target.value})}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">{t('لون الخلفية', 'Background')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={settings.backgroundColor}
+                  onChange={(e) => setSettings({...settings, backgroundColor: e.target.value})}
+                  className="w-12 h-10 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={settings.backgroundColor}
+                  onChange={(e) => setSettings({...settings, backgroundColor: e.target.value})}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 mb-1 block">{t('لون النص', 'Text Color')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={settings.textColor}
+                  onChange={(e) => setSettings({...settings, textColor: e.target.value})}
+                  className="w-12 h-10 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={settings.textColor}
+                  onChange={(e) => setSettings({...settings, textColor: e.target.value})}
+                  className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* الخطوط والحجم */}
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4 flex items-center gap-2">
+            <Type size={18} /> {t('الخطوط والحجم', 'Fonts & Size')}
+          </h4>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">{t('حجم الخط', 'Font Size')}</label>
+              <div className="flex gap-2">
+                {fontSizes.map(size => (
+                  <button
+                    key={size.id}
+                    onClick={() => setSettings({...settings, fontSize: size.id})}
+                    className={`flex-1 py-2 rounded-lg transition-all ${
+                      settings.fontSize === size.id
+                        ? 'bg-[#C9A54C] text-black font-medium'
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">{t('الخط', 'Font Family')}</label>
+              <select
+                value={settings.fontFamily}
+                onChange={(e) => setSettings({...settings, fontFamily: e.target.value})}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2"
+              >
+                <option value="Inter, Cairo">Inter + Cairo</option>
+                <option value="Roboto, Tajawal">Roboto + Tajawal</option>
+                <option value="Open Sans, Almarai">Open Sans + Almarai</option>
+                <option value="system-ui">System Default</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+              <span>{t('الوضع الليلي', 'Dark Mode')}</span>
+              <button
+                onClick={() => setSettings({...settings, darkMode: !settings.darkMode})}
+                className={`w-12 h-6 rounded-full transition-all ${
+                  settings.darkMode ? 'bg-[#C9A54C]' : 'bg-white/20'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                  settings.darkMode ? 'translate-x-6' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+              <span>{t('دعم RTL', 'RTL Support')}</span>
+              <button
+                onClick={() => setSettings({...settings, rtlSupport: !settings.rtlSupport})}
+                className={`w-12 h-6 rounded-full transition-all ${
+                  settings.rtlSupport ? 'bg-[#C9A54C]' : 'bg-white/20'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                  settings.rtlSupport ? 'translate-x-6' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* الشعار والأيقونة */}
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 lg:col-span-2">
+          <h4 className="font-bold mb-4 flex items-center gap-2">
+            <Eye size={18} /> {t('الشعار والأيقونة', 'Logo & Icon')}
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">{t('الشعار', 'Logo')}</label>
+              <div className="flex items-center gap-4">
+                <img src={settings.logoUrl} alt="Logo" className="w-16 h-16 object-contain bg-white/10 rounded-lg p-2" />
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={settings.logoUrl}
+                    onChange={(e) => setSettings({...settings, logoUrl: e.target.value})}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mb-2"
+                    placeholder="URL or path"
+                  />
+                  <button className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2">
+                    <Upload size={16} /> {t('رفع شعار', 'Upload Logo')}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">{t('أيقونة الموقع', 'Favicon')}</label>
+              <div className="flex items-center gap-4">
+                <img src={settings.faviconUrl} alt="Favicon" className="w-16 h-16 object-contain bg-white/10 rounded-lg p-2" />
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={settings.faviconUrl}
+                    onChange={(e) => setSettings({...settings, faviconUrl: e.target.value})}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mb-2"
+                    placeholder="URL or path"
+                  />
+                  <button className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2">
+                    <Upload size={16} /> {t('رفع أيقونة', 'Upload Icon')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* معاينة */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+        <h4 className="font-bold mb-4">{t('معاينة', 'Preview')}</h4>
+        <div 
+          className="p-6 rounded-xl"
+          style={{
+            backgroundColor: settings.backgroundColor,
+            color: settings.textColor,
+            fontFamily: settings.fontFamily
+          }}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full" style={{backgroundColor: settings.primaryColor}} />
+            <div>
+              <h5 className="font-bold" style={{color: settings.secondaryColor}}>{t('عنوان تجريبي', 'Sample Title')}</h5>
+              <p className="text-sm opacity-70">{t('نص تجريبي للمعاينة', 'Sample text for preview')}</p>
+            </div>
+          </div>
+          <button 
+            className="px-4 py-2 rounded-lg font-medium"
+            style={{backgroundColor: settings.secondaryColor, color: settings.backgroundColor}}
+          >
+            {t('زر تجريبي', 'Sample Button')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// مكون إدارة قاعدة البيانات - تحكم كامل في الجداول
+const DatabaseManagement = ({ language, t }) => {
+  const [tables, setTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [tableData, setTableData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingRow, setEditingRow] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newRow, setNewRow] = useState({});
+
+  const availableTables = [
+    { name: 'clinics', label: t('العيادات', 'Clinics'), icon: Activity },
+    { name: 'queues', label: t('الطوابير', 'Queues'), icon: Users },
+    { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
+    { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
+    { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
+    { name: 'pins', label: t('الأرقام السرية', 'PINs'), icon: Key },
+  ];
+
+  useEffect(() => {
+    setTables(availableTables);
+    setLoading(false);
+  }, []);
+
+  const loadTableData = async (tableName) => {
+    setLoading(true);
+    setSelectedTable(tableName);
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (!error && data) {
+        setTableData(data);
+      } else {
+        setTableData([]);
+      }
+    } catch (e) {
+      console.error('Error loading table:', e);
+      setTableData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRow = async (id) => {
+    if (!window.confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
+    
+    try {
+      await supabase.from(selectedTable).delete().eq('id', id);
+      loadTableData(selectedTable);
+    } catch (e) {
+      console.error('Error deleting row:', e);
+    }
+  };
+
+  const saveRow = async (row) => {
+    try {
+      await supabase.from(selectedTable).upsert(row);
+      setEditingRow(null);
+      loadTableData(selectedTable);
+    } catch (e) {
+      console.error('Error saving row:', e);
+    }
+  };
+
+  const addRow = async () => {
+    try {
+      await supabase.from(selectedTable).insert(newRow);
+      setShowAddModal(false);
+      setNewRow({});
+      loadTableData(selectedTable);
+    } catch (e) {
+      console.error('Error adding row:', e);
+    }
+  };
+
+  const exportTable = () => {
+    const json = JSON.stringify(tableData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedTable}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Database size={24} className="text-[#C9A54C]" />
+          {t('إدارة قاعدة البيانات', 'Database Management')}
+        </h3>
+        {selectedTable && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-xl"
+            >
+              <Plus size={18} /> {t('إضافة', 'Add')}
+            </button>
+            <button
+              onClick={exportTable}
+              className="flex items-center gap-2 px-4 py-2 bg-[#C9A54C] text-black font-medium rounded-xl"
+            >
+              <Download size={18} /> {t('تصدير', 'Export')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* قائمة الجداول */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {tables.map(table => (
+          <button
+            key={table.name}
+            onClick={() => loadTableData(table.name)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
+              selectedTable === table.name
+                ? 'bg-[#C9A54C] text-black font-medium'
+                : 'bg-white/5 hover:bg-white/10'
+            }`}
+          >
+            <table.icon size={16} />
+            {table.label}
+          </button>
+        ))}
+      </div>
+
+      {/* بيانات الجدول */}
+      {selectedTable && (
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+          {loading ? (
+            <div className="p-8 text-center">
+              <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+              {t('جاري التحميل...', 'Loading...')}
+            </div>
+          ) : tableData.length === 0 ? (
+            <div className="p-8 text-center text-gray-400">
+              {t('لا توجد بيانات', 'No data found')}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/5">
+                  <tr>
+                    {Object.keys(tableData[0]).slice(0, 6).map(key => (
+                      <th key={key} className="px-4 py-3 text-left text-sm font-medium text-gray-300">
+                        {key}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-300">
+                      {t('إجراءات', 'Actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {tableData.map((row, index) => (
+                    <tr key={row.id || index} className="hover:bg-white/5">
+                      {Object.entries(row).slice(0, 6).map(([key, value]) => (
+                        <td key={key} className="px-4 py-3 text-sm">
+                          {editingRow?.id === row.id ? (
+                            <input
+                              type="text"
+                              value={editingRow[key] || ''}
+                              onChange={(e) => setEditingRow({...editingRow, [key]: e.target.value})}
+                              className="bg-white/10 border border-white/20 rounded px-2 py-1 w-full"
+                            />
+                          ) : (
+                            <span className="truncate block max-w-[150px]">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          {editingRow?.id === row.id ? (
+                            <>
+                              <button
+                                onClick={() => saveRow(editingRow)}
+                                className="p-1.5 bg-green-500/20 text-green-400 rounded"
+                              >
+                                <Save size={14} />
+                              </button>
+                              <button
+                                onClick={() => setEditingRow(null)}
+                                className="p-1.5 bg-white/10 rounded"
+                              >
+                                <X size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setEditingRow({...row})}
+                                className="p-1.5 bg-white/10 hover:bg-white/20 rounded"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => deleteRow(row.id)}
+                                className="p-1.5 bg-red-500/20 text-red-400 rounded"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* مودال إضافة سجل جديد */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]">
+          <div className="bg-[#1a1a2e] rounded-2xl p-6 w-full max-w-md mx-4">
+            <h4 className="text-lg font-bold mb-4">{t('إضافة سجل جديد', 'Add New Record')}</h4>
+            {tableData[0] && Object.keys(tableData[0]).filter(k => k !== 'id' && k !== 'created_at').map(key => (
+              <div key={key} className="mb-3">
+                <label className="text-sm text-gray-400 mb-1 block">{key}</label>
+                <input
+                  type="text"
+                  value={newRow[key] || ''}
+                  onChange={(e) => setNewRow({...newRow, [key]: e.target.value})}
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2"
+                />
+              </div>
+            ))}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-lg"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={addRow}
+                className="flex-1 px-4 py-2 bg-[#C9A54C] text-black font-medium rounded-lg"
+              >
+                {t('إضافة', 'Add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // المكون الرئيسي
 export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -2506,6 +3310,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
     { id: 'backup', icon: Database, label: t('النسخ والتصدير', 'Backup & Export') },
     { id: 'offline', icon: Wifi, label: t('العمل أوفلاين', 'Offline Mode') },
+    { id: 'content', icon: Type, label: t('إدارة المحتوى', 'Content Management') },
+    { id: 'appearance', icon: Palette, label: t('المظهر', 'Appearance') },
+    { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
   ];
 
   return (
@@ -2705,6 +3512,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'activity' && <ActivityLog language={language} t={t} />}
         {activeTab === 'backup' && <BackupExport language={language} t={t} />}
         {activeTab === 'offline' && <OfflineSettings language={language} t={t} />}
+        {activeTab === 'content' && <ContentManagement language={language} t={t} />}
+        {activeTab === 'appearance' && <AppearanceManagement language={language} t={t} />}
+        {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
       </main>
     </div>
   );
