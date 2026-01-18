@@ -25,6 +25,38 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
+  
+  // إعدادات النظام - التحكم في إظهار/إخفاء وتفعيل/إيقاف الميزات
+  const [systemSettings, setSystemSettings] = useState({
+    pin_system_enabled: true,
+    pin_system_visible: true,
+    queue_system_enabled: true,
+    queue_system_visible: true
+  })
+
+  // جلب إعدادات النظام من قاعدة البيانات
+  useEffect(() => {
+    const fetchSystemSettings = async () => {
+      try {
+        const response = await api.getSettings()
+        if (response && response.settings) {
+          setSystemSettings({
+            pin_system_enabled: response.settings.pin_system_enabled !== 'false',
+            pin_system_visible: response.settings.pin_system_visible !== 'false',
+            queue_system_enabled: response.settings.queue_system_enabled !== 'false',
+            queue_system_visible: response.settings.queue_system_visible !== 'false'
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch system settings:', err)
+      }
+    }
+    
+    fetchSystemSettings()
+    // تحديث كل 30 ثانية للتأكد من التغييرات اللحظية
+    const interval = setInterval(fetchSystemSettings, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
   const handleGetTicketForFirstClinic = async (station) => {
@@ -463,6 +495,61 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
+  // الخروج من العيادة بدون رقم سري (عندما يكون نظام البن كود موقف)
+  const handleClinicExitWithoutPin = async (station) => {
+    try {
+      setLoading(true)
+
+      // استدعاء API للخروج بدون PIN
+      const exitResult = await api.queueDone(station.id, patientData.id, null, true) // true = skip PIN check
+      
+      // التحقق من نجاح العملية
+      if (!exitResult || !exitResult.success) {
+        const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل الخروج' : 'Exit failed')
+        alert(errorMsg)
+        setLoading(false)
+        return
+      }
+
+      // تحديد العيادة التالية
+      const currentIdx = stations.findIndex(s => s.id === station.id)
+      const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
+      
+      if (hasNextClinic) {
+        setStations(prev => prev.map((s, i) => {
+          if (i === currentIdx) {
+            return { ...s, status: 'completed', exitTime: new Date() }
+          } else if (i === currentIdx + 1) {
+            return { ...s, status: 'ready', isEntered: false }
+          }
+          return s
+        }))
+        
+        const nextClinicName = stations[currentIdx + 1]?.nameAr || 'العيادة التالية'
+        setCurrentNotice({
+          type: 'next_clinic',
+          message: language === 'ar' 
+            ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
+            : `✅ Examination completed. Please enter ${nextClinicName}`,
+          clinic: nextClinicName
+        })
+        setTimeout(() => setCurrentNotice(null), 5000)
+      } else {
+        setStations(prev => prev.map((s, i) => 
+          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
+        ))
+      }
+
+      const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
+      alert(msg)
+    } catch (e) {
+      const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
+      alert(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getExamName = () => {
     const exam = examTypes.find(e => e.id === patientData.queueType)
     if (!exam) return language === 'ar' ? 'فحص طبي' : 'Medical Exam'
@@ -727,27 +814,52 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                   {station.status === 'ready' && station.isEntered && (
                     <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <Input
-                          type="text"
-                          placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
-                          value={selectedStation?.id === station.id ? pinInput : ''}
-                          onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
-                          className="bg-gray-600 border-gray-500 text-white"
-                          maxLength={6}
-                          data-test="pin-input"
-                        />
-                        <Button
-                          variant="gradientSecondary"
-                          onClick={() => handleClinicExit(station)}
-                          disabled={loading || !pinInput.trim()}
-                          title={t('exitClinic', language)}
-                          data-test="exit-clinic-btn"
-                        >
-                          <LogOut className="icon icon-md me-2" />
-                          {t('exitClinic', language)}
-                        </Button>
-                      </div>
+                      {/* عرض حقل البن كود فقط إذا كان النظام مفعل ومرئي */}
+                      {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Input
+                            type="text"
+                            placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
+                            value={selectedStation?.id === station.id ? pinInput : ''}
+                            onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
+                            className="bg-gray-600 border-gray-500 text-white"
+                            maxLength={6}
+                            data-test="pin-input"
+                          />
+                          <Button
+                            variant="gradientSecondary"
+                            onClick={() => handleClinicExit(station)}
+                            disabled={loading || !pinInput.trim()}
+                            title={t('exitClinic', language)}
+                            data-test="exit-clinic-btn"
+                          >
+                            <LogOut className="icon icon-md me-2" />
+                            {t('exitClinic', language)}
+                          </Button>
+                        </div>
+                      ) : !systemSettings.pin_system_enabled ? (
+                        /* إذا كان النظام موقف - يمكن الخروج بدون بن كود */
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Button
+                            variant="gradientSecondary"
+                            onClick={() => handleClinicExitWithoutPin(station)}
+                            disabled={loading}
+                            title={t('exitClinic', language)}
+                            data-test="exit-clinic-btn"
+                            className="w-full"
+                          >
+                            <LogOut className="icon icon-md me-2" />
+                            {t('exitClinic', language)} - {language === 'ar' ? 'بدون رقم سري' : 'Without PIN'}
+                          </Button>
+                        </div>
+                      ) : null}
+                      
+                      {/* إذا كان النظام مخفي فقط (لكن مفعل) - الخروج يتم تلقائياً بواسطة الطبيب */}
+                      {systemSettings.pin_system_enabled && !systemSettings.pin_system_visible && (
+                        <div className="text-center text-sm text-gray-400 p-3 bg-gray-700/50 rounded">
+                          {language === 'ar' ? 'سيتم إنهاء الفحص بواسطة الطبيب' : 'Exam will be completed by the doctor'}
+                        </div>
+                      )}
                       {station.exitTime && (
                         <div className="text-sm text-gray-400 flex items-center gap-2">
                           <Clock className="icon icon-sm icon-muted" />

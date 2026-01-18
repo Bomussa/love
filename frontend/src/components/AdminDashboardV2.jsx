@@ -3107,6 +3107,78 @@ const SettingsSection = ({ language, t }) => {
           </div>
         </div>
 
+        {/* إعدادات التحكم في الميزات */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4">{t('التحكم في الميزات', 'Feature Controls')}</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* نظام البن كود */}
+            <div className="bg-white/5 rounded-xl p-4">
+              <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام البن كود', 'PIN Code System')}</h5>
+              
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-sm">{t('تفعيل النظام', 'Enable System')}</span>
+                </div>
+                <button
+                  onClick={() => updateSetting('pin_system_enabled', settings.pin_system_enabled === 'true' ? 'false' : 'true')}
+                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm">{t('إظهار في الواجهة', 'Show in UI')}</span>
+                </div>
+                <button
+                  onClick={() => updateSetting('pin_system_visible', settings.pin_system_visible === 'true' ? 'false' : 'true')}
+                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+            
+            {/* نظام الدور */}
+            <div className="bg-white/5 rounded-xl p-4">
+              <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام الدور', 'Queue System')}</h5>
+              
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-sm">{t('تفعيل النظام', 'Enable System')}</span>
+                </div>
+                <button
+                  onClick={() => updateSetting('queue_system_enabled', settings.queue_system_enabled === 'true' ? 'false' : 'true')}
+                  className={`w-14 h-8 rounded-full transition-all ${settings.queue_system_enabled === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.queue_system_enabled === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm">{t('إظهار في الواجهة', 'Show in UI')}</span>
+                </div>
+                <button
+                  onClick={() => updateSetting('queue_system_visible', settings.queue_system_visible === 'true' ? 'false' : 'true')}
+                  className={`w-14 h-8 rounded-full transition-all ${settings.queue_system_visible === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.queue_system_visible === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+            <h5 className="font-medium text-blue-400 mb-2">{t('ملاحظة', 'Note')}</h5>
+            <p className="text-sm text-blue-300/80">
+              {t('إيقاف النظام يعني توقف العمل به، بينما الإخفاء يعني عدم ظهوره للمراجع فقط مع استمرار عمله في الخلفية.', 'Disabling means the system stops working, while hiding means it won\'t appear to patients but continues working in the background.')}
+            </p>
+          </div>
+        </div>
+
         {/* إعدادات أرقام الدور */}
         <div className="mt-6 pt-6 border-t border-white/10">
           <h4 className="text-lg font-bold mb-4">{t('إعدادات أرقام الدور', 'Queue Number Settings')}</h4>

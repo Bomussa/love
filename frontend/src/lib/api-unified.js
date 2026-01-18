@@ -189,43 +189,45 @@ const api = {
     }
   },
 
-  async queueDone(clinicId, patientId, pin) {
+  async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
     try {
-      // ✅ التحقق من البن كود أولاً
-      if (!pin) {
-        return { success: false, error: 'يرجى إدخال رقم PIN' };
+      // ✅ التحقق من البن كود (إلا إذا كان النظام موقف)
+      if (!skipPinCheck) {
+        if (!pin) {
+          return { success: false, error: 'يرجى إدخال رقم PIN' };
+        }
+
+        // جلب البن كود النشط لهذه العيادة
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const { data: validPin, error: pinError } = await supabase
+          .from('pins')
+          .select('*')
+          .eq('clinic_code', clinicId)
+          .eq('pin', pin)
+          .eq('is_active', true)
+          .gte('expires_at', today.toISOString())
+          .maybeSingle();
+
+        if (pinError) {
+          console.error('PIN verification error:', pinError);
+          return { success: false, error: 'خطأ في التحقق من PIN' };
+        }
+
+        if (!validPin) {
+          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
+        }
+
+        // تحديث عداد استخدام البن كود
+        await supabase
+          .from('pins')
+          .update({ 
+            used_count: (validPin.used_count || 0) + 1,
+            last_used_at: new Date().toISOString()
+          })
+          .eq('id', validPin.id);
       }
-
-      // جلب البن كود النشط لهذه العيادة
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const { data: validPin, error: pinError } = await supabase
-        .from('pins')
-        .select('*')
-        .eq('clinic_code', clinicId)
-        .eq('pin', pin)
-        .eq('is_active', true)
-        .gte('expires_at', today.toISOString())
-        .maybeSingle();
-
-      if (pinError) {
-        console.error('PIN verification error:', pinError);
-        return { success: false, error: 'خطأ في التحقق من PIN' };
-      }
-
-      if (!validPin) {
-        return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
-      }
-
-      // تحديث عداد استخدام البن كود
-      await supabase
-        .from('pins')
-        .update({ 
-          used_count: (validPin.used_count || 0) + 1,
-          last_used_at: new Date().toISOString()
-        })
-        .eq('id', validPin.id);
 
       // إكمال الفحص في الطابور
       const { data, error } = await supabase
@@ -894,6 +896,32 @@ const api = {
     } catch (error) {
       console.error('Get Setting Value Error:', error);
       return defaultValue;
+    }
+  },
+
+  /**
+   * جلب جميع الإعدادات من جدول settings
+   */
+  async getSettings() {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('key, value');
+      
+      if (error) throw error;
+      
+      // تحويل البيانات إلى كائن
+      const settings = {};
+      if (data) {
+        data.forEach(item => {
+          settings[item.key] = item.value;
+        });
+      }
+      
+      return { success: true, settings };
+    } catch (error) {
+      console.error('Get Settings Error:', error);
+      return { success: false, settings: {} };
     }
   }
 };
