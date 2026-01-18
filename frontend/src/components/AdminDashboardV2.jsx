@@ -85,9 +85,23 @@ const QueueManagement = ({ language, t }) => {
   useEffect(() => {
     loadQueues();
     loadClinics();
-    // تحديث كل 10 ثواني
-    const interval = setInterval(loadQueues, 10000);
-    return () => clearInterval(interval);
+    
+    // اشتراك Real-time لتحديثات الطوابير اللحظية
+    const subscription = supabase
+      .channel('queues_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'queues' }, (payload) => {
+        console.log('Queue change detected:', payload);
+        loadQueues();
+      })
+      .subscribe();
+    
+    // تحديث احتياطي كل 30 ثانية
+    const interval = setInterval(loadQueues, 30000);
+    
+    return () => {
+      clearInterval(interval);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadClinics = async () => {
@@ -105,10 +119,15 @@ const QueueManagement = ({ language, t }) => {
   const loadQueues = async () => {
     try {
       setLoading(true);
+      // جلب الطوابير لليوم الحالي فقط مع ترتيب صحيح
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const { data, error } = await supabase
         .from('queues')
         .select('*')
-        .order('created_at', { ascending: false });
+        .gte('entered_at', today.toISOString())
+        .order('display_number', { ascending: true });
       
       if (!error && data) {
         setQueues(data);
@@ -124,31 +143,48 @@ const QueueManagement = ({ language, t }) => {
 
   const callNext = async (clinicId) => {
     try {
-      const waitingQueue = queues.filter(q => q.clinic_id === clinicId && q.status === 'waiting');
+      // ترتيب المنتظرين حسب رقم الدور
+      const waitingQueue = queues
+        .filter(q => q.clinic_id === clinicId && q.status === 'waiting')
+        .sort((a, b) => (a.display_number || 0) - (b.display_number || 0));
+      
       if (waitingQueue.length === 0) {
-        alert(t('لا يوجد مرضى في الانتظار', 'No patients waiting'));
+        showErrorToast(t('لا يوجد مرضى في الانتظار', 'No patients waiting'));
         return;
       }
       
       const nextPatient = waitingQueue[0];
-      await supabase
+      const { error } = await supabase
         .from('queues')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
-      loadQueues();
+      if (!error) {
+        showSuccessToast(t(`تم استدعاء الرقم: ${nextPatient.display_number}`, `Called number: ${nextPatient.display_number}`));
+        await logActivity('queue_call', `تم استدعاء الرقم ${nextPatient.display_number} في عيادة ${clinicId}`);
+        loadQueues();
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الاستدعاء', 'Error calling patient'));
+      }
     } catch (e) {
       console.error('Error calling next:', e);
+      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
     }
   };
 
   const completePatient = async (queueId) => {
     try {
-      await supabase
+      const queue = queues.find(q => q.id === queueId);
+      const { error } = await supabase
         .from('queues')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', queueId);
-      loadQueues();
+      
+      if (!error) {
+        showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
+        await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
+        loadQueues();
+      }
     } catch (e) {
       console.error('Error completing patient:', e);
     }
@@ -156,10 +192,48 @@ const QueueManagement = ({ language, t }) => {
 
   const skipPatient = async (queueId) => {
     try {
-      await supabase
-        .from('queues')
-        .update({ status: 'skipped' })
-        .eq('id', queueId);
+      const queue = queues.find(q => q.id === queueId);
+      const postponeCount = (queue?.postpone_count || 0) + 1;
+      
+      // إذا تجاوز الحد الأقصى للترحيلات، يتم الإلغاء
+      const maxPostpones = 3;
+      if (postponeCount >= maxPostpones) {
+        const { error } = await supabase
+          .from('queues')
+          .update({ status: 'cancelled', postpone_count: postponeCount })
+          .eq('id', queueId);
+        
+        if (!error) {
+          showErrorToast(t('تم إلغاء المراجع بعد تجاوز الحد الأقصى', 'Patient cancelled after max postpones'));
+          await logActivity('queue_cancel', `تم إلغاء الرقم ${queue?.display_number} بعد ${postponeCount} ترحيلات`);
+        }
+      } else {
+        // ترحيل لنهاية الدور برقم جديد
+        const { data: maxQueue } = await supabase
+          .from('queues')
+          .select('display_number')
+          .eq('clinic_id', queue?.clinic_id)
+          .order('display_number', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
+        
+        const { error } = await supabase
+          .from('queues')
+          .update({ 
+            status: 'waiting', 
+            display_number: newDisplayNumber,
+            postpone_count: postponeCount,
+            called_at: null
+          })
+          .eq('id', queueId);
+        
+        if (!error) {
+          showSuccessToast(t(`تم ترحيل المراجع للرقم ${newDisplayNumber}`, `Patient moved to number ${newDisplayNumber}`));
+          await logActivity('queue_postpone', `تم ترحيل الرقم ${queue?.display_number} إلى ${newDisplayNumber}`);
+        }
+      }
       loadQueues();
     } catch (e) {
       console.error('Error skipping patient:', e);
