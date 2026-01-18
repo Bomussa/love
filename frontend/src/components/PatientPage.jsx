@@ -814,10 +814,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   {/* أرقام الدور */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-gray-700/50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-white">
-                        {station.current || 0}
+                      <div className="text-2xl font-bold text-yellow-400">
+                        {station.status === 'locked' ? '-' : (typeof station.yourNumber === 'number' ? station.yourNumber : '-')}
                       </div>
-                      <div className="text-xs text-gray-400">{t('current', language)}</div>
+                      <div className="text-xs text-gray-400">{t('yourNumber', language)}</div>
                     </div>
                     <div className="bg-gray-700/50 rounded-lg p-3 text-center">
                       <div className="text-2xl font-bold text-white">
