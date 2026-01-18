@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
   Settings, FileText, MapPin, Key, RefreshCw, Trash2, 
@@ -9,6 +10,42 @@ import {
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
   UserPlus
 } from 'lucide-react';
+
+// دالة عرض شعار النجاح
+const showSuccessToast = (message) => {
+  toast.success(message, {
+    duration: 3000,
+    position: 'top-center',
+    style: {
+      background: '#10B981',
+      color: '#fff',
+      fontWeight: 'bold',
+      borderRadius: '12px',
+      padding: '16px 24px',
+      fontSize: '16px',
+    },
+    iconTheme: {
+      primary: '#fff',
+      secondary: '#10B981',
+    },
+  });
+};
+
+// دالة عرض شعار الخطأ
+const showErrorToast = (message) => {
+  toast.error(message, {
+    duration: 4000,
+    position: 'top-center',
+    style: {
+      background: '#EF4444',
+      color: '#fff',
+      fontWeight: 'bold',
+      borderRadius: '12px',
+      padding: '16px 24px',
+      fontSize: '16px',
+    },
+  });
+};
 import NotificationsManagementV2 from './NotificationsManagementV2';
 import ReportsPanel from './ReportsPanel';
 import AdvancedNotificationsManager from './AdvancedNotificationsManager';
@@ -1160,20 +1197,26 @@ const ClinicsManagement = ({ language, t }) => {
 
   const updateClinic = async (clinicId, updates) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('clinics')
         .update(updates)
         .eq('id', clinicId);
-      loadClinics();
-      setEditingClinic(null);
+      if (!error) {
+        loadClinics();
+        setEditingClinic(null);
+        showSuccessToast(t('تم حفظ التعديلات بنجاح', 'Changes saved successfully'));
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving changes'));
+      }
     } catch (e) {
       console.error('Error updating clinic:', e);
+      showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving changes'));
     }
   };
 
   const addClinic = async () => {
     if (!newClinic.name_ar || !newClinic.name_en) {
-      alert(t('يرجى إدخال اسم العيادة', 'Please enter clinic name'));
+      showErrorToast(t('يرجى إدخال اسم العيادة', 'Please enter clinic name'));
       return;
     }
     try {
@@ -1199,20 +1242,29 @@ const ClinicsManagement = ({ language, t }) => {
         loadClinics();
         setShowAddForm(false);
         setNewClinic({ name_ar: '', name_en: '', floor: '', code: '', weight: 1, exam_duration: 5, call_interval: 2, late_threshold: 4 });
-        alert(t('تم إضافة العيادة بنجاح', 'Clinic added successfully'));
+        showSuccessToast(t('تم إضافة العيادة بنجاح', 'Clinic added successfully'));
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الإضافة', 'Error adding clinic'));
       }
     } catch (e) {
       console.error('Error adding clinic:', e);
+      showErrorToast(t('حدث خطأ أثناء الإضافة', 'Error adding clinic'));
     }
   };
 
   const deleteClinic = async (clinicId) => {
     if (!window.confirm(t('هل أنت متأكد من حذف هذه العيادة؟', 'Are you sure you want to delete this clinic?'))) return;
     try {
-      await supabase.from('clinics').delete().eq('id', clinicId);
-      loadClinics();
+      const { error } = await supabase.from('clinics').delete().eq('id', clinicId);
+      if (!error) {
+        loadClinics();
+        showSuccessToast(t('تم حذف العيادة بنجاح', 'Clinic deleted successfully'));
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الحذف', 'Error deleting clinic'));
+      }
     } catch (e) {
       console.error('Error deleting clinic:', e);
+      showErrorToast(t('حدث خطأ أثناء الحذف', 'Error deleting clinic'));
     }
   };
 
@@ -1358,21 +1410,6 @@ const ClinicsManagement = ({ language, t }) => {
               </div>
             </div>
 
-            {/* إعدادات التوقيت */}
-            <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
-              <div className="bg-white/5 rounded-lg p-2">
-                <div className="text-gray-400">{t('الفحص', 'Exam')}</div>
-                <div className="font-bold">{clinic.exam_duration || 5} {t('د', 'm')}</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <div className="text-gray-400">{t('النداء', 'Call')}</div>
-                <div className="font-bold">{clinic.call_interval || 2} {t('د', 'm')}</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <div className="text-gray-400">{t('التأخير', 'Late')}</div>
-                <div className="font-bold">{clinic.late_threshold || 4} {t('د', 'm')}</div>
-              </div>
-            </div>
 
             <div className="flex gap-2 flex-wrap">
               <button
@@ -2598,9 +2635,13 @@ const SettingsSection = ({ language, t }) => {
       
       if (!error) {
         setSettings(prev => ({ ...prev, [key]: value }));
+        showSuccessToast(t('تم حفظ الإعدادات', 'Settings saved'));
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving settings'));
       }
     } catch (e) {
       console.error('Error updating setting:', e);
+      showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving settings'));
     }
   };
 
@@ -5044,6 +5085,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
+      <Toaster />
     </div>
   );
 };
