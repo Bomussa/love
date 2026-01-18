@@ -77,6 +77,7 @@ function sortClinicsByWeight(clinics, weights) {
 }
 
 // الحصول على المسار الطبي حسب نوع الفحص والجنس
+// ✅ الآن يجلب الترتيب من قاعدة البيانات أولاً (routes table)
 export async function getDynamicMedicalPathway(examType, gender) {
   // تحويل examType من الإنجليزية إلى العربية
   const examTypeMap = {
@@ -91,6 +92,41 @@ export async function getDynamicMedicalPathway(examType, gender) {
   }
   
   const arabicExamType = examTypeMap[examType] || examType
+  
+  // ✅ محاولة جلب المسار من قاعدة البيانات أولاً
+  try {
+    const { data: dbRoute, error } = await window.supabase
+      ?.from('routes')
+      .select('clinics')
+      .eq('exam_type', examType)
+      .eq('is_active', true)
+      .single()
+    
+    if (dbRoute && dbRoute.clinics && Array.isArray(dbRoute.clinics) && dbRoute.clinics.length > 0) {
+      // استخدام الترتيب من قاعدة البيانات
+      const clinics = mapClinicCodes(dbRoute.clinics)
+      if (clinics.length > 0) {
+        // إضافة الأوزان للعرض فقط (بدون إعادة ترتيب)
+        const clinicIds = clinics.map(c => c.id)
+        let weights = {}
+        try {
+          weights = await fetchClinicWeights(clinicIds)
+        } catch (err) {
+          clinicIds.forEach(id => { weights[id] = 0 })
+        }
+        
+        // إضافة الوزن لكل عيادة بدون إعادة ترتيب
+        return clinics.map(clinic => ({
+          ...clinic,
+          weight: weights[clinic.id] || 0
+        }))
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch route from database, using local config:', err)
+  }
+  
+  // ✅ Fallback: استخدام الملف المحلي
   const route = routeMap[arabicExamType]
   
   if (!route) {
@@ -117,23 +153,21 @@ export async function getDynamicMedicalPathway(examType, gender) {
     return []
   }
   
-  // جلب أوزان العيادات وترتيبها
+  // إضافة الأوزان للعرض فقط (بدون إعادة ترتيب)
   const clinicIds = clinics.map(c => c.id)
   let weights = {}
   
   try {
     weights = await fetchClinicWeights(clinicIds)
   } catch (err) {
-    
-    // Use default weights (all 0)
-    clinicIds.forEach(id => {
-      weights[id] = 0
-    })
+    clinicIds.forEach(id => { weights[id] = 0 })
   }
   
-  const sortedClinics = sortClinicsByWeight(clinics, weights)
-  
-  return sortedClinics
+  // إضافة الوزن لكل عيادة بدون إعادة ترتيب
+  return clinics.map(clinic => ({
+    ...clinic,
+    weight: weights[clinic.id] || 0
+  }))
 }
 
 // تحديث أسماء العيادات من البيانات المحفوظة لضمان عرض الأسماء الصحيحة
