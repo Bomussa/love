@@ -747,35 +747,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           <CardHeader className="text-center">
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
-            
-            {/* شريط التقدم بالأوزان */}
-            {stations.length > 0 && (() => {
-              const totalWeight = stations.reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
-              const completedStations = stations.filter(s => s.status === 'completed');
-              const completedWeight = completedStations.reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
-              const progressPercent = totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
-              
-              return (
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">
-                      {language === 'ar' ? 'نسبة الإنجاز' : 'Progress'}
-                    </span>
-                    <span className="text-[#C9A54C] font-bold">{progressPercent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3">
-                    <div 
-                      className="bg-gradient-to-r from-[#C9A54C] to-[#E8C875] h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{completedStations.length}/{stations.length} {language === 'ar' ? 'عيادة' : 'clinics'}</span>
-                    <span>{completedWeight}/{totalWeight} {language === 'ar' ? 'وزن' : 'weight'}</span>
-                  </div>
-                </div>
-              );
-            })()}
           </CardHeader>
             {stations.map((station, index) => (
               <Card key={station.id} className="bg-gray-700/50 border-gray-600">
