@@ -8,7 +8,7 @@ import {
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
   UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
-  UserPlus
+  UserPlus, Zap
 } from 'lucide-react';
 
 // دالة عرض شعار النجاح
