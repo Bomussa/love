@@ -748,156 +748,99 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
           </CardHeader>
+          <CardContent className="space-y-4 px-4 sm:px-6">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-700/50 border-gray-600">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
+              <Card key={station.id} className="bg-gray-800/80 border-gray-700 rounded-lg">
+                <CardContent className="p-4">
+                  {/* Header: اسم العيادة + الطابق + الحالة */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start gap-2">
                       {station.status === 'ready' ? (
-                        <Unlock className="icon icon-lg icon-success" />
+                        <Unlock className="w-5 h-5 text-green-400 mt-0.5" />
                       ) : station.status === 'completed' ? (
-                        <Lock className="icon icon-lg icon-primary" />
+                        <Lock className="w-5 h-5 text-blue-400 mt-0.5" />
                       ) : (
-                        <Lock className="icon icon-lg icon-muted" />
+                        <Lock className="w-5 h-5 text-gray-500 mt-0.5" />
                       )}
                       <div>
-                        <h3 className="text-white font-semibold">
+                        <h3 className="text-base font-bold text-white">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-gray-400 text-sm">
-                          {t('floor', language)}: {language === 'ar' ? station.floor : station.floorCode}
+                        <p className="text-xs text-gray-400">
+                          {t('floor', language)}: <span className="text-yellow-400">{language === 'ar' ? station.floor : station.floorCode}</span>
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
-                        station.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {station.status === 'ready' ? t('ready', language) :
-                          station.status === 'completed' ? t('completed', language) :
-                          t('locked', language)}
-                      </span>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      station.status === 'ready' ? 'bg-green-600 text-white' :
+                      station.status === 'completed' ? 'bg-blue-600 text-white' :
+                      'bg-gray-600 text-gray-300'
+                    }`}>
+                      {station.status === 'ready' ? t('ready', language) :
+                        station.status === 'completed' ? t('completed', language) :
+                        t('locked', language)}
+                    </span>
                   </div>
 
-                  {routeWithZFD && routeWithZFD.route && routeWithZFD.route.length > index && (
-                    <div className="mb-4" data-test="zfd-ticket-section">
-                      <ZFDTicketDisplay step={routeWithZFD.route[index]} />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-4 text-center" data-test="queue-info">
-                    <div>
-                      <div className="text-2xl font-bold text-white" data-test="current-number">{station.current}</div>
-                      <div className="text-gray-400 text-sm">{t('current', language)}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-gray-400 text-sm">{t('yourNumber', language)}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-gray-400 text-sm">{t('ahead', language)}</div>
-                    </div>
-                  </div>
-                  
-                  {/* عرض العد التنازلي قبل الدخول */}
-                  {station.status === 'ready' && !station.isEntered && station.entered_at && (
-                    <div className="mt-3">
-                      <CountdownTimer
-                        enteredAt={station.entered_at}
-                        maxSeconds={240}
-                        show={true}
-                        language={language}
-                        onTimeout={() => {
-                          console.log('Countdown timeout for station:', station.id)
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* عرض الوقت المتوقع قبل الدخول */}
-                  {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
-                          🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
-                        </span>
-                        <span className="text-blue-400 font-bold">
-                          {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
-                        </span>
+                  {/* أرقام الدور */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-gray-700/50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-yellow-400">
+                        {station.status === 'locked' ? '-' : (typeof station.yourNumber === 'number' ? station.yourNumber : '-')}
                       </div>
+                      <div className="text-xs text-gray-400">{t('yourNumber', language)}</div>
                     </div>
-                  )}
+                    <div className="bg-gray-700/50 rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-white">
+                        {station.ahead || 0}
+                      </div>
+                      <div className="text-xs text-gray-400">{t('ahead', language)}</div>
+                    </div>
+                  </div>
 
-                  {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-4 pt-4 border-t border-gray-600">
+                  {/* حقل PIN وزر الخروج - للعيادة الجاهزة */}
+                  {station.status === 'ready' && (
+                    <div className="space-y-3 border-t border-gray-700 pt-4">
+                      <Input
+                        type="text"
+                        placeholder={language === 'ar' ? 'أدخل رقم PIN (رقم الدور)' : 'Enter PIN (ticket number)'}
+                        value={selectedStation?.id === station.id ? pinInput : ''}
+                        onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
+                        className="w-full bg-gray-700 border-gray-600 text-white text-sm h-10 text-center"
+                        maxLength={6}
+                        data-test="pin-input"
+                      />
                       <Button
-                        variant="gradientPrimary"
-                        onClick={() => handleEnterClinic(station)}
-                        disabled={loading}
-                        className="w-full"
-                        data-test="enter-clinic-btn"
+                        variant="outline"
+                        onClick={() => handleClinicExit(station)}
+                        disabled={loading || !pinInput.trim()}
+                        className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 text-sm py-2"
+                        data-test="exit-clinic-btn"
                       >
-                        <LogIn className="icon icon-md me-2" />
-                        {t('enterClinic', language)}
+                        <LogOut className="w-4 h-4 me-2" />
+                        {language === 'ar' ? 'الخروج من العيادة' : 'Exit Clinic'}
                       </Button>
                     </div>
                   )}
 
-                  {station.status === 'ready' && station.isEntered && (
-                    <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <Input
-                          type="text"
-                          placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
-                          value={selectedStation?.id === station.id ? pinInput : ''}
-                          onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
-                          className="bg-gray-600 border-gray-500 text-white"
-                          maxLength={6}
-                          data-test="pin-input"
-                        />
-                        <Button
-                          variant="gradientSecondary"
-                          onClick={() => handleClinicExit(station)}
-                          disabled={loading || !pinInput.trim()}
-                          title={t('exitClinic', language)}
-                          data-test="exit-clinic-btn"
-                        >
-                          <LogOut className="icon icon-md me-2" />
-                          {t('exitClinic', language)}
-                        </Button>
-                      </div>
-                      {station.exitTime && (
-                        <div className="text-sm text-gray-400 flex items-center gap-2">
-                          <Clock className="icon icon-sm icon-muted" />
-                          <span>{language === 'ar' ? 'وقت الخروج:' : 'Exit time:'} {formatTime(new Date(station.exitTime))}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {station.status === 'ready' && station.ahead > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-600">
-                      <p className="text-gray-400 text-sm">
-                        {language === 'ar'
-                          ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}`
-                          : `You can reach via elevator – press ${station.floorCode}`}
-                      </p>
-                    </div>
-                  )}
-
                   {station.note && (
-                    <div className="mt-4 pt-4 border-t border-gray-600">
-                      <p className="text-yellow-400 text-sm">
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <p className="text-yellow-400 text-xs">
                         ⚠️ {t('note', language)}: {t('registerAtReception', language)}
                       </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
+            ))}
+          </CardContent>
+        </Card>
+
+        <div className="text-center">
+          <Button variant="outline" onClick={onLogout} className="border-gray-600 text-gray-300">
+            {t('exitSystem', language)}
+          </Button>
+        </div>
       </div>
 
 
