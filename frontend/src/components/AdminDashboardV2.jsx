@@ -2591,14 +2591,39 @@ const SettingsSection = ({ language, t }) => {
 
   const updateSetting = async (key, value) => {
     try {
-      const { error } = await supabase
+      // التحقق من وجود الإعداد أولاً
+      const { data: existing } = await supabase
         .from('settings')
-        .upsert({ key, value, updated_at: new Date().toISOString() });
+        .select('id')
+        .eq('key', key)
+        .single();
+      
+      let error;
+      if (existing) {
+        // تحديث الإعداد الموجود
+        const result = await supabase
+          .from('settings')
+          .update({ value: value, updated_at: new Date().toISOString() })
+          .eq('key', key);
+        error = result.error;
+      } else {
+        // إنشاء إعداد جديد
+        const result = await supabase
+          .from('settings')
+          .insert({ 
+            key, 
+            value: value, 
+            updated_at: new Date().toISOString(),
+            is_public: false
+          });
+        error = result.error;
+      }
       
       if (!error) {
         setSettings(prev => ({ ...prev, [key]: value }));
         showSuccessToast(t('تم حفظ الإعدادات', 'Settings saved'));
       } else {
+        console.error('Error saving setting:', error);
         showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving settings'));
       }
     } catch (e) {
