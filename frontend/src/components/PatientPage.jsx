@@ -3,12 +3,10 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, BarChart3 } from 'lucide-react'
-import LiveStatisticsPanel from './LiveStatisticsPanel'
-import { logClinicEntry, logClinicExit, logPatientSkipped } from '../lib/activityLogger'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
-import { getDynamicMedicalPathway, enrichStationsWithClinicData } from '../lib/dynamic-pathways'
+import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import enhancedApi from '../lib/api-unified'
@@ -27,36 +25,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
-  const [showStatistics, setShowStatistics] = useState(false) // عرض الإحصائيات
-
-
-  // حفظ stations في localStorage عند التحديث
-  useEffect(() => {
-    if (stations.length > 0 && patientData?.id) {
-      const stationsData = {
-        patientId: patientData.id,
-        stations: stations,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('mmc_patient_stations', JSON.stringify(stationsData));
-    }
-  }, [stations, patientData?.id]);
-
-  // استعادة stations من localStorage عند التحميل
-  useEffect(() => {
-    const storedStations = localStorage.getItem('mmc_patient_stations');
-    if (storedStations && patientData?.id) {
-      try {
-        const data = JSON.parse(storedStations);
-        // التحقق من أن البيانات للمريض نفسه وليست قديمة جداً (أقل من 24 ساعة)
-        if (data.patientId === patientData.id && (Date.now() - data.timestamp) < 86400000) {
-          setStations(data.stations);
-        }
-      } catch (e) {
-        console.error('Failed to restore stations:', e);
-      }
-    }
-  }, []);
 
   // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
   const handleGetTicketForFirstClinic = async (station) => {
@@ -84,22 +52,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
-  // دخول يدوي لأي عيادة (بدون بن كود)
+  // دخول يدوي لأي عيادة
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
-      
-      // ✅ التحقق إذا كان المراجع لديه رقم دور مسبقاً - لا تنشئ رقم جديد
-      if (!station.yourNumber) {
-        // فقط إذا لم يكن لديه رقم، ننشئ واحد
-        const enterResult = await api.enterQueue(station.id, patientData.id, true)
-        if (!enterResult || !enterResult.success) {
-          throw new Error('Failed to enter queue')
-        }
-      }
-      
-      // تحديث حالة الطابور إلى serving فوراً (المراجع يُفحص الآن)
-      await api.updateQueueStatus(station.id, patientData.id, 'serving')
+      // دخول الدور
+      await api.enterQueue(station.id, patientData.id, true)
       
       // جلب الموقع الفعلي من Backend
       const positionData = await api.getQueuePosition(station.id, patientData.id)
@@ -109,30 +67,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
-          currentNumber: positionData.current_number || positionData.display_number,
-          ahead: positionData.ahead || 0,
+          ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
-          entered_at: positionData.entered_at || new Date().toISOString()
-        } : s))
-      } else {
-        // إذا فشل جلب الموقع، استخدم الرقم الموجود
-        setActiveTicket({ clinicId: station.id, ticket: station.yourNumber })
-        setStations(prev => prev.map(s => s.id === station.id ? {
-          ...s,
-          status: 'ready',
-          isEntered: true,
-          entered_at: new Date().toISOString()
+          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
         } : s))
       }
       
-      // تسجيل دخول العيادة
-      logClinicEntry(patientData, station, station.yourNumber)
-      
       setLoading(false)
     } catch (e) {
-      console.error('Enter clinic failed:', e)
+      // console.error('Enter clinic failed:', e)
       alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
       setLoading(false)
     }
@@ -173,23 +118,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         let examStations = null
         
         // محاولة جلب المسار المحفوظ أولاً
-        // TODO: إضافة دالة getRoute في API
-        // محاولة استرجاع المسار المحفوظ من قاعدة البيانات
         try {
           const savedRoute = await api.getRoute(patientData.id)
           if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
             examStations = savedRoute.route.stations
+
           }
         } catch (err) {
-          // لا يوجد مسار محفوظ - سيتم حساب مسار جديد
+
         }
         
-        // تحديث أسماء العيادات من البيانات المحفوظة لضمان عرض الأسماء الصحيحة
-        if (examStations) {
-          examStations = enrichStationsWithClinicData(examStations)
-        }
-        
-        // إذا لم يوجد مسار محفوظ، احسب مسار جديد حسب الأوزان الحالية
+        // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
           examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
           
@@ -201,8 +140,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               patientData.gender,
               examStations
             )
+
           } catch (err) {
-            console.error('Failed to save route:', err)
+            // console.error('❌ Failed to save route:', err)
           }
         }
         
@@ -305,22 +245,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       const start = Date.now();
       try {
-        // ✅ فحص التمرير التلقائي للمراجعين المتأخرين
-        const skipResult = await api.checkAndSkipStaleQueues();
-        if (skipResult && skipResult.success && skipResult.skipped > 0) {
-          // التحقق مما إذا كان المراجع الحالي من ضمن المتأخرين
-          const skippedPatient = skipResult.patients.find(p => p.patient_id === patientData.id);
-          if (skippedPatient) {
-            setCurrentNotice({
-              type: 'skipped',
-              message: language === 'ar' 
-                ? `تم تمرير دورك لعدم الحضور. الرجاء العودة للطابور للحصول على رقم جديد.`
-                : `Your turn was skipped for not showing up. Please return to the queue to get a new number.`,
-              clinic: stations.find(s => s.id === skippedPatient.clinic_id)?.nameAr || ''
-            });
-            setTimeout(() => setCurrentNotice(null), 10000); // 10 ثواني
-          }
-        }
         // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط (تقليل 429 Errors)
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
         
@@ -411,16 +335,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     // Adaptive Polling: يعمل فقط إذا SSE غير نشط
     // سيتم تفعيله/إيقافه تلقائياً حسب حالة SSE
     
-    // ✅ Auto-Skip Check: فحص كل 30 ثانية للتمرير التلقائي
-    const autoSkipInterval = setInterval(async () => {
-      if (document.hidden) return;
-      try {
-        await api.checkAndSkipStaleQueues();
-      } catch (err) {
-        // Silent fail
-      }
-    }, 30000); // 30 ثانية
-    
     // Heartbeat لمراقبة الصفحة (تحذير فقط، بدون إعادة تحميل)
     const heartbeatInterval = setInterval(() => {
       const now = Date.now();
@@ -433,7 +347,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
-      if (autoSkipInterval) clearInterval(autoSkipInterval);
       unsubscribeConnected();
       unsubscribeError();
       clearInterval(heartbeatInterval);
@@ -480,25 +393,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       // التحقق من إدخال PIN
       if (!pinInput || !pinInput.trim()) {
-        alert(language === 'ar' ? 'الرجاء إدخال رقم PIN اليومي للعيادة' : 'Please enter clinic daily PIN')
+        alert(language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN')
         setLoading(false)
         return
       }
 
-      // التحقق من صحة البن كود محلياً قبل الإرسال
-      const expectedPin = clinicPins[station.id]
-      if (!expectedPin || pinInput.trim() !== String(expectedPin).trim()) {
-        alert(language === 'ar' ? 'رقم PIN غير صحيح. الرجاء التأكد من الرقم والمحاولة مرة أخرى.' : 'Incorrect PIN. Please verify and try again.')
-        setLoading(false)
-        return
-      }
-
-      // استدعاء API للخروج بعد التحقق من البن كود
+      // استدعاء API للخروج
       const exitResult = await api.queueDone(station.id, patientData.id, pinInput)
       
       // التحقق من نجاح العملية
       if (!exitResult || !exitResult.success) {
-        const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل إنهاء الفحص. يرجى المحاولة مرة أخرى.' : 'Failed to complete examination. Please try again.')
+        const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
         alert(errorMsg)
         setLoading(false)
         return
@@ -518,16 +423,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         // تحديث العيادات: إكمال الحالية وفتح التالية
         setStations(prev => prev.map((s, i) => {
           if (i === currentIdx) {
-            // العيادة الحالية - مكتملة (إخفاء الأرقام)
-            return { 
-              ...s, 
-              status: 'completed', 
-              exitTime: new Date(),
-              yourNumber: null,
-              currentNumber: null,
-              ahead: null,
-              isEntered: false
-            }
+            // العيادة الحالية - مكتملة
+            return { ...s, status: 'completed', exitTime: new Date() }
           } else if (i === currentIdx + 1) {
             // العيادة التالية - مفتوحة لكن غير مدخولة (يجب على المراجع الدخول يدوياً)
             return { ...s, status: 'ready', isEntered: false }
@@ -546,23 +443,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         })
         setTimeout(() => setCurrentNotice(null), 5000)
       } else {
-        // لا توجد عيادة تالية - فقط نكمل العيادة الحالية (إخفاء الأرقام)
+        // لا توجد عيادة تالية - فقط نكمل العيادة الحالية
         setStations(prev => prev.map((s, i) => 
-          i === currentIdx ? { 
-            ...s, 
-            status: 'completed', 
-            exitTime: new Date(),
-            yourNumber: null,
-            currentNumber: null,
-            ahead: null,
-            isEntered: false
-          } : s
+          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
         ))
       }
 
-      // تسجيل الخروج من العيادة
-      logClinicExit(patientData, station, station.yourNumber, station.entered_at, 'completed')
-      
       setPinInput('')
       setSelectedStation(null)
 
@@ -591,7 +477,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     return (
       <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
         <div className="max-w-2xl mx-auto space-y-6 text-center">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 object-contain rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-32 h-32 object-contain rounded-full shadow-lg" />
 
           <div className="text-green-400">
             <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -687,7 +573,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="w-full min-h-screen min-h-dvh" data-test="patient-page" style={{width: '100%', maxWidth: '100vw'}}>
+    <div className="min-h-screen p-4" data-test="patient-page">
       {currentNotice && (
         <ZFDBanner
           notice={currentNotice}
@@ -703,17 +589,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         allStationsCompleted={allStationsCompleted}
       />
 
-      <div className="w-full space-y-4">
-        <div className="absolute top-4 left-4 flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
-            onClick={() => setShowStatistics(true)}
-            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
-          >
-            <BarChart3 className="icon icon-md" />
-          </Button>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
             size="sm"
@@ -725,91 +602,69 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
 
-        <div className="text-center space-y-2">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-16 h-16 object-contain" />
+        <div className="text-center space-y-4">
+          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg" />
 
           <div>
-            <h1 className="text-base font-semibold text-white">
-              {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
+            <h1 className="text-2xl font-bold text-white">
+              {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
             </h1>
-            <p className="text-xs text-[#C9A54C]">
-              {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
+            <p className="text-lg text-gray-300">
+              {language === 'ar' ? 'Medical Services' : 'قيادة الخدمات الطبية'}
             </p>
-            <p className="text-gray-400 text-[10px]">
+            <p className="text-gray-400 text-sm">
               {language === 'ar'
-                ? 'المركز الطبي التخصصي العسكري - العطار'
+                ? 'المركز الطبي المتخصص العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
         </div>
 
-        <Card className="bg-gray-800/50 border-gray-700 w-full max-w-3xl mx-auto">
+        <Card className="bg-gray-800/50 border-gray-700">
           <CardHeader className="text-center">
             <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
-            
-            {/* شريط التقدم بالأوزان */}
-            {stations.length > 0 && (() => {
-              const totalWeight = stations.reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
-              const completedStations = stations.filter(s => s.status === 'completed');
-              const completedWeight = completedStations.reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0);
-              const progressPercent = totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
-              
-              return (
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">
-                      {language === 'ar' ? 'نسبة الإنجاز' : 'Progress'}
-                    </span>
-                    <span className="text-[#C9A54C] font-bold">{progressPercent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3">
-                    <div 
-                      className="bg-gradient-to-r from-[#C9A54C] to-[#E8C875] h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{completedStations.length}/{stations.length} {language === 'ar' ? 'عيادة' : 'clinics'}</span>
-                    <span>{completedWeight}/{totalWeight} {language === 'ar' ? 'وزن' : 'weight'}</span>
-                  </div>
-                </div>
-              );
-            })()}
           </CardHeader>
-          <CardContent className="space-y-4 px-4 sm:px-6">
+          <CardContent className="space-y-4">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-800/80 border-gray-700 rounded-lg">
-                <CardContent className="p-4">
-                  {/* Header: اسم العيادة + الطابق + الحالة */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-2">
+              <Card key={station.id} className="bg-gray-700/50 border-gray-600">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
                       {station.status === 'ready' ? (
-                        <Unlock className="w-5 h-5 text-green-400 mt-0.5" />
+                        <Unlock className="icon icon-lg icon-success" />
                       ) : station.status === 'completed' ? (
-                        <Lock className="w-5 h-5 text-blue-400 mt-0.5" />
+                        <Lock className="icon icon-lg icon-primary" />
                       ) : (
-                        <Lock className="w-5 h-5 text-gray-500 mt-0.5" />
+                        <Lock className="icon icon-lg icon-muted" />
                       )}
                       <div>
-                        <h3 className="text-base font-bold text-white">
+                        <h3 className="text-white font-semibold">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-xs text-gray-400">
-                          {t('floor', language)}: <span className="text-yellow-400">{language === 'ar' ? station.floor : station.floorCode}</span>
+                        <p className="text-gray-400 text-sm">
+                          {t('floor', language)}: {language === 'ar' ? station.floor : station.floorCode}
                         </p>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      station.status === 'ready' ? 'bg-green-600 text-white' :
-                      station.status === 'completed' ? 'bg-blue-600 text-white' :
-                      'bg-gray-600 text-gray-300'
-                    }`}>
-                      {station.status === 'ready' ? t('ready', language) :
-                        station.status === 'completed' ? t('completed', language) :
-                        t('locked', language)}
-                    </span>
+                    <div className="text-right">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
+                        station.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {station.status === 'ready' ? t('ready', language) :
+                          station.status === 'completed' ? t('completed', language) :
+                          t('locked', language)}
+                      </span>
+                    </div>
                   </div>
+
+                  {routeWithZFD && routeWithZFD.route && routeWithZFD.route.length > index && (
+                    <div className="mb-4" data-test="zfd-ticket-section">
+                      <ZFDTicketDisplay step={routeWithZFD.route[index]} />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-3 gap-4 text-center" data-test="queue-info">
                     <div>
@@ -825,35 +680,96 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       <div className="text-gray-400 text-sm">{t('ahead', language)}</div>
                     </div>
                   </div>
-
-                  {/* حقل PIN وزر الخروج - للعيادة الجاهزة */}
-                  {station.status === 'ready' && (
-                    <div className="space-y-3 border-t border-gray-700 pt-4">
-                      <Input
-                        type="text"
-                        placeholder={language === 'ar' ? 'أدخل رقم PIN (رقم الدور)' : 'Enter PIN (ticket number)'}
-                        value={selectedStation?.id === station.id ? pinInput : ''}
-                        onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
-                        className="w-full bg-gray-700 border-gray-600 text-white text-sm h-10 text-center"
-                        maxLength={6}
-                        data-test="pin-input"
+                  
+                  {/* عرض العد التنازلي قبل الدخول */}
+                  {station.status === 'ready' && !station.isEntered && station.entered_at && (
+                    <div className="mt-3">
+                      <CountdownTimer
+                        enteredAt={station.entered_at}
+                        maxSeconds={240}
+                        show={true}
+                        language={language}
+                        onTimeout={() => {
+                          console.log('Countdown timeout for station:', station.id)
+                        }}
                       />
+                    </div>
+                  )}
+                  
+                  {/* عرض الوقت المتوقع قبل الدخول */}
+                  {station.status === 'ready' && !station.isEntered && (
+                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">
+                          🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
+                        </span>
+                        <span className="text-blue-400 font-bold">
+                          {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {station.status === 'ready' && !station.isEntered && (
+                    <div className="mt-4 pt-4 border-t border-gray-600">
                       <Button
-                        variant="outline"
-                        onClick={() => handleClinicExit(station)}
-                        disabled={loading || !pinInput.trim()}
-                        className="w-full border-gray-600 text-gray-300 hover:bg-gray-700 text-sm py-2"
-                        data-test="exit-clinic-btn"
+                        variant="gradientPrimary"
+                        onClick={() => handleEnterClinic(station)}
+                        disabled={loading}
+                        className="w-full"
+                        data-test="enter-clinic-btn"
                       >
-                        <LogOut className="w-4 h-4 me-2" />
-                        {language === 'ar' ? 'الخروج من العيادة' : 'Exit Clinic'}
+                        <LogIn className="icon icon-md me-2" />
+                        {t('enterClinic', language)}
                       </Button>
                     </div>
                   )}
 
+                  {station.status === 'ready' && station.isEntered && (
+                    <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <Input
+                          type="text"
+                          placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
+                          value={selectedStation?.id === station.id ? pinInput : ''}
+                          onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
+                          className="bg-gray-600 border-gray-500 text-white"
+                          maxLength={6}
+                          data-test="pin-input"
+                        />
+                        <Button
+                          variant="gradientSecondary"
+                          onClick={() => handleClinicExit(station)}
+                          disabled={loading || !pinInput.trim()}
+                          title={t('exitClinic', language)}
+                          data-test="exit-clinic-btn"
+                        >
+                          <LogOut className="icon icon-md me-2" />
+                          {t('exitClinic', language)}
+                        </Button>
+                      </div>
+                      {station.exitTime && (
+                        <div className="text-sm text-gray-400 flex items-center gap-2">
+                          <Clock className="icon icon-sm icon-muted" />
+                          <span>{language === 'ar' ? 'وقت الخروج:' : 'Exit time:'} {formatTime(new Date(station.exitTime))}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {station.status === 'ready' && station.ahead > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <p className="text-gray-400 text-sm">
+                        {language === 'ar'
+                          ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}`
+                          : `You can reach via elevator – press ${station.floorCode}`}
+                      </p>
+                    </div>
+                  )}
+
                   {station.note && (
-                    <div className="mt-3 pt-3 border-t border-gray-700">
-                      <p className="text-yellow-400 text-xs">
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <p className="text-yellow-400 text-sm">
                         ⚠️ {t('note', language)}: {t('registerAtReception', language)}
                       </p>
                     </div>
@@ -870,13 +786,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
       </div>
-
-
-      {/* شاشة الإحصائيات */}
-      <LiveStatisticsPanel
-        isOpen={showStatistics}
-        onClose={() => setShowStatistics(false)}
-      />
     </div>
   )
 }
