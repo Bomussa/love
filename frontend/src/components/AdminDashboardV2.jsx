@@ -1471,52 +1471,14 @@ const ClinicsManagement = ({ language, t }) => {
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">{t('مدة الفحص', 'Exam')}</label>
-                  <input
-                    type="number"
-                    value={editingClinic.exam_duration || 5}
-                    onChange={(e) => setEditingClinic({...editingClinic, exam_duration: parseInt(e.target.value) || 5})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
-                    min="1"
-                    max="60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">{t('النداء', 'Call')}</label>
-                  <input
-                    type="number"
-                    value={editingClinic.call_interval || 2}
-                    onChange={(e) => setEditingClinic({...editingClinic, call_interval: parseInt(e.target.value) || 2})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
-                    min="1"
-                    max="15"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">{t('التأخير', 'Late')}</label>
-                  <input
-                    type="number"
-                    value={editingClinic.late_threshold || 4}
-                    onChange={(e) => setEditingClinic({...editingClinic, late_threshold: parseInt(e.target.value) || 4})}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-center"
-                    min="1"
-                    max="30"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">{t('الأوقات بالدقائق - تلقائية وقابلة للتخصيص', 'Times in minutes - automatic and customizable')}</p>
+
             </div>
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => updateClinic(editingClinic.id, {
                   name_ar: editingClinic.name_ar,
                   name_en: editingClinic.name_en,
-                  floor: editingClinic.floor,
-                  exam_duration: editingClinic.exam_duration || 5,
-                  call_interval: editingClinic.call_interval || 2,
-                  late_threshold: editingClinic.late_threshold || 4
+                  floor: editingClinic.floor
                 })}
                 className="flex-1 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all font-medium"
               >
