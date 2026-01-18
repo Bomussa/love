@@ -191,20 +191,68 @@ const api = {
 
   async queueDone(clinicId, patientId, pin) {
     try {
+      // ✅ التحقق من البن كود أولاً
+      if (!pin) {
+        return { success: false, error: 'يرجى إدخال رقم PIN' };
+      }
+
+      // جلب البن كود النشط لهذه العيادة
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: validPin, error: pinError } = await supabase
+        .from('pins')
+        .select('*')
+        .eq('clinic_code', clinicId)
+        .eq('pin', pin)
+        .eq('is_active', true)
+        .gte('expires_at', today.toISOString())
+        .maybeSingle();
+
+      if (pinError) {
+        console.error('PIN verification error:', pinError);
+        return { success: false, error: 'خطأ في التحقق من PIN' };
+      }
+
+      if (!validPin) {
+        return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
+      }
+
+      // تحديث عداد استخدام البن كود
+      await supabase
+        .from('pins')
+        .update({ 
+          used_count: (validPin.used_count || 0) + 1,
+          last_used_at: new Date().toISOString()
+        })
+        .eq('id', validPin.id);
+
+      // إكمال الفحص في الطابور
       const { data, error } = await supabase
         .from('queues')
         .update({ 
           status: 'completed', 
-          completed_at: new Date().toISOString() 
+          completed_at: new Date().toISOString(),
+          completed_by_pin: pin
         })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
-        .eq('status', 'serving')
+        .in('status', ['waiting', 'serving', 'called'])
         .select();
 
       if (error) throw error;
-      return { success: true, data };
+      
+      // حساب مدة الفحص
+      let durationMinutes = null;
+      if (data && data.length > 0 && data[0].entered_at) {
+        const enteredAt = new Date(data[0].entered_at);
+        const completedAt = new Date();
+        durationMinutes = Math.round((completedAt - enteredAt) / (1000 * 60));
+      }
+
+      return { success: true, data, duration_minutes: durationMinutes };
     } catch (error) {
+      console.error('Queue Done Error:', error);
       return { success: false, error: error.message };
     }
   },
