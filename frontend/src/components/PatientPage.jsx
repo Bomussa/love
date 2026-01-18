@@ -811,19 +811,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </span>
                   </div>
 
-                  {/* أرقام الدور */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-gray-700/50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-yellow-400">
-                        {station.status === 'locked' ? '-' : (typeof station.yourNumber === 'number' ? station.yourNumber : '-')}
-                      </div>
-                      <div className="text-xs text-gray-400">{t('yourNumber', language)}</div>
+                  <div className="grid grid-cols-3 gap-4 text-center" data-test="queue-info">
+                    <div>
+                      <div className="text-2xl font-bold text-white" data-test="current-number">{station.current}</div>
+                      <div className="text-gray-400 text-sm">{t('current', language)}</div>
                     </div>
-                    <div className="bg-gray-700/50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-white">
-                        {station.ahead || 0}
-                      </div>
-                      <div className="text-xs text-gray-400">{t('ahead', language)}</div>
+                    <div>
+                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
+                      <div className="text-gray-400 text-sm">{t('yourNumber', language)}</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
+                      <div className="text-gray-400 text-sm">{t('ahead', language)}</div>
                     </div>
                   </div>
 
