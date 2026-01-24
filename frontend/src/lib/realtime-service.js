@@ -139,7 +139,7 @@ export function trackPatientPosition(clinicId, patientId, callback) {
     try {
       // Get patient's display number
       const { data: patientQueue, error: patientError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -150,7 +150,7 @@ export function trackPatientPosition(clinicId, patientId, callback) {
 
       // Count how many are ahead
       const { count, error: countError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', clinicId)
         .eq('status', 'waiting')

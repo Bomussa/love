@@ -390,7 +390,7 @@ export const connectionManager = new PersistentConnectionManager();
 export async function safeQueuesQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.QUEUES);
   return manager.executeWithRetry(
-    (client) => queryFn(client.from('queues')),
+    (client) => queryFn(client.from('unified_queue')),
     { tableName: 'queues' }
   );
 }

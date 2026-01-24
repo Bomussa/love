@@ -132,7 +132,7 @@ class DashboardApiClient {
             const today = new Date().toISOString().split('T')[0]
             
             const { data, error } = await supabase
-                .from('queues')
+                .from('unified_queue')
                 .select('entered_at, completed_at')
                 .eq('status', 'completed')
                 .gte('entered_at', `${today}T00:00:00`)
@@ -178,7 +178,7 @@ class DashboardApiClient {
             // If events table doesn't exist or is empty, use queue_history
             if (error || !events || events.length === 0) {
                 const { data: queueHistory, error: qhError } = await supabase
-                    .from('queues')
+                    .from('unified_queue')
                     .select('clinic_id, patient_id, status, entered_at, completed_at')
                     .order('entered_at', { ascending: false })
                     .limit(limit)

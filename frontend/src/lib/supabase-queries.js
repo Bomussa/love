@@ -16,7 +16,7 @@ export const queueQueries = {
    */
   async getStatus(clinicId) {
     const { data, error } = await supabase
-      .from('queues')
+      .from('unified_queue')
       .select('*')
       .eq('clinic_id', clinicId)
       .order('entered_at', { ascending: true })

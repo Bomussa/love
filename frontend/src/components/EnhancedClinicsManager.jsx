@@ -221,7 +221,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
 
       // تحويل المراجعين إذا تم اختيار عيادة
       if (targetClinicId) {
-        await supabase.from('queues').update({
+        await supabase.from('unified_queue').update({
           clinic_id: targetClinicId,
           transferred_from: transferModal.id,
           transfer_reason: transferReason,
