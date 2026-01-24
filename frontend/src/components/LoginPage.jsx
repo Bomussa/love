@@ -2,13 +2,14 @@ import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { User, Globe, Shield, QrCode, BarChart3 } from 'lucide-react'
+import { User, Globe, Shield, QrCode, BarChart3, AlertCircle } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
+import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -19,6 +20,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [adminPassword, setAdminPassword] = useState('')
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [showStatistics, setShowStatistics] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
@@ -40,16 +42,25 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!patientId.trim()) return
+    setValidationError('')
+    
+    // التحقق من صحة الرقم العسكري
+    const sanitizedId = sanitizeInput(patientId)
+    const validation = validateMilitaryId(sanitizedId)
+    
+    if (!validation.isValid) {
+      setValidationError(validation.error)
+      return
+    }
 
     setLoading(true)
     try {
       // تسجيل دخول المراجع
-      logPatientRegistered({ militaryId: patientId.trim(), gender })
+      logPatientRegistered({ militaryId: sanitizedId, gender })
       
-      await onLogin({ patientId: patientId.trim(), gender })
+      await onLogin({ patientId: sanitizedId, gender })
     } catch (error) {
-      // console.error('Login error:', error)
+      setValidationError(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error occurred')
     } finally {
       setLoading(false)
     }
@@ -57,18 +68,29 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
   const handleAdminSubmit = async (e) => {
     e.preventDefault()
-    if (!adminUsername.trim() || !adminPassword.trim()) return
+    setValidationError('')
+    
+    // التحقق من صحة بيانات الإدارة
+    const validation = validateAdminData({
+      username: sanitizeInput(adminUsername),
+      password: adminPassword
+    })
+    
+    if (!validation.isValid) {
+      setValidationError(validation.errors[0])
+      return
+    }
 
     setLoading(true)
     try {
       // تسجيل دخول الإدارة
-      logAdminLogin(adminUsername.trim())
+      const sanitizedUsername = sanitizeInput(adminUsername)
+      logAdminLogin(sanitizedUsername)
       
       // إرسال username:password كرمز واحد
-      await onAdminLogin(`${adminUsername.trim()}:${adminPassword.trim()}`)
+      await onAdminLogin(`${sanitizedUsername}:${adminPassword.trim()}`)
     } catch (error) {
-      // console.error('Admin login error:', error)
-      alert(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error')
+      setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
     } finally {
       setLoading(false)
     }

@@ -1,20 +1,32 @@
 import './core/notification-engine.js';
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
 import { LoginPage } from './components/LoginPage.jsx'
 import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
 import { PatientPage } from './components/PatientPage.jsx'
-import { AdminDashboardV2 } from './components/AdminDashboardV2.jsx'
-import { QrScanPage } from './components/QrScanPage.jsx'
 import api from './lib/api-unified'
 import authService from './lib/auth-service'
-import { DisplayPage } from './components/DisplayPage'
 import { ClinicLoginPage } from './components/ClinicLoginPage'
-import { ClinicDashboard } from './components/ClinicDashboard'
 import getDynamicMedicalPathway from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
+
+// Lazy Loading للمكونات الثقيلة
+const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
+const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
+const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
+const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
+
+// Loading Fallback Component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-900">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+      <p className="text-white text-lg">جارٍ التحميل...</p>
+    </div>
+  </div>
+)
 
 // Error Boundary for AdminPage
 class AdminErrorBoundary extends React.Component {
