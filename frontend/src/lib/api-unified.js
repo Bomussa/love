@@ -67,12 +67,14 @@ const api = {
   // --- Queue ---
   async enterQueue(clinicId, patientId, isAutoEnter = true) {
     try {
-      // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة
+      // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة اليوم
+      const today = new Date().toISOString().split('T')[0];
       const { data: existingEntry, error: existingError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
+        .eq('queue_date', today) // ✅ فقط اليوم - منع التكرار اليومي
         .in('status', ['waiting', 'serving']) // فقط الحالات النشطة
         .order('entered_at', { ascending: false })
         .limit(1)
@@ -84,23 +86,25 @@ const api = {
         return { success: true, ...existingEntry, alreadyExists: true };
       }
 
-      // Get next display number
+      // Get next display number for today only
       const { data: lastEntry, error: lastError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
+        .eq('queue_date', today) // ✅ فقط اليوم
         .order('display_number', { ascending: false })
         .limit(1);
 
       const nextNumber = (lastEntry && lastEntry.length > 0 ? lastEntry[0].display_number : 0) + 1;
 
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
           display_number: nextNumber,
           status: 'waiting',
+          queue_date: today, // ✅ تاريخ اليوم
           entered_at: new Date().toISOString()
         }])
         .select()
@@ -116,22 +120,25 @@ const api = {
 
   async getQueuePosition(clinicId, patientId) {
     try {
+      const today = new Date().toISOString().split('T')[0];
       const { data: patientEntry, error: entryError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
+        .eq('queue_date', today) // ✅ فقط اليوم
         .order('entered_at', { ascending: false })
         .limit(1)
         .single();
 
       if (entryError) throw entryError;
 
-      // جلب رقم من يُفحص الآن (serving)
+      // جلب رقم من يُفحص الآن (serving) - اليوم فقط
       const { data: servingEntry, error: servingError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
+        .eq('queue_date', today) // ✅ فقط اليوم
         .eq('status', 'serving')
         .order('called_at', { ascending: false })
         .limit(1)
@@ -140,9 +147,10 @@ const api = {
       const currentNumber = servingEntry ? servingEntry.display_number : 0;
 
       const { count, error: countError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', clinicId)
+        .eq('queue_date', today) // ✅ فقط اليوم
         .eq('status', 'waiting')
         .lt('entered_at', patientEntry.entered_at);
 
@@ -173,7 +181,7 @@ const api = {
       }
 
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update(updateData)
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -231,7 +239,7 @@ const api = {
 
       // إكمال الفحص في الطابور
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ 
           status: 'completed', 
           completed_at: new Date().toISOString(),
@@ -263,14 +271,14 @@ const api = {
     try {
       // 1. Complete current
       await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('clinic_id', clinicId)
         .eq('status', 'serving');
 
       // 2. Get next
       const { data: next, error: nextError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('status', 'waiting')
@@ -282,7 +290,7 @@ const api = {
 
       // 3. Update to serving
       const { data: updated, error: updateError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'serving', called_at: new Date().toISOString() })
         .eq('id', next.id)
         .select()
@@ -366,26 +374,26 @@ const api = {
 
       // 1. Total Patients Today
       const { count: totalToday, error: totalError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .gte('entered_at', todayISO);
 
       // 2. Waiting Patients
       const { count: waiting, error: waitingError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'waiting');
 
       // 3. Completed Today
       const { count: completed, error: completedError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'completed')
         .gte('completed_at', todayISO);
 
       // 4. Active Clinics (with serving patients)
       const { data: activeData, error: activeError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('clinic_id')
         .eq('status', 'serving');
       
@@ -417,7 +425,7 @@ const api = {
       const todayISO = today.toISOString();
 
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .gte('entered_at', todayISO)
@@ -525,7 +533,7 @@ const api = {
       const waitTimeoutAgo = new Date(Date.now() - waitTimeoutMs).toISOString();
       
       const { data: staleWaiting, error: waitError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('status', 'waiting')
         .not('called_at', 'is', null)
@@ -537,7 +545,7 @@ const api = {
       if (staleWaiting && staleWaiting.length > 0) {
         for (const queue of staleWaiting) {
           await supabase
-            .from('queues')
+            .from('unified_queue')
             .update({ 
               status: 'skipped',
               completed_at: new Date().toISOString(),
@@ -562,7 +570,7 @@ const api = {
         const examTimeoutAgo = new Date(Date.now() - examTimeoutMs).toISOString();
         
         const { data: staleExams, error: examError } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .select('*')
           .eq('status', 'serving')
           .not('entered_at', 'is', null)
@@ -574,7 +582,7 @@ const api = {
         if (staleExams && staleExams.length > 0) {
           for (const queue of staleExams) {
             await supabase
-              .from('queues')
+              .from('unified_queue')
               .update({ 
                 status: 'completed',
                 completed_at: new Date().toISOString(),
@@ -623,7 +631,7 @@ const api = {
     try {
       // 1. جلب السجل الحالي للمراجع
       const { data: currentQueue, error: fetchError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -641,7 +649,7 @@ const api = {
       if (currentPostponeCount >= maxPostpones) {
         // إلغاء المراجع نهائياً من هذه العيادة
         const { error: cancelError } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .update({
             status: 'cancelled',
             completed_at: new Date().toISOString(),
@@ -680,7 +688,7 @@ const api = {
       // 3. إلغاء الرقم الحالي مع تسجيل ملاحظة
       const newPostponeCount = currentPostponeCount + 1;
       const { error: cancelError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({
           status: 'postponed',
           completed_at: new Date().toISOString(),
@@ -692,7 +700,7 @@ const api = {
 
       // 4. حساب رقم الدور الجديد (آخر رقم + 1)
       const { data: lastQueue, error: lastError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
         .order('display_number', { ascending: false })
@@ -703,7 +711,7 @@ const api = {
 
       // 5. إنشاء سجل جديد برقم دور جديد في نهاية الطابور
       const { data: newQueue, error: insertError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .insert({
           clinic_id: clinicId,
           patient_id: patientId,

@@ -89,7 +89,7 @@ const QueueManagement = ({ language, t }) => {
     // اشتراك Real-time لتحديثات الطوابير اللحظية
     const subscription = supabase
       .channel('queues_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'queues' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue' }, (payload) => {
         console.log('Queue change detected:', payload);
         loadQueues();
       })
@@ -119,14 +119,13 @@ const QueueManagement = ({ language, t }) => {
   const loadQueues = async () => {
     try {
       setLoading(true);
-      // جلب الطوابير لليوم الحالي فقط مع ترتيب صحيح
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
+      const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
-        .gte('entered_at', today.toISOString())
+        .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
         .order('display_number', { ascending: true });
       
       if (!error && data) {
@@ -155,7 +154,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       const { error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -176,7 +175,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', queueId);
       
@@ -199,7 +198,7 @@ const QueueManagement = ({ language, t }) => {
       const maxPostpones = 3;
       if (postponeCount >= maxPostpones) {
         const { error } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .update({ status: 'cancelled', postpone_count: postponeCount })
           .eq('id', queueId);
         
@@ -210,7 +209,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // ترحيل لنهاية الدور برقم جديد
         const { data: maxQueue } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .select('display_number')
           .eq('clinic_id', queue?.clinic_id)
           .order('display_number', { ascending: false })
@@ -220,7 +219,7 @@ const QueueManagement = ({ language, t }) => {
         const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
         
         const { error } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .update({ 
             status: 'waiting', 
             display_number: newDisplayNumber,
@@ -252,7 +251,7 @@ const QueueManagement = ({ language, t }) => {
       
       // البحث عن المراجع في قائمة الانتظار
       const { data: patientQueue, error: searchError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
@@ -274,7 +273,7 @@ const QueueManagement = ({ language, t }) => {
 
         // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى"
         const { error: insertError } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .insert({
             clinic_id: priorityClinicId,
             patient_id: patient.id,
@@ -298,7 +297,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
         await supabase
-          .from('queues')
+          .from('unified_queue')
           .update({ 
             status: 'called', 
             called_at: new Date().toISOString(),
@@ -920,25 +919,25 @@ const ReportsSection = ({ language, t }) => {
 
       // إحصائيات اليوم
       const { data: todayData } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .gte('created_at', today.toISOString());
 
       // إحصائيات الأسبوع
       const { data: weekData } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .gte('created_at', weekAgo.toISOString());
 
       // إحصائيات الشهر
       const { data: monthData } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .gte('created_at', monthAgo.toISOString());
 
       // إحصائيات السنة
       const { data: yearData } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .gte('created_at', yearAgo.toISOString());
 
@@ -1783,7 +1782,7 @@ const ClinicsManagement = ({ language, t }) => {
                     
                     // تحويل المراجعين إذا تم اختيار عيادة
                     if (targetClinicId) {
-                      await supabase.from('queues').update({
+                      await supabase.from('unified_queue').update({
                         clinic_id: targetClinicId,
                         transferred_from: transferModal.id,
                         transfer_reason: transferReason
@@ -3773,7 +3772,7 @@ const BackupExport = ({ language, t }) => {
       
       switch(type) {
         case 'queues':
-          const { data: queuesData } = await supabase.from('queues').select('*');
+          const { data: queuesData } = await supabase.from('unified_queue').select('*');
           data = queuesData;
           filename = 'queues_export';
           break;
@@ -3788,7 +3787,7 @@ const BackupExport = ({ language, t }) => {
           filename = 'patients_export';
           break;
         case 'all':
-          const { data: allQueues } = await supabase.from('queues').select('*');
+          const { data: allQueues } = await supabase.from('unified_queue').select('*');
           const { data: allClinics } = await supabase.from('clinics').select('*');
           const { data: allPatients } = await supabase.from('patients').select('*');
           data = { queues: allQueues, clinics: allClinics, patients: allPatients };
@@ -4922,7 +4921,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     try {
       // جلب بيانات الطوابير مع تفاصيل العيادة
       const { data: queueData, error: queueError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('patient_id, clinic_id, status, entered_at, called_at, completed_at');
       
       if (!queueError && queueData) {
@@ -5026,8 +5025,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     
     try {
       // حذف من كلا الجدولين
-      await supabase.from('queues').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('queues').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       loadAllData();
       alert(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));
     } catch (error) {

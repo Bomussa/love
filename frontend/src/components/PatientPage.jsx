@@ -753,7 +753,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 text-center" data-test="queue-info">
+                  <div className="grid grid-cols-3 gap-8 text-center px-4" data-test="queue-info">
                     <div>
                       <div className="text-2xl font-bold text-white" data-test="current-number">{station.current}</div>
                       <div className="text-gray-400 text-sm">{t('current', language)}</div>
