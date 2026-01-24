@@ -9,7 +9,6 @@ import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
-import enhancedApi from '../lib/api-unified'
 import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
 import NotificationSystem from './NotificationSystem'
 import { CountdownTimer } from './CountdownTimer'
@@ -126,15 +125,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       if (document.hidden) return;
       try {
         const data = await api.getPinStatus()
-        if (data && data.pins) {
-          // تحويل البيانات إلى صيغة { clinic_id: pin_number }
-          const pinsMap = {}
-          Object.keys(data.pins).forEach(key => {
-            // التعامل مع كلا الحالتين (object و string)
-            const pinData = data.pins[key]
-            pinsMap[key] = typeof pinData === 'object' ? pinData.pin : pinData
+        if (data && data.success && data.clinics) {
+          // تحويل البيانات إلى صيغة { clinic_id: clinic_info }
+          const clinicsMap = {}
+          Object.keys(data.clinics).forEach(key => {
+            clinicsMap[key] = data.clinics[key]
           })
-          setClinicPins(pinsMap)
+          setClinicPins(clinicsMap)
 
         }
       } catch (err) {
@@ -221,7 +218,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   // Fetch route with ZFD validation
   useEffect(() => {
     if (patientData?.id) {
-      enhancedApi.getRoute(patientData.id)
+      api.getRoute(patientData.id)
         .then(data => {
           if (data?.route) {
             setRouteWithZFD(data)

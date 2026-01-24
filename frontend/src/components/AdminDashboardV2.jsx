@@ -5024,8 +5024,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     if (!window.confirm(t('هل أنت متأكد من تصفير جميع البيانات؟', 'Are you sure you want to reset all data?'))) return;
     
     try {
-      // حذف من كلا الجدولين
-      await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // حذف من جدول الطابور
       await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       loadAllData();
       alert(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));

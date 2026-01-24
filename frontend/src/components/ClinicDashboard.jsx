@@ -6,7 +6,7 @@ import { Users, Bell, CheckCircle, XCircle, LogOut } from 'lucide-react'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
-import { AdminPINMonitor } from './AdminPINMonitor'
+// AdminPINMonitor removed - not used in this component
 
 export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
   const [currentTicket, setCurrentTicket] = useState(null)
@@ -60,6 +60,25 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
       }
     } catch (err) {
       console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleNoShow = async () => {
+    if (!currentTicket) return
+    setLoading(true)
+    try {
+      // تحديث حالة المراجع إلى "no_show" والانتقال للتالي
+      const result = await api.updateQueueStatus(clinicId, currentTicket.patient_id, 'no_show')
+      if (result.success) {
+        setCurrentTicket(null)
+        refreshStatus()
+      } else {
+        setError(result.error || 'Failed to mark as no show')
+      }
+    } catch (err) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -143,6 +162,7 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
                     variant="outline" 
                     className="h-12 border-red-600 text-red-400 hover:bg-red-900/20"
                     disabled={!currentTicket || loading}
+                    onClick={handleNoShow}
                 >
                   <XCircle className="w-4 h-4 mr-2" />
                   {t('No Show')}

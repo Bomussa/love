@@ -23,7 +23,7 @@ export function DisplayPage({ clinicId, language }) {
                 clinicId: clinicId
             })
         } else {
-            setCurrentStep({ assigned: null })
+            setCurrentStep(null)
         }
     } catch (e) { console.error(e) }
   }

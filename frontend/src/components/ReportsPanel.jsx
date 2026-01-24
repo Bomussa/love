@@ -21,7 +21,7 @@ import {
   Square,
   X,
   FileSpreadsheet,
-  FilePdf,
+  File,
   Mail,
   Eye,
   EyeOff,

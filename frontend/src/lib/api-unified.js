@@ -982,6 +982,290 @@ const api = {
       console.error('Get Settings Error:', error);
       return { success: false, settings: {} };
     }
+  },
+
+  // ============================================================================
+  // الدوال المضافة - Missing Functions
+  // ============================================================================
+
+  /**
+   * جلب إحصائيات عامة
+   */
+  async getStats() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      const { count: totalToday } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .gte('entered_at', todayISO);
+
+      const { count: waiting } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'waiting');
+
+      const { count: completed } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('completed_at', todayISO);
+
+      const { count: serving } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'serving');
+
+      return {
+        success: true,
+        totalToday: totalToday || 0,
+        waiting: waiting || 0,
+        completed: completed || 0,
+        serving: serving || 0
+      };
+    } catch (error) {
+      console.error('Get Stats Error:', error);
+      return { success: false, totalToday: 0, waiting: 0, completed: 0, serving: 0 };
+    }
+  },
+
+  /**
+   * إنشاء رقم PIN جديد للعيادة
+   */
+  async generatePIN(clinicId) {
+    try {
+      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      const expiresAt = new Date();
+      expiresAt.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('pins')
+        .upsert({
+          clinic_code: clinicId,
+          pin: pin,
+          is_active: true,
+          expires_at: expiresAt.toISOString(),
+          created_at: new Date().toISOString()
+        }, { onConflict: 'clinic_code' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, pin: data.pin, expiresAt: data.expires_at };
+    } catch (error) {
+      console.error('Generate PIN Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * إيقاف الطابور مؤقتاً
+   */
+  async pauseQueue(clinicId, isPaused) {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .update({ is_paused: isPaused, updated_at: new Date().toISOString() })
+        .eq('id', clinicId)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Pause Queue Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب آخر التقارير
+   */
+  async getRecentReports(limit = 10) {
+    try {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return { success: true, reports: data || [] };
+    } catch (error) {
+      console.error('Get Recent Reports Error:', error);
+      return { success: false, reports: [] };
+    }
+  },
+
+  /**
+   * جلب إحصائيات الطابور
+   */
+  async getQueueStats(clinicId = null) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      let query = supabase
+        .from('unified_queue')
+        .select('*')
+        .gte('entered_at', todayISO);
+
+      if (clinicId) {
+        query = query.eq('clinic_id', clinicId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const waiting = data.filter(q => q.status === 'waiting').length;
+      const serving = data.filter(q => q.status === 'serving').length;
+      const completed = data.filter(q => q.status === 'completed').length;
+
+      return {
+        success: true,
+        total: data.length,
+        waiting,
+        serving,
+        completed
+      };
+    } catch (error) {
+      console.error('Get Queue Stats Error:', error);
+      return { success: false, total: 0, waiting: 0, serving: 0, completed: 0 };
+    }
+  },
+
+  /**
+   * جلب أرقام PIN النشطة
+   */
+  async getActivePins() {
+    try {
+      const { data, error } = await supabase
+        .from('pins')
+        .select('clinic_code, pin, expires_at, is_active')
+        .eq('is_active', true)
+        .gte('expires_at', new Date().toISOString());
+
+      if (error) throw error;
+
+      const pinsMap = {};
+      if (data) {
+        data.forEach(p => {
+          pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
+        });
+      }
+
+      return { success: true, pins: pinsMap };
+    } catch (error) {
+      console.error('Get Active Pins Error:', error);
+      return { success: false, pins: {} };
+    }
+  },
+
+  /**
+   * إلغاء تفعيل رقم PIN
+   */
+  async deactivatePIN(clinicId) {
+    try {
+      const { data, error } = await supabase
+        .from('pins')
+        .update({ is_active: false })
+        .eq('clinic_code', clinicId)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Deactivate PIN Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * تحديث مسارات الفحص
+   */
+  async updateExamRoutes(examType, routes) {
+    try {
+      const { data, error } = await supabase
+        .from('exam_routes')
+        .upsert({
+          exam_type: examType,
+          routes: routes,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'exam_type' })
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update Exam Routes Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب إحصائيات لوحة التحكم
+   */
+  async getDashboardStats() {
+    return this.getAdminStatus();
+  },
+
+  /**
+   * جلب نسبة إشغال العيادة
+   */
+  async getClinicOccupancy(clinicId) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .select('status')
+        .eq('clinic_id', clinicId)
+        .gte('entered_at', today.toISOString());
+
+      if (error) throw error;
+
+      const total = data?.length || 0;
+      const completed = data?.filter(q => q.status === 'completed').length || 0;
+      const occupancy = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return { success: true, total, completed, occupancy };
+    } catch (error) {
+      console.error('Get Clinic Occupancy Error:', error);
+      return { success: false, total: 0, completed: 0, occupancy: 0 };
+    }
+  },
+
+  /**
+   * جلب الطابور النشط
+   */
+  async getActiveQueue(clinicId = null) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let query = supabase
+        .from('unified_queue')
+        .select('*')
+        .in('status', ['waiting', 'serving'])
+        .gte('entered_at', today.toISOString())
+        .order('entered_at', { ascending: true });
+
+      if (clinicId) {
+        query = query.eq('clinic_id', clinicId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return { success: true, queue: data || [] };
+    } catch (error) {
+      console.error('Get Active Queue Error:', error);
+      return { success: false, queue: [] };
+    }
   }
 };
 
