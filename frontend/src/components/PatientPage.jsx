@@ -720,13 +720,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg" />
 
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
               {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
             </h1>
-            <p className="text-lg text-gray-300">
+            <p className="text-xl sm:text-2xl text-gray-300 font-medium">
               {language === 'ar' ? 'Medical Services' : 'قيادة الخدمات الطبية'}
             </p>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-300 text-base sm:text-lg">
               {language === 'ar'
                 ? 'المركز الطبي المتخصص العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
@@ -736,8 +736,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         <Card className="bg-gray-800/50 border-gray-700">
           <CardHeader className="text-center">
-            <CardTitle className="text-white text-xl">{t('yourMedicalRoute', language)}</CardTitle>
-            <p className="text-gray-400">{t('exam', language)}: {getExamName()}</p>
+            <CardTitle className="text-white text-2xl sm:text-3xl font-bold">{t('yourMedicalRoute', language)}</CardTitle>
+            <p className="text-gray-300 text-lg sm:text-xl mt-2">{t('exam', language)}: <span className="font-semibold text-white">{getExamName()}</span></p>
           </CardHeader>
           <CardContent className="space-y-4">
             {stations.map((station, index) => (
@@ -753,16 +753,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         <Lock className="icon icon-lg icon-muted" />
                       )}
                       <div>
-                        <h3 className="text-white font-semibold">
+                        <h3 className="text-white text-lg sm:text-xl font-bold">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-gray-300 text-base sm:text-lg">
                           {t('floor', language)}: {language === 'ar' ? station.floor : station.floorCode}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      <span className={`px-4 py-2 rounded-full text-base sm:text-lg font-semibold ${
                         station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
                         station.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-gray-500/20 text-gray-400'
@@ -782,22 +782,22 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                   <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
                     <div className="p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-3xl sm:text-4xl font-bold text-white mb-2" data-test="current-number">
+                      <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="current-number">
                         {station.current || '-'}
                       </div>
-                      <div className="text-gray-300 text-sm font-medium">{t('current', language)}</div>
+                      <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('current', language)}</div>
                     </div>
                     <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
-                      <div className="text-3xl sm:text-4xl font-bold text-yellow-400 mb-2" data-test="your-number">
+                      <div className="text-4xl sm:text-5xl font-bold text-yellow-400 mb-3" data-test="your-number">
                         {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
                       </div>
-                      <div className="text-yellow-300 text-sm font-medium">{t('yourNumber', language)}</div>
+                      <div className="text-yellow-200 text-base sm:text-lg font-semibold">{t('yourNumber', language)}</div>
                     </div>
                     <div className="p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-3xl sm:text-4xl font-bold text-white mb-2" data-test="ahead-count">
+                      <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="ahead-count">
                         {station.ahead || 0}
                       </div>
-                      <div className="text-gray-300 text-sm font-medium">{t('ahead', language)}</div>
+                      <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
