@@ -1,7 +1,8 @@
 /**
  * إدارة المراجعين - بيانات حقيقية فقط من قاعدة البيانات
  * ✅ لا توجد بيانات وهمية
- * ✅ جميع البيانات من Supabase عبر نظام GDS
+ * ✅ جميع البيانات من Supabase عبر api-unified
+ * ✅ موحد مع باقي المكونات
  */
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
@@ -18,7 +19,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react'
-import { GDS, getQueues, getRoutes } from '../lib/guaranteed-data-system'
+import api from '../lib/api-unified'
 
 export function PatientsManagement({ language }) {
   const [patients, setPatients] = useState([])
@@ -36,9 +37,9 @@ export function PatientsManagement({ language }) {
     setError(null)
     
     try {
-      // جلب بيانات الطوابير من نظام GDS
-      const queuesResult = await getQueues()
-      const routesResult = await getRoutes()
+      // جلب بيانات الطوابير من api-unified
+      const queuesResult = await api.getQueues()
+      const routesResult = await api.getAllRoutes()
 
       if (queuesResult.error) throw new Error(queuesResult.error)
 

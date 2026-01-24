@@ -1266,7 +1266,720 @@ const api = {
       console.error('Get Active Queue Error:', error);
       return { success: false, queue: [] };
     }
+  },
+
+  /**
+   * جلب جميع الطوابير (للإدارة)
+   * @param {Object} filters - فلاتر اختيارية
+   */
+  async getQueues(filters = {}) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      let query = supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('queue_date', today)
+        .order('entered_at', { ascending: false });
+
+      // تطبيق الفلاتر
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.clinic_id) {
+        query = query.eq('clinic_id', filters.clinic_id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return { success: true, data: data || [], error: null };
+    } catch (error) {
+      console.error('Get Queues Error:', error);
+      return { success: false, data: [], error: error.message };
+    }
+  },
+
+  /**
+   * جلب جميع المسارات (للإدارة)
+   * @param {string} patientId - معرف المراجع (اختياري)
+   */
+  async getAllRoutes(patientId = null) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      let query = supabase
+        .from('routes')
+        .select('*')
+        .gte('created_at', today + 'T00:00:00')
+        .order('created_at', { ascending: false });
+
+      if (patientId) {
+        query = query.eq('patient_id', patientId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return { success: true, data: data || [], error: null };
+    } catch (error) {
+      console.error('Get Routes Error:', error);
+      return { success: false, data: [], error: error.message };
+    }
+  },
+
+  // ============================================================================
+  // PIN Management - إدارة رموز PIN
+  // ============================================================================
+
+  /**
+   * جلب رمز PIN الحالي للعيادة
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<Object>} بيانات PIN
+   */
+  async getCurrentPin(clinicId) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+
+      // 1. جلب PIN النشط الحالي
+      const { data: current, error: currentError } = await supabase
+        .from('pins')
+        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
+        .eq('clinic_code', clinicId)
+        .eq('is_active', true)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (currentError) throw currentError;
+
+      // 2. جلب جميع PINs الصادرة اليوم
+      const { data: allToday, error: allTodayError } = await supabase
+        .from('pins')
+        .select('pin')
+        .eq('clinic_code', clinicId)
+        .gte('generated_at', todayISO)
+        .order('generated_at', { ascending: true });
+
+      if (allTodayError) throw allTodayError;
+
+      return {
+        success: true,
+        currentPin: current ? current.pin : null,
+        pinId: current ? current.id : null,
+        clinicCode: current ? current.clinic_code : clinicId,
+        isActive: current ? current.is_active : false,
+        generatedAt: current ? current.generated_at : null,
+        expiresAt: current ? current.expires_at : null,
+        totalIssued: allToday ? allToday.length : 0,
+        allPins: allToday ? allToday.map(p => p.pin) : [],
+        dateKey: today.toLocaleDateString()
+      };
+    } catch (error) {
+      console.error('[api-unified] getCurrentPin error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * إصدار رمز PIN جديد
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<Object>} بيانات PIN الجديد
+   */
+  async issuePin(clinicId) {
+    try {
+      // توليد PIN جديد من 4 أرقام
+      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      const now = new Date();
+      const expiresAt = new Date(now);
+      expiresAt.setHours(23, 59, 59, 999);
+      
+      // تعطيل جميع الـ PINs السابقة لهذه العيادة
+      await supabase
+        .from('pins')
+        .update({ is_active: false })
+        .eq('clinic_code', clinicId);
+
+      // إضافة PIN جديد
+      const { data, error } = await supabase
+        .from('pins')
+        .insert([{
+          clinic_code: clinicId,
+          pin: newPin,
+          is_active: true,
+          generated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        currentPin: data.pin,
+        pinId: data.id,
+        message: 'تم توليد رمز PIN جديد بنجاح'
+      };
+    } catch (error) {
+      console.error('[api-unified] issuePin error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ============================================================================
+  // Admin Operations - عمليات الإدارة
+  // ============================================================================
+
+  /**
+   * تمديد وقت المراجع
+   * @param {string} patientId - معرف المراجع
+   * @param {number} minutes - عدد الدقائق
+   * @returns {Promise<Object>} نتيجة العملية
+   */
+  async extendTime(patientId, minutes) {
+    try {
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .update({ 
+          extended_time: minutes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('patient_id', patientId)
+        .in('status', ['waiting', 'serving'])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('[api-unified] extendTime error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب جميع العيادات مع رموز PIN
+   * @returns {Promise<Object>} قائمة العيادات
+   */
+  async getClinicsWithPins() {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name, name_ar, pin_code, updated_at')
+        .order('name');
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('[api-unified] getClinicsWithPins error:', error);
+      return { success: false, data: [], error: error.message };
+    }
+  },
+
+  // ============================================================================
+  // Queue Queries - استعلامات الطابور
+  // ============================================================================
+
+  /**
+   * جلب حالة الطابور لعيادة معينة (مع إحصائيات)
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<Object>} حالة الطابور
+   */
+  async getQueueStatusWithStats(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .order('entered_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      const waiting = data.filter(q => q.status === 'waiting');
+      const serving = data.filter(q => q.status === 'serving');
+      const completed = data.filter(q => q.status === 'completed');
+      const skipped = data.filter(q => q.status === 'skipped');
+      
+      return {
+        success: true,
+        waiting: waiting.length,
+        serving: serving.length,
+        completed: completed.length,
+        skipped: skipped.length,
+        total: data.length,
+        queue: waiting,
+        stats: {
+          waiting: waiting.length,
+          serving: serving.length,
+          completed: completed.length,
+          skipped: skipped.length,
+          total: data.length
+        }
+      };
+    } catch (error) {
+      console.error('[api-unified] getQueueStatusWithStats error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * الاشتراك في تغييرات الطابور (Realtime)
+   * @param {string} clinicId - معرف العيادة
+   * @param {Function} callback - دالة الاستدعاء
+   * @returns {Function} دالة إلغاء الاشتراك
+   */
+  subscribeToQueueChanges(clinicId, callback) {
+    const channel = supabase
+      .channel(`queue-${clinicId}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'unified_queue',
+          filter: `clinic_id=eq.${clinicId}`
+        },
+        callback
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  // ============================================================================
+  // Events Operations - عمليات الأحداث
+  // ============================================================================
+
+  /**
+   * تسجيل حدث استرداد
+   * @param {Object} eventData - بيانات الحدث
+   * @returns {Promise<Object>} نتيجة العملية
+   */
+  async logRecoveryEvent(eventData) {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          type: 'recovery',
+          data: eventData,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('[api-unified] logRecoveryEvent error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * الاشتراك في الأحداث (Realtime)
+   * @param {Function} callback - دالة الاستدعاء
+   * @returns {Function} دالة إلغاء الاشتراك
+   */
+  subscribeToEvents(callback) {
+    const channel = supabase
+      .channel(`events-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'events'
+        },
+        callback
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  // ============================================================================
+  // Utility Functions - دوال مساعدة
+  // ============================================================================
+
+  /**
+   * التحقق من الاتصال بقاعدة البيانات
+   * @returns {Promise<boolean>} حالة الاتصال
+   */
+  async checkConnection() {
+    try {
+      const { error } = await supabase.from('clinics').select('count').limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  // ============================================================================
+  // Sessions Management - إدارة جلسات QR Code
+  // ============================================================================
+
+  /**
+   * إنشاء جلسة QR جديدة
+   * @param {string} patientId - معرف المراجع
+   * @returns {Promise<Object>} بيانات الجلسة
+   */
+  async createSession(patientId) {
+    try {
+      // توليد token فريد
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert({
+          token,
+          patient_id: patientId,
+          status: 'active',
+          expires_at: expiresAt.toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        ok: true,
+        success: true,
+        token: data.token,
+        expiresAt: data.expires_at
+      };
+    } catch (error) {
+      console.error('[api-unified] createSession error:', error);
+      return { ok: false, success: false, error: error.message };
+    }
+  },
+
+  /**
+   * التحقق من صلاحية جلسة QR
+   * @param {string} token - رمز الجلسة
+   * @returns {Promise<Object>} نتيجة التحقق
+   */
+  async validateSession(token) {
+    try {
+      // البحث عن الجلسة
+      const { data: session, error: findError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('token', token)
+        .single();
+
+      if (findError || !session) {
+        return { ok: false, error: 'SESSION_NOT_FOUND' };
+      }
+
+      // التحقق من انتهاء الصلاحية
+      if (new Date(session.expires_at) < new Date()) {
+        await supabase
+          .from('sessions')
+          .update({ status: 'expired' })
+          .eq('token', token);
+        return { ok: false, error: 'SESSION_EXPIRED' };
+      }
+
+      // التحقق من الاستخدام السابق
+      if (session.status === 'used') {
+        return { ok: false, error: 'SESSION_ALREADY_USED' };
+      }
+
+      // تحديث حالة الجلسة
+      await supabase
+        .from('sessions')
+        .update({ status: 'used', used_at: new Date().toISOString() })
+        .eq('token', token);
+
+      return {
+        ok: true,
+        success: true,
+        patientId: session.patient_id
+      };
+    } catch (error) {
+      console.error('[api-unified] validateSession error:', error);
+      return { ok: false, error: 'UNKNOWN_ERROR' };
+    }
+  },
+
+  /**
+   * تحديث معلومات جهاز الجلسة
+   * @param {string} token - رمز الجلسة
+   * @param {string} deviceType - نوع الجهاز
+   * @param {Object} deviceInfo - معلومات الجهاز
+   * @returns {Promise<Object>} نتيجة التحديث
+   */
+  async updateSessionDevice(token, deviceType, deviceInfo = null) {
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          device_type: deviceType,
+          device_info: deviceInfo
+        })
+        .eq('token', token);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('[api-unified] updateSessionDevice error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب إحصائيات الجلسات
+   * @returns {Promise<Object>} إحصائيات الجلسات
+   */
+  async getSessionStats() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('status, device_type')
+        .gte('created_at', today.toISOString());
+
+      if (error) throw error;
+
+      const stats = {
+        total: data.length,
+        active: data.filter(s => s.status === 'active').length,
+        used: data.filter(s => s.status === 'used').length,
+        expired: data.filter(s => s.status === 'expired').length,
+        byDevice: {
+          iOS: data.filter(s => s.device_type === 'iOS').length,
+          Android: data.filter(s => s.device_type === 'Android').length,
+          Desktop: data.filter(s => s.device_type === 'Desktop').length
+        }
+      };
+
+      return { success: true, stats };
+    } catch (error) {
+      console.error('[api-unified] getSessionStats error:', error);
+      return { success: false, stats: null, error: error.message };
+    }
+  },
+
+  // ============================================================================
+  // Settings Management - إدارة الإعدادات
+  // ============================================================================
+
+  /**
+   * جلب إعدادات حسب النوع
+   * @param {string} type - نوع الإعدادات (theme, queue, etc.)
+   * @returns {Promise<Object>} الإعدادات
+   */
+  async getSettings(type) {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('key, value')
+        .eq('category', type);
+
+      if (error) throw error;
+
+      // تحويل إلى كائن
+      const settings = {};
+      (data || []).forEach(item => {
+        settings[item.key] = item.value;
+      });
+
+      return {
+        success: true,
+        data: {
+          enableThemeSelector: settings.theme_selector_enabled === 'true',
+          showThemePreview: settings.theme_preview_enabled === 'true',
+          currentTheme: settings.theme_current || 'professional-medical'
+        }
+      };
+    } catch (error) {
+      console.error('[api-unified] getSettings error:', error);
+      // إرجاع قيم افتراضية في حالة الخطأ
+      return {
+        success: true,
+        data: {
+          enableThemeSelector: true,
+          showThemePreview: true,
+          currentTheme: 'professional-medical'
+        }
+      };
+    }
+  },
+
+  /**
+   * تحديث إعدادات
+   * @param {string} type - نوع الإعدادات
+   * @param {Object} settings - الإعدادات الجديدة
+   * @returns {Promise<Object>} نتيجة التحديث
+   */
+  async updateSettings(type, settings) {
+    try {
+      const updates = [];
+
+      // تحويل الإعدادات إلى صفوف
+      if (settings.currentTheme !== undefined) {
+        updates.push({
+          key: 'theme_current',
+          value: settings.currentTheme,
+          category: type,
+          updated_at: new Date().toISOString()
+        });
+      }
+      if (settings.enableThemeSelector !== undefined) {
+        updates.push({
+          key: 'theme_selector_enabled',
+          value: String(settings.enableThemeSelector),
+          category: type,
+          updated_at: new Date().toISOString()
+        });
+      }
+      if (settings.showThemePreview !== undefined) {
+        updates.push({
+          key: 'theme_preview_enabled',
+          value: String(settings.showThemePreview),
+          category: type,
+          updated_at: new Date().toISOString()
+        });
+      }
+
+      // تحديث كل إعداد
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('settings')
+          .upsert(update, { onConflict: 'key' });
+        
+        if (error) throw error;
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('[api-unified] updateSettings error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * جلب إعداد محدد
+   * @param {string} key - مفتاح الإعداد
+   * @returns {Promise<string|null>} قيمة الإعداد
+   */
+  async getSetting(key) {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', key)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.value || null;
+    } catch (error) {
+      console.error('[api-unified] getSetting error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * تحديث إعداد محدد
+   * @param {string} key - مفتاح الإعداد
+   * @param {string} value - القيمة الجديدة
+   * @returns {Promise<boolean>} نجاح العملية
+   */
+  async setSetting(key, value) {
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({
+          key,
+          value,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('[api-unified] setSetting error:', error);
+      return false;
+    }
   }
+};
+
+// ============================================================================
+// Backward Compatibility Exports - تصديرات التوافق العكسي
+// ============================================================================
+
+// للتوافق مع المكونات التي تستخدم supabase-queries.js
+export const queueQueries = {
+  getStatus: (clinicId) => api.getQueueStatusWithStats(clinicId),
+  subscribeToChanges: (clinicId, callback) => api.subscribeToQueueChanges(clinicId, callback)
+};
+
+export const adminQueries = {
+  extendTime: (patientId, minutes) => api.extendTime(patientId, minutes),
+  getClinicsWithPins: () => api.getClinicsWithPins()
+};
+
+export const eventsQueries = {
+  logRecovery: (eventData) => api.logRecoveryEvent(eventData),
+  subscribeToEvents: (callback) => api.subscribeToEvents(callback)
+};
+
+export const settingsQueries = {
+  async get(type) {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('type', type)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      console.error('[api-unified] settingsQueries.get error:', error);
+      return null;
+    }
+  },
+  async set(type, value) {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .upsert({ type, value, updated_at: new Date().toISOString() })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('[api-unified] settingsQueries.set error:', error);
+      return null;
+    }
+  }
+};
+
+// للتوافق مع supabase-api.js
+export const supabaseApi = {
+  getCurrentPin: (clinicId) => api.getCurrentPin(clinicId),
+  issuePin: (clinicId) => api.issuePin(clinicId),
+  verifyPin: (clinicId, pin) => api.verifyPin(clinicId, pin),
+  getAllPins: () => api.getActivePins()
 };
 
 export default api;

@@ -71,6 +71,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map((s, idx) => idx === 0 ? {
           ...s,
           yourNumber: positionData.display_number,
+          current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
@@ -98,6 +99,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
+          current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
@@ -329,6 +331,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   return {
                     ...s,
                     yourNumber: positionData.display_number,
+                    current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
                     ahead: positionData.ahead,
                     totalWaiting: positionData.total_waiting,
                     estimatedWait: positionData.estimated_wait_minutes,

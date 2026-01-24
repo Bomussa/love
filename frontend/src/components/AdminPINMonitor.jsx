@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { t } from '../lib/i18n'
-import supabaseApi from '../lib/supabase-api'
+import api from '../lib/api-unified'
 
 /**
  * Admin PIN Monitor Component
  * Displays current PIN for clinic
- * NO VISUAL CHANGES - Uses existing admin panel styles
+ * ✅ يستخدم api-unified الموحد
  */
 export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval = 30000 }) {
     const [pinData, setPinData] = useState(null)
@@ -19,12 +19,15 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setLoading(true)
             setError(null)
 
-            const data = await supabaseApi.getCurrentPin(clinicId)
-            setPinData(data)
+            const data = await api.getCurrentPin(clinicId)
+            if (data.success) {
+                setPinData(data)
+            } else {
+                throw new Error(data.error || 'فشل في جلب PIN')
+            }
             setLastRefresh(new Date())
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to fetch PIN:', err)
         } finally {
             setLoading(false)
         }
@@ -35,16 +38,15 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
             setIssuing(true)
             setError(null)
 
-            const data = await supabaseApi.issuePin(clinicId)
-
-            // Play success sound
-            // Sound notification removed
+            const data = await api.issuePin(clinicId)
+            if (!data.success) {
+                throw new Error(data.error || 'فشل في إصدار PIN')
+            }
 
             // Refresh to show new PIN
             await fetchCurrentPin()
         } catch (err) {
             setError(err.message)
-            // console.error('Failed to issue PIN:', err)
         } finally {
             setIssuing(false)
         }

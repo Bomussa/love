@@ -1,14 +1,15 @@
 /**
  * AdminQrManager - إدارة QR Code في لوحة الإدارة
  * يسمح للأدمن بإنشاء QR Code للمرضى
+ * ✅ يستخدم api-unified للاتصال المباشر بـ Supabase
  */
 
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { QrCode, Download, RefreshCw, Smartphone, Copy, CheckCircle } from 'lucide-react'
-import axios from 'axios'
 import QRCodeLib from 'qrcode'
+import api from '../lib/api-unified'
 
 export function AdminQrManager({ language = 'ar' }) {
   const [patientId, setPatientId] = useState('')
@@ -19,23 +20,23 @@ export function AdminQrManager({ language = 'ar' }) {
   const [stats, setStats] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // جلب إحصائيات الجلسات - DISABLED: endpoint not available
-  // useEffect(() => {
-  //   fetchStats()
-  //   const interval = setInterval(fetchStats, 60000)
-  //   return () => clearInterval(interval)
-  // }, [])
+  // جلب إحصائيات الجلسات
+  useEffect(() => {
+    fetchStats()
+    const interval = setInterval(fetchStats, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
-  // const fetchStats = async () => {
-  //   try {
-  //     const response = await axios.get('/api/v1/stats/dashboard')
-  //     if (response.data.success) {
-  //       setStats(response.data.stats)
-  //     }
-  //   } catch (error) {
-  //     // console.error('خطأ في جلب الإحصائيات:', error)
-  //   }
-  // }
+  const fetchStats = async () => {
+    try {
+      const result = await api.getSessionStats()
+      if (result.success) {
+        setStats(result.stats)
+      }
+    } catch (error) {
+      console.error('خطأ في جلب الإحصائيات:', error)
+    }
+  }
 
   /**
    * إنشاء QR Code جديد
@@ -49,13 +50,11 @@ export function AdminQrManager({ language = 'ar' }) {
     setLoading(true)
 
     try {
-      // إنشاء جلسة جديدة
-      const response = await axios.post('/api/session/create', {
-        patientId: patientId.trim()
-      })
+      // إنشاء جلسة جديدة عبر Supabase مباشرة
+      const result = await api.createSession(patientId.trim())
 
-      if (response.data.ok) {
-        const token = response.data.token
+      if (result.ok) {
+        const token = result.token
         setQrToken(token)
 
         // إنشاء رابط QR
@@ -79,9 +78,11 @@ export function AdminQrManager({ language = 'ar' }) {
         fetchStats()
 
         alert(language === 'ar' ? 'تم إنشاء QR Code بنجاح!' : 'QR Code created successfully!')
+      } else {
+        throw new Error(result.error || 'فشل في إنشاء الجلسة')
       }
     } catch (error) {
-      // console.error('❌ خطأ في إنشاء QR:', error)
+      console.error('❌ خطأ في إنشاء QR:', error)
       alert(language === 'ar' ? 'فشل إنشاء QR Code' : 'Failed to create QR Code')
     } finally {
       setLoading(false)
@@ -113,7 +114,7 @@ export function AdminQrManager({ language = 'ar' }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      // console.error('فشل النسخ:', error)
+      console.error('فشل النسخ:', error)
     }
   }
 
@@ -285,15 +286,15 @@ export function AdminQrManager({ language = 'ar' }) {
               {/* حسب الجهاز */}
               <div className="col-span-2 md:col-span-4 grid grid-cols-3 gap-4 mt-2">
                 <div className="p-3 bg-gray-800 rounded-lg text-center">
-                  <div className="text-xl font-bold">{stats.byDevice.iOS}</div>
+                  <div className="text-xl font-bold">{stats.byDevice?.iOS || 0}</div>
                   <div className="text-xs text-gray-400">{t('iosDevices')}</div>
                 </div>
                 <div className="p-3 bg-gray-800 rounded-lg text-center">
-                  <div className="text-xl font-bold">{stats.byDevice.Android}</div>
+                  <div className="text-xl font-bold">{stats.byDevice?.Android || 0}</div>
                   <div className="text-xs text-gray-400">{t('androidDevices')}</div>
                 </div>
                 <div className="p-3 bg-gray-800 rounded-lg text-center">
-                  <div className="text-xl font-bold">{stats.byDevice.Desktop}</div>
+                  <div className="text-xl font-bold">{stats.byDevice?.Desktop || 0}</div>
                   <div className="text-xs text-gray-400">{t('desktopDevices')}</div>
                 </div>
               </div>
@@ -304,3 +305,5 @@ export function AdminQrManager({ language = 'ar' }) {
     </div>
   )
 }
+
+export default AdminQrManager
