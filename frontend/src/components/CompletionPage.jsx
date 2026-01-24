@@ -6,6 +6,9 @@ import { t } from '../lib/i18n';
 export function CompletionPage({ onLogout }) {
   return (
     <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-page">
+      <div className="text-center space-y-4">
+        <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>{t('completionTitle')}</CardTitle>

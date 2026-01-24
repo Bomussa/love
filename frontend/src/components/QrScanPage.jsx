@@ -191,7 +191,11 @@ export function QrScanPage({ language, toggleLanguage }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4">
+        <div className="text-center">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
+        </div>
+        <Card className="w-full">
         <CardHeader>
           <div className="flex items-center justify-between mb-4">
             <CardTitle className="flex items-center gap-2">
@@ -298,6 +302,7 @@ export function QrScanPage({ language, toggleLanguage }) {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

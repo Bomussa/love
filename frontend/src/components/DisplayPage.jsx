@@ -30,6 +30,7 @@ export function DisplayPage({ clinicId, language }) {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8">
+      <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="w-24 h-24 object-contain mb-4" />
       <h1 className="text-4xl font-bold mb-12">{t('Current Patient')}</h1>
       
       <div className="scale-150 transform">

@@ -88,9 +88,12 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Header */}
       <header className="flex justify-between items-center mb-6 bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div>
-          <h1 className="text-2xl font-bold">{t('Clinic Dashboard')}</h1>
-          <p className="text-gray-400">{t('Clinic')}: {clinicId}</p>
+        <div className="flex items-center gap-4">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="w-10 h-10 object-contain" />
+          <div>
+            <h1 className="text-2xl font-bold">{t('Clinic Dashboard')}</h1>
+            <p className="text-gray-400">{t('Clinic')}: {clinicId}</p>
+          </div>
         </div>
         <div className="flex gap-4 items-center">
             {/* PIN Monitor (Compact) */}

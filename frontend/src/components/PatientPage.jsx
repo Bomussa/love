@@ -590,7 +590,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     return (
       <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
         <div className="max-w-2xl mx-auto space-y-6 text-center">
-          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-32 h-32 object-contain rounded-full shadow-lg" />
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
+          
+          <h1 className="text-xl font-bold text-white">
+            {'اللجنة الطبية العسكرية'}
+          </h1>
 
           <div className="text-green-400">
             <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -716,19 +720,19 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
 
-        <div className="text-center space-y-4">
-          <img src="/logo.jpeg" alt="قيادة الخدمات الطبية" className="mx-auto w-24 h-24 object-contain rounded-full shadow-lg" />
+        <div className="text-center space-y-2">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
 
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {language === 'ar' ? 'قيادة الخدمات الطبية' : 'Medical Services Command'}
+            <h1 className="text-xl font-bold text-white">
+              {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xl sm:text-2xl text-gray-300 font-medium">
-              {language === 'ar' ? 'Medical Services' : 'قيادة الخدمات الطبية'}
+            <p className="text-sm text-[#C9A54C] font-semibold mt-1">
+              {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-300 text-base sm:text-lg">
+            <p className="text-gray-400 text-xs mt-1">
               {language === 'ar'
-                ? 'المركز الطبي المتخصص العسكري - العطار'
+                ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
