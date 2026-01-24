@@ -65,8 +65,37 @@ const api = {
   },
 
   // --- Queue ---
-  async enterQueue(clinicId, patientId, isAutoEnter = true) {
+  /**
+   * دخول الطابور بشكل ذري (Atomic) مع منع التكرار
+   * يستخدم دالة enter_unified_queue_safe من قاعدة البيانات لضمان الذرية
+   */
+  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
     try {
+      // محاولة استخدام الدالة الذرية من قاعدة البيانات
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_unified_queue_safe', {
+        p_clinic_id: clinicId,
+        p_patient_id: patientId,
+        p_patient_name: patientName,
+        p_exam_type: examType
+      });
+
+      if (!rpcError && rpcResult && rpcResult.length > 0) {
+        const result = rpcResult[0];
+        console.log('[enterQueue] RPC result:', result);
+        return { 
+          success: true, 
+          id: result.id,
+          display_number: result.display_number, 
+          status: result.status,
+          alreadyExists: result.already_exists 
+        };
+      }
+
+      // في حال فشل RPC، نستخدم الطريقة البديلة
+      if (rpcError) {
+        console.warn('[enterQueue] RPC failed, using fallback:', rpcError.message);
+      }
+
       // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة اليوم
       const today = new Date().toISOString().split('T')[0];
       const { data: existingEntry, error: existingError } = await supabase
@@ -74,24 +103,23 @@ const api = {
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
-        .eq('queue_date', today) // ✅ فقط اليوم - منع التكرار اليومي
-        .in('status', ['waiting', 'serving']) // فقط الحالات النشطة
+        .eq('queue_date', today)
+        .in('status', ['waiting', 'serving'])
         .order('entered_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      // إذا وجد سجل موجود، أرجعه بدلاً من إنشاء جديد
       if (existingEntry) {
         console.log('[enterQueue] المراجع موجود مسبقاً برقم:', existingEntry.display_number);
         return { success: true, ...existingEntry, alreadyExists: true };
       }
 
-      // Get next display number for today only
-      const { data: lastEntry, error: lastError } = await supabase
+      // الحصول على رقم الدور التالي
+      const { data: lastEntry } = await supabase
         .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
-        .eq('queue_date', today) // ✅ فقط اليوم
+        .eq('queue_date', today)
         .order('display_number', { ascending: false })
         .limit(1);
 
@@ -102,9 +130,11 @@ const api = {
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
+          patient_name: patientName,
+          exam_type: examType,
           display_number: nextNumber,
           status: 'waiting',
-          queue_date: today, // ✅ تاريخ اليوم
+          queue_date: today,
           entered_at: new Date().toISOString()
         }])
         .select()
@@ -304,48 +334,69 @@ const api = {
   },
 
   // --- Clinics & PIN ---
+  /**
+   * جلب حالة العيادات النشطة (بدون PIN - لأسباب أمنية)
+   * PIN لا يتم إرساله للواجهة الأمامية أبداً
+   */
   async getPinStatus() {
     try {
+      // جلب العيادات النشطة فقط (بدون PIN)
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, pin_code, pin_expires_at, is_active')
+        .select('id, name, is_active')
         .eq('is_active', true);
 
       if (error) throw error;
 
-      // تحويل البيانات إلى صيغة { clinic_id: pin_code }
-      const pins = {};
+      // إرجاع قائمة العيادات النشطة فقط (بدون PIN)
+      const activeClinics = {};
       if (data && data.length > 0) {
         data.forEach(clinic => {
-          // التحقق من صلاحية البن كود
-          const isExpired = clinic.pin_expires_at && new Date(clinic.pin_expires_at) < new Date();
-          if (!isExpired && clinic.pin_code) {
-            pins[clinic.id] = clinic.pin_code;
-          }
+          activeClinics[clinic.id] = { name: clinic.name, isActive: clinic.is_active };
         });
       }
 
-      return { success: true, pins };
+      return { success: true, clinics: activeClinics };
     } catch (error) {
       console.error('Get PIN Status Error:', error);
-      return { success: false, error: error.message, pins: {} };
+      return { success: false, error: error.message, clinics: {} };
     }
   },
 
+  /**
+   * التحقق من صحة PIN بشكل آمن - لا يتم إرجاع PIN للواجهة الأمامية
+   * يستخدم دالة verify_clinic_pin_secure من قاعدة البيانات
+   */
   async verifyPin(clinicId, pin) {
     try {
-      const { data, error } = await supabase
-        .from('pins')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('pin_code', pin)
-        .eq('is_active', true)
-        .maybeSingle();
+      // استخدام دالة RPC الآمنة للتحقق من PIN
+      const { data, error } = await supabase.rpc('verify_clinic_pin', {
+        p_clinic_id: clinicId,
+        p_pin: pin
+      });
 
-      if (error) throw error;
+      if (error) {
+        // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
+        console.warn('RPC verify_clinic_pin failed, using fallback:', error.message);
+        const { data: pinData, error: pinError } = await supabase
+          .from('pins')
+          .select('id, clinic_code, is_active, expires_at')
+          .eq('clinic_code', clinicId)
+          .eq('pin', pin)
+          .eq('is_active', true)
+          .gte('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (pinError) throw pinError;
+        
+        if (pinData) {
+          return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
+        }
+        return { success: true, isValid: false };
+      }
       
-      if (data) {
-        return { success: true, isValid: true, session: { clinicId, pin, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
+      if (data === true) {
+        return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
       }
       
       return { success: true, isValid: false };
