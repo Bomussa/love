@@ -23,6 +23,13 @@ import supabase from '../lib/supabase-client';
 const EnhancedClinicsManager = ({ language = 'ar', t }) => {
   const tr = t || ((ar, en) => language === 'ar' ? ar : en);
 
+  // نظام الإشعارات المحسن
+  const [notification, setNotification] = useState(null);
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
   // الحالات
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +41,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedClinic, setExpandedClinic] = useState(null);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState(null);
 
   // نموذج العيادة الجديدة
   const defaultClinic = {
@@ -101,7 +109,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
   // إضافة عيادة جديدة
   const addClinic = async () => {
     if (!newClinic.name_ar || !newClinic.name_en) {
-      alert(tr('يرجى إدخال اسم العيادة', 'Please enter clinic name'));
+      showNotification(tr('يرجى إدخال اسم العيادة', 'Please enter clinic name'), 'warning');
       return;
     }
 
@@ -138,10 +146,10 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
         loadClinics();
         setShowAddForm(false);
         setNewClinic(defaultClinic);
-        alert(tr('تم إضافة العيادة بنجاح', 'Clinic added successfully'));
+        showNotification(tr('تم إضافة العيادة بنجاح', 'Clinic added successfully'), 'success');
       } else {
         console.error('Error adding clinic:', error);
-        alert(tr('خطأ في إضافة العيادة', 'Error adding clinic'));
+        showNotification(tr('خطأ في إضافة العيادة', 'Error adding clinic'), 'error');
       }
     } catch (e) {
       console.error('Error adding clinic:', e);
@@ -159,7 +167,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
       if (!error) {
         loadClinics();
         setEditingClinic(null);
-        alert(tr('تم تحديث العيادة بنجاح', 'Clinic updated successfully'));
+        showNotification(tr('تم تحديث العيادة بنجاح', 'Clinic updated successfully'), 'success');
       }
     } catch (e) {
       console.error('Error updating clinic:', e);
@@ -206,7 +214,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
   // إغلاق العيادة مع التحويل
   const closeClinicWithTransfer = async () => {
     if (!transferReason) {
-      alert(tr('يرجى اختيار سبب الإغلاق', 'Please select closure reason'));
+      showNotification(tr('يرجى اختيار سبب الإغلاق', 'Please select closure reason'), 'warning');
       return;
     }
 
@@ -233,7 +241,7 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
       setTransferModal(null);
       setTransferReason('');
       setTargetClinicId('');
-      alert(tr('تم إغلاق العيادة بنجاح', 'Clinic closed successfully'));
+      showNotification(tr('تم إغلاق العيادة بنجاح', 'Clinic closed successfully'), 'success');
     } catch (e) {
       console.error('Error closing clinic:', e);
     }
@@ -241,12 +249,20 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
 
   // حذف عيادة
   const deleteClinic = async (clinicId) => {
-    if (!window.confirm(tr('هل أنت متأكد من حذف هذه العيادة؟ سيتم حذف جميع البيانات المرتبطة بها.', 'Are you sure you want to delete this clinic? All related data will be deleted.'))) return;
+    // استخدام modal بدلاً من window.confirm
+    setDeleteConfirmModal(clinicId);
+    return;
+  };
+
+  // تنفيذ الحذف بعد التأكيد
+  const confirmDeleteClinic = async (clinicId) => {
+    if (!clinicId) return;
     
     try {
       await supabase.from('clinics').delete().eq('id', clinicId);
       loadClinics();
-      alert(tr('تم حذف العيادة بنجاح', 'Clinic deleted successfully'));
+      showNotification(tr('تم حذف العيادة بنجاح', 'Clinic deleted successfully'), 'success');
+      setDeleteConfirmModal(null);
     } catch (e) {
       console.error('Error deleting clinic:', e);
     }
@@ -743,6 +759,53 @@ const EnhancedClinicsManager = ({ language = 'ar', t }) => {
           ))
         )}
       </div>
+
+      {/* مكون الإشعارات */}
+      {notification && (
+        <div className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[120] max-w-md transition-all duration-300 ${
+          notification.type === 'success' ? 'bg-green-600' :
+          notification.type === 'error' ? 'bg-red-600' :
+          notification.type === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'
+        } text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3`}>
+          <span className="text-xl">
+            {notification.type === 'success' ? '✓' :
+             notification.type === 'error' ? '✕' :
+             notification.type === 'warning' ? '⚠' : 'ℹ'}
+          </span>
+          <span className="flex-1">{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white">×</button>
+        </div>
+      )}
+
+      {/* Modal تأكيد الحذف */}
+      {deleteConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <AlertCircle className="text-red-400" size={24} />
+              {tr('تأكيد الحذف', 'Confirm Delete')}
+            </h4>
+            <p className="text-gray-300 mb-6">
+              {tr('هل أنت متأكد من حذف هذه العيادة؟ سيتم حذف جميع البيانات المرتبطة بها.', 'Are you sure you want to delete this clinic? All related data will be deleted.')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => confirmDeleteClinic(deleteConfirmModal)}
+                className="flex-1 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                {tr('حذف', 'Delete')}
+              </button>
+              <button
+                onClick={() => setDeleteConfirmModal(null)}
+                className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+              >
+                {tr('إلغاء', 'Cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal التحويل */}
       {transferModal && (

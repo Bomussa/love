@@ -110,7 +110,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setLoading(false)
     } catch (e) {
       // console.error('Enter clinic failed:', e)
-      alert(language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.')
+      // استخدام نظام الإشعارات بدلاً من alert
+      setCurrentNotice({
+        type: 'error',
+        message: language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.'
+      })
+      setTimeout(() => setCurrentNotice(null), 5000)
       setLoading(false)
     }
   }
@@ -425,7 +430,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       
       // التحقق من إدخال PIN
       if (!pinInput || !pinInput.trim()) {
-        alert(language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN')
+        setCurrentNotice({
+          type: 'warning',
+          message: language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN'
+        })
+        setTimeout(() => setCurrentNotice(null), 4000)
         setLoading(false)
         return
       }
@@ -436,7 +445,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       // التحقق من نجاح العملية
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
-        alert(errorMsg)
+        setCurrentNotice({
+          type: 'error',
+          message: errorMsg
+        })
+        setTimeout(() => setCurrentNotice(null), 5000)
         setLoading(false)
         return
       }
@@ -484,12 +497,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setPinInput('')
       setSelectedStation(null)
 
-      const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
-      alert(msg)
+      setCurrentNotice({
+        type: 'success',
+        message: language === 'ar' ? '✅ تم الخروج بنجاح' : '✅ Successfully exited'
+      })
+      setTimeout(() => setCurrentNotice(null), 4000)
     } catch (e) {
       // console.error('Complete clinic failed', e)
-      const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
-      alert(msg)
+      setCurrentNotice({
+        type: 'error',
+        message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
+      })
+      setTimeout(() => setCurrentNotice(null), 5000)
     } finally {
       setLoading(false)
     }
@@ -506,7 +525,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       // التحقق من نجاح العملية
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل الخروج' : 'Exit failed')
-        alert(errorMsg)
+        setCurrentNotice({
+          type: 'error',
+          message: errorMsg
+        })
+        setTimeout(() => setCurrentNotice(null), 5000)
         setLoading(false)
         return
       }
@@ -540,11 +563,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         ))
       }
 
-      const msg = language === 'ar' ? 'تم الخروج بنجاح' : 'Successfully exited'
-      alert(msg)
+      setCurrentNotice({
+        type: 'success',
+        message: language === 'ar' ? '✅ تم الخروج بنجاح' : '✅ Successfully exited'
+      })
+      setTimeout(() => setCurrentNotice(null), 4000)
     } catch (e) {
-      const msg = language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
-      alert(msg)
+      setCurrentNotice({
+        type: 'error',
+        message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
+      })
+      setTimeout(() => setCurrentNotice(null), 5000)
     } finally {
       setLoading(false)
     }

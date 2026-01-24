@@ -141,6 +141,13 @@ const CATEGORIES = [
 const FeatureControlPanel = ({ language = 'ar', t }) => {
   const tr = t || ((ar, en) => language === 'ar' ? ar : en);
   
+  // نظام الإشعارات
+  const [notification, setNotification] = useState(null);
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+  
   const [features, setFeatures] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -224,10 +231,10 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
       }
 
       setHasChanges(false);
-      alert(tr('تم حفظ الإعدادات بنجاح', 'Settings saved successfully'));
+      showNotification(tr('تم حفظ الإعدادات بنجاح', 'Settings saved successfully'), 'success');
     } catch (e) {
       console.error('Error saving settings:', e);
-      alert(tr('خطأ في حفظ الإعدادات', 'Error saving settings'));
+      showNotification(tr('خطأ في حفظ الإعدادات', 'Error saving settings'), 'error');
     } finally {
       setSaving(false);
     }
@@ -435,6 +442,23 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
           );
         })}
       </div>
+
+      {/* مكون الإشعارات */}
+      {notification && (
+        <div className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[120] max-w-md transition-all duration-300 ${
+          notification.type === 'success' ? 'bg-green-600' :
+          notification.type === 'error' ? 'bg-red-600' :
+          notification.type === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'
+        } text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3`}>
+          <span className="text-xl">
+            {notification.type === 'success' ? '✓' :
+             notification.type === 'error' ? '✕' :
+             notification.type === 'warning' ? '⚠' : 'ℹ'}
+          </span>
+          <span className="flex-1">{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white">×</button>
+        </div>
+      )}
 
       {/* ملاحظة */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
