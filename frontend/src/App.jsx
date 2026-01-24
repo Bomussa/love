@@ -286,7 +286,9 @@ function App() {
     <div className="min-h-screen" style={{ background: 'transparent' }}>
       <main className="relative z-10">
         {currentView === 'qrscan' && (
-          <QrScanPage language={language} toggleLanguage={toggleLanguage} />
+          <Suspense fallback={<LoadingFallback />}>
+            <QrScanPage language={language} toggleLanguage={toggleLanguage} />
+          </Suspense>
         )}
 
         {currentView === 'login' && (
@@ -377,15 +379,17 @@ function App() {
         )}
 
         {currentView === 'admin' && isAdmin && (
-          <AdminErrorBoundary>
-            <AdminDashboardV2
-              onLogout={handleLogout}
-              language={language}
-              toggleLanguage={toggleLanguage}
-              currentTheme={currentTheme}
-              onThemeChange={setCurrentTheme}
-            />
-          </AdminErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <AdminErrorBoundary>
+              <AdminDashboardV2
+                onLogout={handleLogout}
+                language={language}
+                toggleLanguage={toggleLanguage}
+                currentTheme={currentTheme}
+                onThemeChange={setCurrentTheme}
+              />
+            </AdminErrorBoundary>
+          </Suspense>
         )}
 
         {currentView === 'clinic_login' && (
@@ -401,20 +405,24 @@ function App() {
         )}
 
         {currentView === 'clinic_dashboard' && clinicSession && (
-          <ClinicDashboard
-            session={clinicSession}
-            onLogout={() => {
-              setClinicSession(null)
-              localStorage.removeItem('mmc_clinic_session')
-              setCurrentView('clinic_login')
-            }}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <ClinicDashboard
+              session={clinicSession}
+              onLogout={() => {
+                setClinicSession(null)
+                localStorage.removeItem('mmc_clinic_session')
+                setCurrentView('clinic_login')
+              }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'display' && (
-          <DisplayPage language={language} />
+          <Suspense fallback={<LoadingFallback />}>
+            <DisplayPage language={language} />
+          </Suspense>
         )}
       </main>
       <SpeedInsights />
