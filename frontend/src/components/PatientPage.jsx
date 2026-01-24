@@ -790,7 +790,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
                     <div className="p-3 bg-gray-700/50 rounded-lg">
                       <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="current-number">
-                        {station.current || '-'}
+                        {typeof station.current === 'number' ? station.current : '-'}
                       </div>
                       <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('current', language)}</div>
                     </div>

@@ -1,0 +1,120 @@
+{
+  "stats": {
+    "files_scanned": 46,
+    "functions_found": 51,
+    "imports_found": 65,
+    "tables_found": 12
+  },
+  "issues": {
+    "critical": [],
+    "high": [
+      {
+        "type": "missing_tables",
+        "tables": [
+          "patient_routes",
+          "exam_routes",
+          "events",
+          "sessions",
+          "clinics",
+          "patients",
+          "activity_logs",
+          "pins",
+          "routes",
+          "system_settings",
+          "settings"
+        ],
+        "message": "جداول مطلوبة غير موجودة في migrations: ['patient_routes', 'exam_routes', 'events', 'sessions', 'clinics', 'patients', 'activity_logs', 'pins', 'routes', 'system_settings', 'settings']"
+      }
+    ],
+    "medium": [
+      {
+        "type": "unused_lib_files",
+        "files": [
+          "supabase-backend-api",
+          "sound-service",
+          "data-validator-api",
+          "vercel-api-client",
+          "realtime-service",
+          "error-handler",
+          "weight-calculator",
+          "supabase-dashboard-api",
+          "realtime-connection",
+          "workflow",
+          "accessibility",
+          "supabase-direct"
+        ],
+        "message": "ملفات lib غير مستخدمة (12): ['supabase-backend-api', 'sound-service', 'data-validator-api', 'vercel-api-client', 'realtime-service', 'error-handler', 'weight-calculator', 'supabase-dashboard-api', 'realtime-connection', 'workflow']"
+      },
+      {
+        "type": "undefined_env_vars",
+        "vars": [
+          "VITE_APP_URL",
+          "VITE_ADMIN_USERNAME",
+          "VITE_ADMIN_PASSWORD"
+        ],
+        "message": "متغيرات بيئة مستخدمة غير مُعرَّفة: ['VITE_APP_URL', 'VITE_ADMIN_USERNAME', 'VITE_ADMIN_PASSWORD']"
+      }
+    ],
+    "low": [
+      {
+        "type": "unused_functions",
+        "functions": [
+          "getSetting",
+          "getClinicsWithPins",
+          "checkConnection",
+          "getSystemSettings",
+          "set",
+          "get",
+          "extendTime",
+          "setSetting",
+          "postponeAndCallNext",
+          "patientLogin",
+          "postponePatient",
+          "checkAndSkipStaleQueues",
+          "logRecoveryEvent",
+          "toggleSystemSetting",
+          "getSettingValue",
+          "updateSessionDevice",
+          "updateSystemSetting",
+          "getQueueStatusWithStats"
+        ],
+        "message": "دوال مُعرَّفة غير مستخدمة: ['getSetting', 'getClinicsWithPins', 'checkConnection', 'getSystemSettings', 'set', 'get', 'extendTime', 'setSetting', 'postponeAndCallNext', 'patientLogin']"
+      }
+    ],
+    "info": [
+      {
+        "type": "tables_summary",
+        "required": [
+          "patient_routes",
+          "exam_routes",
+          "clinics",
+          "events",
+          "sessions",
+          "patients",
+          "activity_logs",
+          "unified_queue",
+          "pins",
+          "routes",
+          "system_settings",
+          "settings"
+        ],
+        "defined": [
+          "queue_history",
+          "clinic_counters",
+          "clinic_pins",
+          "unified_queue",
+          "daily_statistics",
+          "public"
+        ],
+        "message": "الجداول المطلوبة: 12, المُعرَّفة: 6"
+      }
+    ]
+  },
+  "summary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "info": 1
+  }
+}

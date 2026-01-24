@@ -1,8 +1,14 @@
+/**
+ * EnhancedThemeSelector - محدد الثيمات المحسن
+ * يسمح للمستخدم باختيار وتطبيق الثيمات الطبية
+ * ✅ يستخدم api-unified للاتصال المباشر بـ Supabase (بدون API خارجي)
+ */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './Card';
 import { Button } from './Button';
 import { Palette, Check, Info, Eye, EyeOff, Settings, RefreshCw } from 'lucide-react';
 import { enhancedMedicalThemes, generateThemeCSS } from '../lib/enhanced-themes';
+import api from '../lib/api-unified';
 
 export function EnhancedThemeSelector({
   currentTheme,
@@ -21,7 +27,7 @@ export function EnhancedThemeSelector({
     showThemePreview: true
   });
 
-  // جلب إعدادات الثيمات من الخادم
+  // جلب إعدادات الثيمات من Supabase مباشرة
   useEffect(() => {
     fetchThemeSettings();
   }, []);
@@ -51,49 +57,42 @@ export function EnhancedThemeSelector({
     };
   }, [currentTheme, previewTheme]);
 
+  /**
+   * جلب إعدادات الثيمات من Supabase
+   */
   const fetchThemeSettings = async () => {
     try {
-      const response = await fetch('/api/admin/settings?type=theme');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSettings(data.data);
-          setIsVisible(data.data.enableThemeSelector);
-        }
+      const result = await api.getSettings('theme');
+      if (result.success) {
+        setSettings(result.data);
+        setIsVisible(result.data.enableThemeSelector);
       }
     } catch (error) {
-      // console.error('Error fetching theme settings:', error);
+      console.error('Error fetching theme settings:', error);
     }
   };
 
+  /**
+   * تحديث الثيم في Supabase
+   */
   const handleThemeSelect = async (themeId) => {
     setIsLoading(true);
     try {
-      // تحديث الثيم في قاعدة البيانات
-      const response = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'theme',
-          settings: {
-            currentTheme: themeId
-          }
-        }),
+      // تحديث الثيم في قاعدة البيانات عبر api-unified
+      const result = await api.updateSettings('theme', {
+        currentTheme: themeId
       });
 
-      if (response.ok) {
+      if (result.success) {
         onThemeChange(themeId);
         setPreviewTheme(null);
-
         // إظهار إشعار نجاح
         showNotification('تم تطبيق الثيم بنجاح على جميع الصفحات', 'success');
       } else {
         showNotification('فشل في حفظ الثيم', 'error');
       }
     } catch (error) {
-      // console.error('Error updating theme:', error);
+      console.error('Error updating theme:', error);
       showNotification('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setIsLoading(false);
@@ -101,7 +100,7 @@ export function EnhancedThemeSelector({
   };
 
   const handlePreview = (themeId) => {
-    if (showPreview && settings.showThemePreview) {
+    if (showPreview) {
       setPreviewTheme(themeId);
     }
   };
@@ -110,104 +109,79 @@ export function EnhancedThemeSelector({
     setPreviewTheme(null);
   };
 
-  const showNotification = (message, type = 'info') => {
-    // إنشاء إشعار مؤقت
-    const notification = document.createElement('div');
-    notification.className = `
-      fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300
-      ${type === 'success' ? 'bg-green-500 text-white' :
-        type === 'error' ? 'bg-red-500 text-white' :
-          'bg-blue-500 text-white'}
-    `;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => {
-        document.body.removeChild(notification);
-      }, 300);
-    }, 3000);
+  const showNotification = (message, type) => {
+    // يمكن استبدال هذا بنظام إشعارات أفضل
+    if (type === 'success') {
+      console.log('✅', message);
+    } else {
+      console.error('❌', message);
+    }
   };
 
-  if (!isVisible || !enableFeatureFlag || !settings.enableThemeSelector) {
+  if (!isVisible && enableFeatureFlag) {
     return null;
   }
 
   return (
-    <div className="enhanced-theme-selector w-full max-w-6xl mx-auto p-6 bg-theme-surface rounded-lg shadow-lg border border-theme-border">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-r from-theme-primary to-theme-secondary rounded-full">
-            <Palette className="w-6 h-6 text-white" />
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Palette className="w-8 h-8 text-[var(--theme-primary)]" />
           <div>
-            <h2 className="text-3xl font-bold text-theme-text mb-1">
-              {language === 'ar' ? 'اختيار الثيم الطبي' : 'Medical Theme Selector'}
+            <h2 className="text-2xl font-bold text-[var(--theme-text)]">
+              {language === 'ar' ? 'الثيمات الطبية المتقدمة' : 'Advanced Medical Themes'}
             </h2>
-            <p className="text-theme-text-secondary">
-              {language === 'ar'
-                ? 'اختر الثيم المناسب لتطبيق الخدمات الطبية'
-                : 'Choose the appropriate theme for the medical services application'
+            <p className="text-sm text-[var(--theme-text-secondary)]">
+              {language === 'ar' 
+                ? 'اختر الثيم المناسب لتجربة مستخدم مثالية' 
+                : 'Choose the right theme for an optimal user experience'
               }
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
+        {showPreview && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={fetchThemeSettings}
-            disabled={isLoading}
-            className="text-theme-text-secondary hover:text-theme-primary"
+            onClick={() => setPreviewTheme(null)}
+            className="flex items-center gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {previewTheme ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {language === 'ar' ? 'إيقاف المعاينة' : 'Stop Preview'}
           </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsVisible(!isVisible)}
-            className="text-theme-text-secondary hover:text-theme-primary"
-          >
-            {isVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Theme Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {enhancedMedicalThemes.map((theme) => (
           <Card
             key={theme.id}
-            className={`
-              relative cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl
-              ${currentTheme === theme.id ? 'ring-2 ring-theme-primary shadow-lg scale-105' : ''}
-              ${previewTheme === theme.id ? 'ring-2 ring-theme-accent shadow-md' : ''}
-              ${isLoading ? 'opacity-50 pointer-events-none' : ''}
-            `}
+            className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+              currentTheme === theme.id 
+                ? 'ring-4 ring-[var(--theme-primary)] shadow-lg' 
+                : 'hover:ring-2 hover:ring-[var(--theme-primary)]/50'
+            }`}
+            onClick={() => handleThemeSelect(theme.id)}
             onMouseEnter={() => handlePreview(theme.id)}
             onMouseLeave={handlePreviewEnd}
-            onClick={() => handleThemeSelect(theme.id)}
           >
-            <CardContent className="p-6">
-              {/* Theme Preview Colors */}
+            <CardContent className="p-6 relative">
+              {/* Color Swatches */}
               <div className="flex gap-2 mb-4">
                 <div
-                  className="w-10 h-10 rounded-full shadow-md border-2 border-white"
+                  className="w-10 h-10 rounded-full shadow-md border-2 border-gray-200"
                   style={{ backgroundColor: theme.colors.primary }}
                   title="اللون الأساسي"
                 />
                 <div
-                  className="w-10 h-10 rounded-full shadow-md border-2 border-white"
+                  className="w-10 h-10 rounded-full shadow-md border-2 border-gray-200"
                   style={{ backgroundColor: theme.colors.secondary }}
                   title="اللون الثانوي"
                 />
                 <div
-                  className="w-10 h-10 rounded-full shadow-md border-2 border-white"
+                  className="w-10 h-10 rounded-full shadow-md border-2 border-gray-200"
                   style={{ backgroundColor: theme.colors.accent }}
                   title="لون التمييز"
                 />
@@ -258,7 +232,9 @@ export function EnhancedThemeSelector({
                 <div className="absolute top-3 left-3 bg-theme-accent text-white rounded-full p-2 shadow-lg">
                   <Eye className="w-5 h-5" />
                 </div>
-              )}              {/* Loading Indicator */}
+              )}
+
+              {/* Loading Indicator */}
               {isLoading && currentTheme === theme.id && (
                 <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center rounded-lg">
                   <RefreshCw className="w-8 h-8 text-[var(--theme-primary)] animate-spin" />
