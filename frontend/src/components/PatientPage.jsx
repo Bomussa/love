@@ -753,18 +753,24 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-8 text-center px-4" data-test="queue-info">
-                    <div>
-                      <div className="text-2xl font-bold text-white" data-test="current-number">{station.current}</div>
-                      <div className="text-gray-400 text-sm">{t('current', language)}</div>
+                  <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
+                    <div className="p-3 bg-gray-700/50 rounded-lg">
+                      <div className="text-3xl sm:text-4xl font-bold text-white mb-2" data-test="current-number">
+                        {station.current || '-'}
+                      </div>
+                      <div className="text-gray-300 text-sm font-medium">{t('current', language)}</div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-400" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '-'}</div>
-                      <div className="text-gray-400 text-sm">{t('yourNumber', language)}</div>
+                    <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
+                      <div className="text-3xl sm:text-4xl font-bold text-yellow-400 mb-2" data-test="your-number">
+                        {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
+                      </div>
+                      <div className="text-yellow-300 text-sm font-medium">{t('yourNumber', language)}</div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-white" data-test="ahead-count">{station.ahead || 0}</div>
-                      <div className="text-gray-400 text-sm">{t('ahead', language)}</div>
+                    <div className="p-3 bg-gray-700/50 rounded-lg">
+                      <div className="text-3xl sm:text-4xl font-bold text-white mb-2" data-test="ahead-count">
+                        {station.ahead || 0}
+                      </div>
+                      <div className="text-gray-300 text-sm font-medium">{t('ahead', language)}</div>
                     </div>
                   </div>
                   
