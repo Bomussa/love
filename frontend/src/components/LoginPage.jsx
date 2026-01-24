@@ -41,25 +41,38 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) {
+      e.preventDefault()
+    }
+    console.log('=== handleSubmit CALLED ===')
     setValidationError('')
     
+    // قراءة القيمة من DOM مباشرة للتأكد من الحصول على القيمة الصحيحة
+    const inputElement = document.querySelector('input[type="text"]')
+    const currentPatientId = inputElement ? inputElement.value : patientId
+    console.log('=== handleSubmit START ===', { patientId, currentPatientId, gender })
+    
     // التحقق من صحة الرقم العسكري
-    const sanitizedId = sanitizeInput(patientId)
+    const sanitizedId = sanitizeInput(currentPatientId || patientId)
     const validation = validateMilitaryId(sanitizedId)
     
     if (!validation.isValid) {
+      console.log('=== Validation FAILED ===', validation.error)
       setValidationError(validation.error)
       return
     }
+    console.log('=== Validation PASSED ===')
 
     setLoading(true)
     try {
       // تسجيل دخول المراجع
       logPatientRegistered({ militaryId: sanitizedId, gender })
       
+      console.log('=== Calling onLogin ===')
       await onLogin({ patientId: sanitizedId, gender })
+      console.log('=== onLogin SUCCESS ===')
     } catch (error) {
+      console.error('=== onLogin ERROR ===', error)
       setValidationError(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error occurred')
     } finally {
       setLoading(false)
@@ -260,11 +273,23 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   </div>
                 )}
 
+                {/* عرض رسالة الخطأ */}
+                {validationError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {validationError}
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   variant="gradient"
                   className="w-full h-12 text-lg font-semibold"
                   disabled={loading || !patientId.trim()}
+                  onClick={(e) => {
+                    console.log('=== Button CLICKED ===')
+                    // الزر type=submit سيستدعي onSubmit تلقائياً
+                  }}
                 >
                   {loading
                     ? (language === 'ar' ? 'جاري المعالجة...' : 'Processing...')
