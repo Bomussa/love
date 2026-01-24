@@ -18,7 +18,7 @@ import {
   ArrowRight, AlertCircle, Check, X, Settings,
   ChevronDown, ChevronUp, Filter, Search
 } from 'lucide-react';
-import { supabase } from '../lib/supabase-client';
+import supabase from '../lib/supabase-client';
 
 const EnhancedClinicsManager = ({ language = 'ar', t }) => {
   const tr = t || ((ar, en) => language === 'ar' ? ar : en);

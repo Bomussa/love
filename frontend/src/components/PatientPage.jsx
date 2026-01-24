@@ -674,6 +674,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         yourNumber={stations.find(s => s.status === 'active' || s.status === 'ready')?.yourNumber}
         currentServing={stations.find(s => s.status === 'active' || s.status === 'ready')?.current}
         allStationsCompleted={allStationsCompleted}
+        language={language}
       />
 
       <div className="max-w-4xl mx-auto space-y-6">

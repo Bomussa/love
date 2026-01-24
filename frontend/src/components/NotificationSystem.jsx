@@ -2,18 +2,20 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * نظام الإشعارات الشامل - محسّن للموبايل
- * - إشعارات توضيحية شاملة بدون تداخل
+ * - إشعارات توضيحية شاملة بدون تداخل باللغتين
  * - نظام Queue لإدارة الإشعارات المتعددة
  * - تصميم مناسب للهاتف
  * - قابل للتحكم من الإدارة
  * - عرض المعلومات بشكل واضح مع مسافات
+ * - اللغة تتغير فقط عند تغيير إعدادات اللغة
  */
 export default function NotificationSystem({ 
   patientId, 
   currentClinic, 
   yourNumber, 
   currentServing,
-  allStationsCompleted 
+  allStationsCompleted,
+  language = 'ar' // اللغة من الإعدادات
 }) {
   const [notification, setNotification] = useState(null);
   const [hasPermission, setHasPermission] = useState(false);
@@ -30,6 +32,11 @@ export default function NotificationSystem({
   const hasShownCompletionNotice = useRef(false);
   const hasShownWelcome = useRef(false);
   const hasShownQueueExplanation = useRef(false);
+
+  // دالة الترجمة - تستخدم اللغة المحددة من الإعدادات فقط
+  const t = useCallback((ar, en) => {
+    return language === 'ar' ? ar : en;
+  }, [language]);
 
   // دالة لعرض الإشعار التالي من Queue
   const showNextNotification = useCallback(() => {
@@ -142,11 +149,22 @@ export default function NotificationSystem({
     if (!hasShownQueueExplanation.current && currentClinic && yourNumber !== null) {
       hasShownQueueExplanation.current = true;
       
+      const aheadCount = Math.max(0, (yourNumber || 0) - (currentServing || 0));
+      
       queueNotification({
         notification: {
           icon: '📋',
-          title: 'نظام الدور',
-          message: `رقمك: ${yourNumber}  |  الحالي: ${currentServing || '-'}  |  أمامك: ${Math.max(0, (yourNumber || 0) - (currentServing || 0))}\n\nرقمك = دورك في الطابور\nالحالي = من يُفحص الآن\nأمامك = عدد الأشخاص قبلك`,
+          title: t('نظام الدور', 'Queue System'),
+          message: t(
+            `رقمك: ${yourNumber}  ·  الحالي: ${currentServing || '-'}  ·  أمامك: ${aheadCount}\n\n` +
+            `📌 رقمك = دورك في الطابور\n` +
+            `📌 الحالي = الرقم الذي يُفحص الآن\n` +
+            `📌 أمامك = عدد الأشخاص قبلك`,
+            `Your Number: ${yourNumber}  ·  Current: ${currentServing || '-'}  ·  Ahead: ${aheadCount}\n\n` +
+            `📌 Your Number = Your position in queue\n` +
+            `📌 Current = Number being served now\n` +
+            `📌 Ahead = People before you`
+          ),
           bgColor: 'bg-indigo-600',
           priority: 'info',
           isQueueExplanation: true
@@ -155,7 +173,7 @@ export default function NotificationSystem({
         duration: 12000
       });
     }
-  }, [currentClinic, yourNumber, currentServing, queueNotification]);
+  }, [currentClinic, yourNumber, currentServing, queueNotification, t]);
 
   // إشعار الترحيب
   useEffect(() => {
@@ -165,8 +183,17 @@ export default function NotificationSystem({
       queueNotification({
         notification: {
           icon: '👋',
-          title: 'مرحباً بك',
-          message: 'اتبع الإشعارات للوصول لكل عيادة\nستصلك إشعارات عند اقتراب دورك',
+          title: t('مرحباً بك', 'Welcome'),
+          message: t(
+            'مرحباً بك في نظام اللجنة الطبية\n\n' +
+            '✅ اتبع الإشعارات للوصول لكل عيادة\n' +
+            '✅ ستصلك إشعارات عند اقتراب دورك\n' +
+            '✅ راقب الأرقام على الشاشة',
+            'Welcome to the Medical Committee System\n\n' +
+            '✅ Follow notifications to reach each clinic\n' +
+            '✅ You will be notified when your turn approaches\n' +
+            '✅ Watch the numbers on screen'
+          ),
           bgColor: 'bg-purple-600',
           priority: 'info',
           isWelcome: true
@@ -175,43 +202,52 @@ export default function NotificationSystem({
         duration: 10000
       });
     }
-  }, [patientId, queueNotification]);
+  }, [patientId, queueNotification, t]);
 
   const getFloorNotification = useCallback((clinic) => {
     if (!clinic) return null;
 
     const floor = clinic.floor || '';
-    const clinicName = clinic.nameAr || clinic.name || 'العيادة';
+    const clinicNameAr = clinic.nameAr || clinic.name || 'العيادة';
+    const clinicNameEn = clinic.nameEn || clinic.name || 'Clinic';
+    const clinicName = t(clinicNameAr, clinicNameEn);
     const roomNumber = clinic.roomNumber || '';
 
-    let floorInstruction = '';
+    let floorInstructionAr = '';
+    let floorInstructionEn = '';
     let floorIcon = '🏢';
 
     if (floor === 'الميزانين' || clinic.floorCode === 'M') {
-      floorInstruction = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على حرف M في المصعد';
+      floorInstructionAr = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على حرف M في المصعد';
+      floorInstructionEn = '📍 Go to the elevator opposite the back door\n🔼 Press M in the elevator';
       floorIcon = '🅼';
     } else if (floor === 'الطابق الثاني' || clinic.floorCode === '2') {
-      floorInstruction = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على رقم 2 في المصعد';
+      floorInstructionAr = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على رقم 2 في المصعد';
+      floorInstructionEn = '📍 Go to the elevator opposite the back door\n🔼 Press 2 in the elevator';
       floorIcon = '2️⃣';
     } else if (floor === 'الطابق الثالث' || clinic.floorCode === '3') {
-      floorInstruction = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على رقم 3 في المصعد';
+      floorInstructionAr = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على رقم 3 في المصعد';
+      floorInstructionEn = '📍 Go to the elevator opposite the back door\n🔼 Press 3 in the elevator';
       floorIcon = '3️⃣';
     } else if (floor === 'الطابق الأرضي' || clinic.floorCode === 'G') {
-      floorInstruction = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على حرف G في المصعد';
+      floorInstructionAr = '📍 اتجه للمصعد المقابل للباب الخلفي\n🔼 اضغط على حرف G في المصعد';
+      floorInstructionEn = '📍 Go to the elevator opposite the back door\n🔼 Press G in the elevator';
       floorIcon = '🅶';
     } else {
       return null;
     }
 
+    const roomInfo = roomNumber ? t(`\n🚪 غرفة: ${roomNumber}`, `\n🚪 Room: ${roomNumber}`) : '';
+
     return {
       icon: floorIcon,
-      title: `${clinicName}`,
-      message: `${floorInstruction}${roomNumber ? `\nغرفة: ${roomNumber}` : ''}`,
+      title: clinicName,
+      message: t(floorInstructionAr, floorInstructionEn) + roomInfo,
       bgColor: 'bg-blue-600',
       floor: floor,
       priority: 'info'
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (allStationsCompleted && !hasShownCompletionNotice.current) {
@@ -220,8 +256,15 @@ export default function NotificationSystem({
       queueNotification({
         notification: {
           icon: '✅',
-          title: 'انتهيت من الفحوصات',
-          message: 'اذهب لاستقبال اللجنة الطبية\nمبروك! أكملت جميع الفحوصات',
+          title: t('انتهيت من الفحوصات', 'Examinations Completed'),
+          message: t(
+            '🎉 مبروك! أكملت جميع الفحوصات\n\n' +
+            '📍 اذهب الآن إلى استقبال اللجنة الطبية\n' +
+            '📋 لاستلام نتائجك النهائية',
+            '🎉 Congratulations! All examinations completed\n\n' +
+            '📍 Please proceed to Medical Committee Reception\n' +
+            '📋 To receive your final results'
+          ),
           bgColor: 'bg-green-600',
           priority: 'success',
           isCompletionNotice: true
@@ -231,7 +274,7 @@ export default function NotificationSystem({
         duration: 15000
       });
     }
-  }, [allStationsCompleted, queueNotification]);
+  }, [allStationsCompleted, queueNotification, t]);
 
   useEffect(() => {
     if (!currentClinic || hasShownInitialFloorGuide.current) return;
@@ -291,17 +334,25 @@ export default function NotificationSystem({
     let systemNotif = false;
     let duration = 10000;
 
-    const clinicName = currentClinic?.nameAr || currentClinic?.name || 'العيادة';
+    const clinicNameAr = currentClinic?.nameAr || currentClinic?.name || 'العيادة';
+    const clinicNameEn = currentClinic?.nameEn || currentClinic?.name || 'Clinic';
+    const clinicName = t(clinicNameAr, clinicNameEn);
     const roomNumber = currentClinic?.roomNumber || '';
+    const roomInfo = roomNumber ? t(` - غرفة ${roomNumber}`, ` - Room ${roomNumber}`) : '';
 
     // عرض المعلومات بشكل واضح مع مسافات
-    const queueInfo = `\n\n📊 رقمك: ${yourNumber}  |  الحالي: ${currentServing}  |  أمامك: ${position}`;
+    const queueInfoAr = `\n\n📊 رقمك: ${yourNumber}  ·  الحالي: ${currentServing}  ·  أمامك: ${position}`;
+    const queueInfoEn = `\n\n📊 Your #: ${yourNumber}  ·  Current: ${currentServing}  ·  Ahead: ${position}`;
+    const queueInfo = t(queueInfoAr, queueInfoEn);
 
     if (position === 0) {
       notif = {
         icon: '🔴',
-        title: 'حان دورك الآن!',
-        message: `اذهب فوراً → ${clinicName}${roomNumber ? `\nغرفة ${roomNumber}` : ''}${queueInfo}`,
+        title: t('حان دورك الآن!', "It's Your Turn!"),
+        message: t(
+          `⚡ اذهب فوراً إلى:\n${clinicName}${roomInfo}${queueInfoAr}`,
+          `⚡ Go immediately to:\n${clinicName}${roomInfo}${queueInfoEn}`
+        ),
         bgColor: 'bg-red-600',
         priority: 'urgent'
       };
@@ -312,20 +363,26 @@ export default function NotificationSystem({
     } else if (position === 1) {
       notif = {
         icon: '🟠',
-        title: 'أنت التالي',
-        message: `استعد - باقي 1 قبلك\n${clinicName}${queueInfo}`,
+        title: t('أنت التالي!', 'You Are Next!'),
+        message: t(
+          `🔔 استعد - باقي شخص واحد قبلك\n📍 ${clinicName}${roomInfo}${queueInfoAr}`,
+          `🔔 Get ready - 1 person ahead\n📍 ${clinicName}${roomInfo}${queueInfoEn}`
+        ),
         bgColor: 'bg-orange-600',
         priority: 'high'
       };
       soundType = 'normal';
       vibrate = true;
       systemNotif = true;
-      duration: 12000;
+      duration = 12000;
     } else if (position === 2) {
       notif = {
         icon: '🟡',
-        title: 'اقترب دورك',
-        message: `باقي 2 قبلك\n${clinicName}${queueInfo}`,
+        title: t('اقترب دورك', 'Your Turn is Near'),
+        message: t(
+          `⏳ باقي شخصين قبلك\n📍 ${clinicName}${queueInfoAr}`,
+          `⏳ 2 people ahead of you\n📍 ${clinicName}${queueInfoEn}`
+        ),
         bgColor: 'bg-yellow-600',
         priority: 'medium'
       };
@@ -334,8 +391,11 @@ export default function NotificationSystem({
     } else if (position === 3) {
       notif = {
         icon: '🔵',
-        title: 'انتبه',
-        message: `باقي 3 قبلك\n${clinicName}${queueInfo}`,
+        title: t('انتبه', 'Attention'),
+        message: t(
+          `📢 باقي 3 أشخاص قبلك\n📍 ${clinicName}${queueInfoAr}`,
+          `📢 3 people ahead of you\n📍 ${clinicName}${queueInfoEn}`
+        ),
         bgColor: 'bg-blue-600',
         priority: 'low'
       };
@@ -344,8 +404,11 @@ export default function NotificationSystem({
     } else if (position === 5) {
       notif = {
         icon: 'ℹ️',
-        title: 'معلومة',
-        message: `باقي 5 قبلك\nيمكنك الانتظار بالقرب من ${clinicName}${queueInfo}`,
+        title: t('معلومة', 'Information'),
+        message: t(
+          `📋 باقي 5 أشخاص قبلك\n💡 يمكنك الانتظار بالقرب من ${clinicName}${queueInfoAr}`,
+          `📋 5 people ahead of you\n💡 You may wait near ${clinicName}${queueInfoEn}`
+        ),
         bgColor: 'bg-gray-600',
         priority: 'info'
       };
@@ -362,7 +425,7 @@ export default function NotificationSystem({
         duration: duration
       });
     }
-  }, [position, currentClinic, yourNumber, currentServing, queueNotification]);
+  }, [position, currentClinic, yourNumber, currentServing, queueNotification, t]);
 
   // تنظيف عند إزالة المكون
   useEffect(() => {
@@ -417,7 +480,7 @@ export default function NotificationSystem({
               showNextNotification();
             }}
             className="text-white opacity-90 hover:opacity-100 text-2xl leading-none px-2 font-bold flex-shrink-0"
-            aria-label="إغلاق"
+            aria-label={t('إغلاق', 'Close')}
           >
             ×
           </button>
