@@ -32,23 +32,25 @@ function getTodayDateKey() {
 // PATIENT MANAGEMENT - حقيقي
 // ==========================================
 
-export async function patientLogin(patientId, gender) {
+export async function patientLogin(patientId, gender, deviceFingerprint = null) {
   try {
     // جلب إعدادات منع التكرار من Supabase
     const { data: settingsData } = await supabase
       .from('settings')
       .select('key, value')
-      .in('key', ['prevent_duplicate_patient_daily']);
+      .in('key', ['prevent_duplicate_patient_daily', 'prevent_duplicate_device_daily']);
     
     const settings = {};
     if (settingsData) {
       settingsData.forEach(s => { settings[s.key] = s.value; });
     }
     
+    const today = getTodayDateKey();
+    
     // التحقق من عدم تكرار الرقم العسكري/الشخصي في نفس اليوم (إذا كان مفعلاً)
     if (settings.prevent_duplicate_patient_daily !== false) {
-      const todayStart = getTodayDateKey() + 'T00:00:00';
-      const todayEnd = getTodayDateKey() + 'T23:59:59';
+      const todayStart = today + 'T00:00:00';
+      const todayEnd = today + 'T23:59:59';
       
       const { data: existingEntry, error: checkError } = await supabase
         .from('unified_queue')
@@ -66,7 +68,33 @@ export async function patientLogin(patientId, gender) {
         return {
           success: false,
           error: 'ALREADY_REGISTERED_TODAY',
-          message: 'هذا الرقم مسجل بالفعل اليوم. يمكنك الدخول لفحص جديد غداً.'
+          message: 'هذا الرقم مسجل بالفعل اليوم. يمكنك الدخول لفحص جديد غداً.',
+          messageEn: 'This ID is already registered today. You can register again tomorrow.'
+        };
+      }
+    }
+    
+    // التحقق من عدم استخدام الجهاز لرقم مختلف في نفس اليوم (إذا كان مفعلاً)
+    if (settings.prevent_duplicate_device_daily !== false && deviceFingerprint) {
+      const { data: deviceLogin, error: deviceError } = await supabase
+        .from('device_logins')
+        .select('id, patient_id, device_fingerprint')
+        .eq('device_fingerprint', deviceFingerprint)
+        .eq('login_date', today)
+        .limit(1);
+      
+      if (deviceError) {
+        console.error('[patientLogin] Device check error:', deviceError);
+      }
+      
+      // إذا كان الجهاز مسجل برقم مختلف اليوم
+      if (deviceLogin && deviceLogin.length > 0 && deviceLogin[0].patient_id !== patientId) {
+        return {
+          success: false,
+          error: 'DEVICE_ALREADY_USED',
+          message: `هذا الجهاز مسجل بالفعل برقم آخر (${deviceLogin[0].patient_id}) اليوم. يمكنك الدخول بنفس الرقم أو استخدام جهاز آخر.`,
+          messageEn: `This device is already registered with another ID (${deviceLogin[0].patient_id}) today. You can use the same ID or use another device.`,
+          registeredPatientId: deviceLogin[0].patient_id
         };
       }
     }
@@ -77,13 +105,42 @@ export async function patientLogin(patientId, gender) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ patientId, gender })
+      body: JSON.stringify({ patientId, gender, deviceFingerprint })
     });
 
     const result = await response.json();
     
     if (!result.success) {
       throw new Error(result.error || 'Login failed');
+    }
+    
+    // تسجيل دخول الجهاز في جدول device_logins
+    if (deviceFingerprint) {
+      try {
+        // تحقق إذا كان الجهاز مسجل بنفس الرقم اليوم
+        const { data: existingDeviceLogin } = await supabase
+          .from('device_logins')
+          .select('id')
+          .eq('device_fingerprint', deviceFingerprint)
+          .eq('patient_id', patientId)
+          .eq('login_date', today)
+          .limit(1);
+        
+        // إذا لم يكن مسجل، أضفه
+        if (!existingDeviceLogin || existingDeviceLogin.length === 0) {
+          await supabase
+            .from('device_logins')
+            .insert([{
+              device_fingerprint: deviceFingerprint,
+              patient_id: patientId,
+              login_date: today,
+              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            }]);
+        }
+      } catch (deviceLogError) {
+        console.error('[patientLogin] Device log error:', deviceLogError);
+        // لا نوقف العملية بسبب خطأ في تسجيل الجهاز
+      }
     }
 
     return {

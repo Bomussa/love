@@ -444,3 +444,94 @@ export async function getPermanentAuditLogs(filters = {}) {
     return { success: false, error: error.message };
   }
 }
+
+
+/**
+ * جلب إعداد من جدول system_settings
+ * @param {string} key - مفتاح الإعداد
+ * @param {any} defaultValue - القيمة الافتراضية إذا لم يوجد الإعداد
+ */
+export async function getSystemSetting(key, defaultValue = null) {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('id', key)
+      .single();
+    
+    if (error) {
+      // إذا لم يوجد الإعداد، نرجع القيمة الافتراضية
+      if (error.code === 'PGRST116') {
+        return defaultValue;
+      }
+      console.warn(`تحذير: فشل جلب الإعداد ${key}:`, error.message);
+      return defaultValue;
+    }
+    
+    // تحويل القيمة من JSON إذا كانت مخزنة كـ JSON
+    try {
+      return JSON.parse(data.value);
+    } catch {
+      return data.value;
+    }
+  } catch (error) {
+    console.error(`خطأ في جلب الإعداد ${key}:`, error);
+    return defaultValue;
+  }
+}
+
+/**
+ * حفظ إعداد في جدول system_settings
+ * @param {string} key - مفتاح الإعداد
+ * @param {any} value - قيمة الإعداد
+ * @param {string} description - وصف الإعداد (اختياري)
+ */
+export async function setSystemSetting(key, value, description = null) {
+  try {
+    const { error } = await supabase
+      .from('system_settings')
+      .upsert({
+        id: key,
+        value: value,
+        description: description || `إعداد ${key}`,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+    
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error(`خطأ في حفظ الإعداد ${key}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * جلب جميع إعدادات النظام
+ */
+export async function getAllSystemSettings() {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+      .order('key');
+    
+    if (error) throw error;
+    
+    // تحويل إلى كائن key-value
+    const settings = {};
+    data?.forEach(item => {
+      try {
+        settings[item.key] = JSON.parse(item.value);
+      } catch {
+        settings[item.key] = item.value;
+      }
+    });
+    
+    return { success: true, data: settings, raw: data };
+  } catch (error) {
+    console.error('خطأ في جلب إعدادات النظام:', error);
+    return { success: false, error: error.message };
+  }
+}

@@ -3,6 +3,7 @@
   "notifications_seconds": 30,
   "features": {
     "qr_enabled": false,
-    "admin_duplicate_login_fix": true
+    "admin_duplicate_login_fix": true,
+    "device_restriction_enabled": false
   }
 }

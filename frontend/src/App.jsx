@@ -179,17 +179,22 @@ function App() {
   const handleLogin = async ({ patientId, gender }) => {
     try {
       // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
-      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity } = await import('./lib/supabase-client.js');
+      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import('./lib/supabase-client.js');
       
-      const deviceCheck = await checkDeviceLogin(patientId);
-      if (!deviceCheck.allowed) {
-        showNotification(
-          language === 'ar' 
-            ? 'لا يمكن استخدام هذا الجهاز لتسجيل رقم آخر اليوم. الرقم المسجل: ' + deviceCheck.existingPatientId
-            : 'This device cannot register another number today. Registered: ' + deviceCheck.existingPatientId,
-          'error'
-        );
-        return;
+      // التحقق من تفعيل نظام منع الجهاز
+      const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
+      
+      if (deviceRestrictionEnabled) {
+        const deviceCheck = await checkDeviceLogin(patientId);
+        if (!deviceCheck.allowed) {
+          showNotification(
+            language === 'ar' 
+              ? 'لا يمكن استخدام هذا الجهاز لتسجيل رقم آخر اليوم. الرقم المسجل: ' + deviceCheck.existingPatientId
+              : 'This device cannot register another number today. Registered: ' + deviceCheck.existingPatientId,
+            'error'
+          );
+          return;
+        }
       }
       
       const res = await api.patientLogin(patientId, gender)

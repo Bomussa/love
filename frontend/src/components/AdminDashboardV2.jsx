@@ -82,6 +82,12 @@ const QueueManagement = ({ language, t }) => {
   const [priorityClinicId, setPriorityClinicId] = useState(null);
   const [priorityPatientId, setPriorityPatientId] = useState('');
   const [priorityLoading, setPriorityLoading] = useState(false);
+  
+  // حالات تعديل الرقم العسكري للمراجع
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [newPatientId, setNewPatientId] = useState('');
+  const [editPatientLoading, setEditPatientLoading] = useState(false);
 
   useEffect(() => {
     loadQueues();
@@ -330,6 +336,72 @@ const QueueManagement = ({ language, t }) => {
     setShowPriorityModal(true);
   };
 
+  // فتح نافذة تعديل الرقم العسكري
+  const openEditPatientModal = (patient) => {
+    setEditingPatient(patient);
+    setNewPatientId(patient.patient_id || '');
+    setShowEditPatientModal(true);
+  };
+
+  // تعديل الرقم العسكري للمراجع
+  const updatePatientId = async () => {
+    if (!newPatientId.trim()) {
+      showErrorToast(t('يرجى إدخال الرقم الجديد', 'Please enter the new ID'));
+      return;
+    }
+
+    try {
+      setEditPatientLoading(true);
+      const oldPatientId = editingPatient.patient_id;
+      
+      // تحديث الرقم في unified_queue
+      const { error: queueError } = await supabase
+        .from('unified_queue')
+        .update({ patient_id: newPatientId.trim() })
+        .eq('id', editingPatient.id);
+
+      if (queueError) {
+        console.error('Error updating queue:', queueError);
+        showErrorToast(t('حدث خطأ أثناء التحديث', 'Error updating patient ID'));
+        return;
+      }
+
+      // تحديث جدول device_logins إذا كان موجوداً
+      const today = new Date().toISOString().split('T')[0];
+      await supabase
+        .from('device_logins')
+        .update({ patient_id: newPatientId.trim() })
+        .eq('patient_id', oldPatientId)
+        .eq('login_date', today);
+
+      // تحديث جدول patients إذا كان موجوداً
+      await supabase
+        .from('patients')
+        .update({ patient_id: newPatientId.trim() })
+        .eq('patient_id', oldPatientId);
+
+      // تسجيل النشاط
+      await logActivity('patient_id_update', `تم تعديل الرقم العسكري من ${oldPatientId} إلى ${newPatientId}`, null, {
+        old_patient_id: oldPatientId,
+        new_patient_id: newPatientId,
+        queue_id: editingPatient.id
+      });
+
+      showSuccessToast(t(`تم تعديل الرقم بنجاح: ${oldPatientId} → ${newPatientId}`, `ID updated: ${oldPatientId} → ${newPatientId}`));
+      
+      // إغلاق النافذة وتحديث البيانات
+      setShowEditPatientModal(false);
+      setEditingPatient(null);
+      setNewPatientId('');
+      loadQueues();
+    } catch (e) {
+      console.error('Error updating patient ID:', e);
+      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
+    } finally {
+      setEditPatientLoading(false);
+    }
+  };
+
   // تجميع الطوابير حسب العيادة
   const queuesByClinic = clinics.map(clinic => ({
     ...clinic,
@@ -410,8 +482,20 @@ const QueueManagement = ({ language, t }) => {
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {clinic.waiting.slice(0, 5).map((q, i) => (
                       <div key={q.id} className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2">
-                        <span className="font-mono">{q.display_number || q.queue_number}</span>
-                        <span className="text-gray-400">{i + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold">{q.display_number || q.queue_number}</span>
+                          <span className="text-xs text-gray-500">({q.patient_id})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditPatientModal(q)}
+                            className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-all"
+                            title={t('تعديل الرقم', 'Edit ID')}
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <span className="text-gray-400">{i + 1}</span>
+                        </div>
                       </div>
                     ))}
                     {clinic.waiting.length > 5 && (
@@ -487,6 +571,89 @@ const QueueManagement = ({ language, t }) => {
                     <>
                       <Play size={20} />
                       {t('تمرير الدور', 'Call Now')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة تعديل الرقم العسكري */}
+      {showEditPatientModal && editingPatient && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Edit className="text-blue-400" size={24} />
+                {t('تعديل الرقم العسكري', 'Edit Military ID')}
+              </h3>
+              <button
+                onClick={() => setShowEditPatientModal(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="text-sm text-gray-400 mb-1">{t('رقم الدور', 'Queue Number')}</div>
+                <div className="text-2xl font-bold text-[#C9A54C]">{editingPatient.display_number || editingPatient.queue_number}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  {t('الرقم العسكري الحالي', 'Current Military ID')}
+                </label>
+                <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 font-mono">
+                  {editingPatient.patient_id || 'غير محدد'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  {t('الرقم العسكري الجديد', 'New Military ID')}
+                </label>
+                <input
+                  type="text"
+                  value={newPatientId}
+                  onChange={(e) => setNewPatientId(e.target.value)}
+                  placeholder={t('أدخل الرقم الصحيح...', 'Enter correct ID...')}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-lg font-mono"
+                  autoFocus
+                />
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="text-yellow-400 mt-0.5" size={20} />
+                  <div className="text-sm text-gray-300">
+                    <p className="font-medium text-yellow-400 mb-1">{t('تنبيه', 'Warning')}</p>
+                    <p>{t('سيتم تحديث الرقم في جميع الجداول المرتبطة (الطابور، الأجهزة، المراجعين).', 'The ID will be updated in all related tables (queue, devices, patients).')}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowEditPatientModal(false)}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
+                >
+                  {t('إلغاء', 'Cancel')}
+                </button>
+                <button
+                  onClick={updatePatientId}
+                  disabled={editPatientLoading || !newPatientId.trim() || newPatientId === editingPatient.patient_id}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {editPatientLoading ? (
+                    <RefreshCw className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Save size={20} />
+                      {t('حفظ التعديل', 'Save Changes')}
                     </>
                   )}
                 </button>
@@ -2804,11 +2971,17 @@ const SettingsSection = ({ language, t }) => {
         .from('settings')
         .select('*');
       
+      const settingsObj = {};
       if (!error && data) {
-        const settingsObj = {};
         data.forEach(s => { settingsObj[s.key] = s.value; });
-        setSettings(settingsObj);
       }
+      
+      // جلب إعداد device_restriction من system_settings
+      const { getSystemSetting } = await import('../lib/supabase-client.js');
+      const deviceRestriction = await getSystemSetting('device_restriction_enabled', false);
+      settingsObj.device_restriction_enabled = deviceRestriction;
+      
+      setSettings(settingsObj);
     } catch (e) {
       console.error('Error loading settings:', e);
     } finally {
@@ -2933,7 +3106,7 @@ const SettingsSection = ({ language, t }) => {
             </button>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl mb-4">
             <div>
               <h4 className="font-medium">{t('منع تكرار الجهاز', 'Prevent Duplicate Device')}</h4>
               <p className="text-sm text-gray-400">{t('منع نفس الجهاز من التسجيل مرة أخرى', 'Prevent same device from registering again')}</p>
@@ -2949,6 +3122,36 @@ const SettingsSection = ({ language, t }) => {
               }`} />
             </button>
           </div>
+
+          {/* نظام منع الجهاز من استخدام رقم مختلف */}
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl border border-orange-500/30">
+            <div>
+              <h4 className="font-medium text-orange-300">{t('منع الجهاز من استخدام رقم مختلف', 'Prevent Device from Using Different ID')}</h4>
+              <p className="text-sm text-gray-400">{t('ربط الجهاز بالرقم العسكري الأول فقط لنفس اليوم', 'Lock device to first military ID for the day')}</p>
+            </div>
+            <button
+              onClick={async () => {
+                const newValue = !settings.device_restriction_enabled;
+                // تحديث في system_settings
+                const { setSystemSetting } = await import('../lib/supabase-client.js');
+                await setSystemSetting('device_restriction_enabled', newValue, 'تفعيل/إيقاف نظام منع الجهاز من استخدام رقم مختلف');
+                setSettings(prev => ({ ...prev, device_restriction_enabled: newValue }));
+                showSuccessToast(newValue ? t('تم تفعيل نظام ربط الجهاز', 'Device restriction enabled') : t('تم إيقاف نظام ربط الجهاز', 'Device restriction disabled'));
+              }}
+              className={`w-14 h-8 rounded-full transition-all ${
+                settings.device_restriction_enabled ? 'bg-orange-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full transition-all ${
+                settings.device_restriction_enabled ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+          {settings.device_restriction_enabled && (
+            <p className="text-xs text-orange-400 mt-2 px-4">
+              ⚠️ {t('تحذير: عند التفعيل، لن يتمكن الجهاز من تسجيل رقم عسكري مختلف في نفس اليوم', 'Warning: When enabled, device cannot register different military ID same day')}
+            </p>
+          )}
         </div>
 
         {/* إعدادات التوقيت */}
