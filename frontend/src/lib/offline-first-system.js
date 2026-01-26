@@ -1,10 +1,10 @@
 /**
  * نظام Offline-First المتكامل
  * Offline-First System (OFS)
- * 
+ *
  * أحدث التقنيات المستخدمة في التطبيقات العالمية
  * مستوحى من: Google Docs, Notion, Figma, Slack
- * 
+ *
  * ✅ IndexedDB - قاعدة بيانات محلية سريعة
  * ✅ Service Worker - عمل في الخلفية
  * ✅ Background Sync - مزامنة تلقائية
@@ -21,11 +21,11 @@ const OFS_CONFIG = {
   dbName: 'MMC_OfflineDB',
   dbVersion: 1,
   stores: ['queues', 'clinics', 'notifications', 'pins', 'patient_routes', 'sync_queue', 'cache_meta'],
-  syncInterval: 5000,        // 5 ثواني
+  syncInterval: 5000, // 5 ثواني
   maxRetries: 10,
   conflictStrategy: 'server-wins', // server-wins, client-wins, merge
-  cacheExpiry: 3600000,      // ساعة واحدة
-  enableBackgroundSync: true
+  cacheExpiry: 3600000, // ساعة واحدة
+  enableBackgroundSync: true,
 };
 
 // ============================================================================
@@ -56,9 +56,9 @@ class IndexedDBManager {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
+
         // إنشاء المخازن
-        OFS_CONFIG.stores.forEach(storeName => {
+        OFS_CONFIG.stores.forEach((storeName) => {
           if (!db.objectStoreNames.contains(storeName)) {
             const store = db.createObjectStore(storeName, { keyPath: 'id' });
             store.createIndex('updated_at', 'updated_at', { unique: false });
@@ -78,22 +78,22 @@ class IndexedDBManager {
 
   async put(storeName, data) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
-      
+
       // إضافة metadata
       const record = {
         ...data,
         id: data.id || this.generateId(),
         updated_at: new Date().toISOString(),
         synced: false,
-        local_version: Date.now()
+        local_version: Date.now(),
       };
-      
+
       const request = store.put(record);
-      
+
       request.onsuccess = () => resolve(record);
       request.onerror = () => reject(request.error);
     });
@@ -101,12 +101,12 @@ class IndexedDBManager {
 
   async get(storeName, id) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readonly');
       const store = transaction.objectStore(storeName);
       const request = store.get(id);
-      
+
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -114,20 +114,20 @@ class IndexedDBManager {
 
   async getAll(storeName, filter = null) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readonly');
       const store = transaction.objectStore(storeName);
       const request = store.getAll();
-      
+
       request.onsuccess = () => {
         let results = request.result || [];
-        
+
         // تطبيق الفلتر إن وجد
         if (filter && typeof filter === 'function') {
           results = results.filter(filter);
         }
-        
+
         resolve(results);
       };
       request.onerror = () => reject(request.error);
@@ -136,12 +136,12 @@ class IndexedDBManager {
 
   async delete(storeName, id) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.delete(id);
-      
+
       request.onsuccess = () => resolve(true);
       request.onerror = () => reject(request.error);
     });
@@ -149,12 +149,12 @@ class IndexedDBManager {
 
   async clear(storeName) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.clear();
-      
+
       request.onsuccess = () => resolve(true);
       request.onerror = () => reject(request.error);
     });
@@ -162,13 +162,13 @@ class IndexedDBManager {
 
   async getUnsynced(storeName) {
     await this.ensureReady();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(storeName, 'readonly');
       const store = transaction.objectStore(storeName);
       const index = store.index('synced');
       const request = index.getAll(IDBKeyRange.only(false));
-      
+
       request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(request.error);
     });
@@ -189,14 +189,14 @@ class IndexedDBManager {
 
   async getStats() {
     await this.ensureReady();
-    
+
     const stats = {};
     for (const storeName of OFS_CONFIG.stores) {
       const all = await this.getAll(storeName);
       const unsynced = await this.getUnsynced(storeName);
       stats[storeName] = {
         total: all.length,
-        unsynced: unsynced.length
+        unsynced: unsynced.length,
       };
     }
     return stats;
@@ -220,17 +220,17 @@ class SyncQueue {
       data: operation.data,
       created_at: new Date().toISOString(),
       attempts: 0,
-      status: 'pending'
+      status: 'pending',
     };
-    
+
     await this.db.put('sync_queue', queueItem);
     console.log(`📝 Added to sync queue: ${operation.type} ${operation.store}`);
-    
+
     return queueItem;
   }
 
   async getAll() {
-    return this.db.getAll('sync_queue', item => item.status === 'pending');
+    return this.db.getAll('sync_queue', (item) => item.status === 'pending');
   }
 
   async markCompleted(id) {
@@ -248,11 +248,11 @@ class SyncQueue {
       item.attempts++;
       item.last_error = error;
       item.last_attempt = new Date().toISOString();
-      
+
       if (item.attempts >= OFS_CONFIG.maxRetries) {
         item.status = 'failed';
       }
-      
+
       await this.db.put('sync_queue', item);
     }
   }
@@ -296,19 +296,19 @@ class ConflictResolver {
   merge(localData, serverData) {
     // دمج ذكي - الأحدث يفوز لكل حقل
     const merged = { ...serverData };
-    
+
     const localTime = new Date(localData.updated_at || 0).getTime();
     const serverTime = new Date(serverData.updated_at || 0).getTime();
-    
+
     if (localTime > serverTime) {
       // البيانات المحلية أحدث
-      Object.keys(localData).forEach(key => {
+      Object.keys(localData).forEach((key) => {
         if (key !== 'id' && key !== 'synced' && key !== 'local_version') {
           merged[key] = localData[key];
         }
       });
     }
-    
+
     console.log('🔄 Conflict resolved: Merged');
     return merged;
   }
@@ -326,11 +326,11 @@ class OfflineFirstSystem {
     this.syncInProgress = false;
     this.listeners = new Set();
     this.supabaseClient = null;
-    
+
     // مراقبة حالة الاتصال
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
-    
+
     // بدء المزامنة الدورية
     this.startPeriodicSync();
   }
@@ -363,7 +363,7 @@ class OfflineFirstSystem {
     try {
       // 1. قراءة من الكاش المحلي أولاً (سريع جداً)
       let localData = await this.db.getAll(storeName);
-      
+
       // 2. إذا كنا متصلين، جلب من السيرفر وتحديث الكاش
       if (this.isOnline && this.supabaseClient) {
         try {
@@ -371,7 +371,7 @@ class OfflineFirstSystem {
             .from(storeName)
             .select(options.select || '*')
             .order(options.orderBy || 'created_at', { ascending: false });
-          
+
           if (!error && serverData) {
             // تحديث الكاش المحلي
             for (const item of serverData) {
@@ -380,19 +380,16 @@ class OfflineFirstSystem {
             localData = serverData;
           }
         } catch (e) {
-          console.warn(`⚠️ Server fetch failed, using local data:`, e.message);
+          console.warn('⚠️ Server fetch failed, using local data:', e.message);
         }
       }
-      
+
       // 3. تطبيق الفلاتر
       if (options.filters) {
-        localData = localData.filter(item => {
-          return Object.entries(options.filters).every(([key, value]) => item[key] === value);
-        });
+        localData = localData.filter((item) => Object.entries(options.filters).every(([key, value]) => item[key] === value));
       }
-      
+
       return { data: localData, error: null, source: this.isOnline ? 'server' : 'local' };
-      
     } catch (error) {
       console.error(`❌ Read error [${storeName}]:`, error);
       return { data: [], error: error.message, source: 'error' };
@@ -408,25 +405,24 @@ class OfflineFirstSystem {
       const localRecord = await this.db.put(storeName, {
         ...data,
         id: data.id || this.db.generateId(),
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       });
-      
+
       // 2. إضافة للطابور للمزامنة
       await this.syncQueue.add({
         type: 'create',
         store: storeName,
-        data: localRecord
+        data: localRecord,
       });
-      
+
       // 3. محاولة المزامنة فوراً إذا متصلين
       if (this.isOnline) {
         this.sync();
       }
-      
+
       this.notifyListeners({ type: 'create', store: storeName, data: localRecord });
-      
+
       return { data: localRecord, error: null, synced: this.isOnline };
-      
     } catch (error) {
       console.error(`❌ Create error [${storeName}]:`, error);
       return { data: null, error: error.message };
@@ -443,32 +439,31 @@ class OfflineFirstSystem {
       if (!existing) {
         throw new Error('Record not found');
       }
-      
+
       // 2. تحديث محلياً فوراً
       const updatedRecord = await this.db.put(storeName, {
         ...existing,
         ...data,
         id,
         updated_at: new Date().toISOString(),
-        synced: false
+        synced: false,
       });
-      
+
       // 3. إضافة للطابور
       await this.syncQueue.add({
         type: 'update',
         store: storeName,
-        data: updatedRecord
+        data: updatedRecord,
       });
-      
+
       // 4. محاولة المزامنة
       if (this.isOnline) {
         this.sync();
       }
-      
+
       this.notifyListeners({ type: 'update', store: storeName, data: updatedRecord });
-      
+
       return { data: updatedRecord, error: null, synced: this.isOnline };
-      
     } catch (error) {
       console.error(`❌ Update error [${storeName}]:`, error);
       return { data: null, error: error.message };
@@ -482,23 +477,22 @@ class OfflineFirstSystem {
     try {
       // 1. حذف محلياً فوراً
       await this.db.delete(storeName, id);
-      
+
       // 2. إضافة للطابور
       await this.syncQueue.add({
         type: 'delete',
         store: storeName,
-        data: { id }
+        data: { id },
       });
-      
+
       // 3. محاولة المزامنة
       if (this.isOnline) {
         this.sync();
       }
-      
+
       this.notifyListeners({ type: 'delete', store: storeName, id });
-      
+
       return { success: true, error: null };
-      
     } catch (error) {
       console.error(`❌ Delete error [${storeName}]:`, error);
       return { success: false, error: error.message };
@@ -513,15 +507,15 @@ class OfflineFirstSystem {
     if (this.syncInProgress || !this.isOnline || !this.supabaseClient) {
       return;
     }
-    
+
     this.syncInProgress = true;
     console.log('🔄 Starting sync...');
-    
+
     try {
       const queueItems = await this.syncQueue.getAll();
       let syncedCount = 0;
       let failedCount = 0;
-      
+
       for (const item of queueItems) {
         try {
           await this.processSyncItem(item);
@@ -533,12 +527,11 @@ class OfflineFirstSystem {
           failedCount++;
         }
       }
-      
+
       if (syncedCount > 0 || failedCount > 0) {
         console.log(`✅ Sync complete: ${syncedCount} synced, ${failedCount} failed`);
         this.notifyListeners({ type: 'sync_complete', synced: syncedCount, failed: failedCount });
       }
-      
     } catch (error) {
       console.error('❌ Sync error:', error);
     } finally {
@@ -548,7 +541,7 @@ class OfflineFirstSystem {
 
   async processSyncItem(item) {
     const { operation, store, data } = item;
-    
+
     switch (operation) {
       case 'create': {
         // التحقق من وجود السجل على السيرفر
@@ -557,45 +550,45 @@ class OfflineFirstSystem {
           .select('id')
           .eq('id', data.id)
           .single();
-        
+
         if (existing) {
           // السجل موجود - تحديث بدلاً من إنشاء
           const { error } = await this.supabaseClient
             .from(store)
             .update(this.cleanForServer(data))
             .eq('id', data.id);
-          
+
           if (error) throw error;
         } else {
           // إنشاء جديد
           const { error } = await this.supabaseClient
             .from(store)
             .insert(this.cleanForServer(data));
-          
+
           if (error) throw error;
         }
-        
+
         await this.db.markSynced(store, data.id);
         break;
       }
-      
+
       case 'update': {
         const { error } = await this.supabaseClient
           .from(store)
           .update(this.cleanForServer(data))
           .eq('id', data.id);
-        
+
         if (error) throw error;
         await this.db.markSynced(store, data.id);
         break;
       }
-      
+
       case 'delete': {
         const { error } = await this.supabaseClient
           .from(store)
           .delete()
           .eq('id', data.id);
-        
+
         if (error && error.code !== 'PGRST116') throw error;
         break;
       }
@@ -645,12 +638,12 @@ class OfflineFirstSystem {
   async getStatus() {
     const dbStats = await this.db.getStats();
     const queueItems = await this.syncQueue.getAll();
-    
+
     return {
       isOnline: this.isOnline,
       syncInProgress: this.syncInProgress,
       pendingSync: queueItems.length,
-      stores: dbStats
+      stores: dbStats,
     };
   }
 

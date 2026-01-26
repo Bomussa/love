@@ -1,7 +1,7 @@
 /**
  * نظام الاتصال الدائم والمستمر بقاعدة البيانات
  * Persistent Database Connection System
- * 
+ *
  * المميزات:
  * ✅ اتصال دائم بدون انقطاع
  * ✅ إعادة المحاولة التلقائية مع Exponential Backoff
@@ -19,12 +19,12 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // إعدادات إعادة المحاولة المتقدمة
 const RETRY_CONFIG = {
-  maxRetries: 10,           // عدد محاولات إعادة الاتصال
-  baseDelay: 500,           // التأخير الأساسي (نصف ثانية)
-  maxDelay: 60000,          // الحد الأقصى للتأخير (دقيقة)
-  jitterFactor: 0.3,        // عامل التشويش لتجنب thundering herd
+  maxRetries: 10, // عدد محاولات إعادة الاتصال
+  baseDelay: 500, // التأخير الأساسي (نصف ثانية)
+  maxDelay: 60000, // الحد الأقصى للتأخير (دقيقة)
+  jitterFactor: 0.3, // عامل التشويش لتجنب thundering herd
   healthCheckInterval: 15000, // فحص الصحة كل 15 ثانية
-  reconnectOnError: true,   // إعادة الاتصال عند أي خطأ
+  reconnectOnError: true, // إعادة الاتصال عند أي خطأ
 };
 
 // أنواع الخدمات
@@ -61,24 +61,24 @@ class ServiceConnectionManager {
     this.listeners = new Set();
     this.healthCheckTimer = null;
     this.isMonitoring = false;
-    
+
     // إنشاء عميل Supabase خاص بهذه الخدمة
     this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false
+        detectSessionInUrl: false,
       },
       realtime: {
         params: {
-          eventsPerSecond: 10
-        }
+          eventsPerSecond: 10,
+        },
       },
       global: {
         headers: {
-          'x-client-info': `mmc-service-${serviceName}`
-        }
-      }
+          'x-client-info': `mmc-service-${serviceName}`,
+        },
+      },
     });
   }
 
@@ -87,8 +87,8 @@ class ServiceConnectionManager {
    */
   calculateDelay(attempt) {
     const exponentialDelay = Math.min(
-      RETRY_CONFIG.baseDelay * Math.pow(2, attempt),
-      RETRY_CONFIG.maxDelay
+      RETRY_CONFIG.baseDelay * 2 ** attempt,
+      RETRY_CONFIG.maxDelay,
     );
     // إضافة jitter لتجنب thundering herd
     const jitter = exponentialDelay * RETRY_CONFIG.jitterFactor * Math.random();
@@ -102,14 +102,14 @@ class ServiceConnectionManager {
     const oldState = this.state;
     this.state = newState;
     this.lastError = error;
-    
+
     if (newState === ConnectionStates.CONNECTED) {
       this.lastSuccessTime = new Date();
       this.retryCount = 0;
     }
-    
+
     // إشعار جميع المستمعين
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener({
           service: this.serviceName,
@@ -117,7 +117,7 @@ class ServiceConnectionManager {
           newState,
           error,
           retryCount: this.retryCount,
-          lastSuccessTime: this.lastSuccessTime
+          lastSuccessTime: this.lastSuccessTime,
         });
       } catch (e) {
         console.error(`[${this.serviceName}] Error in listener:`, e);
@@ -139,7 +139,7 @@ class ServiceConnectionManager {
   async executeWithRetry(queryFn, options = {}) {
     const maxRetries = options.maxRetries || RETRY_CONFIG.maxRetries;
     const tableName = options.tableName || 'unknown';
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         // تحديث الحالة
@@ -148,51 +148,50 @@ class ServiceConnectionManager {
         } else if (this.state !== ConnectionStates.CONNECTED) {
           this.updateState(ConnectionStates.CONNECTING);
         }
-        
+
         // تنفيذ الاستعلام
         const result = await queryFn(this.client);
-        
+
         // التحقق من الخطأ في النتيجة
         if (result.error) {
           throw result.error;
         }
-        
+
         // نجاح!
         this.updateState(ConnectionStates.CONNECTED);
-        
+
         if (attempt > 0) {
           console.log(`✅ [${this.serviceName}] نجحت المحاولة ${attempt + 1} للجدول ${tableName}`);
         }
-        
+
         return result;
-        
       } catch (error) {
         this.retryCount = attempt + 1;
         const delay = this.calculateDelay(attempt);
-        
+
         console.warn(
           `⚠️ [${this.serviceName}] محاولة ${attempt + 1}/${maxRetries + 1} فشلت للجدول ${tableName}:`,
           error.message,
-          `| إعادة المحاولة بعد ${delay}ms`
+          `| إعادة المحاولة بعد ${delay}ms`,
         );
-        
+
         // إذا كانت آخر محاولة
         if (attempt === maxRetries) {
           this.updateState(ConnectionStates.ERROR, error);
           console.error(`❌ [${this.serviceName}] فشل نهائي بعد ${maxRetries + 1} محاولات`);
-          
+
           // لا نرمي الخطأ - نعيد نتيجة فارغة مع علامة الخطأ
           return {
             data: null,
-            error: error,
+            error,
             _connectionFailed: true,
             _service: this.serviceName,
-            _retryCount: this.retryCount
+            _retryCount: this.retryCount,
           };
         }
-        
+
         // انتظار قبل إعادة المحاولة
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -206,12 +205,11 @@ class ServiceConnectionManager {
         .from('clinics')
         .select('id')
         .limit(1);
-      
+
       if (error) throw error;
-      
+
       this.updateState(ConnectionStates.CONNECTED);
       return { healthy: true, service: this.serviceName };
-      
     } catch (error) {
       this.updateState(ConnectionStates.ERROR, error);
       return { healthy: false, service: this.serviceName, error: error.message };
@@ -223,18 +221,18 @@ class ServiceConnectionManager {
    */
   startMonitoring() {
     if (this.isMonitoring) return;
-    
+
     this.isMonitoring = true;
     this.healthCheckTimer = setInterval(async () => {
       if (document.hidden) return; // لا تفحص إذا كانت الصفحة مخفية
-      
+
       const health = await this.healthCheck();
       if (!health.healthy && RETRY_CONFIG.reconnectOnError) {
         console.log(`🔄 [${this.serviceName}] جاري إعادة الاتصال...`);
         await this.reconnect();
       }
     }, RETRY_CONFIG.healthCheckInterval);
-    
+
     console.log(`🔍 [${this.serviceName}] بدء مراقبة الاتصال`);
   }
 
@@ -268,7 +266,7 @@ class ServiceConnectionManager {
       retryCount: this.retryCount,
       lastError: this.lastError?.message || null,
       lastSuccessTime: this.lastSuccessTime,
-      isMonitoring: this.isMonitoring
+      isMonitoring: this.isMonitoring,
     };
   }
 }
@@ -290,10 +288,10 @@ class PersistentConnectionManager {
     if (!this.services.has(serviceName)) {
       const manager = new ServiceConnectionManager(serviceName);
       this.services.set(serviceName, manager);
-      
+
       // إضافة مستمع عام
       manager.addStateListener((event) => {
-        this.globalListeners.forEach(listener => {
+        this.globalListeners.forEach((listener) => {
           try {
             listener(event);
           } catch (e) {
@@ -310,19 +308,19 @@ class PersistentConnectionManager {
    */
   async initialize() {
     if (this.initialized) return;
-    
+
     console.log('🚀 تهيئة نظام الاتصال الدائم...');
-    
+
     // إنشاء مديري اتصال لجميع الخدمات
-    Object.values(ServiceTypes).forEach(serviceName => {
+    Object.values(ServiceTypes).forEach((serviceName) => {
       const manager = this.getService(serviceName);
       manager.startMonitoring();
     });
-    
+
     // فحص صحة جميع الخدمات
     const healthResults = await this.checkAllHealth();
     console.log('📊 نتائج فحص الصحة:', healthResults);
-    
+
     this.initialized = true;
     return healthResults;
   }
@@ -391,7 +389,7 @@ export async function safeQueuesQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.QUEUES);
   return manager.executeWithRetry(
     (client) => queryFn(client.from('unified_queue')),
-    { tableName: 'queues' }
+    { tableName: 'queues' },
   );
 }
 
@@ -400,7 +398,7 @@ export async function safeClinicsQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.CLINICS);
   return manager.executeWithRetry(
     (client) => queryFn(client.from('clinics')),
-    { tableName: 'clinics' }
+    { tableName: 'clinics' },
   );
 }
 
@@ -409,7 +407,7 @@ export async function safeNotificationsQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.NOTIFICATIONS);
   return manager.executeWithRetry(
     (client) => queryFn(client.from('notifications')),
-    { tableName: 'notifications' }
+    { tableName: 'notifications' },
   );
 }
 
@@ -418,7 +416,7 @@ export async function safePinsQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.PINS);
   return manager.executeWithRetry(
     (client) => queryFn(client.from('pins')),
-    { tableName: 'pins' }
+    { tableName: 'pins' },
   );
 }
 
@@ -427,23 +425,23 @@ export async function safeRoutesQuery(queryFn) {
   const manager = connectionManager.getService(ServiceTypes.ROUTES);
   return manager.executeWithRetry(
     (client) => queryFn(client.from('patient_routes')),
-    { tableName: 'patient_routes' }
+    { tableName: 'patient_routes' },
   );
 }
 
 // استعلام آمن عام
 export async function safeQuery(tableName, queryFn) {
-  const serviceType = tableName.includes('queue') ? ServiceTypes.QUEUES :
-                      tableName.includes('clinic') ? ServiceTypes.CLINICS :
-                      tableName.includes('notification') ? ServiceTypes.NOTIFICATIONS :
-                      tableName.includes('pin') ? ServiceTypes.PINS :
-                      tableName.includes('route') ? ServiceTypes.ROUTES :
-                      ServiceTypes.ADMIN;
-  
+  const serviceType = tableName.includes('queue') ? ServiceTypes.QUEUES
+    : tableName.includes('clinic') ? ServiceTypes.CLINICS
+      : tableName.includes('notification') ? ServiceTypes.NOTIFICATIONS
+        : tableName.includes('pin') ? ServiceTypes.PINS
+          : tableName.includes('route') ? ServiceTypes.ROUTES
+            : ServiceTypes.ADMIN;
+
   const manager = connectionManager.getService(serviceType);
   return manager.executeWithRetry(
     (client) => queryFn(client.from(tableName)),
-    { tableName }
+    { tableName },
   );
 }
 

@@ -1,7 +1,7 @@
 /**
  * نظام سلامة البيانات المتكامل
  * Data Integrity System (DIS)
- * 
+ *
  * ✅ منع التكرار (Deduplication)
  * ✅ منع الازدواجية (Unique Constraints)
  * ✅ منع التعارض (Conflict Prevention)
@@ -21,39 +21,39 @@ const INTEGRITY_CONFIG = {
     clinics: ['name'],
     notifications: ['patient_id', 'title', 'sent_at'],
     pins: ['clinic_id', 'pin_code'],
-    patient_routes: ['patient_id', 'exam_type']
+    patient_routes: ['patient_id', 'exam_type'],
   },
-  
+
   // الحقول المطلوبة لكل جدول
   requiredFields: {
     queues: ['patient_id', 'clinic_id', 'status'],
     clinics: ['name', 'status'],
     notifications: ['title', 'message', 'type'],
     pins: ['clinic_id', 'pin_code'],
-    patient_routes: ['patient_id', 'exam_type']
+    patient_routes: ['patient_id', 'exam_type'],
   },
-  
+
   // قواعد التحقق من الصحة
   validationRules: {
     queues: {
       status: ['waiting', 'serving', 'completed', 'skipped', 'cancelled'],
-      display_number: { type: 'number', min: 1 }
+      display_number: { type: 'number', min: 1 },
     },
     clinics: {
       status: ['active', 'inactive', 'closed'],
-      order_index: { type: 'number', min: 0 }
+      order_index: { type: 'number', min: 0 },
     },
     notifications: {
-      type: ['call', 'update', 'alert', 'info']
-    }
+      type: ['call', 'update', 'alert', 'info'],
+    },
   },
-  
+
   // حدود البيانات
   limits: {
     queues: { maxPerPatientPerClinic: 1, maxActivePerPatient: 10 },
     notifications: { maxPerPatient: 100 },
-    pins: { maxPerClinic: 1 }
-  }
+    pins: { maxPerClinic: 1 },
+  },
 };
 
 // ============================================================================
@@ -69,7 +69,7 @@ class DeduplicationEngine {
    * إنشاء hash للبيانات
    */
   generateHash(data, fields) {
-    const values = fields.map(f => data[f] || '').join('|');
+    const values = fields.map((f) => data[f] || '').join('|');
     return this.simpleHash(values);
   }
 
@@ -78,7 +78,7 @@ class DeduplicationEngine {
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
+      hash &= hash;
     }
     return hash.toString(36);
   }
@@ -91,17 +91,17 @@ class DeduplicationEngine {
     if (!constraints || constraints.length === 0) return { isDuplicate: false };
 
     const newHash = this.generateHash(data, constraints);
-    
+
     // التحقق من البيانات الموجودة
     for (const existing of existingData) {
       if (existing.id === data.id) continue; // تجاهل نفس السجل
-      
+
       const existingHash = this.generateHash(existing, constraints);
       if (newHash === existingHash) {
         return {
           isDuplicate: true,
           existingRecord: existing,
-          conflictFields: constraints
+          conflictFields: constraints,
         };
       }
     }
@@ -115,13 +115,13 @@ class DeduplicationEngine {
   isRecentOperation(operationKey, windowMs = 5000) {
     const lastTime = this.recentOperations.get(operationKey);
     const now = Date.now();
-    
+
     if (lastTime && (now - lastTime) < windowMs) {
       return true;
     }
-    
+
     this.recentOperations.set(operationKey, now);
-    
+
     // تنظيف العمليات القديمة
     if (this.recentOperations.size > 1000) {
       const cutoff = now - windowMs;
@@ -131,7 +131,7 @@ class DeduplicationEngine {
         }
       }
     }
-    
+
     return false;
   }
 
@@ -179,7 +179,7 @@ class ValidationEngine {
       return {
         valid: false,
         error: `الحقول المطلوبة ناقصة: ${missing.join(', ')}`,
-        missingFields: missing
+        missingFields: missing,
       };
     }
 
@@ -226,7 +226,7 @@ class ValidationEngine {
       return {
         valid: false,
         error: errors.join('; '),
-        errors
+        errors,
       };
     }
 
@@ -242,18 +242,16 @@ class ValidationEngine {
 
     // التحقق من حد المراجع في العيادة
     if (tableName === 'queues' && limits.maxPerPatientPerClinic) {
-      const activeInClinic = existingData.filter(q => 
-        q.patient_id === data.patient_id && 
-        q.clinic_id === data.clinic_id &&
-        ['waiting', 'serving'].includes(q.status) &&
-        q.id !== data.id
-      );
+      const activeInClinic = existingData.filter((q) => q.patient_id === data.patient_id
+        && q.clinic_id === data.clinic_id
+        && ['waiting', 'serving'].includes(q.status)
+        && q.id !== data.id);
 
       if (activeInClinic.length >= limits.maxPerPatientPerClinic) {
         return {
           valid: false,
           error: 'المراجع موجود بالفعل في هذه العيادة',
-          existingRecord: activeInClinic[0]
+          existingRecord: activeInClinic[0],
         };
       }
     }
@@ -266,11 +264,11 @@ class ValidationEngine {
    */
   sanitize(data) {
     const sanitized = {};
-    
+
     for (const [key, value] of Object.entries(data)) {
       // تجاهل الحقول الفارغة
       if (value === undefined || value === null) continue;
-      
+
       // تنظيف النصوص
       if (typeof value === 'string') {
         sanitized[key] = value.trim();
@@ -278,7 +276,7 @@ class ValidationEngine {
         sanitized[key] = value;
       }
     }
-    
+
     return sanitized;
   }
 }
@@ -303,7 +301,7 @@ class ConflictResolver {
         localTime,
         serverTime,
         localData,
-        serverData
+        serverData,
       };
     }
 
@@ -316,19 +314,19 @@ class ConflictResolver {
   resolve(conflict, strategy = 'latest-wins') {
     switch (strategy) {
       case 'latest-wins':
-        return conflict.localTime > conflict.serverTime 
-          ? conflict.localData 
+        return conflict.localTime > conflict.serverTime
+          ? conflict.localData
           : conflict.serverData;
-      
+
       case 'server-wins':
         return conflict.serverData;
-      
+
       case 'client-wins':
         return conflict.localData;
-      
+
       case 'merge':
         return this.mergeData(conflict.localData, conflict.serverData);
-      
+
       default:
         return conflict.serverData;
     }
@@ -339,10 +337,10 @@ class ConflictResolver {
    */
   mergeData(local, server) {
     const merged = { ...server };
-    
+
     // الحقول التي يمكن دمجها
     const mergeableFields = ['metadata', 'notes', 'tags'];
-    
+
     for (const field of mergeableFields) {
       if (local[field] && server[field]) {
         if (Array.isArray(local[field]) && Array.isArray(server[field])) {
@@ -352,7 +350,7 @@ class ConflictResolver {
         }
       }
     }
-    
+
     return merged;
   }
 }
@@ -372,7 +370,7 @@ class ServiceIsolator {
   setServiceState(serviceName, state) {
     this.serviceStates.set(serviceName, {
       state,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -390,7 +388,7 @@ class ServiceIsolator {
   recordError(serviceName) {
     const count = (this.errorCounts.get(serviceName) || 0) + 1;
     this.errorCounts.set(serviceName, count);
-    
+
     // إذا تجاوز الحد، عزل الخدمة
     if (count >= 5) {
       this.setServiceState(serviceName, 'failed');
@@ -479,13 +477,13 @@ class DataIntegritySystem {
       return {
         valid: false,
         errors,
-        data: sanitizedData
+        data: sanitizedData,
       };
     }
 
     return {
       valid: true,
-      data: sanitizedData
+      data: sanitizedData,
     };
   }
 
@@ -495,11 +493,11 @@ class DataIntegritySystem {
   async withLock(lockKey, fn) {
     // انتظار إذا كان هناك قفل
     while (this.operationLocks.has(lockKey)) {
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
     }
 
     this.operationLocks.set(lockKey, Date.now());
-    
+
     try {
       return await fn();
     } finally {
@@ -512,7 +510,7 @@ class DataIntegritySystem {
    */
   async safeSave(tableName, data, existingData = [], saveFn) {
     const lockKey = `${tableName}_${data.id || 'new'}`;
-    
+
     return this.withLock(lockKey, async () => {
       // التحقق من العملية المكررة
       const opKey = `${tableName}_${JSON.stringify(data)}`;
@@ -524,10 +522,10 @@ class DataIntegritySystem {
       // التحقق الشامل
       const validation = await this.validateBeforeSave(tableName, data, existingData);
       if (!validation.valid) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           errors: validation.errors,
-          data: validation.data
+          data: validation.data,
         };
       }
 
@@ -535,7 +533,7 @@ class DataIntegritySystem {
       return this.isolator.executeIsolated(
         tableName,
         () => saveFn(validation.data),
-        () => ({ success: false, error: 'الخدمة غير متاحة مؤقتاً' })
+        () => ({ success: false, error: 'الخدمة غير متاحة مؤقتاً' }),
       );
     });
   }
@@ -553,7 +551,7 @@ class DataIntegritySystem {
         }
         return result;
       },
-      () => ({ data: [], error: 'الخدمة غير متاحة' })
+      () => ({ data: [], error: 'الخدمة غير متاحة' }),
     );
   }
 
@@ -562,12 +560,12 @@ class DataIntegritySystem {
    */
   async safeSync(tableName, localData, serverData) {
     const conflict = this.conflictResolver.detectConflict(localData, serverData);
-    
+
     if (conflict.hasConflict) {
       console.log(`🔄 Conflict detected in ${tableName}`);
       return this.conflictResolver.resolve(conflict, 'latest-wins');
     }
-    
+
     return serverData || localData;
   }
 
@@ -578,7 +576,7 @@ class DataIntegritySystem {
     return {
       activeLocks: this.operationLocks.size,
       services: Object.fromEntries(this.isolator.serviceStates),
-      errorCounts: Object.fromEntries(this.isolator.errorCounts)
+      errorCounts: Object.fromEntries(this.isolator.errorCounts),
     };
   }
 

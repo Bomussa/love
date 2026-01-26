@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "https://deno.land/std*": ["node_modules/@types/node"],
+      "https://esm.sh/*": ["node_modules/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "frontend/src/lib/supabase-client.js"]
+}

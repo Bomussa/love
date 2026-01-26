@@ -1,14 +1,14 @@
 /**
  * Circuit Breaker pattern implementation (Add-only)
- * 
+ *
  * A lightweight, dependency-free Circuit Breaker for Node/Edge functions and clients.
  * Prevents cascading failures by temporarily blocking requests to failing services.
- * 
+ *
  * States:
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Service is failing, requests fail fast with fallback
  * - HALF_OPEN: Testing if service recovered, allows limited requests
- * 
+ *
  * @example
  * ```typescript
  * const breaker = new CircuitBreaker({
@@ -17,7 +17,7 @@
  *   timeout: 5000,              // Request timeout
  *   onStateChange: (from, to) => console.log(`Circuit ${from} -> ${to}`)
  * });
- * 
+ *
  * try {
  *   const result = await breaker.execute(
  *     () => fetch('https://api.example.com/data'),
@@ -27,13 +27,13 @@
  *   // Handle error
  * }
  * ```
- * 
+ *
  * @example Edge Function usage
  * ```typescript
  * import { CircuitBreaker } from './circuit-breaker.ts';
- * 
+ *
  * const dbBreaker = new CircuitBreaker({ failureThreshold: 3, openDuration: 10000 });
- * 
+ *
  * export async function handler(req: Request) {
  *   try {
  *     const data = await dbBreaker.execute(
@@ -89,17 +89,27 @@ export class CircuitBreakerError extends Error {
  */
 export class CircuitBreaker {
   private state: CircuitState = CircuitState.CLOSED;
+
   private failureCount = 0;
+
   private successCount = 0;
+
   private lastFailureTime?: number;
+
   private lastSuccessTime?: number;
+
   private nextAttemptTime = 0;
 
   private readonly failureThreshold: number;
+
   private readonly successThreshold: number;
+
   private readonly openDuration: number;
+
   private readonly timeout: number;
+
   private readonly onStateChange?: (from: CircuitState, to: CircuitState) => void;
+
   private readonly onMetric?: (metric: CircuitMetric) => void;
 
   constructor(options: CircuitBreakerOptions = {}) {
@@ -118,7 +128,7 @@ export class CircuitBreaker {
    */
   async execute<T>(
     fn: () => Promise<T>,
-    fallback?: () => T | Promise<T>
+    fallback?: () => T | Promise<T>,
   ): Promise<T> {
     // Check if circuit is open
     if (this.state === CircuitState.OPEN) {
@@ -129,7 +139,7 @@ export class CircuitBreaker {
         }
         throw new CircuitBreakerError(
           'Circuit breaker is OPEN',
-          CircuitState.OPEN
+          CircuitState.OPEN,
         );
       }
       // Transition to half-open for retry
@@ -155,12 +165,10 @@ export class CircuitBreaker {
   private async executeWithTimeout<T>(fn: () => Promise<T>): Promise<T> {
     return Promise.race([
       fn(),
-      new Promise<T>((_, reject) =>
-        setTimeout(
-          () => reject(new Error('Request timeout')),
-          this.timeout
-        )
-      )
+      new Promise<T>((_, reject) => setTimeout(
+        () => reject(new Error('Request timeout')),
+        this.timeout,
+      )),
     ]);
   }
 
@@ -191,8 +199,8 @@ export class CircuitBreaker {
     this.successCount = 0;
 
     if (
-      this.state === CircuitState.HALF_OPEN ||
-      this.failureCount >= this.failureThreshold
+      this.state === CircuitState.HALF_OPEN
+      || this.failureCount >= this.failureThreshold
     ) {
       this.transitionTo(CircuitState.OPEN);
       this.nextAttemptTime = Date.now() + this.openDuration;
@@ -232,7 +240,7 @@ export class CircuitBreaker {
         failureCount: this.failureCount,
         successCount: this.successCount,
         lastFailureTime: this.lastFailureTime,
-        lastSuccessTime: this.lastSuccessTime
+        lastSuccessTime: this.lastSuccessTime,
       });
     }
   }
@@ -253,7 +261,7 @@ export class CircuitBreaker {
       failureCount: this.failureCount,
       successCount: this.successCount,
       lastFailureTime: this.lastFailureTime,
-      lastSuccessTime: this.lastSuccessTime
+      lastSuccessTime: this.lastSuccessTime,
     };
   }
 
@@ -284,7 +292,7 @@ export async function exampleDatabaseQuery() {
     onMetric: (metric) => {
       // Send to monitoring system
       console.log('[Metric]', JSON.stringify(metric));
-    }
+    },
   });
 
   try {
@@ -299,7 +307,7 @@ export async function exampleDatabaseQuery() {
         // Fallback: return cached data
         console.log('[Fallback] Using cached data');
         return { cached: true, data: [] };
-      }
+      },
     );
     return result;
   } catch (err) {
@@ -322,8 +330,8 @@ export class ServiceBreakers {
           ...options,
           onStateChange: (from, to) => {
             console.log(`[${serviceName}] Circuit ${from} -> ${to}`);
-          }
-        })
+          },
+        }),
       );
     }
     return this.breakers.get(serviceName)!;

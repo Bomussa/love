@@ -1,6 +1,6 @@
 /**
  * Supabase Client Wrapper
- * 
+ *
  * هذا الملف يوفر client موحد للاتصال بـ Supabase من جميع API endpoints
  * يستخدم Environment Variables للحفاظ على الأمان
  */
@@ -23,11 +23,11 @@ export function getSupabaseClient(env) {
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: true,
-      persistSession: false
+      persistSession: false,
     },
     db: {
-      schema: 'public'
-    }
+      schema: 'public',
+    },
   });
 }
 
@@ -62,7 +62,9 @@ export async function getActiveQueues(supabase, clinicId = null) {
  * إضافة مريض إلى الطابور
  */
 export async function addToQueue(supabase, patientData) {
-  const { patient_id, patient_name, clinic_id, exam_type } = patientData;
+  const {
+    patient_id, patient_name, clinic_id, exam_type,
+  } = patientData;
 
   // الحصول على آخر position في الطابور
   const { data: lastEntry } = await supabase
@@ -83,7 +85,7 @@ export async function addToQueue(supabase, patientData) {
       clinic_id,
       exam_type,
       status: 'waiting',
-      position: nextPosition
+      position: nextPosition,
     })
     .select()
     .single();
@@ -118,7 +120,7 @@ export async function callNextPatient(supabase, clinicId) {
     .from('queue')
     .update({
       status: 'called',
-      called_at: new Date().toISOString()
+      called_at: new Date().toISOString(),
     })
     .eq('id', nextPatient.id)
     .select()
@@ -139,7 +141,7 @@ export async function completePatient(supabase, patientId) {
     .from('queue')
     .update({
       status: 'completed',
-      completed_at: new Date().toISOString()
+      completed_at: new Date().toISOString(),
     })
     .eq('patient_id', patientId)
     .select()
@@ -184,14 +186,14 @@ export async function getClinicStats(supabase, clinicId) {
 
   const stats = {
     total_patients: queue.length,
-    waiting: queue.filter(p => p.status === 'waiting').length,
-    called: queue.filter(p => p.status === 'called').length,
-    completed: queue.filter(p => p.status === 'completed').length,
-    cancelled: queue.filter(p => p.status === 'cancelled').length
+    waiting: queue.filter((p) => p.status === 'waiting').length,
+    called: queue.filter((p) => p.status === 'called').length,
+    completed: queue.filter((p) => p.status === 'completed').length,
+    cancelled: queue.filter((p) => p.status === 'cancelled').length,
   };
 
   // حساب متوسط وقت الانتظار
-  const completedPatients = queue.filter(p => p.status === 'completed' && p.completed_at);
+  const completedPatients = queue.filter((p) => p.status === 'completed' && p.completed_at);
   if (completedPatients.length > 0) {
     const totalWaitTime = completedPatients.reduce((sum, p) => {
       const wait = new Date(p.completed_at) - new Date(p.entered_at);
@@ -238,7 +240,9 @@ export async function verifyClinicPin(supabase, clinicId, pin) {
  * إنشاء إشعار
  */
 export async function createNotification(supabase, notificationData) {
-  const { patient_id, clinic_id, type, title, message } = notificationData;
+  const {
+    patient_id, clinic_id, type, title, message,
+  } = notificationData;
 
   const { data, error } = await supabase
     .from('notifications')
@@ -247,7 +251,7 @@ export async function createNotification(supabase, notificationData) {
       clinic_id,
       type,
       title,
-      message
+      message,
     })
     .select()
     .single();
@@ -288,7 +292,7 @@ export async function updateSettings(supabase, key, value, updatedBy = null) {
       key,
       value,
       updated_by: updatedBy,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -311,6 +315,5 @@ export default {
   verifyClinicPin,
   createNotification,
   getSettings,
-  updateSettings
+  updateSettings,
 };
-

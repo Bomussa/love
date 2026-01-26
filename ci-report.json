@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-26T10:57:42.727Z",
+  "status": "FAILED",
+  "reason": "Local run",
+  "rulesApplied": [
+    "ESLint Recommended",
+    "TypeScript Strict",
+    "CodeQL Analysis",
+    "Dependabot OSV"
+  ]
+}

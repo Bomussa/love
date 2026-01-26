@@ -1,10 +1,10 @@
 /**
  * Vercel API Client
  * Connection to Vercel API endpoints
- * 
+ *
  * Architecture:
  * Frontend → Vercel API (/api/v1) → Supabase Edge Functions → Supabase Database
- * 
+ *
  * Benefits:
  * - Centralized API layer
  * - Better error handling
@@ -23,7 +23,7 @@ const API_BASE = '/api/v1';
  */
 async function callAPI(endpoint, options = {}) {
   const url = `${API_BASE}/${endpoint}`;
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,

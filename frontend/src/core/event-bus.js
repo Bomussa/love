@@ -1,23 +1,23 @@
 // Event Bus - ناقل الأحداث المركزي (Enhanced with SSE)
 class EventBus {
   constructor() {
-    this.listeners = new Map()
-    this.history = []
-    this.maxHistory = 100
+    this.listeners = new Map();
+    this.history = [];
+    this.maxHistory = 100;
   }
 
   on(event, callback) {
     if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set())
+      this.listeners.set(event, new Set());
     }
-    this.listeners.get(event).add(callback)
-    
-    return () => this.off(event, callback)
+    this.listeners.get(event).add(callback);
+
+    return () => this.off(event, callback);
   }
 
   off(event, callback) {
     if (this.listeners.has(event)) {
-      this.listeners.get(event).delete(callback)
+      this.listeners.get(event).delete(callback);
     }
   }
 
@@ -25,20 +25,20 @@ class EventBus {
     const payload = {
       event,
       data,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    };
 
     // حفظ في التاريخ
-    this.history.push(payload)
+    this.history.push(payload);
     if (this.history.length > this.maxHistory) {
-      this.history.shift()
+      this.history.shift();
     }
 
     // إرسال للمستمعين
     if (this.listeners.has(event)) {
       for (const callback of this.listeners.get(event)) {
         try {
-          callback(data, payload)
+          callback(data, payload);
         } catch (error) {
           // console.error(`[EventBus] Error in listener for ${event}:`, error)
         }
@@ -49,7 +49,7 @@ class EventBus {
     if (this.listeners.has('*')) {
       for (const callback of this.listeners.get('*')) {
         try {
-          callback(data, payload)
+          callback(data, payload);
         } catch (error) {
           // console.error(`[EventBus] Error in wildcard listener:`, error)
         }
@@ -58,28 +58,28 @@ class EventBus {
 
     // تسجيل في console للتطوير
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-      // 
+      //
     }
   }
 
   getHistory(event = null) {
     if (event) {
-      return this.history.filter(h => h.event === event)
+      return this.history.filter((h) => h.event === event);
     }
-    return [...this.history]
+    return [...this.history];
   }
 
   clear() {
-    this.listeners.clear()
-    this.history = []
+    this.listeners.clear();
+    this.history = [];
   }
 }
 
 // Singleton instance
-const eventBus = new EventBus()
+const eventBus = new EventBus();
 
-export default eventBus
-export { EventBus }
+export default eventBus;
+export { EventBus };
 
 // === اتصال SSE المركزي (من 2027) ===
 // يتم إنشاء اتصال واحد فقط بـ Backend ويغذي eventBus
@@ -91,7 +91,6 @@ const RECONNECT_DELAY = 5000;
 function connectToSSE() {
   // تجنب اتصالات متعددة
   if (sseConnection) {
-
     return;
   }
 
@@ -101,7 +100,6 @@ function connectToSSE() {
     sseConnection = new EventSource(url);
 
     sseConnection.onopen = () => {
-
       eventBus.emit('sse:connected', { timestamp: new Date().toISOString() });
     };
 
@@ -149,7 +147,7 @@ function connectToSSE() {
     sseConnection.onerror = (err) => {
       // console.error('[EventBus] ❌ SSE Error:', err);
       eventBus.emit('sse:error', { error: err });
-      
+
       // إغلاق الاتصال الحالي
       if (sseConnection) {
         sseConnection.close();
@@ -159,13 +157,11 @@ function connectToSSE() {
       // إعادة الاتصال بعد تأخير
       if (!reconnectTimer) {
         reconnectTimer = setTimeout(() => {
-
           reconnectTimer = null;
           connectToSSE();
         }, RECONNECT_DELAY);
       }
     };
-
   } catch (err) {
     // console.error('[EventBus] Failed to create SSE connection:', err);
   }
@@ -175,9 +171,8 @@ function disconnectSSE() {
   if (sseConnection) {
     sseConnection.close();
     sseConnection = null;
-
   }
-  
+
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -203,11 +198,8 @@ if (typeof window !== 'undefined') {
   window.eventBusSSE = {
     connect: connectToSSE,
     disconnect: disconnectSSE,
-    isConnected: () => false // Always return false when SSE disabled
+    isConnected: () => false, // Always return false when SSE disabled
   };
-  
-  ;
 }
 
 export { connectToSSE, disconnectSSE };
-

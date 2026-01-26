@@ -1,5 +1,3 @@
-
-
 export function withCors(handler) {
   return async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');

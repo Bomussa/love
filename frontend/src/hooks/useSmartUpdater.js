@@ -1,9 +1,11 @@
 // 🧠 Unified Update Logic — Stable Version
 // Hook موحد لإدارة التحديثات عبر SSE أو Polling
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
-export default function useSmartUpdater({ url, onData, interval = 60000, useSSE = true }) {
+export default function useSmartUpdater({
+  url, onData, interval = 60000, useSSE = true,
+}) {
   const eventSourceRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -22,7 +24,7 @@ export default function useSmartUpdater({ url, onData, interval = 60000, useSSE 
       // 🕒 Polling خفيف للصفحات غير الحرجة
       const poll = async () => {
         try {
-          const res = await fetch(url, { cache: "no-store" });
+          const res = await fetch(url, { cache: 'no-store' });
           if (res.ok) onData(await res.json());
         } catch (_) {}
       };
@@ -36,4 +38,3 @@ export default function useSmartUpdater({ url, onData, interval = 60000, useSSE 
     };
   }, [url, onData, interval, useSSE]);
 }
-

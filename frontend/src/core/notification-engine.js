@@ -1,5 +1,6 @@
 // === Real-time UI Toasts for Queue Events (Safe Dynamic Import) ===
 import eventBus from './event-bus.js';
+
 let toast;
 (async () => {
   try {
@@ -31,7 +32,7 @@ let toast;
       toast.success(
         data?.nextClinic
           ? `تم إنهاء الفحص، توجه إلى ${data.nextClinic}`
-          : `تم إنهاء الفحص، انتظر التعليمات`
+          : 'تم إنهاء الفحص، انتظر التعليمات',
       );
     }
   });
@@ -57,21 +58,21 @@ const NOTIFICATION_TYPES = {
   CLINIC_OPENED: 'CLINIC_OPENED',
   CLINIC_CLOSED: 'CLINIC_CLOSED',
   QUEUE_UPDATE: 'QUEUE_UPDATE',
-  PIN_GENERATED: 'PIN_GENERATED'
-}
+  PIN_GENERATED: 'PIN_GENERATED',
+};
 
 class RealtimeNotificationEngine {
   constructor() {
     // تخزين الإشعارات
-    this.notifications = new Map() // patientId -> notification[]
-    this.adminNotifications = []
+    this.notifications = new Map(); // patientId -> notification[]
+    this.adminNotifications = [];
 
     // المشتركون - للإشعارات الفورية
-    this.subscribers = new Map() // patientId -> Set<callback>
-    this.adminSubscribers = new Set()
+    this.subscribers = new Map(); // patientId -> Set<callback>
+    this.adminSubscribers = new Set();
 
     // ربط مع event bus للإشعارات العامة
-    this.setupEventBusListeners()
+    this.setupEventBusListeners();
   }
 
   // === الاشتراك والإلغاء ===
@@ -85,39 +86,39 @@ class RealtimeNotificationEngine {
   subscribe(patientId, callback) {
     // إنشاء Set للمشتركين إذا لم يكن موجوداً
     if (!this.subscribers.has(patientId)) {
-      this.subscribers.set(patientId, new Set())
+      this.subscribers.set(patientId, new Set());
     }
 
     // إضافة callback
-    this.subscribers.get(patientId).add(callback)
+    this.subscribers.get(patientId).add(callback);
 
     // تحميل الإشعارات السابقة من localStorage
-    this.loadFromStorage(patientId)
+    this.loadFromStorage(patientId);
 
     // إرجاع دالة إلغاء الاشتراك
     return () => {
-      const subs = this.subscribers.get(patientId)
+      const subs = this.subscribers.get(patientId);
       if (subs) {
-        subs.delete(callback)
+        subs.delete(callback);
         if (subs.size === 0) {
-          this.subscribers.delete(patientId)
+          this.subscribers.delete(patientId);
         }
       }
-    }
+    };
   }
 
   /**
    * اشتراك الإدارة في الإشعارات
    */
   subscribeAdmin(callback) {
-    this.adminSubscribers.add(callback)
+    this.adminSubscribers.add(callback);
 
     // تحميل الإشعارات السابقة
-    this.loadAdminNotifications()
+    this.loadAdminNotifications();
 
     return () => {
-      this.adminSubscribers.delete(callback)
-    }
+      this.adminSubscribers.delete(callback);
+    };
   }
 
   // === إرسال الإشعارات الفورية ===
@@ -132,41 +133,41 @@ class RealtimeNotificationEngine {
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       read: false,
-      ...notification
-    }
+      ...notification,
+    };
 
     // حفظ الإشعار
     if (!this.notifications.has(patientId)) {
-      this.notifications.set(patientId, [])
+      this.notifications.set(patientId, []);
     }
-    this.notifications.get(patientId).push(fullNotification)
+    this.notifications.get(patientId).push(fullNotification);
 
     // الاحتفاظ بآخر 100 إشعار فقط
-    const patientNotifications = this.notifications.get(patientId)
+    const patientNotifications = this.notifications.get(patientId);
     if (patientNotifications.length > 100) {
-      patientNotifications.shift()
+      patientNotifications.shift();
     }
 
     // حفظ في localStorage فوراً
-    this.saveToStorage(patientId)
+    this.saveToStorage(patientId);
 
     // إرسال فوري لجميع المشتركين
-    const callbacks = this.subscribers.get(patientId)
+    const callbacks = this.subscribers.get(patientId);
     if (callbacks && callbacks.size > 0) {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         try {
-          callback(fullNotification)
+          callback(fullNotification);
         } catch (e) {
           // console.error('Error in notification callback:', e)
         }
-      })
+      });
     }
 
     // إصدار event عام
-    eventBus.emit('notification', { patientId, ...fullNotification })
+    eventBus.emit('notification', { patientId, ...fullNotification });
 
     // تشغيل الصوت والاهتزاز حسب الأولوية
-    this.triggerAlerts(fullNotification)
+    this.triggerAlerts(fullNotification);
   }
 
   /**
@@ -177,31 +178,31 @@ class RealtimeNotificationEngine {
       id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       read: false,
-      ...notification
-    }
+      ...notification,
+    };
 
     // حفظ الإشعار
-    this.adminNotifications.push(fullNotification)
+    this.adminNotifications.push(fullNotification);
 
     // الاحتفاظ بآخر 200 إشعار
     if (this.adminNotifications.length > 200) {
-      this.adminNotifications.shift()
+      this.adminNotifications.shift();
     }
 
     // حفظ في localStorage
-    localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications))
+    localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications));
 
     // إرسال فوري لجميع المشتركين
-    this.adminSubscribers.forEach(callback => {
+    this.adminSubscribers.forEach((callback) => {
       try {
-        callback(fullNotification)
+        callback(fullNotification);
       } catch (e) {
         // console.error('Error in admin notification callback:', e)
       }
-    })
+    });
 
     // إصدار event
-    eventBus.emit('admin_notification', fullNotification)
+    eventBus.emit('admin_notification', fullNotification);
   }
 
   // === الإشعارات المحددة للمراجعين ===
@@ -215,8 +216,8 @@ class RealtimeNotificationEngine {
       title: '👋 مرحباً بك',
       message: 'تم تسجيل دخولك بنجاح في نظام اللجنة الطبية العسكرية',
       priority: 'normal',
-      sound: false
-    })
+      sound: false,
+    });
   }
 
   /**
@@ -231,8 +232,8 @@ class RealtimeNotificationEngine {
       position,
       priority: 'high',
       sound: true,
-      vibrate: false
-    })
+      vibrate: false,
+    });
   }
 
   /**
@@ -247,8 +248,8 @@ class RealtimeNotificationEngine {
       number,
       priority: 'urgent',
       sound: true,
-      vibrate: true
-    })
+      vibrate: true,
+    });
   }
 
   /**
@@ -265,8 +266,8 @@ class RealtimeNotificationEngine {
       nextClinic,
       priority: 'high',
       sound: true,
-      vibrate: false
-    })
+      vibrate: false,
+    });
   }
 
   /**
@@ -283,8 +284,8 @@ class RealtimeNotificationEngine {
       totalWaiting,
       priority: 'low',
       sound: false,
-      vibrate: false
-    })
+      vibrate: false,
+    });
   }
 
   // === الإشعارات المحددة للإدارة ===
@@ -297,8 +298,8 @@ class RealtimeNotificationEngine {
       type: NOTIFICATION_TYPES.RESET_DONE,
       title: '🔄 إعادة تعيين النظام',
       message: 'تم إعادة تعيين النظام بنجاح. جميع البيانات تم مسحها',
-      priority: 'normal'
-    })
+      priority: 'normal',
+    });
   }
 
   /**
@@ -311,8 +312,8 @@ class RealtimeNotificationEngine {
       message: `تم فتح ${clinicName}${pin ? ` - PIN: ${pin}` : ''}`,
       clinicName,
       pin,
-      priority: 'normal'
-    })
+      priority: 'normal',
+    });
   }
 
   /**
@@ -324,8 +325,8 @@ class RealtimeNotificationEngine {
       title: '🔴 إغلاق عيادة',
       message: `تم إغلاق ${clinicName}`,
       clinicName,
-      priority: 'normal'
-    })
+      priority: 'normal',
+    });
   }
 
   /**
@@ -338,8 +339,8 @@ class RealtimeNotificationEngine {
       message: `تم إنشاء PIN لـ ${clinicName}: ${pin}`,
       clinicName,
       pin,
-      priority: 'high'
-    })
+      priority: 'high',
+    });
   }
 
   // === التنبيهات (صوت + اهتزاز) ===
@@ -350,26 +351,26 @@ class RealtimeNotificationEngine {
   triggerAlerts(notification) {
     // الصوت
     if (notification.sound) {
-      this.playSound(notification.priority)
+      this.playSound(notification.priority);
     }
 
     // الاهتزاز
     if (notification.vibrate && 'vibrate' in navigator) {
       switch (notification.priority) {
         case 'urgent':
-          navigator.vibrate([200, 100, 200, 100, 200])
-          break
+          navigator.vibrate([200, 100, 200, 100, 200]);
+          break;
         case 'high':
-          navigator.vibrate([200, 100, 200])
-          break
+          navigator.vibrate([200, 100, 200]);
+          break;
         default:
-          navigator.vibrate(200)
+          navigator.vibrate(200);
       }
     }
 
     // Browser Notification (إذا كان مسموحاً)
     if (notification.priority === 'urgent' || notification.priority === 'high') {
-      this.showBrowserNotification(notification)
+      this.showBrowserNotification(notification);
     }
   }
 
@@ -378,10 +379,10 @@ class RealtimeNotificationEngine {
    */
   playSound(priority = 'normal') {
     try {
-      const audio = new Audio(priority === 'urgent' ? '/sounds/urgent.mp3' : '/sounds/notify.mp3')
-      audio.play().catch(e => {
+      const audio = new Audio(priority === 'urgent' ? '/sounds/urgent.mp3' : '/sounds/notify.mp3');
+      audio.play().catch((e) => {
         // console.warn('Audio play failed:', e)
-      })
+      });
     } catch (e) {
       // console.error('Error playing sound:', e)
     }
@@ -391,37 +392,37 @@ class RealtimeNotificationEngine {
    * إظهار إشعار المتصفح
    */
   showBrowserNotification(notification) {
-    if (!('Notification' in window)) return
+    if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
       new Notification(notification.title, {
         body: notification.message,
-        icon: '/logo.png'
-      })
+        icon: '/logo.png',
+      });
     } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
+      Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
           new Notification(notification.title, {
             body: notification.message,
-            icon: '/logo.png'
-          })
+            icon: '/logo.png',
+          });
         }
-      })
+      });
     }
   }
 
   // === إدارة التخزين ===
 
   saveToStorage(patientId) {
-    const data = this.notifications.get(patientId) || []
-    localStorage.setItem(`notifications_${patientId}`, JSON.stringify(data))
+    const data = this.notifications.get(patientId) || [];
+    localStorage.setItem(`notifications_${patientId}`, JSON.stringify(data));
   }
 
   loadFromStorage(patientId) {
     try {
-      const data = localStorage.getItem(`notifications_${patientId}`)
+      const data = localStorage.getItem(`notifications_${patientId}`);
       if (data) {
-        this.notifications.set(patientId, JSON.parse(data))
+        this.notifications.set(patientId, JSON.parse(data));
       }
     } catch (e) {
       // console.error('Error loading notifications:', e)
@@ -430,9 +431,9 @@ class RealtimeNotificationEngine {
 
   loadAdminNotifications() {
     try {
-      const data = localStorage.getItem('admin_notifications')
+      const data = localStorage.getItem('admin_notifications');
       if (data) {
-        this.adminNotifications = JSON.parse(data)
+        this.adminNotifications = JSON.parse(data);
       }
     } catch (e) {
       // console.error('Error loading admin notifications:', e)
@@ -442,46 +443,46 @@ class RealtimeNotificationEngine {
   // === وظائف مساعدة ===
 
   getNotifications(patientId) {
-    return this.notifications.get(patientId) || []
+    return this.notifications.get(patientId) || [];
   }
 
   getAdminNotifications() {
-    return this.adminNotifications
+    return this.adminNotifications;
   }
 
   markAsRead(patientId, notificationId) {
-    const data = this.notifications.get(patientId)
+    const data = this.notifications.get(patientId);
     if (data) {
-      const notification = data.find(n => n.id === notificationId)
+      const notification = data.find((n) => n.id === notificationId);
       if (notification) {
-        notification.read = true
-        this.saveToStorage(patientId)
+        notification.read = true;
+        this.saveToStorage(patientId);
       }
     }
   }
 
   markAdminAsRead(notificationId) {
-    const notification = this.adminNotifications.find(n => n.id === notificationId)
+    const notification = this.adminNotifications.find((n) => n.id === notificationId);
     if (notification) {
-      notification.read = true
-      localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications))
+      notification.read = true;
+      localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications));
     }
   }
 
   clearNotifications(patientId) {
-    this.notifications.delete(patientId)
-    localStorage.removeItem(`notifications_${patientId}`)
+    this.notifications.delete(patientId);
+    localStorage.removeItem(`notifications_${patientId}`);
   }
 
   setupEventBusListeners() {
     // الاستماع لأحداث النظام العامة وتحويلها لإشعارات
-    eventBus.on('system:reset', () => this.sendResetDone())
-    eventBus.on('clinic:opened', (data) => this.sendClinicOpened(data.name, data.pin))
-    eventBus.on('clinic:closed', (data) => this.sendClinicClosed(data.name))
-    eventBus.on('pin:generated', (data) => this.sendPINGenerated(data.clinicName, data.pin))
+    eventBus.on('system:reset', () => this.sendResetDone());
+    eventBus.on('clinic:opened', (data) => this.sendClinicOpened(data.name, data.pin));
+    eventBus.on('clinic:closed', (data) => this.sendClinicClosed(data.name));
+    eventBus.on('pin:generated', (data) => this.sendPINGenerated(data.clinicName, data.pin));
   }
 }
 
 // تصدير نسخة وحيدة (Singleton)
-const notificationEngine = new RealtimeNotificationEngine()
-export default notificationEngine
+const notificationEngine = new RealtimeNotificationEngine();
+export default notificationEngine;

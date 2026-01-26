@@ -1,7 +1,7 @@
 /**
  * نظام ضمان البيانات المتكامل
  * Guaranteed Data System (GDS)
- * 
+ *
  * ✅ ضمان وصول البيانات 100% صحيحة
  * ✅ لحظية فورية بدون تأخير
  * ✅ حقيقية من قاعدة البيانات فقط
@@ -13,8 +13,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { SRM, resilientFetch, registerService } from './service-resilience';
-import { OFS, setSupabaseClient, offlineRead, offlineCreate, offlineUpdate, offlineDelete } from './offline-first-system';
-import { DIS, validateData, safeSave, safeRead } from './data-integrity-system';
+import {
+  OFS, setSupabaseClient, offlineRead, offlineCreate, offlineUpdate, offlineDelete,
+} from './offline-first-system';
+import {
+  DIS, validateData, safeSave, safeRead,
+} from './data-integrity-system';
 
 // إعدادات Supabase
 const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
@@ -25,13 +29,13 @@ const gdsClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
   },
   realtime: {
     params: {
-      eventsPerSecond: 20
-    }
-  }
+      eventsPerSecond: 20,
+    },
+  },
 });
 
 /**
@@ -45,7 +49,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: true,
-    priority: 1
+    priority: 1,
   },
   clinics: {
     id: 'clinics',
@@ -54,7 +58,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: true,
-    priority: 2
+    priority: 2,
   },
   notifications: {
     id: 'notifications',
@@ -63,7 +67,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: true,
-    priority: 3
+    priority: 3,
   },
   pins: {
     id: 'pins',
@@ -72,7 +76,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: false,
-    priority: 4
+    priority: 4,
   },
   routes: {
     id: 'routes',
@@ -81,7 +85,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: true,
-    priority: 5
+    priority: 5,
   },
   statistics: {
     id: 'statistics',
@@ -90,7 +94,7 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: false,
-    priority: 6
+    priority: 6,
   },
   reports: {
     id: 'reports',
@@ -99,8 +103,8 @@ const DEFAULT_FEATURES_CONFIG = {
     enabled: true,
     visible: true,
     realtime: false,
-    priority: 7
-  }
+    priority: 7,
+  },
 };
 
 /**
@@ -117,7 +121,7 @@ class GuaranteedDataSystem {
     this.isInitialized = false;
     this.connectionState = 'disconnected';
     this.lastSync = null;
-    
+
     // تحميل إعدادات الميزات من localStorage
     this.loadFeaturesConfig();
   }
@@ -127,23 +131,22 @@ class GuaranteedDataSystem {
    */
   async initialize() {
     if (this.isInitialized) return true;
-    
+
     console.log('🚀 تهيئة نظام ضمان البيانات...');
-    
+
     try {
       // فحص الاتصال
       const connected = await this.testConnection();
       if (!connected) {
         throw new Error('فشل الاتصال بقاعدة البيانات');
       }
-      
+
       this.connectionState = 'connected';
       this.isInitialized = true;
       this.lastSync = new Date();
-      
+
       console.log('✅ تم تهيئة نظام ضمان البيانات بنجاح');
       return true;
-      
     } catch (error) {
       console.error('❌ فشل تهيئة النظام:', error);
       this.connectionState = 'error';
@@ -160,7 +163,7 @@ class GuaranteedDataSystem {
         .from('clinics')
         .select('id')
         .limit(1);
-      
+
       return !error;
     } catch {
       return false;
@@ -257,81 +260,78 @@ class GuaranteedDataSystem {
    */
   async fetchGuaranteed(tableName, options = {}) {
     const featureId = this.getFeatureIdFromTable(tableName);
-    
+
     // التحقق من أن الميزة مفعلة
     if (featureId && !this.features[featureId]?.enabled) {
       console.log(`⏹️ الميزة ${featureId} موقفة`);
       return { data: [], error: null, skipped: true };
     }
-    
+
     const maxRetries = options.maxRetries || 10;
     const timeout = options.timeout || 15000;
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // إنشاء Promise مع timeout
         const fetchPromise = this.executeFetch(tableName, options);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), timeout)
-        );
-        
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout));
+
         const result = await Promise.race([fetchPromise, timeoutPromise]);
-        
+
         if (result.error) throw result.error;
-        
+
         // تأكيد وصول البيانات
         this.confirmDelivery(tableName, result.data);
-        
+
         // تحديث الكاش
         this.dataCache.set(tableName, {
           data: result.data,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
-        
+
         this.lastSync = new Date();
-        
+
         if (attempt > 0) {
           console.log(`✅ [${tableName}] نجح بعد ${attempt + 1} محاولات`);
         }
-        
-        return { 
-          data: result.data || [], 
-          error: null, 
+
+        return {
+          data: result.data || [],
+          error: null,
           guaranteed: true,
           fromCache: false,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
-        
       } catch (error) {
         lastError = error;
         console.warn(`⚠️ [${tableName}] محاولة ${attempt + 1}/${maxRetries}:`, error.message);
-        
+
         // انتظار قبل إعادة المحاولة (exponential backoff)
         if (attempt < maxRetries - 1) {
-          await this.delay(Math.min(1000 * Math.pow(2, attempt), 10000));
+          await this.delay(Math.min(1000 * 2 ** attempt, 10000));
         }
       }
     }
-    
+
     // فشل جميع المحاولات - محاولة استخدام الكاش
     const cached = this.dataCache.get(tableName);
     if (cached && Date.now() - cached.timestamp < 60000) {
       console.warn(`⚠️ [${tableName}] استخدام البيانات المخزنة مؤقتاً`);
-      return { 
-        data: cached.data, 
-        error: null, 
+      return {
+        data: cached.data,
+        error: null,
         guaranteed: false,
         fromCache: true,
-        timestamp: cached.timestamp
+        timestamp: cached.timestamp,
       };
     }
-    
+
     console.error(`❌ [${tableName}] فشل نهائي:`, lastError?.message);
-    return { 
-      data: [], 
-      error: lastError?.message || 'فشل غير معروف', 
-      guaranteed: false 
+    return {
+      data: [],
+      error: lastError?.message || 'فشل غير معروف',
+      guaranteed: false,
     };
   }
 
@@ -340,7 +340,7 @@ class GuaranteedDataSystem {
    */
   async executeFetch(tableName, options) {
     let query = this.client.from(tableName).select(options.select || '*');
-    
+
     // إضافة الفلاتر
     if (options.filters) {
       for (const [key, value] of Object.entries(options.filters)) {
@@ -349,19 +349,19 @@ class GuaranteedDataSystem {
         }
       }
     }
-    
+
     // إضافة الترتيب
     if (options.orderBy) {
-      query = query.order(options.orderBy.column, { 
-        ascending: options.orderBy.ascending ?? false 
+      query = query.order(options.orderBy.column, {
+        ascending: options.orderBy.ascending ?? false,
       });
     }
-    
+
     // إضافة الحد
     if (options.limit) {
       query = query.limit(options.limit);
     }
-    
+
     return await query;
   }
 
@@ -372,7 +372,7 @@ class GuaranteedDataSystem {
     this.deliveryConfirmations.set(tableName, {
       timestamp: Date.now(),
       count: Array.isArray(data) ? data.length : (data ? 1 : 0),
-      confirmed: true
+      confirmed: true,
     });
   }
 
@@ -395,18 +395,18 @@ class GuaranteedDataSystem {
    */
   async saveGuaranteed(tableName, data, options = {}) {
     const featureId = this.getFeatureIdFromTable(tableName);
-    
+
     if (featureId && !this.features[featureId]?.enabled) {
       return { success: false, error: 'الميزة موقفة', skipped: true };
     }
-    
+
     const maxRetries = options.maxRetries || 5;
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         let result;
-        
+
         if (options.upsert) {
           result = await this.client.from(tableName).upsert(data);
         } else if (options.update && options.match) {
@@ -414,25 +414,24 @@ class GuaranteedDataSystem {
         } else {
           result = await this.client.from(tableName).insert(data);
         }
-        
+
         if (result.error) throw result.error;
-        
+
         // إبطال الكاش
         this.dataCache.delete(tableName);
-        
+
         console.log(`✅ [${tableName}] تم الحفظ بنجاح`);
         return { success: true, data: result.data, error: null };
-        
       } catch (error) {
         lastError = error;
         console.warn(`⚠️ [${tableName}] محاولة حفظ ${attempt + 1}/${maxRetries}:`, error.message);
-        
+
         if (attempt < maxRetries - 1) {
           await this.delay(1000 * (attempt + 1));
         }
       }
     }
-    
+
     console.error(`❌ [${tableName}] فشل الحفظ:`, lastError?.message);
     return { success: false, error: lastError?.message || 'فشل الحفظ' };
   }
@@ -443,28 +442,27 @@ class GuaranteedDataSystem {
   async deleteGuaranteed(tableName, match) {
     const maxRetries = 5;
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const { error } = await this.client.from(tableName).delete().match(match);
-        
+
         if (error) throw error;
-        
+
         // إبطال الكاش
         this.dataCache.delete(tableName);
-        
+
         console.log(`✅ [${tableName}] تم الحذف بنجاح`);
         return { success: true, error: null };
-        
       } catch (error) {
         lastError = error;
-        
+
         if (attempt < maxRetries - 1) {
           await this.delay(1000 * (attempt + 1));
         }
       }
     }
-    
+
     return { success: false, error: lastError?.message };
   }
 
@@ -479,45 +477,46 @@ class GuaranteedDataSystem {
    */
   subscribeRealtime(tableName, callback, options = {}) {
     const featureId = this.getFeatureIdFromTable(tableName);
-    
+
     // التحقق من أن الميزة تدعم التحديث اللحظي
     if (featureId && !this.features[featureId]?.realtime) {
       console.log(`ℹ️ [${tableName}] التحديث اللحظي غير مفعل لهذه الميزة`);
       return () => {};
     }
-    
+
     // إلغاء الاشتراك السابق إن وجد
     this.unsubscribe(tableName);
-    
+
     const channel = this.client
       .channel(`gds_${tableName}_${Date.now()}`)
-      .on('postgres_changes',
-        { 
-          event: options.event || '*', 
-          schema: 'public', 
+      .on(
+        'postgres_changes',
+        {
+          event: options.event || '*',
+          schema: 'public',
           table: tableName,
-          ...(options.filter && { filter: options.filter })
+          ...(options.filter && { filter: options.filter }),
         },
         (payload) => {
           console.log(`🔄 [${tableName}] تحديث لحظي:`, payload.eventType);
-          
+
           // إبطال الكاش
           this.dataCache.delete(tableName);
-          
+
           // استدعاء callback
           try {
             callback(payload);
           } catch (error) {
             console.error(`❌ [${tableName}] خطأ في معالجة التحديث:`, error);
           }
-        }
+        },
       )
       .subscribe((status) => {
         console.log(`📡 [${tableName}] حالة الاشتراك:`, status);
       });
-    
+
     this.subscriptions.set(tableName, channel);
-    
+
     return () => this.unsubscribe(tableName);
   }
 
@@ -553,11 +552,11 @@ class GuaranteedDataSystem {
    */
   getFeatureIdFromTable(tableName) {
     const mapping = {
-      'queues': 'queues',
-      'clinics': 'clinics',
-      'notifications': 'notifications',
-      'pins': 'pins',
-      'patient_routes': 'routes'
+      queues: 'queues',
+      clinics: 'clinics',
+      notifications: 'notifications',
+      pins: 'pins',
+      patient_routes: 'routes',
     };
     return mapping[tableName] || null;
   }
@@ -566,7 +565,7 @@ class GuaranteedDataSystem {
    * تأخير
    */
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -579,7 +578,7 @@ class GuaranteedDataSystem {
       lastSync: this.lastSync,
       cacheSize: this.dataCache.size,
       activeSubscriptions: this.subscriptions.size,
-      features: this.features
+      features: this.features,
     };
   }
 
@@ -613,7 +612,7 @@ export async function initGDS() {
 export async function getQueues(filters = {}) {
   return GDS.fetchGuaranteed('queues', {
     filters,
-    orderBy: { column: 'entered_at', ascending: false }
+    orderBy: { column: 'entered_at', ascending: false },
   });
 }
 
@@ -621,7 +620,7 @@ export async function getQueues(filters = {}) {
 export async function getClinics(filters = {}) {
   return GDS.fetchGuaranteed('clinics', {
     filters,
-    orderBy: { column: 'order_index', ascending: true }
+    orderBy: { column: 'order_index', ascending: true },
   });
 }
 
@@ -629,7 +628,7 @@ export async function getClinics(filters = {}) {
 export async function getNotifications(patientId = null) {
   return GDS.fetchGuaranteed('notifications', {
     filters: patientId ? { patient_id: patientId } : {},
-    orderBy: { column: 'created_at', ascending: false }
+    orderBy: { column: 'created_at', ascending: false },
   });
 }
 
@@ -637,14 +636,14 @@ export async function getNotifications(patientId = null) {
 export async function getRoutes(patientId = null) {
   return GDS.fetchGuaranteed('patient_routes', {
     filters: patientId ? { patient_id: patientId } : {},
-    orderBy: { column: 'created_at', ascending: false }
+    orderBy: { column: 'created_at', ascending: false },
   });
 }
 
 // جلب الأرقام السرية
 export async function getPins(clinicId = null) {
   return GDS.fetchGuaranteed('pins', {
-    filters: clinicId ? { clinic_id: clinicId } : {}
+    filters: clinicId ? { clinic_id: clinicId } : {},
   });
 }
 
@@ -676,7 +675,7 @@ export function subscribeClinics(callback) {
 // الاشتراك في تحديثات الإشعارات
 export function subscribeNotifications(callback, patientId = null) {
   return GDS.subscribeRealtime('notifications', callback, {
-    filter: patientId ? `patient_id=eq.${patientId}` : undefined
+    filter: patientId ? `patient_id=eq.${patientId}` : undefined,
   });
 }
 

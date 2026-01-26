@@ -1,7 +1,7 @@
 /**
  * Admin Credentials Configuration
  * تكوين بيانات دخول الإدارة
- * 
+ *
  * مشروع 2027 - نظام اللجنة الطبية العسكرية
  */
 
@@ -9,7 +9,7 @@ export const ADMIN_CREDENTIALS = {
   // بيانات الدخول الرئيسية - السوبر أدمن
   username: import.meta.env.VITE_ADMIN_USERNAME || 'Bomussa',
   password: import.meta.env.VITE_ADMIN_PASSWORD || '14490',
-  
+
   // بيانات إضافية للتحقق
   roles: ['admin', 'super_admin'],
   permissions: [
@@ -25,16 +25,16 @@ export const ADMIN_CREDENTIALS = {
     'offline_mode',
     'content_management',
     'appearance',
-    'database_management'
+    'database_management',
   ],
-  
+
   // معلومات النظام
   systemInfo: {
     projectName: 'مشروع 2027',
     version: '2.0.0',
-    lastUpdate: '2026-01-17'
-  }
-}
+    lastUpdate: '2026-01-17',
+  },
+};
 
 /**
  * التحقق من بيانات الدخول
@@ -46,11 +46,11 @@ export const ADMIN_CREDENTIALS = {
  */
 export function validateAdminCredentials(username, password) {
   // اسم المستخدم غير حساس لحالة الأحرف
-  const isUsernameValid = username.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase()
+  const isUsernameValid = username.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase();
   // كلمة المرور حساسة لحالة الأحرف
-  const isPasswordValid = password === ADMIN_CREDENTIALS.password
-  
-  return isUsernameValid && isPasswordValid
+  const isPasswordValid = password === ADMIN_CREDENTIALS.password;
+
+  return isUsernameValid && isPasswordValid;
 }
 
 /**
@@ -59,7 +59,7 @@ export function validateAdminCredentials(username, password) {
  * @returns {boolean} - هل الصلاحية متاحة
  */
 export function hasPermission(permission) {
-  return ADMIN_CREDENTIALS.permissions.includes(permission)
+  return ADMIN_CREDENTIALS.permissions.includes(permission);
 }
 
-export default ADMIN_CREDENTIALS
+export default ADMIN_CREDENTIALS;

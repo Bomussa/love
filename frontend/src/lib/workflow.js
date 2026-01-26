@@ -1,6 +1,8 @@
 // lib/workflow.js - مدير تدفق العمل الشامل للمراجعين
 import db from '../../../src/lib/supabase-db.js';
-import { createPatientRoute, moveToNextStep, pickClinicForNextStep, markDistributed } from './routingManager.js';
+import {
+  createPatientRoute, moveToNextStep, pickClinicForNextStep, markDistributed,
+} from './routingManager.js';
 import { completeClinicForPatient } from './queueManager.js';
 import { getSystemConfig } from './settings.js';
 
@@ -10,9 +12,11 @@ import { getSystemConfig } from './settings.js';
  * @returns {Promise<Object>} نتيجة الإضافة
  */
 export async function enqueuePatient(patientData) {
-  const { patientId, examType, gender, priority = 0 } = patientData;
+  const {
+    patientId, examType, gender, priority = 0,
+  } = patientData;
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -28,7 +32,7 @@ export async function enqueuePatient(patientData) {
       return {
         success: false,
         reason: 'already_exists',
-        message: 'المراجع موجود بالفعل في النظام اليوم'
+        message: 'المراجع موجود بالفعل في النظام اليوم',
       };
     }
 
@@ -39,7 +43,7 @@ export async function enqueuePatient(patientData) {
       return {
         success: false,
         reason: 'route_creation_failed',
-        message: 'فشل في إنشاء مسار المراجع'
+        message: 'فشل في إنشاء مسار المراجع',
       };
     }
 
@@ -50,7 +54,7 @@ export async function enqueuePatient(patientData) {
       return {
         success: false,
         reason: 'no_clinic_available',
-        message: 'لا توجد عيادة متاحة للخطوة الأولى'
+        message: 'لا توجد عيادة متاحة للخطوة الأولى',
       };
     }
 
@@ -58,7 +62,7 @@ export async function enqueuePatient(patientData) {
     const queueResult = await enqueuePatientToClinic(patientId, firstClinicId, {
       examType,
       gender,
-      priority
+      priority,
     });
 
     if (!queueResult.success) {
@@ -73,11 +77,10 @@ export async function enqueuePatient(patientData) {
       patientId,
       firstClinic: {
         id: firstClinicId,
-        queueNumber: queueResult.queueNumber
+        queueNumber: queueResult.queueNumber,
       },
-      message: 'تم إضافة المراجع بنجاح وبدء مساره'
+      message: 'تم إضافة المراجع بنجاح وبدء مساره',
     };
-
   } catch (error) {
     await client.query('ROLLBACK');
     // console.error('Error enqueuing patient:', error);
@@ -85,7 +88,7 @@ export async function enqueuePatient(patientData) {
       success: false,
       reason: 'database_error',
       message: 'خطأ في قاعدة البيانات',
-      error: error.message
+      error: error.message,
     };
   } finally {
     client.release();
@@ -100,8 +103,10 @@ export async function enqueuePatient(patientData) {
  * @returns {Promise<Object>} نتيجة الإضافة
  */
 export async function enqueuePatientToClinic(patientId, clinicId, options = {}) {
-  const { examType = '', gender = '', priority = 0, notes = '' } = options;
-  
+  const {
+    examType = '', gender = '', priority = 0, notes = '',
+  } = options;
+
   try {
     // جلب آخر رقم في الكيو
     const { rows: lastNumberRows } = await db.query(`
@@ -129,16 +134,15 @@ export async function enqueuePatientToClinic(patientId, clinicId, options = {}) 
       queueId: insertRows[0].id,
       queueNumber: nextNumber,
       clinicId,
-      status: 'waiting'
+      status: 'waiting',
     };
-
   } catch (error) {
     // console.error('Error enqueuing patient to clinic:', error);
     return {
       success: false,
       reason: 'database_error',
       message: 'فشل في إضافة المراجع للكيو',
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -151,7 +155,7 @@ export async function enqueuePatientToClinic(patientId, clinicId, options = {}) 
  */
 export async function routeToNextClinic(patientId, currentClinicId) {
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -162,19 +166,19 @@ export async function routeToNextClinic(patientId, currentClinicId) {
       return {
         success: false,
         reason: 'completion_failed',
-        message: 'فشل في إنهاء الفحص في العيادة الحالية'
+        message: 'فشل في إنهاء الفحص في العيادة الحالية',
       };
     }
 
     // الانتقال للخطوة التالية في المسار
     const nextStepResult = await moveToNextStep(patientId);
-    
+
     if (!nextStepResult) {
       await client.query('ROLLBACK');
       return {
         success: false,
         reason: 'routing_failed',
-        message: 'فشل في تحديد الخطوة التالية'
+        message: 'فشل في تحديد الخطوة التالية',
       };
     }
 
@@ -184,7 +188,7 @@ export async function routeToNextClinic(patientId, currentClinicId) {
       return {
         success: true,
         completed: true,
-        message: nextStepResult.message
+        message: nextStepResult.message,
       };
     }
 
@@ -197,15 +201,15 @@ export async function routeToNextClinic(patientId, currentClinicId) {
     `, [patientId]);
 
     const info = patientInfo[0] || { exam_type: '', gender: '', priority: 0 };
-    
+
     const queueResult = await enqueuePatientToClinic(
-      patientId, 
+      patientId,
       nextStepResult.nextStep.clinicId,
       {
         examType: info.exam_type,
         gender: info.gender,
-        priority: info.priority
-      }
+        priority: info.priority,
+      },
     );
 
     if (!queueResult.success) {
@@ -213,7 +217,7 @@ export async function routeToNextClinic(patientId, currentClinicId) {
       return {
         success: false,
         reason: 'next_queue_failed',
-        message: 'فشل في إضافة المراجع لكيو العيادة التالية'
+        message: 'فشل في إضافة المراجع لكيو العيادة التالية',
       };
     }
 
@@ -224,11 +228,10 @@ export async function routeToNextClinic(patientId, currentClinicId) {
       completed: false,
       nextClinic: {
         ...nextStepResult.nextStep,
-        queueNumber: queueResult.queueNumber
+        queueNumber: queueResult.queueNumber,
       },
-      message: `تم توجيه المراجع إلى ${nextStepResult.nextStep.clinicName}`
+      message: `تم توجيه المراجع إلى ${nextStepResult.nextStep.clinicName}`,
     };
-
   } catch (error) {
     await client.query('ROLLBACK');
     // console.error('Error routing to next clinic:', error);
@@ -236,7 +239,7 @@ export async function routeToNextClinic(patientId, currentClinicId) {
       success: false,
       reason: 'database_error',
       message: 'خطأ في قاعدة البيانات',
-      error: error.message
+      error: error.message,
     };
   } finally {
     client.release();
@@ -260,7 +263,7 @@ export async function processClinicCode(clinicCode, patientId) {
       return {
         success: false,
         reason: 'invalid_code',
-        message: 'رمز العيادة غير صحيح أو العيادة مغلقة'
+        message: 'رمز العيادة غير صحيح أو العيادة مغلقة',
       };
     }
 
@@ -280,7 +283,7 @@ export async function processClinicCode(clinicCode, patientId) {
       return {
         success: false,
         reason: 'not_in_queue',
-        message: 'المراجع غير موجود في كيو هذه العيادة أو لم يتم استدعاؤه بعد'
+        message: 'المراجع غير موجود في كيو هذه العيادة أو لم يتم استدعاؤه بعد',
       };
     }
 
@@ -290,62 +293,59 @@ export async function processClinicCode(clinicCode, patientId) {
       // تسجيل وصول المراجع للعيادة
       const { checkInAtClinic } = await import('./queueManager.js');
       const checkedIn = await checkInAtClinic(clinic.id, patientId);
-      
+
       if (checkedIn) {
         return {
           success: true,
           action: 'checked_in',
           clinic: {
             id: clinic.id,
-            name: clinic.name
+            name: clinic.name,
           },
           queueNumber: queueEntry.number,
-          message: `تم تسجيل وصولك إلى ${clinic.name}. يرجى انتظار دورك.`
-        };
-      } else {
-        return {
-          success: false,
-          reason: 'checkin_failed',
-          message: 'فشل في تسجيل الوصول. يرجى المحاولة مرة أخرى.'
+          message: `تم تسجيل وصولك إلى ${clinic.name}. يرجى انتظار دورك.`,
         };
       }
-    } else if (queueEntry.status === 'in') {
+      return {
+        success: false,
+        reason: 'checkin_failed',
+        message: 'فشل في تسجيل الوصول. يرجى المحاولة مرة أخرى.',
+      };
+    } if (queueEntry.status === 'in') {
       // إنهاء الفحص والانتقال للعيادة التالية
       const routingResult = await routeToNextClinic(patientId, clinic.id);
-      
+
       if (routingResult.success) {
         return {
           success: true,
           action: routingResult.completed ? 'route_completed' : 'routed_to_next',
           clinic: {
             id: clinic.id,
-            name: clinic.name
+            name: clinic.name,
           },
           nextClinic: routingResult.nextClinic,
-          message: routingResult.message
-        };
-      } else {
-        return {
-          success: false,
-          reason: 'routing_failed',
-          message: routingResult.message
+          message: routingResult.message,
         };
       }
+      return {
+        success: false,
+        reason: 'routing_failed',
+        message: routingResult.message,
+      };
     }
 
     return {
       success: false,
       reason: 'invalid_status',
-      message: 'حالة المراجع في الكيو غير صحيحة'
+      message: 'حالة المراجع في الكيو غير صحيحة',
     };
-
   } catch (error) {
     // console.error('Error processing clinic code:', error);
     return {
       success: false,
       reason: 'database_error',
       message: 'خطأ في معالجة رمز العيادة',
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -364,14 +364,14 @@ export async function getPatientStatus(patientId) {
     if (!routeStatus.exists) {
       return {
         exists: false,
-        message: 'المراجع غير موجود في النظام'
+        message: 'المراجع غير موجود في النظام',
       };
     }
 
     // جلب حالة الكيو الحالية
-    const activeStep = routeStatus.activeStep;
+    const { activeStep } = routeStatus;
     let currentQueue = null;
-    
+
     if (activeStep) {
       const { rows: queueRows } = await db.query(`
         SELECT 
@@ -396,7 +396,7 @@ export async function getPatientStatus(patientId) {
           positionInQueue: queue.position_in_queue,
           calledAt: queue.called_at,
           expiresAt: queue.expires_at,
-          startedAt: queue.started_at
+          startedAt: queue.started_at,
         };
       }
     }
@@ -412,13 +412,13 @@ export async function getPatientStatus(patientId) {
       LIMIT 5
     `, [patientId]);
 
-    const notifications = notificationRows.map(n => ({
+    const notifications = notificationRows.map((n) => ({
       type: n.notification_type,
       title: n.title_ar || n.title,
       message: n.message_ar || n.message,
       createdAt: n.created_at,
       isRead: n.is_read,
-      priority: n.priority
+      priority: n.priority,
     }));
 
     return {
@@ -433,15 +433,14 @@ export async function getPatientStatus(patientId) {
       currentQueue,
       allSteps: routeStatus.steps,
       notifications,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
-
   } catch (error) {
     // console.error(`Error getting patient status for ${patientId}:`, error);
     return {
       exists: false,
       error: error.message,
-      message: 'خطأ في جلب حالة المراجع'
+      message: 'خطأ في جلب حالة المراجع',
     };
   }
 }
@@ -455,12 +454,12 @@ export async function getPatientStatus(patientId) {
 export async function handleEmergency(patientId, emergencyCode) {
   try {
     const config = await getSystemConfig();
-    
+
     if (emergencyCode !== config.emergencyPin) {
       return {
         success: false,
         reason: 'invalid_emergency_code',
-        message: 'رمز الطوارئ غير صحيح'
+        message: 'رمز الطوارئ غير صحيح',
       };
     }
 
@@ -484,16 +483,15 @@ export async function handleEmergency(patientId, emergencyCode) {
 
     return {
       success: true,
-      message: 'تم تفعيل حالة الطوارئ. سيتم إعطاء المراجع أولوية قصوى.'
+      message: 'تم تفعيل حالة الطوارئ. سيتم إعطاء المراجع أولوية قصوى.',
     };
-
   } catch (error) {
     // console.error('Error handling emergency:', error);
     return {
       success: false,
       reason: 'database_error',
       message: 'خطأ في معالجة حالة الطوارئ',
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -504,5 +502,5 @@ export default {
   routeToNextClinic,
   processClinicCode,
   getPatientStatus,
-  handleEmergency
+  handleEmergency,
 };

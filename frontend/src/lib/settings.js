@@ -11,7 +11,7 @@ export async function getSetting(key, fallback = '') {
   try {
     const { rows } = await db.query(
       'SELECT value FROM system_settings WHERE key = $1',
-      [key]
+      [key],
     );
     return rows[0]?.value ?? fallback;
   } catch (error) {
@@ -49,17 +49,17 @@ export async function setSetting(key, value) {
 export async function getAllSettings() {
   try {
     const { rows } = await db.query(
-      'SELECT key, value, description FROM system_settings ORDER BY key'
+      'SELECT key, value, description FROM system_settings ORDER BY key',
     );
-    
+
     const settings = {};
-    rows.forEach(row => {
+    rows.forEach((row) => {
       settings[row.key] = {
         value: row.value,
-        description: row.description
+        description: row.description,
       };
     });
-    
+
     return settings;
   } catch (error) {
     // console.error('Error getting all settings:', error);
@@ -90,9 +90,9 @@ export async function getSystemConfig() {
       notifications: notifications === 'true',
       workingHours: {
         start: workingHoursStart,
-        end: workingHoursEnd
+        end: workingHoursEnd,
       },
-      emergencyPin
+      emergencyPin,
     };
   } catch (error) {
     // console.error('Error getting system config:', error);
@@ -104,9 +104,9 @@ export async function getSystemConfig() {
       notifications: true,
       workingHours: {
         start: '07:00',
-        end: '15:00'
+        end: '15:00',
       },
-      emergencyPin: '999'
+      emergencyPin: '999',
     };
   }
 }
@@ -118,10 +118,10 @@ export async function getSystemConfig() {
  */
 export async function updateSettings(settings) {
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     for (const [key, value] of Object.entries(settings)) {
       await client.query(`
         INSERT INTO system_settings(key, value, updated_at) 
@@ -131,7 +131,7 @@ export async function updateSettings(settings) {
           updated_at = NOW()
       `, [key, String(value)]);
     }
-    
+
     await client.query('COMMIT');
     return true;
   } catch (error) {
@@ -152,9 +152,9 @@ export async function isWorkingHours() {
     const config = await getSystemConfig();
     const now = new Date();
     const currentTime = now.toTimeString().slice(0, 5); // HH:MM
-    
-    return currentTime >= config.workingHours.start && 
-           currentTime <= config.workingHours.end;
+
+    return currentTime >= config.workingHours.start
+           && currentTime <= config.workingHours.end;
   } catch (error) {
     // console.error('Error checking working hours:', error);
     return true; // افتراضياً نعتبر أنه وقت عمل
@@ -170,18 +170,18 @@ export async function getThemeSettings() {
     const currentTheme = await getSetting('current_theme', 'medical-professional');
     const enableThemeSelector = await getSetting('enable_theme_selector', 'true');
     const showThemePreview = await getSetting('show_theme_preview', 'true');
-    
+
     return {
       currentTheme,
       enableThemeSelector: enableThemeSelector === 'true',
-      showThemePreview: showThemePreview === 'true'
+      showThemePreview: showThemePreview === 'true',
     };
   } catch (error) {
     // console.error('Error getting theme settings:', error);
     return {
       currentTheme: 'medical-professional',
       enableThemeSelector: true,
-      showThemePreview: true
+      showThemePreview: true,
     };
   }
 }
@@ -194,19 +194,19 @@ export async function getThemeSettings() {
 export async function updateThemeSettings(themeSettings) {
   try {
     const updates = {};
-    
+
     if (themeSettings.currentTheme) {
       updates.current_theme = themeSettings.currentTheme;
     }
-    
+
     if (typeof themeSettings.enableThemeSelector === 'boolean') {
       updates.enable_theme_selector = themeSettings.enableThemeSelector.toString();
     }
-    
+
     if (typeof themeSettings.showThemePreview === 'boolean') {
       updates.show_theme_preview = themeSettings.showThemePreview.toString();
     }
-    
+
     return await updateSettings(updates);
   } catch (error) {
     // console.error('Error updating theme settings:', error);
@@ -222,5 +222,5 @@ export default {
   updateSettings,
   isWorkingHours,
   getThemeSettings,
-  updateThemeSettings
+  updateThemeSettings,
 };

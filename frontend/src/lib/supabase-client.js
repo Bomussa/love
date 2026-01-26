@@ -2,7 +2,7 @@
  * Supabase Client Configuration
  * تكوين عميل Supabase مع اتصال غير قابل للتوقف
  * الميزات: إعادة المحاولة التلقائية + Health Check + Realtime
- * 
+ *
  * ✅ اتصال دائم بدون انقطاع
  * ✅ إعادة المحاولة التلقائية (10 محاولات)
  * ✅ مراقبة مستمرة للاتصال
@@ -28,18 +28,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
   },
   realtime: {
     params: {
-      eventsPerSecond: 10
-    }
+      eventsPerSecond: 10,
+    },
   },
   global: {
     headers: {
-      'x-client-info': 'mmc-mms-frontend'
-    }
-  }
+      'x-client-info': 'mmc-mms-frontend',
+    },
+  },
 });
 
 // متغير لتتبع حالة الاتصال
@@ -60,16 +60,16 @@ async function retryWithBackoff(fn, retries = RETRY_CONFIG.maxRetries) {
       }
       return result;
     } catch (error) {
-      const delay = Math.min(RETRY_CONFIG.baseDelay * Math.pow(2, i), RETRY_CONFIG.maxDelay);
+      const delay = Math.min(RETRY_CONFIG.baseDelay * 2 ** i, RETRY_CONFIG.maxDelay);
       console.warn(`⚠️ محاولة ${i + 1}/${retries} فشلت. إعادة المحاولة بعد ${delay}ms...`);
       connectionStatus = 'reconnecting';
       reconnectAttempts = i + 1;
-      
+
       if (i === retries - 1) {
         connectionStatus = 'disconnected';
         throw error;
       }
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
@@ -94,8 +94,8 @@ export async function healthCheck() {
       .from('clinics')
       .select('id')
       .limit(1);
-    
-    if (clinicsError) throw new Error('DB_CONNECTION_FAILED: ' + clinicsError.message);
+
+    if (clinicsError) throw new Error(`DB_CONNECTION_FAILED: ${clinicsError.message}`);
 
     const { data: configData } = await supabase
       .from('system_config')
@@ -111,7 +111,7 @@ export async function healthCheck() {
       status: 'OK',
       systemEnabled,
       connectionStatus,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   } catch (error) {
     console.error('❌ Supabase Health Check failed:', error);
@@ -120,7 +120,7 @@ export async function healthCheck() {
       status: 'ERROR',
       error: error.message,
       connectionStatus,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
@@ -149,7 +149,7 @@ export function getConnectionStatus() {
   return {
     status: connectionStatus,
     reconnectAttempts,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 }
 
@@ -159,13 +159,13 @@ export function getConnectionStatus() {
 export async function reconnect() {
   console.log('🔄 جاري إعادة الاتصال بـ Supabase...');
   connectionStatus = 'reconnecting';
-  
+
   const connected = await testConnection();
   if (connected) {
     console.log('✅ تم إعادة الاتصال بنجاح');
     return true;
   }
-  
+
   // محاولة إعادة الاتصال مع backoff
   return retryWithBackoff(testConnection);
 }
@@ -177,7 +177,7 @@ let monitorInterval = null;
 
 export function startConnectionMonitor(intervalMs = 30000) {
   if (monitorInterval) return;
-  
+
   monitorInterval = setInterval(async () => {
     const connected = await testConnection();
     if (!connected && connectionStatus === 'connected') {
@@ -185,7 +185,7 @@ export function startConnectionMonitor(intervalMs = 30000) {
       await reconnect();
     }
   }, intervalMs);
-  
+
   console.log('🔍 بدء مراقبة الاتصال');
 }
 
@@ -202,7 +202,7 @@ let persistentConnectionInitialized = false;
 
 export async function initializeAllConnections() {
   if (persistentConnectionInitialized) return;
-  
+
   try {
     console.log('🚀 تهيئة نظام الاتصال الدائم...');
     await initializePersistentConnection();
@@ -219,7 +219,6 @@ export { connectionManager, ServiceTypes };
 
 export default supabase;
 
-
 // ============================================================================
 // نظام تسجيل النشاط والتحقق من الأجهزة
 // ============================================================================
@@ -235,25 +234,25 @@ export function generateDeviceFingerprint() {
   ctx.font = '14px Arial';
   ctx.fillText('MMC-MMS-Fingerprint', 2, 2);
   const canvasData = canvas.toDataURL();
-  
+
   const fingerprint = [
     navigator.userAgent,
     navigator.language,
-    screen.width + 'x' + screen.height,
+    `${screen.width}x${screen.height}`,
     screen.colorDepth,
     new Date().getTimezoneOffset(),
     navigator.hardwareConcurrency || 'unknown',
-    canvasData.slice(-50)
+    canvasData.slice(-50),
   ].join('|');
-  
+
   // تحويل إلى hash بسيط
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i++) {
     const char = fingerprint.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+    hash &= hash;
   }
-  return 'DEV_' + Math.abs(hash).toString(36).toUpperCase();
+  return `DEV_${Math.abs(hash).toString(36).toUpperCase()}`;
 }
 
 /**
@@ -264,7 +263,7 @@ export async function checkDeviceLogin(patientId) {
   try {
     const deviceFingerprint = generateDeviceFingerprint();
     const today = new Date().toISOString().split('T')[0];
-    
+
     // التحقق من وجود تسجيل سابق لهذا الجهاز اليوم
     const { data: existingLogin, error } = await supabase
       .from('device_logins')
@@ -272,21 +271,21 @@ export async function checkDeviceLogin(patientId) {
       .eq('device_fingerprint', deviceFingerprint)
       .eq('login_date', today)
       .maybeSingle();
-    
+
     if (error) {
       console.error('خطأ في التحقق من الجهاز:', error);
       // في حالة الخطأ، نسمح بالدخول مع تحذير
       return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
     }
-    
+
     if (existingLogin && existingLogin.patient_id !== patientId) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         existingPatientId: existingLogin.patient_id,
-        message: 'هذا الجهاز مسجل برقم آخر اليوم'
+        message: 'هذا الجهاز مسجل برقم آخر اليوم',
       };
     }
-    
+
     return { allowed: true };
   } catch (error) {
     console.error('خطأ في checkDeviceLogin:', error);
@@ -300,22 +299,22 @@ export async function checkDeviceLogin(patientId) {
 export async function registerDeviceLogin(patientId) {
   try {
     const deviceFingerprint = generateDeviceFingerprint();
-    
+
     const { error } = await supabase
       .from('device_logins')
       .upsert({
         device_fingerprint: deviceFingerprint,
         patient_id: patientId,
         login_date: new Date().toISOString().split('T')[0],
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
       }, {
-        onConflict: 'device_fingerprint,login_date'
+        onConflict: 'device_fingerprint,login_date',
       });
-    
+
     if (error) {
       console.error('خطأ في تسجيل الجهاز:', error);
     }
-    
+
     return !error;
   } catch (error) {
     console.error('خطأ في registerDeviceLogin:', error);
@@ -337,13 +336,13 @@ export async function logDailyActivity(actionType, details = {}) {
         clinic_id: details.clinicId || null,
         location: details.location || null,
         performed_by: details.performedBy || 'system',
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
       });
-    
+
     if (error) {
       console.error('خطأ في تسجيل النشاط اليومي:', error);
     }
-    
+
     return !error;
   } catch (error) {
     console.error('خطأ في logDailyActivity:', error);
@@ -367,13 +366,13 @@ export async function logPermanentAudit(actionType, details) {
         new_value: details.newValue || null,
         performed_by: details.performedBy || 'unknown',
         performed_by_role: details.performedByRole || 'unknown',
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
       });
-    
+
     if (error) {
       console.error('خطأ في تسجيل التدقيق الدائم:', error);
     }
-    
+
     return !error;
   } catch (error) {
     console.error('خطأ في logPermanentAudit:', error);
@@ -391,7 +390,7 @@ export async function getDailyActivityLogs(filters = {}) {
       .select('*')
       .eq('log_date', new Date().toISOString().split('T')[0])
       .order('performed_at', { ascending: false });
-    
+
     if (filters.patientId) {
       query = query.eq('patient_id', filters.patientId);
     }
@@ -401,9 +400,9 @@ export async function getDailyActivityLogs(filters = {}) {
     if (filters.clinicId) {
       query = query.eq('clinic_id', filters.clinicId);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return { success: true, data };
   } catch (error) {
@@ -421,7 +420,7 @@ export async function getPermanentAuditLogs(filters = {}) {
       .from('permanent_audit_logs')
       .select('*')
       .order('performed_at', { ascending: false });
-    
+
     if (filters.performedBy) {
       query = query.eq('performed_by', filters.performedBy);
     }
@@ -434,9 +433,9 @@ export async function getPermanentAuditLogs(filters = {}) {
     if (filters.limit) {
       query = query.limit(filters.limit);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return { success: true, data };
   } catch (error) {
@@ -444,7 +443,6 @@ export async function getPermanentAuditLogs(filters = {}) {
     return { success: false, error: error.message };
   }
 }
-
 
 /**
  * جلب إعداد من جدول system_settings
@@ -458,7 +456,7 @@ export async function getSystemSetting(key, defaultValue = null) {
       .select('value')
       .eq('id', key)
       .single();
-    
+
     if (error) {
       // إذا لم يوجد الإعداد، نرجع القيمة الافتراضية
       if (error.code === 'PGRST116') {
@@ -467,7 +465,7 @@ export async function getSystemSetting(key, defaultValue = null) {
       console.warn(`تحذير: فشل جلب الإعداد ${key}:`, error.message);
       return defaultValue;
     }
-    
+
     // تحويل القيمة من JSON إذا كانت مخزنة كـ JSON
     try {
       return JSON.parse(data.value);
@@ -492,13 +490,13 @@ export async function setSystemSetting(key, value, description = null) {
       .from('system_settings')
       .upsert({
         id: key,
-        value: value,
+        value,
         description: description || `إعداد ${key}`,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'id'
+        onConflict: 'id',
       });
-    
+
     if (error) throw error;
     return { success: true };
   } catch (error) {
@@ -516,19 +514,19 @@ export async function getAllSystemSettings() {
       .from('system_settings')
       .select('*')
       .order('key');
-    
+
     if (error) throw error;
-    
+
     // تحويل إلى كائن key-value
     const settings = {};
-    data?.forEach(item => {
+    data?.forEach((item) => {
       try {
         settings[item.key] = JSON.parse(item.value);
       } catch {
         settings[item.key] = item.value;
       }
     });
-    
+
     return { success: true, data: settings, raw: data };
   } catch (error) {
     console.error('خطأ في جلب إعدادات النظام:', error);

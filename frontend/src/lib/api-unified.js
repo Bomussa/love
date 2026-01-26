@@ -4,24 +4,24 @@ import { GDS, initGDS } from './guaranteed-data-system';
 /**
  * Unified API Service - Direct Supabase Implementation
  * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
- * 
+ *
  * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
  * ✅ إعادة المحاولة التلقائية (10 محاولات)
  * ✅ بدون بيانات وهمية
  */
 
 // تهيئة نظام ضمان البيانات
-initGDS().catch(err => console.error('❌ فشل تهيئة GDS:', err));
+initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
 
 // ============================================================================
 // إعدادات نظام الدور - Queue Settings
 // ============================================================================
 const DEFAULT_QUEUE_SETTINGS = {
-  queueIntervalSeconds: 120,        // 2 دقيقة - فترة النداء التلقائي
-  patientMaxWaitSeconds: 240,       // 4 دقائق - المهلة قبل الدخول
-  examMaxSeconds: 300,              // 5 دقائق - الحد الأقصى للفحص
-  timeoutHandlerEnabled: true,      // تفعيل التمرير التلقائي
-  examTimeoutEnabled: true          // تفعيل حد الفحص
+  queueIntervalSeconds: 120, // 2 دقيقة - فترة النداء التلقائي
+  patientMaxWaitSeconds: 240, // 4 دقائق - المهلة قبل الدخول
+  examMaxSeconds: 300, // 5 دقائق - الحد الأقصى للفحص
+  timeoutHandlerEnabled: true, // تفعيل التمرير التلقائي
+  examTimeoutEnabled: true, // تفعيل حد الفحص
 };
 
 function getQueueSettings() {
@@ -51,7 +51,7 @@ const api = {
           .insert([{ patient_id: patientId, gender: gender || 'male', status: 'active' }])
           .select()
           .single();
-        
+
         if (createError) throw createError;
         return { success: true, data: newUser };
       }
@@ -76,18 +76,18 @@ const api = {
         p_clinic_id: clinicId,
         p_patient_id: patientId,
         p_patient_name: patientName,
-        p_exam_type: examType
+        p_exam_type: examType,
       });
 
       if (!rpcError && rpcResult && rpcResult.length > 0) {
         const result = rpcResult[0];
         console.log('[enterQueue] RPC result:', result);
-        return { 
-          success: true, 
+        return {
+          success: true,
           id: result.id,
-          display_number: result.display_number, 
+          display_number: result.display_number,
           status: result.status,
-          alreadyExists: result.already_exists 
+          alreadyExists: result.already_exists,
         };
       }
 
@@ -135,7 +135,7 @@ const api = {
           display_number: nextNumber,
           status: 'waiting',
           queue_date: today,
-          entered_at: new Date().toISOString()
+          entered_at: new Date().toISOString(),
         }])
         .select()
         .single();
@@ -166,7 +166,7 @@ const api = {
       // ✅ جلب رقم من يُفحص الآن (called أو serving) - اليوم فقط
       // نبحث عن called أولاً (الحالة الفعلية في قاعدة البيانات)
       let currentNumber = 0;
-      
+
       // محاولة 1: البحث عن called
       const { data: calledEntry } = await supabase
         .from('unified_queue')
@@ -177,7 +177,7 @@ const api = {
         .order('called_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (calledEntry) {
         currentNumber = calledEntry.display_number;
       } else {
@@ -191,7 +191,7 @@ const api = {
           .order('called_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         if (servingEntry) {
           currentNumber = servingEntry.display_number;
         } else {
@@ -205,7 +205,7 @@ const api = {
             .order('completed_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-          
+
           if (lastCompleted) {
             currentNumber = lastCompleted.display_number;
           }
@@ -229,7 +229,7 @@ const api = {
         ahead: count || 0,
         status: patientEntry.status,
         entered_at: patientEntry.entered_at,
-        total_waiting: count || 0
+        total_waiting: count || 0,
       };
     } catch (error) {
       console.error('Get Position Error:', error);
@@ -274,7 +274,7 @@ const api = {
         // جلب البن كود النشط لهذه العيادة
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const { data: validPin, error: pinError } = await supabase
           .from('pins')
           .select('*')
@@ -296,9 +296,9 @@ const api = {
         // تحديث عداد استخدام البن كود
         await supabase
           .from('pins')
-          .update({ 
+          .update({
             used_count: (validPin.used_count || 0) + 1,
-            last_used_at: new Date().toISOString()
+            last_used_at: new Date().toISOString(),
           })
           .eq('id', validPin.id);
       }
@@ -306,10 +306,10 @@ const api = {
       // إكمال الفحص في الطابور
       const { data, error } = await supabase
         .from('unified_queue')
-        .update({ 
-          status: 'completed', 
+        .update({
+          status: 'completed',
           completed_at: new Date().toISOString(),
-          completed_by_pin: pin
+          completed_by_pin: pin,
         })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -317,7 +317,7 @@ const api = {
         .select();
 
       if (error) throw error;
-      
+
       // حساب مدة الفحص
       let durationMinutes = null;
       if (data && data.length > 0 && data[0].entered_at) {
@@ -387,7 +387,7 @@ const api = {
       // إرجاع قائمة العيادات النشطة فقط (بدون PIN)
       const activeClinics = {};
       if (data && data.length > 0) {
-        data.forEach(clinic => {
+        data.forEach((clinic) => {
           activeClinics[clinic.id] = { name: clinic.name, isActive: clinic.is_active };
         });
       }
@@ -408,7 +408,7 @@ const api = {
       // استخدام دالة RPC الآمنة للتحقق من PIN
       const { data, error } = await supabase.rpc('verify_clinic_pin', {
         p_clinic_id: clinicId,
-        p_pin: pin
+        p_pin: pin,
       });
 
       if (error) {
@@ -424,17 +424,17 @@ const api = {
           .maybeSingle();
 
         if (pinError) throw pinError;
-        
+
         if (pinData) {
           return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
         }
         return { success: true, isValid: false };
       }
-      
+
       if (data === true) {
         return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
       }
-      
+
       return { success: true, isValid: false };
     } catch (error) {
       console.error('Verify PIN Error:', error);
@@ -483,8 +483,8 @@ const api = {
         .from('unified_queue')
         .select('clinic_id')
         .eq('status', 'serving');
-      
-      const activeQueues = activeData ? new Set(activeData.map(q => q.clinic_id)).size : 0;
+
+      const activeQueues = activeData ? new Set(activeData.map((q) => q.clinic_id)).size : 0;
 
       if (totalError || waitingError || completedError || activeError) {
         throw new Error('Error fetching stats');
@@ -496,8 +496,8 @@ const api = {
           totalPatients: totalToday || 0,
           waitingPatients: waiting || 0,
           completedToday: completed || 0,
-          activeQueues: activeQueues || 0
-        }
+          activeQueues: activeQueues || 0,
+        },
       };
     } catch (error) {
       console.error('Get Admin Status Error:', error);
@@ -520,23 +520,23 @@ const api = {
 
       if (error) throw error;
 
-      const waiting = data.filter(q => q.status === 'waiting').map(q => ({
+      const waiting = data.filter((q) => q.status === 'waiting').map((q) => ({
         ticket: q.display_number,
         visitId: q.patient_id,
-        issuedAt: q.entered_at
+        issuedAt: q.entered_at,
       }));
 
       // ✅ إصلاح: تضمين called و serving كحالات في الخدمة
-      const inService = data.filter(q => q.status === 'serving' || q.status === 'called').map(q => ({
+      const inService = data.filter((q) => q.status === 'serving' || q.status === 'called').map((q) => ({
         ticket: q.display_number,
         visitId: q.patient_id,
-        calledAt: q.called_at
+        calledAt: q.called_at,
       }));
 
-      const done = data.filter(q => q.status === 'completed').map(q => ({
+      const done = data.filter((q) => q.status === 'completed').map((q) => ({
         ticket: q.display_number,
         visitId: q.patient_id,
-        doneAt: q.completed_at
+        doneAt: q.completed_at,
       }));
 
       return {
@@ -548,9 +548,9 @@ const api = {
           totalWaiting: waiting.length,
           totalIn: inService.length,
           totalDone: done.length,
-          totalToday: data.length
+          totalToday: data.length,
         },
-        dateKey: today.toLocaleDateString()
+        dateKey: today.toLocaleDateString(),
       };
     } catch (error) {
       console.error('Get Queue Status Error:', error);
@@ -566,7 +566,7 @@ const api = {
         .select('*')
         .eq('patient_id', patientId)
         .single();
-      
+
       if (error) throw error;
       return { success: true, route: data };
     } catch (error) {
@@ -581,11 +581,11 @@ const api = {
         .upsert({
           patient_id: patientId,
           exam_type: examType,
-          gender: gender,
-          stations: stations,
-          created_at: new Date().toISOString()
+          gender,
+          stations,
+          created_at: new Date().toISOString(),
         });
-      
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -605,21 +605,21 @@ const api = {
     try {
       // جلب الإعدادات من localStorage
       const settings = getQueueSettings();
-      
+
       // التحقق من تفعيل النظام
       if (!settings.timeoutHandlerEnabled) {
         return { success: true, skipped: 0, message: 'نظام التمرير معطل' };
       }
-      
+
       const skippedPatients = [];
       const completedExams = [];
-      
+
       // ============================================================================
       // 1. تمرير المراجعين الذين لم يدخلوا خلال المهلة
       // ============================================================================
       const waitTimeoutMs = settings.patientMaxWaitSeconds * 1000;
       const waitTimeoutAgo = new Date(Date.now() - waitTimeoutMs).toISOString();
-      
+
       const { data: staleWaiting, error: waitError } = await supabase
         .from('unified_queue')
         .select('*')
@@ -628,16 +628,16 @@ const api = {
         .lt('called_at', waitTimeoutAgo);
 
       if (waitError) throw waitError;
-      
+
       // معالجة المراجعين المتأخرين عن الدخول
       if (staleWaiting && staleWaiting.length > 0) {
         for (const queue of staleWaiting) {
           await supabase
             .from('unified_queue')
-            .update({ 
+            .update({
               status: 'skipped',
               completed_at: new Date().toISOString(),
-              skip_reason: 'timeout_before_entry'
+              skip_reason: 'timeout_before_entry',
             })
             .eq('id', queue.id);
 
@@ -645,18 +645,18 @@ const api = {
             patient_id: queue.patient_id,
             clinic_id: queue.clinic_id,
             display_number: queue.display_number,
-            reason: 'timeout_before_entry'
+            reason: 'timeout_before_entry',
           });
         }
       }
-      
+
       // ============================================================================
       // 2. إنهاء فحص المراجعين الذين تجاوزوا الحد الأقصى داخل العيادة
       // ============================================================================
       if (settings.examTimeoutEnabled) {
         const examTimeoutMs = settings.examMaxSeconds * 1000;
         const examTimeoutAgo = new Date(Date.now() - examTimeoutMs).toISOString();
-        
+
         const { data: staleExams, error: examError } = await supabase
           .from('unified_queue')
           .select('*')
@@ -665,16 +665,16 @@ const api = {
           .lt('entered_at', examTimeoutAgo);
 
         if (examError) throw examError;
-        
+
         // معالجة المراجعين الذين تجاوزوا وقت الفحص
         if (staleExams && staleExams.length > 0) {
           for (const queue of staleExams) {
             await supabase
               .from('unified_queue')
-              .update({ 
+              .update({
                 status: 'completed',
                 completed_at: new Date().toISOString(),
-                auto_completed: true
+                auto_completed: true,
               })
               .eq('id', queue.id);
 
@@ -682,22 +682,22 @@ const api = {
               patient_id: queue.patient_id,
               clinic_id: queue.clinic_id,
               display_number: queue.display_number,
-              reason: 'exam_timeout'
+              reason: 'exam_timeout',
             });
           }
         }
       }
 
-      return { 
-        success: true, 
-        skipped: skippedPatients.length, 
+      return {
+        success: true,
+        skipped: skippedPatients.length,
         completedExams: completedExams.length,
         patients: skippedPatients,
         exams: completedExams,
         settings: {
           waitTimeout: settings.patientMaxWaitSeconds,
-          examTimeout: settings.examMaxSeconds
-        }
+          examTimeout: settings.examMaxSeconds,
+        },
       };
     } catch (error) {
       console.error('Check and Skip Stale Queues Error:', error);
@@ -741,7 +741,7 @@ const api = {
           .update({
             status: 'cancelled',
             completed_at: new Date().toISOString(),
-            notes: `ملغى نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات). الرقم: ${oldDisplayNumber}`
+            notes: `ملغى نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات). الرقم: ${oldDisplayNumber}`,
           })
           .eq('id', currentQueue.id);
 
@@ -757,9 +757,9 @@ const api = {
             details: JSON.stringify({
               display_number: oldDisplayNumber,
               postpone_count: currentPostponeCount,
-              reason: `تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`
+              reason: `تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`,
             }),
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           });
 
         return {
@@ -767,9 +767,9 @@ const api = {
           cancelled: true,
           data: {
             oldNumber: oldDisplayNumber,
-            postponeCount: currentPostponeCount
+            postponeCount: currentPostponeCount,
           },
-          message: `تم إلغاء المراجع نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`
+          message: `تم إلغاء المراجع نهائياً - تجاوز الحد الأقصى للترحيل (${maxPostpones} مرات)`,
         };
       }
 
@@ -780,7 +780,7 @@ const api = {
         .update({
           status: 'postponed',
           completed_at: new Date().toISOString(),
-          notes: `مُرحّل (${newPostponeCount}/${maxPostpones}) - ${reason}. الرقم السابق: ${oldDisplayNumber}`
+          notes: `مُرحّل (${newPostponeCount}/${maxPostpones}) - ${reason}. الرقم السابق: ${oldDisplayNumber}`,
         })
         .eq('id', currentQueue.id);
 
@@ -807,7 +807,7 @@ const api = {
           status: 'waiting',
           entered_at: new Date().toISOString(),
           postpone_count: newPostponeCount,
-          notes: `مُرحّل من الرقم ${oldDisplayNumber} (${newPostponeCount}/${maxPostpones}) - ${reason}`
+          notes: `مُرحّل من الرقم ${oldDisplayNumber} (${newPostponeCount}/${maxPostpones}) - ${reason}`,
         })
         .select()
         .single();
@@ -826,9 +826,9 @@ const api = {
             new_number: newDisplayNumber,
             postpone_count: newPostponeCount,
             max_postpones: maxPostpones,
-            reason: reason
+            reason,
           }),
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         });
 
       return {
@@ -838,11 +838,11 @@ const api = {
           oldNumber: oldDisplayNumber,
           newNumber: newDisplayNumber,
           postponeCount: newPostponeCount,
-          maxPostpones: maxPostpones,
+          maxPostpones,
           remainingChances: maxPostpones - newPostponeCount,
-          newQueue: newQueue
+          newQueue,
         },
-        message: `تم ترحيل المراجع من رقم ${oldDisplayNumber} إلى رقم ${newDisplayNumber} (${newPostponeCount}/${maxPostpones})`
+        message: `تم ترحيل المراجع من رقم ${oldDisplayNumber} إلى رقم ${newDisplayNumber} (${newPostponeCount}/${maxPostpones})`,
       };
     } catch (error) {
       console.error('Postpone Patient Error:', error);
@@ -869,7 +869,7 @@ const api = {
           cancelled: true,
           postponed: postponeResult.data,
           nextPatient: callResult.success ? callResult.data : null,
-          message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : '')
+          message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : ''),
         };
       }
 
@@ -881,7 +881,7 @@ const api = {
         cancelled: false,
         postponed: postponeResult.data,
         nextPatient: callResult.success ? callResult.data : null,
-        message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : '')
+        message: postponeResult.message + (callResult.success ? ' - تم استدعاء المراجع التالي' : ''),
       };
     } catch (error) {
       console.error('Postpone and Call Next Error:', error);
@@ -905,11 +905,11 @@ const api = {
 
       // تحويل البيانات إلى كائن سهل الاستخدام
       const settings = {};
-      data.forEach(item => {
+      data.forEach((item) => {
         settings[item.id] = {
           value: item.value,
           description: item.description,
-          is_active: item.is_active
+          is_active: item.is_active,
         };
       });
 
@@ -930,7 +930,7 @@ const api = {
         .update({
           value: newValue,
           updated_by: updatedBy,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', settingId)
         .select()
@@ -955,7 +955,7 @@ const api = {
         .update({
           is_active: isActive,
           updated_by: updatedBy,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', settingId)
         .select()
@@ -963,10 +963,10 @@ const api = {
 
       if (error) throw error;
 
-      return { 
-        success: true, 
-        data, 
-        message: `تم ${isActive ? 'تفعيل' : 'تعطيل'} الإعداد: ${settingId}` 
+      return {
+        success: true,
+        data,
+        message: `تم ${isActive ? 'تفعيل' : 'تعطيل'} الإعداد: ${settingId}`,
       };
     } catch (error) {
       console.error('Toggle System Setting Error:', error);
@@ -1003,17 +1003,17 @@ const api = {
       const { data, error } = await supabase
         .from('settings')
         .select('key, value');
-      
+
       if (error) throw error;
-      
+
       // تحويل البيانات إلى كائن
       const settings = {};
       if (data) {
-        data.forEach(item => {
+        data.forEach((item) => {
           settings[item.key] = item.value;
         });
       }
-      
+
       return { success: true, settings };
     } catch (error) {
       console.error('Get Settings Error:', error);
@@ -1060,11 +1060,13 @@ const api = {
         totalToday: totalToday || 0,
         waiting: waiting || 0,
         completed: completed || 0,
-        serving: serving || 0
+        serving: serving || 0,
       };
     } catch (error) {
       console.error('Get Stats Error:', error);
-      return { success: false, totalToday: 0, waiting: 0, completed: 0, serving: 0 };
+      return {
+        success: false, totalToday: 0, waiting: 0, completed: 0, serving: 0,
+      };
     }
   },
 
@@ -1081,10 +1083,10 @@ const api = {
         .from('pins')
         .upsert({
           clinic_code: clinicId,
-          pin: pin,
+          pin,
           is_active: true,
           expires_at: expiresAt.toISOString(),
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         }, { onConflict: 'clinic_code' })
         .select()
         .single();
@@ -1157,20 +1159,22 @@ const api = {
 
       if (error) throw error;
 
-      const waiting = data.filter(q => q.status === 'waiting').length;
-      const serving = data.filter(q => q.status === 'serving').length;
-      const completed = data.filter(q => q.status === 'completed').length;
+      const waiting = data.filter((q) => q.status === 'waiting').length;
+      const serving = data.filter((q) => q.status === 'serving').length;
+      const completed = data.filter((q) => q.status === 'completed').length;
 
       return {
         success: true,
         total: data.length,
         waiting,
         serving,
-        completed
+        completed,
       };
     } catch (error) {
       console.error('Get Queue Stats Error:', error);
-      return { success: false, total: 0, waiting: 0, serving: 0, completed: 0 };
+      return {
+        success: false, total: 0, waiting: 0, serving: 0, completed: 0,
+      };
     }
   },
 
@@ -1189,7 +1193,7 @@ const api = {
 
       const pinsMap = {};
       if (data) {
-        data.forEach(p => {
+        data.forEach((p) => {
           pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
         });
       }
@@ -1229,8 +1233,8 @@ const api = {
         .from('exam_routes')
         .upsert({
           exam_type: examType,
-          routes: routes,
-          updated_at: new Date().toISOString()
+          routes,
+          updated_at: new Date().toISOString(),
         }, { onConflict: 'exam_type' })
         .select();
 
@@ -1266,13 +1270,17 @@ const api = {
       if (error) throw error;
 
       const total = data?.length || 0;
-      const completed = data?.filter(q => q.status === 'completed').length || 0;
+      const completed = data?.filter((q) => q.status === 'completed').length || 0;
       const occupancy = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      return { success: true, total, completed, occupancy };
+      return {
+        success: true, total, completed, occupancy,
+      };
     } catch (error) {
       console.error('Get Clinic Occupancy Error:', error);
-      return { success: false, total: 0, completed: 0, occupancy: 0 };
+      return {
+        success: false, total: 0, completed: 0, occupancy: 0,
+      };
     }
   },
 
@@ -1312,7 +1320,7 @@ const api = {
   async getQueues(filters = {}) {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       let query = supabase
         .from('unified_queue')
         .select('*')
@@ -1344,11 +1352,11 @@ const api = {
   async getAllRoutes(patientId = null) {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       let query = supabase
         .from('routes')
         .select('*')
-        .gte('created_at', today + 'T00:00:00')
+        .gte('created_at', `${today}T00:00:00`)
         .order('created_at', { ascending: false });
 
       if (patientId) {
@@ -1411,8 +1419,8 @@ const api = {
         generatedAt: current ? current.generated_at : null,
         expiresAt: current ? current.expires_at : null,
         totalIssued: allToday ? allToday.length : 0,
-        allPins: allToday ? allToday.map(p => p.pin) : [],
-        dateKey: today.toLocaleDateString()
+        allPins: allToday ? allToday.map((p) => p.pin) : [],
+        dateKey: today.toLocaleDateString(),
       };
     } catch (error) {
       console.error('[api-unified] getCurrentPin error:', error);
@@ -1432,7 +1440,7 @@ const api = {
       const now = new Date();
       const expiresAt = new Date(now);
       expiresAt.setHours(23, 59, 59, 999);
-      
+
       // تعطيل جميع الـ PINs السابقة لهذه العيادة
       await supabase
         .from('pins')
@@ -1447,7 +1455,7 @@ const api = {
           pin: newPin,
           is_active: true,
           generated_at: now.toISOString(),
-          expires_at: expiresAt.toISOString()
+          expires_at: expiresAt.toISOString(),
         }])
         .select()
         .single();
@@ -1458,7 +1466,7 @@ const api = {
         success: true,
         currentPin: data.pin,
         pinId: data.id,
-        message: 'تم توليد رمز PIN جديد بنجاح'
+        message: 'تم توليد رمز PIN جديد بنجاح',
       };
     } catch (error) {
       console.error('[api-unified] issuePin error:', error);
@@ -1480,15 +1488,15 @@ const api = {
     try {
       const { data, error } = await supabase
         .from('unified_queue')
-        .update({ 
+        .update({
           extended_time: minutes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('patient_id', patientId)
         .in('status', ['waiting', 'serving'])
         .select()
         .single();
-      
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -1507,7 +1515,7 @@ const api = {
         .from('clinics')
         .select('id, name, name_ar, pin_code, updated_at')
         .order('name');
-      
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -1528,22 +1536,22 @@ const api = {
   async getQueueStatusWithStats(clinicId) {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const { data, error } = await supabase
         .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .order('entered_at', { ascending: true });
-      
+
       if (error) throw error;
-      
-      const waiting = data.filter(q => q.status === 'waiting');
+
+      const waiting = data.filter((q) => q.status === 'waiting');
       // ✅ إصلاح: تضمين called و serving كحالات في الخدمة
-      const serving = data.filter(q => q.status === 'serving' || q.status === 'called');
-      const completed = data.filter(q => q.status === 'completed');
-      const skipped = data.filter(q => q.status === 'skipped');
-      
+      const serving = data.filter((q) => q.status === 'serving' || q.status === 'called');
+      const completed = data.filter((q) => q.status === 'completed');
+      const skipped = data.filter((q) => q.status === 'skipped');
+
       return {
         success: true,
         waiting: waiting.length,
@@ -1557,8 +1565,8 @@ const api = {
           serving: serving.length,
           completed: completed.length,
           skipped: skipped.length,
-          total: data.length
-        }
+          total: data.length,
+        },
       };
     } catch (error) {
       console.error('[api-unified] getQueueStatusWithStats error:', error);
@@ -1581,12 +1589,12 @@ const api = {
           event: '*',
           schema: 'public',
           table: 'unified_queue',
-          filter: `clinic_id=eq.${clinicId}`
+          filter: `clinic_id=eq.${clinicId}`,
         },
-        callback
+        callback,
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -1608,11 +1616,11 @@ const api = {
         .insert({
           type: 'recovery',
           data: eventData,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
@@ -1634,12 +1642,12 @@ const api = {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'events'
+          table: 'events',
         },
-        callback
+        callback,
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -1675,9 +1683,9 @@ const api = {
     try {
       // توليد token فريد
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
+        .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-      
+
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
@@ -1687,7 +1695,7 @@ const api = {
           token,
           patient_id: patientId,
           status: 'active',
-          expires_at: expiresAt.toISOString()
+          expires_at: expiresAt.toISOString(),
         })
         .select()
         .single();
@@ -1698,7 +1706,7 @@ const api = {
         ok: true,
         success: true,
         token: data.token,
-        expiresAt: data.expires_at
+        expiresAt: data.expires_at,
       };
     } catch (error) {
       console.error('[api-unified] createSession error:', error);
@@ -1747,7 +1755,7 @@ const api = {
       return {
         ok: true,
         success: true,
-        patientId: session.patient_id
+        patientId: session.patient_id,
       };
     } catch (error) {
       console.error('[api-unified] validateSession error:', error);
@@ -1768,7 +1776,7 @@ const api = {
         .from('sessions')
         .update({
           device_type: deviceType,
-          device_info: deviceInfo
+          device_info: deviceInfo,
         })
         .eq('token', token);
 
@@ -1798,14 +1806,14 @@ const api = {
 
       const stats = {
         total: data.length,
-        active: data.filter(s => s.status === 'active').length,
-        used: data.filter(s => s.status === 'used').length,
-        expired: data.filter(s => s.status === 'expired').length,
+        active: data.filter((s) => s.status === 'active').length,
+        used: data.filter((s) => s.status === 'used').length,
+        expired: data.filter((s) => s.status === 'expired').length,
         byDevice: {
-          iOS: data.filter(s => s.device_type === 'iOS').length,
-          Android: data.filter(s => s.device_type === 'Android').length,
-          Desktop: data.filter(s => s.device_type === 'Desktop').length
-        }
+          iOS: data.filter((s) => s.device_type === 'iOS').length,
+          Android: data.filter((s) => s.device_type === 'Android').length,
+          Desktop: data.filter((s) => s.device_type === 'Desktop').length,
+        },
       };
 
       return { success: true, stats };
@@ -1835,7 +1843,7 @@ const api = {
 
       // تحويل إلى كائن
       const settings = {};
-      (data || []).forEach(item => {
+      (data || []).forEach((item) => {
         settings[item.key] = item.value;
       });
 
@@ -1844,8 +1852,8 @@ const api = {
         data: {
           enableThemeSelector: settings.theme_selector_enabled === 'true',
           showThemePreview: settings.theme_preview_enabled === 'true',
-          currentTheme: settings.theme_current || 'professional-medical'
-        }
+          currentTheme: settings.theme_current || 'professional-medical',
+        },
       };
     } catch (error) {
       console.error('[api-unified] getSettings error:', error);
@@ -1855,8 +1863,8 @@ const api = {
         data: {
           enableThemeSelector: true,
           showThemePreview: true,
-          currentTheme: 'professional-medical'
-        }
+          currentTheme: 'professional-medical',
+        },
       };
     }
   },
@@ -1877,7 +1885,7 @@ const api = {
           key: 'theme_current',
           value: settings.currentTheme,
           category: type,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
       }
       if (settings.enableThemeSelector !== undefined) {
@@ -1885,7 +1893,7 @@ const api = {
           key: 'theme_selector_enabled',
           value: String(settings.enableThemeSelector),
           category: type,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
       }
       if (settings.showThemePreview !== undefined) {
@@ -1893,7 +1901,7 @@ const api = {
           key: 'theme_preview_enabled',
           value: String(settings.showThemePreview),
           category: type,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
       }
 
@@ -1902,7 +1910,7 @@ const api = {
         const { error } = await supabase
           .from('settings')
           .upsert(update, { onConflict: 'key' });
-        
+
         if (error) throw error;
       }
 
@@ -1947,7 +1955,7 @@ const api = {
         .upsert({
           key,
           value,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }, { onConflict: 'key' });
 
       if (error) throw error;
@@ -1956,7 +1964,7 @@ const api = {
       console.error('[api-unified] setSetting error:', error);
       return false;
     }
-  }
+  },
 };
 
 // ============================================================================
@@ -1966,17 +1974,17 @@ const api = {
 // للتوافق مع المكونات التي تستخدم supabase-queries.js
 export const queueQueries = {
   getStatus: (clinicId) => api.getQueueStatusWithStats(clinicId),
-  subscribeToChanges: (clinicId, callback) => api.subscribeToQueueChanges(clinicId, callback)
+  subscribeToChanges: (clinicId, callback) => api.subscribeToQueueChanges(clinicId, callback),
 };
 
 export const adminQueries = {
   extendTime: (patientId, minutes) => api.extendTime(patientId, minutes),
-  getClinicsWithPins: () => api.getClinicsWithPins()
+  getClinicsWithPins: () => api.getClinicsWithPins(),
 };
 
 export const eventsQueries = {
   logRecovery: (eventData) => api.logRecoveryEvent(eventData),
-  subscribeToEvents: (callback) => api.subscribeToEvents(callback)
+  subscribeToEvents: (callback) => api.subscribeToEvents(callback),
 };
 
 export const settingsQueries = {
@@ -1987,7 +1995,7 @@ export const settingsQueries = {
         .select('*')
         .eq('type', type)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     } catch (error) {
@@ -2002,14 +2010,14 @@ export const settingsQueries = {
         .upsert({ type, value, updated_at: new Date().toISOString() })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
       console.error('[api-unified] settingsQueries.set error:', error);
       return null;
     }
-  }
+  },
 };
 
 // للتوافق مع supabase-api.js
@@ -2017,7 +2025,7 @@ export const supabaseApi = {
   getCurrentPin: (clinicId) => api.getCurrentPin(clinicId),
   issuePin: (clinicId) => api.issuePin(clinicId),
   verifyPin: (clinicId, pin) => api.verifyPin(clinicId, pin),
-  getAllPins: () => api.getActivePins()
+  getAllPins: () => api.getActivePins(),
 };
 
 export default api;

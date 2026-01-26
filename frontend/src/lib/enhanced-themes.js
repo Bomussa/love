@@ -20,18 +20,18 @@ export const enhancedMedicalThemes = [
       success: '#10b981', // Success Green
       warning: '#C9A54C', // Gold Warning
       error: '#8A1538', // Maroon Error
-      info: '#8A1538' // Maroon Info
+      info: '#8A1538', // Maroon Info
     },
     gradients: {
       primary: 'linear-gradient(135deg, #8A1538 0%, #6B0F2A 100%)',
       secondary: 'linear-gradient(135deg, #C9A54C 0%, #B8943D 100%)',
-      background: 'linear-gradient(135deg, #8A1538 0%, #C9A54C 100%)'
+      background: 'linear-gradient(135deg, #8A1538 0%, #C9A54C 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(138, 21, 56, 0.05)',
       md: '0 4px 6px -1px rgba(138, 21, 56, 0.1)',
-      lg: '0 10px 15px -3px rgba(138, 21, 56, 0.1)'
-    }
+      lg: '0 10px 15px -3px rgba(138, 21, 56, 0.1)',
+    },
   },
   {
     id: 'healing-nature',
@@ -51,18 +51,18 @@ export const enhancedMedicalThemes = [
       success: '#22c55e', // Bright Green
       warning: '#eab308', // Yellow
       error: '#dc2626', // Red
-      info: '#0891b2' // Cyan
+      info: '#0891b2', // Cyan
     },
     gradients: {
       primary: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
       secondary: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-      background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'
+      background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(5, 150, 105, 0.05)',
       md: '0 4px 6px -1px rgba(5, 150, 105, 0.1)',
-      lg: '0 10px 15px -3px rgba(5, 150, 105, 0.1)'
-    }
+      lg: '0 10px 15px -3px rgba(5, 150, 105, 0.1)',
+    },
   },
   {
     id: 'serene-wellness',
@@ -82,18 +82,18 @@ export const enhancedMedicalThemes = [
       success: '#10b981', // Green
       warning: '#f59e0b', // Amber
       error: '#ef4444', // Red
-      info: '#3b82f6' // Blue
+      info: '#3b82f6', // Blue
     },
     gradients: {
       primary: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
       secondary: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-      background: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #7dd3fc 100%)'
+      background: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #7dd3fc 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(14, 165, 233, 0.05)',
       md: '0 4px 6px -1px rgba(14, 165, 233, 0.1)',
-      lg: '0 10px 15px -3px rgba(14, 165, 233, 0.1)'
-    }
+      lg: '0 10px 15px -3px rgba(14, 165, 233, 0.1)',
+    },
   },
   {
     id: 'warm-care',
@@ -113,18 +113,18 @@ export const enhancedMedicalThemes = [
       success: '#22c55e', // Green
       warning: '#eab308', // Yellow
       error: '#dc2626', // Red
-      info: '#3b82f6' // Blue
+      info: '#3b82f6', // Blue
     },
     gradients: {
       primary: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
       secondary: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-      background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)'
+      background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(234, 88, 12, 0.05)',
       md: '0 4px 6px -1px rgba(234, 88, 12, 0.1)',
-      lg: '0 10px 15px -3px rgba(234, 88, 12, 0.1)'
-    }
+      lg: '0 10px 15px -3px rgba(234, 88, 12, 0.1)',
+    },
   },
   {
     id: 'modern-medical',
@@ -144,18 +144,18 @@ export const enhancedMedicalThemes = [
       success: '#10b981', // Green
       warning: '#f59e0b', // Amber
       error: '#ef4444', // Red
-      info: '#3b82f6' // Blue
+      info: '#3b82f6', // Blue
     },
     gradients: {
       primary: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
       secondary: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
-      background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)'
+      background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(124, 58, 237, 0.05)',
       md: '0 4px 6px -1px rgba(124, 58, 237, 0.1)',
-      lg: '0 10px 15px -3px rgba(124, 58, 237, 0.1)'
-    }
+      lg: '0 10px 15px -3px rgba(124, 58, 237, 0.1)',
+    },
   },
   {
     id: 'trusted-health',
@@ -175,24 +175,24 @@ export const enhancedMedicalThemes = [
       success: '#059669', // Dark Green
       warning: '#d97706', // Orange
       error: '#dc2626', // Red
-      info: '#2563eb' // Blue
+      info: '#2563eb', // Blue
     },
     gradients: {
       primary: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
       secondary: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
-      background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)'
+      background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)',
     },
     shadows: {
       sm: '0 1px 2px 0 rgba(30, 64, 175, 0.05)',
       md: '0 4px 6px -1px rgba(30, 64, 175, 0.1)',
-      lg: '0 10px 15px -3px rgba(30, 64, 175, 0.1)'
-    }
-  }
+      lg: '0 10px 15px -3px rgba(30, 64, 175, 0.1)',
+    },
+  },
 ];
 
 // Theme utility functions
 export function getThemeById(themeId) {
-  return enhancedMedicalThemes.find(theme => theme.id === themeId) || enhancedMedicalThemes[0];
+  return enhancedMedicalThemes.find((theme) => theme.id === themeId) || enhancedMedicalThemes[0];
 }
 
 export function getThemeColors(themeId) {
@@ -214,7 +214,7 @@ export function getThemeShadows(themeId) {
 export function generateThemeCSS(themeId) {
   const theme = getThemeById(themeId);
   const { colors, gradients, shadows } = theme;
-  
+
   return `
     :root {
       /* Colors */

@@ -1,7 +1,7 @@
 /**
  * useQueueRealtime Hook
  * Realtime Subscription مع Cleanup إلزامي
- * 
+ *
  * الإضافات الحرجة المطبقة:
  * - Cleanup عند unmount لمنع تسريب الذاكرة
  * - حد أقصى للقنوات
@@ -27,7 +27,7 @@ export function useQueueRealtime(clinicId, onUpdate, options = {}) {
       const enrichedPayload = {
         ...payload,
         receivedAt: new Date().toISOString(), // للتتبع فقط
-        serverTime: payload.commit_timestamp || payload.new?.entered_at
+        serverTime: payload.commit_timestamp || payload.new?.entered_at,
       };
       onUpdate(enrichedPayload);
     }
@@ -40,7 +40,7 @@ export function useQueueRealtime(clinicId, onUpdate, options = {}) {
 
     // إنشاء قناة فريدة
     const channelName = `queue_${clinicId}_${Date.now()}`;
-    
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -49,9 +49,9 @@ export function useQueueRealtime(clinicId, onUpdate, options = {}) {
           event: '*',
           schema: 'public',
           table: 'queues',
-          filter: `clinic_id=eq.${clinicId}`
+          filter: `clinic_id=eq.${clinicId}`,
         },
-        handleChange
+        handleChange,
       )
       .subscribe((status) => {
         console.log(`Realtime subscription status for ${clinicId}:`, status);
@@ -90,7 +90,7 @@ export function useNotificationsRealtime(patientId, onNotification) {
     if (!patientId) return;
 
     const channelName = `notifications_${patientId}_${Date.now()}`;
-    
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -99,13 +99,13 @@ export function useNotificationsRealtime(patientId, onNotification) {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `patient_id=eq.${patientId}`
+          filter: `patient_id=eq.${patientId}`,
         },
         (payload) => {
           if (onNotification) {
             onNotification(payload.new);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -129,7 +129,7 @@ export function useAllQueuesRealtime(onUpdate) {
 
   useEffect(() => {
     const channelName = `all_queues_${Date.now()}`;
-    
+
     const channel = supabase
       .channel(channelName)
       .on(
@@ -137,13 +137,13 @@ export function useAllQueuesRealtime(onUpdate) {
         {
           event: '*',
           schema: 'public',
-          table: 'queues'
+          table: 'queues',
         },
         (payload) => {
           if (onUpdate) {
             onUpdate(payload);
           }
-        }
+        },
       )
       .subscribe();
 

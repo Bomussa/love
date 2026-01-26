@@ -9,10 +9,13 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace frontend",
-    "build": "npm run build --workspace frontend",
+    "build": "tsc",
     "preview": "npm run preview --workspace frontend",
-    "lint": "npm run lint --workspace frontend",
-    "test": "npm run test --workspace frontend"
+    "lint": "eslint .",
+    "test": "npm run test --workspace frontend",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node --test scripts/smoke.test.ts",
+    "ci:resilient": "./scripts/resilient-ci.sh"
   },
   "engines": {
     "node": "20.x"

@@ -1,9 +1,9 @@
 /**
  * Circuit Breaker Implementation
- * 
+ *
  * Purpose: Prevent cascading failures and ensure system reliability R ≥ 0.98
  * Based on: Fowler's Circuit Breaker Pattern
- * 
+ *
  * States:
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Too many failures, requests fail fast
@@ -17,18 +17,23 @@ export enum CircuitState {
 }
 
 export interface CircuitBreakerConfig {
-  failureThreshold: number;      // Number of failures before opening (default: 5)
-  successThreshold: number;      // Number of successes to close from half-open (default: 2)
-  timeout: number;               // Time in ms before attempting half-open (default: 60000)
-  requestTimeout: number;        // Max time for a single request (default: 5000)
+  failureThreshold: number; // Number of failures before opening (default: 5)
+  successThreshold: number; // Number of successes to close from half-open (default: 2)
+  timeout: number; // Time in ms before attempting half-open (default: 60000)
+  requestTimeout: number; // Max time for a single request (default: 5000)
 }
 
 export class CircuitBreaker {
   private state: CircuitState = CircuitState.CLOSED;
+
   private failureCount: number = 0;
+
   private successCount: number = 0;
+
   private nextAttempt: number = Date.now();
+
   private config: CircuitBreakerConfig;
+
   private name: string;
 
   constructor(name: string, config?: Partial<CircuitBreakerConfig>) {
@@ -37,7 +42,7 @@ export class CircuitBreaker {
       failureThreshold: config?.failureThreshold || 5,
       successThreshold: config?.successThreshold || 2,
       timeout: config?.timeout || 60000,
-      requestTimeout: config?.requestTimeout || 5000
+      requestTimeout: config?.requestTimeout || 5000,
     };
   }
 
@@ -65,9 +70,7 @@ export class CircuitBreaker {
   private async executeWithTimeout<T>(fn: () => Promise<T>): Promise<T> {
     return Promise.race([
       fn(),
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), this.config.requestTimeout)
-      )
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.config.requestTimeout)),
     ]);
   }
 
@@ -104,7 +107,7 @@ export class CircuitBreaker {
       state: this.state,
       failureCount: this.failureCount,
       successCount: this.successCount,
-      nextAttempt: this.state === CircuitState.OPEN ? new Date(this.nextAttempt).toISOString() : null
+      nextAttempt: this.state === CircuitState.OPEN ? new Date(this.nextAttempt).toISOString() : null,
     };
   }
 

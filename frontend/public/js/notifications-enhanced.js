@@ -6,40 +6,40 @@
 
 class EnhancedNotificationSystem {
   constructor() {
-    this.notifications = []
-    this.audioContext = null
-    this.eventSource = null
-    this.isConnected = false
-    this.reconnectAttempts = 0
-    this.maxReconnectAttempts = 10
-    this.notificationContainer = null
-    this.guidePanel = null
-    
-    this.init()
+    this.notifications = [];
+    this.audioContext = null;
+    this.eventSource = null;
+    this.isConnected = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+    this.notificationContainer = null;
+    this.guidePanel = null;
+
+    this.init();
   }
 
   /**
    * تهيئة النظام
    */
   init() {
-    this.createNotificationContainer()
-    this.createGuidePanel()
-    this.setupAudioContext()
-    this.connectToEventStream()
-    this.requestNotificationPermission()
-    
+    this.createNotificationContainer();
+    this.createGuidePanel();
+    this.setupAudioContext();
+    this.connectToEventStream();
+    this.requestNotificationPermission();
+
     // تحميل الإشعارات المحفوظة
-    this.loadStoredNotifications()
-    
-    console.log('✅ نظام الإشعارات المحسّن جاهز')
+    this.loadStoredNotifications();
+
+    console.log('✅ نظام الإشعارات المحسّن جاهز');
   }
 
   /**
    * إنشاء حاوية الإشعارات
    */
   createNotificationContainer() {
-    this.notificationContainer = document.createElement('div')
-    this.notificationContainer.id = 'notification-container'
+    this.notificationContainer = document.createElement('div');
+    this.notificationContainer.id = 'notification-container';
     this.notificationContainer.style.cssText = `
       position: fixed;
       top: 20px;
@@ -52,16 +52,16 @@ class EnhancedNotificationSystem {
       max-width: 500px;
       width: 90%;
       pointer-events: none;
-    `
-    document.body.appendChild(this.notificationContainer)
+    `;
+    document.body.appendChild(this.notificationContainer);
   }
 
   /**
    * إنشاء لوحة الدليل
    */
   createGuidePanel() {
-    this.guidePanel = document.createElement('div')
-    this.guidePanel.id = 'guide-panel'
+    this.guidePanel = document.createElement('div');
+    this.guidePanel.id = 'guide-panel';
     this.guidePanel.style.cssText = `
       position: fixed;
       bottom: 20px;
@@ -75,8 +75,8 @@ class EnhancedNotificationSystem {
       z-index: 999998;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: none;
-    `
-    
+    `;
+
     this.guidePanel.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="margin: 0; font-size: 18px; font-weight: 600;">📋 دليل المراجع</h3>
@@ -85,9 +85,9 @@ class EnhancedNotificationSystem {
       <div id="guide-content" style="font-size: 14px; line-height: 1.8;">
         <p style="margin: 10px 0;">مرحباً بك في نظام اللجنة الطبية العسكرية</p>
       </div>
-    `
-    
-    document.body.appendChild(this.guidePanel)
+    `;
+
+    document.body.appendChild(this.guidePanel);
   }
 
   /**
@@ -95,9 +95,9 @@ class EnhancedNotificationSystem {
    */
   toggleGuide() {
     if (this.guidePanel.style.display === 'none') {
-      this.guidePanel.style.display = 'block'
+      this.guidePanel.style.display = 'block';
     } else {
-      this.guidePanel.style.display = 'none'
+      this.guidePanel.style.display = 'none';
     }
   }
 
@@ -105,10 +105,10 @@ class EnhancedNotificationSystem {
    * تحديث محتوى الدليل
    */
   updateGuide(content) {
-    const guideContent = document.getElementById('guide-content')
+    const guideContent = document.getElementById('guide-content');
     if (guideContent) {
-      guideContent.innerHTML = content
-      this.guidePanel.style.display = 'block'
+      guideContent.innerHTML = content;
+      this.guidePanel.style.display = 'block';
     }
   }
 
@@ -117,9 +117,9 @@ class EnhancedNotificationSystem {
    */
   setupAudioContext() {
     try {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
-      console.warn('⚠️ Audio Context غير متاح:', e)
+      console.warn('⚠️ Audio Context غير متاح:', e);
     }
   }
 
@@ -127,64 +127,64 @@ class EnhancedNotificationSystem {
    * تشغيل نغمة بسيطة وواضحة
    */
   playSimpleNotificationSound(type = 'normal') {
-    if (!this.audioContext) return
+    if (!this.audioContext) return;
 
     try {
       // إنشاء oscillator للنغمة
-      const oscillator = this.audioContext.createOscillator()
-      const gainNode = this.audioContext.createGain()
-      
-      oscillator.connect(gainNode)
-      gainNode.connect(this.audioContext.destination)
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
 
       // تحديد النغمة حسب النوع
       switch (type) {
         case 'urgent': // حان دورك
-          oscillator.frequency.value = 880 // A5 - نغمة عالية
-          gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime)
-          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5)
-          oscillator.start()
-          oscillator.stop(this.audioContext.currentTime + 0.5)
-          
+          oscillator.frequency.value = 880; // A5 - نغمة عالية
+          gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+          oscillator.start();
+          oscillator.stop(this.audioContext.currentTime + 0.5);
+
           // نغمة ثانية للتأكيد
           setTimeout(() => {
-            const osc2 = this.audioContext.createOscillator()
-            const gain2 = this.audioContext.createGain()
-            osc2.connect(gain2)
-            gain2.connect(this.audioContext.destination)
-            osc2.frequency.value = 1046 // C6
-            gain2.gain.setValueAtTime(0.3, this.audioContext.currentTime)
-            gain2.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5)
-            osc2.start()
-            osc2.stop(this.audioContext.currentTime + 0.5)
-          }, 200)
-          break
+            const osc2 = this.audioContext.createOscillator();
+            const gain2 = this.audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(this.audioContext.destination);
+            osc2.frequency.value = 1046; // C6
+            gain2.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+            osc2.start();
+            osc2.stop(this.audioContext.currentTime + 0.5);
+          }, 200);
+          break;
 
         case 'high': // اقترب دورك
-          oscillator.frequency.value = 659 // E5 - نغمة متوسطة
-          gainNode.gain.setValueAtTime(0.25, this.audioContext.currentTime)
-          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4)
-          oscillator.start()
-          oscillator.stop(this.audioContext.currentTime + 0.4)
-          break
+          oscillator.frequency.value = 659; // E5 - نغمة متوسطة
+          gainNode.gain.setValueAtTime(0.25, this.audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+          oscillator.start();
+          oscillator.stop(this.audioContext.currentTime + 0.4);
+          break;
 
         case 'success': // تم إنهاء الفحص
-          oscillator.frequency.value = 523 // C5
-          gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime)
-          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3)
-          oscillator.start()
-          oscillator.stop(this.audioContext.currentTime + 0.3)
-          break
+          oscillator.frequency.value = 523; // C5
+          gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+          oscillator.start();
+          oscillator.stop(this.audioContext.currentTime + 0.3);
+          break;
 
         default: // إشعار عادي
-          oscillator.frequency.value = 440 // A4
-          gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime)
-          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2)
-          oscillator.start()
-          oscillator.stop(this.audioContext.currentTime + 0.2)
+          oscillator.frequency.value = 440; // A4
+          gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+          oscillator.start();
+          oscillator.stop(this.audioContext.currentTime + 0.2);
       }
     } catch (e) {
-      console.warn('⚠️ خطأ في تشغيل الصوت:', e)
+      console.warn('⚠️ خطأ في تشغيل الصوت:', e);
     }
   }
 
@@ -193,38 +193,38 @@ class EnhancedNotificationSystem {
    */
   connectToEventStream() {
     try {
-      this.eventSource = new EventSource('/api/events')
-      
+      this.eventSource = new EventSource('/api/events');
+
       this.eventSource.onopen = () => {
-        this.isConnected = true
-        this.reconnectAttempts = 0
-        console.log('✅ متصل بتدفق الأحداث')
-      }
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        console.log('✅ متصل بتدفق الأحداث');
+      };
 
       this.eventSource.addEventListener('notification', (event) => {
         try {
-          const notification = JSON.parse(event.data)
-          this.handleNotification(notification)
+          const notification = JSON.parse(event.data);
+          this.handleNotification(notification);
         } catch (e) {
-          console.error('❌ خطأ في معالجة الإشعار:', e)
+          console.error('❌ خطأ في معالجة الإشعار:', e);
         }
-      })
+      });
 
       this.eventSource.onerror = () => {
-        this.isConnected = false
-        console.warn('⚠️ انقطع الاتصال بتدفق الأحداث')
-        
+        this.isConnected = false;
+        console.warn('⚠️ انقطع الاتصال بتدفق الأحداث');
+
         // إعادة الاتصال
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++
+          this.reconnectAttempts++;
           setTimeout(() => {
-            console.log(`🔄 محاولة إعادة الاتصال (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-            this.connectToEventStream()
-          }, 3000 * this.reconnectAttempts)
+            console.log(`🔄 محاولة إعادة الاتصال (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            this.connectToEventStream();
+          }, 3000 * this.reconnectAttempts);
         }
-      }
+      };
     } catch (e) {
-      console.error('❌ خطأ في الاتصال بتدفق الأحداث:', e)
+      console.error('❌ خطأ في الاتصال بتدفق الأحداث:', e);
     }
   }
 
@@ -233,21 +233,21 @@ class EnhancedNotificationSystem {
    */
   handleNotification(notification) {
     // حفظ الإشعار
-    this.notifications.unshift(notification)
-    this.saveNotifications()
+    this.notifications.unshift(notification);
+    this.saveNotifications();
 
     // عرض الإشعار
-    this.showNotification(notification)
+    this.showNotification(notification);
 
     // تشغيل الصوت والاهتزاز
-    this.triggerAlerts(notification)
+    this.triggerAlerts(notification);
 
     // تحديث الدليل
-    this.updateGuideBasedOnNotification(notification)
+    this.updateGuideBasedOnNotification(notification);
 
     // إشعار المتصفح
     if (notification.priority === 'urgent' || notification.priority === 'high') {
-      this.showBrowserNotification(notification)
+      this.showBrowserNotification(notification);
     }
   }
 
@@ -255,37 +255,37 @@ class EnhancedNotificationSystem {
    * عرض الإشعار على الشاشة
    */
   showNotification(notification) {
-    const notifElement = document.createElement('div')
-    notifElement.className = 'notification-toast'
-    
+    const notifElement = document.createElement('div');
+    notifElement.className = 'notification-toast';
+
     // تحديد اللون حسب النوع
-    let bgColor = '#2c3e50'
-    let icon = '🔔'
-    
+    let bgColor = '#2c3e50';
+    let icon = '🔔';
+
     switch (notification.type) {
       case 'YOUR_TURN':
-        bgColor = '#e74c3c'
-        icon = '🔴'
-        break
+        bgColor = '#e74c3c';
+        icon = '🔴';
+        break;
       case 'NEAR_TURN':
-        bgColor = '#f39c12'
-        icon = '⏰'
-        break
+        bgColor = '#f39c12';
+        icon = '⏰';
+        break;
       case 'STEP_DONE_NEXT':
-        bgColor = '#27ae60'
-        icon = '✅'
-        break
+        bgColor = '#27ae60';
+        icon = '✅';
+        break;
       case 'QUEUE_UPDATE':
-        bgColor = '#3498db'
-        icon = '📊'
-        break
+        bgColor = '#3498db';
+        icon = '📊';
+        break;
       case 'START_HINT':
-        bgColor = '#9b59b6'
-        icon = '👋'
-        break
+        bgColor = '#9b59b6';
+        icon = '👋';
+        break;
       default:
-        bgColor = '#34495e'
-        icon = '📢'
+        bgColor = '#34495e';
+        icon = '📢';
     }
 
     notifElement.style.cssText = `
@@ -302,7 +302,7 @@ class EnhancedNotificationSystem {
       transition: all 0.3s ease;
       animation: slideInDown 0.5s ease;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    `
+    `;
 
     notifElement.innerHTML = `
       <div style="font-size: 24px;">${icon}</div>
@@ -311,10 +311,10 @@ class EnhancedNotificationSystem {
         <div style="font-size: 14px; opacity: 0.95;">${notification.message || ''}</div>
       </div>
       <button onclick="this.parentElement.remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">إغلاق</button>
-    `
+    `;
 
     // إضافة الأنيميشن
-    const style = document.createElement('style')
+    const style = document.createElement('style');
     style.textContent = `
       @keyframes slideInDown {
         from {
@@ -326,28 +326,28 @@ class EnhancedNotificationSystem {
           opacity: 1;
         }
       }
-    `
+    `;
     if (!document.querySelector('style[data-notification-styles]')) {
-      style.setAttribute('data-notification-styles', 'true')
-      document.head.appendChild(style)
+      style.setAttribute('data-notification-styles', 'true');
+      document.head.appendChild(style);
     }
 
-    this.notificationContainer.appendChild(notifElement)
+    this.notificationContainer.appendChild(notifElement);
 
     // إزالة تلقائية بعد مدة
-    const ttl = notification.ttl || (notification.priority === 'urgent' ? 15000 : 8000)
+    const ttl = notification.ttl || (notification.priority === 'urgent' ? 15000 : 8000);
     setTimeout(() => {
-      notifElement.style.opacity = '0'
-      notifElement.style.transform = 'translateX(100%)'
-      setTimeout(() => notifElement.remove(), 300)
-    }, ttl)
+      notifElement.style.opacity = '0';
+      notifElement.style.transform = 'translateX(100%)';
+      setTimeout(() => notifElement.remove(), 300);
+    }, ttl);
   }
 
   /**
    * تحديث الدليل بناءً على الإشعار
    */
   updateGuideBasedOnNotification(notification) {
-    let guideContent = ''
+    let guideContent = '';
 
     switch (notification.type) {
       case 'START_HINT':
@@ -363,8 +363,8 @@ class EnhancedNotificationSystem {
               <li>عند حلول دورك توجه للعيادة فوراً</li>
             </ol>
           </div>
-        `
-        break
+        `;
+        break;
 
       case 'NEAR_TURN':
         guideContent = `
@@ -379,8 +379,8 @@ class EnhancedNotificationSystem {
               <li>انتظر الإشعار التالي</li>
             </ul>
           </div>
-        `
-        break
+        `;
+        break;
 
       case 'YOUR_TURN':
         guideContent = `
@@ -391,8 +391,8 @@ class EnhancedNotificationSystem {
             <p style="margin: 5px 0; font-size: 14px;"><strong>⚠️ توجه للعيادة فوراً</strong></p>
             <p style="margin: 5px 0; font-size: 13px;">احمل معك جميع المستندات المطلوبة</p>
           </div>
-        `
-        break
+        `;
+        break;
 
       case 'STEP_DONE_NEXT':
         guideContent = `
@@ -411,8 +411,8 @@ class EnhancedNotificationSystem {
           ` : `
             <p style="margin: 10px 0; color: #ffd700;">انتظر التعليمات من الإدارة</p>
           `}
-        `
-        break
+        `;
+        break;
 
       case 'QUEUE_UPDATE':
         guideContent = `
@@ -422,16 +422,16 @@ class EnhancedNotificationSystem {
           <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin-top: 12px;">
             <p style="margin: 5px 0; font-size: 13px;">ستتلقى إشعار عندما يقترب دورك</p>
           </div>
-        `
-        break
+        `;
+        break;
 
       default:
         guideContent = `
           <p style="margin: 10px 0;">${notification.message || ''}</p>
-        `
+        `;
     }
 
-    this.updateGuide(guideContent)
+    this.updateGuide(guideContent);
   }
 
   /**
@@ -439,32 +439,32 @@ class EnhancedNotificationSystem {
    */
   triggerAlerts(notification) {
     // تحديد نوع الصوت
-    let soundType = 'normal'
-    
+    let soundType = 'normal';
+
     if (notification.type === 'YOUR_TURN') {
-      soundType = 'urgent'
+      soundType = 'urgent';
     } else if (notification.type === 'NEAR_TURN') {
-      soundType = 'high'
+      soundType = 'high';
     } else if (notification.type === 'STEP_DONE_NEXT') {
-      soundType = 'success'
+      soundType = 'success';
     }
 
     // تشغيل الصوت
     if (notification.sound !== false) {
-      this.playSimpleNotificationSound(soundType)
+      this.playSimpleNotificationSound(soundType);
     }
 
     // الاهتزاز
     if (notification.vibrate && 'vibrate' in navigator) {
       switch (soundType) {
         case 'urgent':
-          navigator.vibrate([200, 100, 200, 100, 200])
-          break
+          navigator.vibrate([200, 100, 200, 100, 200]);
+          break;
         case 'high':
-          navigator.vibrate([200, 100, 200])
-          break
+          navigator.vibrate([200, 100, 200]);
+          break;
         default:
-          navigator.vibrate(200)
+          navigator.vibrate(200);
       }
     }
   }
@@ -474,7 +474,7 @@ class EnhancedNotificationSystem {
    */
   async requestNotificationPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission()
+      await Notification.requestPermission();
     }
   }
 
@@ -489,13 +489,13 @@ class EnhancedNotificationSystem {
         badge: '/logo.png',
         tag: notification.id || 'notification',
         requireInteraction: notification.priority === 'urgent',
-        vibrate: notification.vibrate ? [200, 100, 200] : undefined
-      })
+        vibrate: notification.vibrate ? [200, 100, 200] : undefined,
+      });
 
       browserNotif.onclick = () => {
-        window.focus()
-        browserNotif.close()
-      }
+        window.focus();
+        browserNotif.close();
+      };
     }
   }
 
@@ -505,10 +505,10 @@ class EnhancedNotificationSystem {
   saveNotifications() {
     try {
       // الاحتفاظ بآخر 50 إشعار فقط
-      const toSave = this.notifications.slice(0, 50)
-      localStorage.setItem('notifications', JSON.stringify(toSave))
+      const toSave = this.notifications.slice(0, 50);
+      localStorage.setItem('notifications', JSON.stringify(toSave));
     } catch (e) {
-      console.warn('⚠️ خطأ في حفظ الإشعارات:', e)
+      console.warn('⚠️ خطأ في حفظ الإشعارات:', e);
     }
   }
 
@@ -517,12 +517,12 @@ class EnhancedNotificationSystem {
    */
   loadStoredNotifications() {
     try {
-      const stored = localStorage.getItem('notifications')
+      const stored = localStorage.getItem('notifications');
       if (stored) {
-        this.notifications = JSON.parse(stored)
+        this.notifications = JSON.parse(stored);
       }
     } catch (e) {
-      console.warn('⚠️ خطأ في تحميل الإشعارات:', e)
+      console.warn('⚠️ خطأ في تحميل الإشعارات:', e);
     }
   }
 
@@ -530,23 +530,23 @@ class EnhancedNotificationSystem {
    * الحصول على جميع الإشعارات
    */
   getNotifications() {
-    return this.notifications
+    return this.notifications;
   }
 
   /**
    * مسح جميع الإشعارات
    */
   clearNotifications() {
-    this.notifications = []
-    localStorage.removeItem('notifications')
+    this.notifications = [];
+    localStorage.removeItem('notifications');
   }
 }
 
 // إنشاء instance عام
-const notificationSystem = new EnhancedNotificationSystem()
+const notificationSystem = new EnhancedNotificationSystem();
 
 // تصدير للاستخدام العام
-window.notificationSystem = notificationSystem
+window.notificationSystem = notificationSystem;
 
 // اختبار يدوي
 window.testNotification = (type = 'normal') => {
@@ -556,7 +556,7 @@ window.testNotification = (type = 'normal') => {
       title: '👋 مرحباً بك',
       message: 'هذا إشعار اختباري عادي',
       priority: 'normal',
-      sound: true
+      sound: true,
     },
     near: {
       type: 'NEAR_TURN',
@@ -566,7 +566,7 @@ window.testNotification = (type = 'normal') => {
       position: 2,
       priority: 'high',
       sound: true,
-      vibrate: false
+      vibrate: false,
     },
     your_turn: {
       type: 'YOUR_TURN',
@@ -576,7 +576,7 @@ window.testNotification = (type = 'normal') => {
       number: 15,
       priority: 'urgent',
       sound: true,
-      vibrate: true
+      vibrate: true,
     },
     done: {
       type: 'STEP_DONE_NEXT',
@@ -585,14 +585,13 @@ window.testNotification = (type = 'normal') => {
       currentClinic: 'عيادة الباطنية',
       nextClinic: 'عيادة العيون',
       priority: 'high',
-      sound: true
-    }
-  }
+      sound: true,
+    },
+  };
 
-  const notification = testNotifications[type] || testNotifications.normal
-  notificationSystem.handleNotification(notification)
-}
+  const notification = testNotifications[type] || testNotifications.normal;
+  notificationSystem.handleNotification(notification);
+};
 
-console.log('✅ نظام الإشعارات المحسّن تم تحميله بنجاح')
-console.log('💡 للاختبار: testNotification("normal") أو testNotification("near") أو testNotification("your_turn") أو testNotification("done")')
-
+console.log('✅ نظام الإشعارات المحسّن تم تحميله بنجاح');
+console.log('💡 للاختبار: testNotification("normal") أو testNotification("near") أو testNotification("your_turn") أو testNotification("done")');

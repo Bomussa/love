@@ -1,11 +1,11 @@
 /**
  * Supabase Direct Queries
- * 
+ *
  * Common database queries using Supabase client
  * No Edge Functions needed for simple CRUD operations
  */
 
-import { supabase } from './supabase-client'
+import { supabase } from './supabase-client';
 
 /**
  * Queue Operations
@@ -19,15 +19,15 @@ export const queueQueries = {
       .from('unified_queue')
       .select('*')
       .eq('clinic_id', clinicId)
-      .order('entered_at', { ascending: true })
-    
-    if (error) throw error
-    
-    const waiting = data.filter(q => q.status === 'waiting')
-    const serving = data.filter(q => q.status === 'serving')
-    const completed = data.filter(q => q.status === 'completed')
-    const skipped = data.filter(q => q.status === 'skipped')
-    
+      .order('entered_at', { ascending: true });
+
+    if (error) throw error;
+
+    const waiting = data.filter((q) => q.status === 'waiting');
+    const serving = data.filter((q) => q.status === 'serving');
+    const completed = data.filter((q) => q.status === 'completed');
+    const skipped = data.filter((q) => q.status === 'skipped');
+
     return {
       waiting: waiting.length,
       serving: serving.length,
@@ -41,9 +41,9 @@ export const queueQueries = {
         serving: serving.length,
         completed: completed.length,
         skipped: skipped.length,
-        total: data.length
-      }
-    }
+        total: data.length,
+      },
+    };
   },
 
   /**
@@ -58,17 +58,17 @@ export const queueQueries = {
           event: '*',
           schema: 'public',
           table: 'queues',
-          filter: `clinic_id=eq.${clinicId}`
+          filter: `clinic_id=eq.${clinicId}`,
         },
-        callback
+        callback,
       )
-      .subscribe()
-    
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }
-}
+      supabase.removeChannel(channel);
+    };
+  },
+};
 
 /**
  * Settings Operations
@@ -82,10 +82,10 @@ export const settingsQueries = {
       .from('settings')
       .select('*')
       .eq('type', type)
-      .single()
-    
-    if (error && error.code !== 'PGRST116') throw error // PGRST116 = not found
-    return data
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
+    return data;
   },
 
   /**
@@ -96,12 +96,12 @@ export const settingsQueries = {
       .from('settings')
       .upsert({ type, value, updated_at: new Date().toISOString() })
       .select()
-      .single()
-    
-    if (error) throw error
-    return data
-  }
-}
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+};
 
 /**
  * Admin Operations
@@ -115,16 +115,16 @@ export const adminQueries = {
     // Option 1: Direct update (if simple)
     const { data, error } = await supabase
       .from('clinics')
-      .update({ 
+      .update({
         extended_time: minutes,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', clinicId)
       .select()
-      .single()
-    
-    if (error) throw error
-    return data
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
   /**
@@ -134,12 +134,12 @@ export const adminQueries = {
     const { data, error } = await supabase
       .from('clinics')
       .select('id, name, name_ar, pin_code, updated_at')
-      .order('name')
-    
-    if (error) throw error
-    return data
-  }
-}
+      .order('name');
+
+    if (error) throw error;
+    return data;
+  },
+};
 
 /**
  * Events Operations
@@ -154,13 +154,13 @@ export const eventsQueries = {
       .insert({
         type: 'recovery',
         data: eventData,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       })
       .select()
-      .single()
-    
-    if (error) throw error
-    return data
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
   /**
@@ -174,26 +174,26 @@ export const eventsQueries = {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'events'
+          table: 'events',
         },
-        callback
+        callback,
       )
-      .subscribe()
-    
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }
-}
+      supabase.removeChannel(channel);
+    };
+  },
+};
 
 /**
  * Helper: Check if Supabase is connected
  */
 export async function checkConnection() {
   try {
-    const { error } = await supabase.from('clinics').select('count').limit(1)
-    return !error
+    const { error } = await supabase.from('clinics').select('count').limit(1);
+    return !error;
   } catch {
-    return false
+    return false;
   }
 }

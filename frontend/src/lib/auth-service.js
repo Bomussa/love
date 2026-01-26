@@ -20,25 +20,24 @@ class AuthService {
       // ✅ إصلاح: التحقق من السوبر أدمن أولاً وفوراً (بدون انتظار API)
       // اسم المستخدم غير حساس لحالة الأحرف
       if (validateAdminCredentials(username, password)) {
-          console.log('[Auth] ✅ Super Admin Login - Instant Access');
-          const session = this.createSession(username, 'SUPER_ADMIN');
-          return { success: true, session };
+        console.log('[Auth] ✅ Super Admin Login - Instant Access');
+        const session = this.createSession(username, 'SUPER_ADMIN');
+        return { success: true, session };
       }
 
       // 2. للمستخدمين الآخرين - تحقق عبر API مع timeout قصير
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني فقط
-        
+
         const response = await api.adminLogin(username, password);
         clearTimeout(timeoutId);
 
         if (response.success) {
           const session = this.createSession(username, response.role || 'ADMIN');
           return { success: true, session };
-        } else {
-          return { success: false, error: response.message || 'Invalid credentials' };
         }
+        return { success: false, error: response.message || 'Invalid credentials' };
       } catch (apiError) {
         console.warn('[Auth] API timeout or error, checking local credentials');
         return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
@@ -47,24 +46,24 @@ class AuthService {
       console.error('[Auth] Login error:', error);
       // Fallback للسوبر أدمن في حالة الأخطاء
       if (validateAdminCredentials(username, password)) {
-          const session = this.createSession(username, 'SUPER_ADMIN');
-          return { success: true, session };
+        const session = this.createSession(username, 'SUPER_ADMIN');
+        return { success: true, session };
       }
       return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
     }
   }
 
   createSession(username, role) {
-      const session = {
-          id: `sess_${Date.now()}`,
-          username,
-          role,
-          name: username.toUpperCase(),
-          loginTime: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString()
-      };
-      this.saveSession(session);
-      return session;
+    const session = {
+      id: `sess_${Date.now()}`,
+      username,
+      role,
+      name: username.toUpperCase(),
+      loginTime: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
+    };
+    this.saveSession(session);
+    return session;
   }
 
   logout() {

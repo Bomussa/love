@@ -10,18 +10,18 @@ export default defineConfig({
       // تحسين React Refresh
       fastRefresh: true,
       // تقليل حجم runtime
-      jsxRuntime: 'automatic'
+      jsxRuntime: 'automatic',
     }),
     legacy({
       targets: ['defaults', 'not IE 11'],
       // تقليل polyfills غير الضرورية
-      modernPolyfills: true
-    })
+      modernPolyfills: true,
+    }),
   ],
   base: './',
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
@@ -32,8 +32,8 @@ export default defineConfig({
     allowedHosts: true,
     hmr: {
       clientPort: 443,
-      protocol: 'wss'
-    }
+      protocol: 'wss',
+    },
   },
   build: {
     outDir: 'dist',
@@ -49,14 +49,14 @@ export default defineConfig({
         unsafe: true,
         unsafe_comps: true,
         unsafe_math: true,
-        unsafe_methods: true
+        unsafe_methods: true,
       },
       mangle: {
-        safari10: true
+        safari10: true,
       },
       format: {
-        comments: false
-      }
+        comments: false,
+      },
     },
     cssCodeSplit: true,
     cssMinify: true,
@@ -99,15 +99,15 @@ export default defineConfig({
         compact: true,
         // تقليل whitespace
         generatedCode: {
-          constBindings: true
-        }
-      }
-    }
+          constBindings: true,
+        },
+      },
+    },
   },
   // تحسينات إضافية
   optimizeDeps: {
     include: ['react', 'react-dom', '@supabase/supabase-js'],
-    exclude: []
+    exclude: [],
   },
   esbuild: {
     // تحسين esbuild
@@ -115,6 +115,6 @@ export default defineConfig({
     minifyIdentifiers: true,
     minifySyntax: true,
     minifyWhitespace: true,
-    treeShaking: true
-  }
+    treeShaking: true,
+  },
 });
