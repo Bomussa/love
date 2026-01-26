@@ -1086,10 +1086,11 @@ const ReportsSection = ({ language, t }) => {
       yearAgo.setFullYear(yearAgo.getFullYear() - 1);
 
       // إحصائيات اليوم
+      const todayStr = today.toISOString().split('T')[0];
       const { data: todayData } = await supabase
         .from('unified_queue')
         .select('*')
-        .gte('created_at', today.toISOString());
+        .eq('queue_date', todayStr);
 
       // إحصائيات الأسبوع
       const { data: weekData } = await supabase

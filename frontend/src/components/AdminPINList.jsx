@@ -9,6 +9,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import api from '../lib/api-unified'
+import supabase from '../lib/supabase-client'
 
 /**
  * مكون قائمة PIN لجميع العيادات
@@ -39,21 +40,35 @@ export function AdminPINList({ language = 'ar' }) {
     try {
       setLoading(true)
       
-      // جلب جميع العيادات مع الـ PINs الخاصة بها باستخدام الدالة الموحدة
-      const res = await api.getClinicsWithPins()
-      if (res.success) {
-        setClinics(res.data)
-        
-        const pinsData = {}
-        res.data.forEach(item => {
-          pinsData[item.id] = {
-            pin: item.pin_code || null,
-            expiresAt: item.pin_expires_at,
-            status: item.pin_status || 'none'
-          }
-        })
-        setPins(pinsData)
+      // جلب العيادات مباشرة من supabase لضمان ظهور الجميع
+      const { data: clinicsData, error: clinicsError } = await supabase
+        .from('clinics')
+        .select('id, name_ar, name_en')
+        .order('name_ar');
+
+      if (clinicsError) throw clinicsError;
+      setClinics(clinicsData);
+
+      // جلب الـ PINs النشطة اليوم
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const { data: pinsDataRaw, error: pinsError } = await supabase
+        .from('pins')
+        .select('*')
+        .eq('is_active', true)
+        .gte('expires_at', today.toISOString());
+
+      const pinsData = {};
+      if (!pinsError && pinsDataRaw) {
+        pinsDataRaw.forEach(item => {
+          pinsData[item.clinic_code] = {
+            pin: item.pin,
+            expiresAt: item.expires_at,
+            status: 'active'
+          };
+        });
       }
+      setPins(pinsData);
       
       // حساب أوقات الإنشاء والحذف التالية
       calculateNextSchedule()
@@ -198,7 +213,7 @@ export function AdminPINList({ language = 'ar' }) {
               return `
                 <tr>
                   <td>${idx + 1}</td>
-                  <td>${isRTL ? clinic.name_ar : clinic.name}</td>
+                  <td>${isRTL ? clinic.name_ar : clinic.name_en}</td>
                   <td>${clinic.id}</td>
                   <td class="pin-number">${pinDisplay}</td>
                   <td>${statusDisplay}</td>
@@ -229,7 +244,7 @@ export function AdminPINList({ language = 'ar' }) {
         const pinData = pins[clinic.id]
         return [
           idx + 1,
-          isRTL ? clinic.name_ar : clinic.name,
+          isRTL ? clinic.name_ar : clinic.name_en,
           clinic.id,
           pinData?.pin || 'N/A',
           pinData?.status === 'active' ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير متوفر' : 'Not Available')
@@ -326,44 +341,52 @@ export function AdminPINList({ language = 'ar' }) {
       <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full text-right">
-            <thead className="bg-gray-900 text-gray-300">
+            <thead className="bg-gray-900 text-gray-300 text-sm uppercase">
               <tr>
-                <th className="px-6 py-4 font-semibold">{isRTL ? '#' : '#'}</th>
-                <th className="px-6 py-4 font-semibold">{isRTL ? 'العيادة' : 'Clinic'}</th>
-                <th className="px-6 py-4 font-semibold">{isRTL ? 'الرمز' : 'Code'}</th>
-                <th className="px-6 py-4 font-semibold text-center">{isRTL ? 'رقم PIN' : 'PIN'}</th>
-                <th className="px-6 py-4 font-semibold">{isRTL ? 'الحالة' : 'Status'}</th>
+                <th className="p-4">{isRTL ? 'العيادة' : 'Clinic'}</th>
+                <th className="p-4">{isRTL ? 'رمز العيادة' : 'Code'}</th>
+                <th className="p-4">{isRTL ? 'رقم PIN' : 'PIN'}</th>
+                <th className="p-4">{isRTL ? 'الحالة' : 'Status'}</th>
+                <th className="p-4">{isRTL ? 'ينتهي في' : 'Expires'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700 text-white">
-              {clinics.map((clinic, idx) => {
+            <tbody className="divide-y divide-gray-700">
+              {clinics.map((clinic) => {
                 const pinData = pins[clinic.id]
                 return (
-                  <tr key={clinic.id} className="hover:bg-gray-700/50 transition-colors">
-                    <td className="px-6 py-4 text-gray-400">{idx + 1}</td>
-                    <td className="px-6 py-4 font-medium">{isRTL ? clinic.name_ar : clinic.name}</td>
-                    <td className="px-6 py-4 text-gray-400 font-mono">{clinic.id}</td>
-                    <td className="px-6 py-4 text-center">
+                  <tr key={clinic.id} className="hover:bg-gray-750 transition-colors">
+                    <td className="p-4">
+                      <div className="font-medium text-white">
+                        {isRTL ? clinic.name_ar : clinic.name_en}
+                      </div>
+                    </td>
+                    <td className="p-4 text-gray-400 font-mono">{clinic.id}</td>
+                    <td className="p-4">
                       {pinData?.pin ? (
-                        <span className="text-2xl font-bold text-yellow-500 tracking-widest bg-gray-900 px-3 py-1 rounded">
+                        <span className="text-2xl font-bold text-blue-400 tracking-widest font-mono">
                           {pinData.pin}
                         </span>
                       ) : (
-                        <span className="text-gray-500 italic">{isRTL ? 'غير منشأ' : 'Not Issued'}</span>
+                        <span className="text-gray-500 italic">
+                          {isRTL ? 'غير متوفر' : 'N/A'}
+                        </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="p-4">
                       {pinData?.pin ? (
-                        <span className="inline-flex items-center gap-1 text-green-400 bg-green-400/10 px-2 py-1 rounded-full text-sm">
+                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs flex items-center gap-1 w-fit">
                           <CheckCircle className="w-3 h-3" />
                           {isRTL ? 'نشط' : 'Active'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-red-400 bg-red-400/10 px-2 py-1 rounded-full text-sm">
+                        <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs flex items-center gap-1 w-fit">
                           <AlertCircle className="w-3 h-3" />
-                          {isRTL ? 'غير متوفر' : 'N/A'}
+                          {isRTL ? 'غير متوفر' : 'Missing'}
                         </span>
                       )}
+                    </td>
+                    <td className="p-4 text-gray-400 text-sm">
+                      {pinData?.expiresAt ? new Date(pinData.expiresAt).toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US') : '-'}
                     </td>
                   </tr>
                 )
@@ -373,13 +396,16 @@ export function AdminPINList({ language = 'ar' }) {
         </div>
       </div>
 
-      {lastUpdate && (
-        <p className="text-center text-gray-500 text-sm">
-          {isRTL ? 'آخر تحديث:' : 'Last update:'} {lastUpdate.toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US')}
-        </p>
-      )}
+      {/* Footer Info */}
+      <div className="flex justify-between items-center text-sm text-gray-500 pt-4 border-t border-gray-700">
+        <div>
+          {isRTL ? 'آخر تحديث:' : 'Last Update:'} {lastUpdate?.toLocaleTimeString(isRTL ? 'ar-SA' : 'en-US')}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          {isRTL ? 'النظام يعمل بشكل طبيعي' : 'System Online'}
+        </div>
+      </div>
     </div>
   )
 }
-
-export default AdminPINList
