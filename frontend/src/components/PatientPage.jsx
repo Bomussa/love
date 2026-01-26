@@ -84,12 +84,27 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
-  // دخول يدوي لأي عيادة
+  // ✅ دخول يدوي لأي عيادة - محسّن مع تسجيل وقت الدخول
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
+      
+      // تسجيل وقت الدخول الفعلي
+      const entryTime = new Date().toISOString();
+      
       // دخول الدور
-      await api.enterQueue(station.id, patientData.id, true)
+      const enterResult = await api.enterQueue(station.id, patientData.id, true, patientData.name, patientData.queueType)
+      
+      // التحقق من نجاح الدخول
+      if (enterResult && !enterResult.success && enterResult.error) {
+        setCurrentNotice({
+          type: 'error',
+          message: enterResult.error
+        })
+        setTimeout(() => setCurrentNotice(null), 5000)
+        setLoading(false)
+        return
+      }
       
       // جلب الموقع الفعلي من Backend
       const positionData = await api.getQueuePosition(station.id, patientData.id)
@@ -99,19 +114,39 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
-          current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
+          current: positionData.current_number,
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
-          entered_at: positionData.entered_at || new Date().toISOString() // حفظ وقت الدخول
+          entered_at: positionData.entered_at || entryTime // ✅ حفظ وقت الدخول الفعلي
         } : s))
+        
+        // إشعار بنجاح الدخول
+        setCurrentNotice({
+          type: 'success',
+          message: language === 'ar' 
+            ? `✅ تم الدخول بنجاح - رقمك ${positionData.display_number}`
+            : `✅ Entered successfully - Your # ${positionData.display_number}`
+        })
+        setTimeout(() => setCurrentNotice(null), 4000)
+      } else {
+        // في حالة عدم الحصول على بيانات الموقع، نستخدم بيانات الدخول
+        if (enterResult && enterResult.display_number) {
+          setActiveTicket({ clinicId: station.id, ticket: enterResult.display_number })
+          setStations(prev => prev.map(s => s.id === station.id ? {
+            ...s,
+            yourNumber: enterResult.display_number,
+            status: 'ready',
+            isEntered: true,
+            entered_at: entryTime
+          } : s))
+        }
       }
       
       setLoading(false)
     } catch (e) {
-      // console.error('Enter clinic failed:', e)
-      // استخدام نظام الإشعارات بدلاً من alert
+      console.error('Enter clinic failed:', e)
       setCurrentNotice({
         type: 'error',
         message: language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.'
