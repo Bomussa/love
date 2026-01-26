@@ -353,7 +353,7 @@ export function AdminPINList({ language = 'ar' }) {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {pinData?.status === 'active' ? (
+                      {pinData?.pin ? (
                         <span className="inline-flex items-center gap-1 text-green-400 bg-green-400/10 px-2 py-1 rounded-full text-sm">
                           <CheckCircle className="w-3 h-3" />
                           {isRTL ? 'نشط' : 'Active'}

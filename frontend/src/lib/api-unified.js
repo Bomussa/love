@@ -1515,7 +1515,6 @@ const api = {
       const { data: clinics, error: clinicsError } = await supabase
         .from('clinics')
         .select('id, name, name_ar')
-        .eq('is_active', true)
         .order('name_ar');
 
       if (clinicsError) throw clinicsError;
