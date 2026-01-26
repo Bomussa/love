@@ -21,6 +21,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [showStatistics, setShowStatistics] = useState(false)
   const [validationError, setValidationError] = useState('')
+  const [showUsageGuide, setShowUsageGuide] = useState(true)
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
@@ -360,6 +361,54 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
         onClose={() => setShowStatistics(false)}
         language={language}
       />
+      
+      {/* إشعار طريقة الاستخدام - يظهر فقط في صفحة الدخول */}
+      {showUsageGuide && !isAdminMode && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm animate-slide-in">
+          <div className="bg-purple-600 rounded-2xl shadow-2xl p-5 text-white border-2 border-white/20">
+            <button 
+              onClick={() => setShowUsageGuide(false)}
+              className="absolute top-2 right-2 text-white/80 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center"
+            >
+              ×
+            </button>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-4xl">👋</span>
+              <h3 className="text-xl font-bold">
+                {language === 'ar' ? 'مرحباً بك' : 'Welcome'}
+              </h3>
+            </div>
+            <div className="text-lg font-medium leading-relaxed">
+              {language === 'ar' ? (
+                <>
+                  📋 طريقة الاستخدام:<br/>
+                  1️⃣ أدخل رقمك العسكري<br/>
+                  2️⃣ اختر نوع الفحص<br/>
+                  3️⃣ تابع دورك على الشاشة<br/>
+                  4️⃣ ادخل العيادة عند حلول دورك
+                </>
+              ) : (
+                <>
+                  📋 How to use:<br/>
+                  1️⃣ Enter your military ID<br/>
+                  2️⃣ Select exam type<br/>
+                  3️⃣ Watch your turn on screen<br/>
+                  4️⃣ Enter clinic when it's your turn
+                </>
+              )}
+            </div>
+          </div>
+          <style>{`
+            @keyframes slide-in {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            .animate-slide-in {
+              animation: slide-in 0.3s ease-out;
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   )
 }
