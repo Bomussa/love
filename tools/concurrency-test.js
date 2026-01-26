@@ -1,7 +1,7 @@
 /**
  * Concurrency Test - اختبار التزامن
  * محاكاة 5+ مستخدمين يضغطون "أخذ دور" في نفس الثانية
- * 
+ *
  * التحقق من:
  * - لا تكرار في الأرقام
  * - لا فقدان
@@ -15,39 +15,39 @@ const CONCURRENT_USERS = parseInt(process.env.CONCURRENT_USERS) || 10;
 
 async function callQueueEngine(patientId) {
   const startTime = Date.now();
-  
+
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/queue-engine`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({
         action: 'enter_queue',
         clinic_id: TEST_CLINIC_ID,
-        patient_id: patientId
-      })
+        patient_id: patientId,
+      }),
     });
 
     const data = await response.json();
     const endTime = Date.now();
-    
+
     return {
       patientId,
       success: data.success,
       pin: data.data?.number || data.data?.pin,
       status: data.data?.status,
       duration: endTime - startTime,
-      error: data.error || data.reason
+      error: data.error || data.reason,
     };
   } catch (err) {
     return {
       patientId,
       success: false,
       error: err.message,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     };
   }
 }
@@ -62,12 +62,10 @@ async function runConcurrencyTest() {
 
   // إنشاء طلبات متزامنة
   const timestamp = Date.now();
-  const promises = Array.from({ length: CONCURRENT_USERS }, (_, i) => 
-    callQueueEngine(`test_patient_${timestamp}_${i}`)
-  );
+  const promises = Array.from({ length: CONCURRENT_USERS }, (_, i) => callQueueEngine(`test_patient_${timestamp}_${i}`));
 
   console.log('\n⏳ جاري تنفيذ الطلبات المتزامنة...\n');
-  
+
   const startTime = Date.now();
   const results = await Promise.all(promises);
   const totalTime = Date.now() - startTime;
@@ -76,9 +74,9 @@ async function runConcurrencyTest() {
   console.log('📊 النتائج:');
   console.log('-'.repeat(60));
 
-  const successfulResults = results.filter(r => r.success);
-  const failedResults = results.filter(r => !r.success);
-  const pins = successfulResults.map(r => r.pin).filter(p => p !== undefined);
+  const successfulResults = results.filter((r) => r.success);
+  const failedResults = results.filter((r) => !r.success);
+  const pins = successfulResults.map((r) => r.pin).filter((p) => p !== undefined);
   const uniquePins = [...new Set(pins)];
   const duplicatePins = pins.length - uniquePins.length;
 
@@ -89,7 +87,7 @@ async function runConcurrencyTest() {
     console.log(`${status} User ${i + 1}: ${pinInfo} (${r.duration}ms)`);
   });
 
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   console.log('📈 ملخص الاختبار:');
   console.log('='.repeat(60));
   console.log(`✅ ناجح: ${successfulResults.length}/${CONCURRENT_USERS}`);
@@ -100,7 +98,7 @@ async function runConcurrencyTest() {
   console.log(`📊 متوسط الوقت: ${Math.round(totalTime / CONCURRENT_USERS)}ms`);
 
   // الحكم النهائي
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   if (duplicatePins === 0 && failedResults.length === 0) {
     console.log('🎉 النتيجة: ✅ نجح الاختبار - لا تكرار ولا فقدان');
   } else if (duplicatePins > 0) {
@@ -117,16 +115,16 @@ async function runConcurrencyTest() {
     uniquePins: uniquePins.length,
     duplicates: duplicatePins,
     totalTime,
-    passed: duplicatePins === 0 && failedResults.length === 0
+    passed: duplicatePins === 0 && failedResults.length === 0,
   };
 }
 
 // تشغيل الاختبار
 runConcurrencyTest()
-  .then(result => {
+  .then((result) => {
     process.exit(result.passed ? 0 : 1);
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('❌ خطأ في الاختبار:', err);
     process.exit(1);
   });

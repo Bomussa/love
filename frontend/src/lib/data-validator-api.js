@@ -1,7 +1,7 @@
 /**
  * طبقة API الوسيطة للتحقق من البيانات
  * Data Validator API Middleware
- * 
+ *
  * ✅ التحقق من صحة البيانات قبل عرضها
  * ✅ معالجة الأخطاء تلقائياً
  * ✅ إرسال البيانات فوراً بدون تأخير
@@ -19,14 +19,14 @@ const VALIDATION_CONFIG = {
   timeout: 10000,
   enableRealTimeSync: true,
   blockFakeData: true,
-  logErrors: true
+  logErrors: true,
 };
 
 // قائمة الكلمات المحظورة للبيانات الوهمية
 const FAKE_DATA_PATTERNS = [
   'mock', 'fake', 'dummy', 'sample', 'test', 'example',
   'محمد أحمد', 'فاطمة علي', 'خالد محمود', // أسماء وهمية معروفة
-  '12345', '67890', '11223' // أرقام وهمية
+  '12345', '67890', '11223', // أرقام وهمية
 ];
 
 /**
@@ -46,9 +46,9 @@ class DataValidatorAPI {
    */
   isRealData(data) {
     if (!data) return false;
-    
+
     const dataStr = JSON.stringify(data).toLowerCase();
-    
+
     // التحقق من عدم وجود أنماط البيانات الوهمية
     for (const pattern of FAKE_DATA_PATTERNS) {
       if (dataStr.includes(pattern.toLowerCase())) {
@@ -56,7 +56,7 @@ class DataValidatorAPI {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -65,13 +65,13 @@ class DataValidatorAPI {
    */
   validateDataStructure(data, schema) {
     if (!data) return { valid: false, error: 'البيانات فارغة' };
-    
+
     if (Array.isArray(schema)) {
       if (!Array.isArray(data)) {
         return { valid: false, error: 'البيانات يجب أن تكون مصفوفة' };
       }
     }
-    
+
     return { valid: true };
   }
 
@@ -80,16 +80,16 @@ class DataValidatorAPI {
    */
   sanitizeData(data) {
     if (!data) return null;
-    
+
     if (Array.isArray(data)) {
-      return data.filter(item => {
+      return data.filter((item) => {
         // إزالة العناصر الفارغة أو غير الصالحة
         if (!item) return false;
         if (typeof item === 'object' && Object.keys(item).length === 0) return false;
         return true;
       });
     }
-    
+
     return data;
   }
 
@@ -99,85 +99,86 @@ class DataValidatorAPI {
   async fetchWithValidation(tableName, query = {}) {
     const startTime = Date.now();
     let lastError = null;
-    
+
     for (let attempt = 0; attempt < VALIDATION_CONFIG.maxRetries; attempt++) {
       try {
         this.connectionStatus = 'connecting';
-        
+
         // بناء الاستعلام
         let queryBuilder = supabase.from(tableName).select(query.select || '*');
-        
+
         // إضافة الفلاتر
         if (query.filters) {
           for (const [key, value] of Object.entries(query.filters)) {
             queryBuilder = queryBuilder.eq(key, value);
           }
         }
-        
+
         // إضافة الترتيب
         if (query.orderBy) {
-          queryBuilder = queryBuilder.order(query.orderBy.column, { 
-            ascending: query.orderBy.ascending ?? false 
+          queryBuilder = queryBuilder.order(query.orderBy.column, {
+            ascending: query.orderBy.ascending ?? false,
           });
         }
-        
+
         // إضافة الحد
         if (query.limit) {
           queryBuilder = queryBuilder.limit(query.limit);
         }
-        
+
         // تنفيذ الاستعلام
         const { data, error } = await queryBuilder;
-        
+
         if (error) throw error;
-        
+
         // التحقق من أن البيانات حقيقية
         if (VALIDATION_CONFIG.blockFakeData && !this.isRealData(data)) {
           console.warn('⚠️ تم حظر بيانات وهمية');
-          return { data: [], error: null, validated: true, blocked: true };
+          return {
+            data: [], error: null, validated: true, blocked: true,
+          };
         }
-        
+
         // تنظيف البيانات
         const sanitizedData = this.sanitizeData(data);
-        
+
         this.connectionStatus = 'connected';
         this.lastValidation = new Date();
         this.retryCount = 0;
-        
+
         const duration = Date.now() - startTime;
         console.log(`✅ [${tableName}] تم جلب ${sanitizedData?.length || 0} سجل في ${duration}ms`);
-        
-        return { 
-          data: sanitizedData || [], 
-          error: null, 
+
+        return {
+          data: sanitizedData || [],
+          error: null,
           validated: true,
           duration,
-          source: 'supabase'
+          source: 'supabase',
         };
-        
       } catch (error) {
         lastError = error;
         this.retryCount = attempt + 1;
-        
+
         console.warn(`⚠️ [${tableName}] محاولة ${attempt + 1}/${VALIDATION_CONFIG.maxRetries} فشلت:`, error.message);
-        
+
         if (attempt < VALIDATION_CONFIG.maxRetries - 1) {
-          await this.delay(VALIDATION_CONFIG.retryDelay * Math.pow(2, attempt));
+          await this.delay(VALIDATION_CONFIG.retryDelay * 2 ** attempt);
         }
       }
     }
-    
+
     // فشل جميع المحاولات
     this.connectionStatus = 'error';
     this.logError(tableName, lastError);
-    
+
     console.error(`❌ [${tableName}] فشل نهائي بعد ${VALIDATION_CONFIG.maxRetries} محاولات`);
-    
-    return { 
-      data: [], 
-      error: lastError, 
+
+    return {
+      data: [],
+      error: lastError,
       validated: false,
-      retryCount: this.retryCount
+      retryCount: this.retryCount,
     };
   }
 
@@ -186,18 +187,18 @@ class DataValidatorAPI {
    */
   async saveWithValidation(tableName, data, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       // التحقق من أن البيانات ليست وهمية
       if (VALIDATION_CONFIG.blockFakeData && !this.isRealData(data)) {
         throw new Error('لا يمكن حفظ بيانات وهمية');
       }
-      
+
       // تنظيف البيانات
       const sanitizedData = this.sanitizeData(data);
-      
+
       let result;
-      
+
       if (options.upsert) {
         result = await supabase.from(tableName).upsert(sanitizedData);
       } else if (options.update && options.match) {
@@ -207,27 +208,26 @@ class DataValidatorAPI {
       } else {
         result = await supabase.from(tableName).insert(sanitizedData);
       }
-      
+
       if (result.error) throw result.error;
-      
+
       const duration = Date.now() - startTime;
       console.log(`✅ [${tableName}] تم الحفظ بنجاح في ${duration}ms`);
-      
-      return { 
-        success: true, 
-        data: result.data, 
+
+      return {
+        success: true,
+        data: result.data,
         error: null,
-        duration 
+        duration,
       };
-      
     } catch (error) {
       this.logError(tableName, error);
       console.error(`❌ [${tableName}] فشل الحفظ:`, error.message);
-      
-      return { 
-        success: false, 
-        data: null, 
-        error: error.message 
+
+      return {
+        success: false,
+        data: null,
+        error: error.message,
       };
     }
   }
@@ -238,12 +238,11 @@ class DataValidatorAPI {
   async deleteWithValidation(tableName, match) {
     try {
       const { error } = await supabase.from(tableName).delete().match(match);
-      
+
       if (error) throw error;
-      
+
       console.log(`✅ [${tableName}] تم الحذف بنجاح`);
       return { success: true, error: null };
-      
     } catch (error) {
       this.logError(tableName, error);
       console.error(`❌ [${tableName}] فشل الحذف:`, error.message);
@@ -257,11 +256,12 @@ class DataValidatorAPI {
   subscribeToRealtime(tableName, callback) {
     const channel = supabase
       .channel(`${tableName}_changes`)
-      .on('postgres_changes', 
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: tableName },
         (payload) => {
           console.log(`🔄 [${tableName}] تحديث لحظي:`, payload.eventType);
-          
+
           // التحقق من البيانات قبل إرسالها
           if (VALIDATION_CONFIG.blockFakeData && payload.new) {
             if (!this.isRealData(payload.new)) {
@@ -269,14 +269,14 @@ class DataValidatorAPI {
               return;
             }
           }
-          
+
           callback(payload);
-        }
+        },
       )
       .subscribe();
-    
+
     this.subscribers.set(tableName, channel);
-    
+
     return () => {
       channel.unsubscribe();
       this.subscribers.delete(tableName);
@@ -303,12 +303,11 @@ class DataValidatorAPI {
         .from('clinics')
         .select('id')
         .limit(1);
-      
+
       if (error) throw error;
-      
+
       this.connectionStatus = 'connected';
       return { healthy: true, status: 'connected' };
-      
     } catch (error) {
       this.connectionStatus = 'error';
       return { healthy: false, status: 'error', error: error.message };
@@ -320,14 +319,14 @@ class DataValidatorAPI {
    */
   logError(context, error) {
     if (!VALIDATION_CONFIG.logErrors) return;
-    
+
     this.errorLog.push({
       timestamp: new Date().toISOString(),
       context,
       message: error.message || error,
-      stack: error.stack
+      stack: error.stack,
     });
-    
+
     // الاحتفاظ بآخر 100 خطأ فقط
     if (this.errorLog.length > 100) {
       this.errorLog = this.errorLog.slice(-100);
@@ -352,7 +351,7 @@ class DataValidatorAPI {
    * تأخير
    */
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -364,7 +363,7 @@ class DataValidatorAPI {
       lastValidation: this.lastValidation,
       retryCount: this.retryCount,
       subscribersCount: this.subscribers.size,
-      errorCount: this.errorLog.length
+      errorCount: this.errorLog.length,
     };
   }
 }
@@ -381,7 +380,7 @@ export async function fetchQueues(filters = {}) {
   return dataValidator.fetchWithValidation('queues', {
     select: '*',
     filters,
-    orderBy: { column: 'entered_at', ascending: false }
+    orderBy: { column: 'entered_at', ascending: false },
   });
 }
 
@@ -390,7 +389,7 @@ export async function fetchClinics(filters = {}) {
   return dataValidator.fetchWithValidation('clinics', {
     select: '*',
     filters,
-    orderBy: { column: 'order_index', ascending: true }
+    orderBy: { column: 'order_index', ascending: true },
   });
 }
 
@@ -398,13 +397,13 @@ export async function fetchClinics(filters = {}) {
 export async function fetchNotifications(patientId = null) {
   const query = {
     select: '*',
-    orderBy: { column: 'created_at', ascending: false }
+    orderBy: { column: 'created_at', ascending: false },
   };
-  
+
   if (patientId) {
     query.filters = { patient_id: patientId };
   }
-  
+
   return dataValidator.fetchWithValidation('notifications', query);
 }
 
@@ -412,26 +411,26 @@ export async function fetchNotifications(patientId = null) {
 export async function fetchPatientRoutes(patientId = null) {
   const query = {
     select: '*',
-    orderBy: { column: 'created_at', ascending: false }
+    orderBy: { column: 'created_at', ascending: false },
   };
-  
+
   if (patientId) {
     query.filters = { patient_id: patientId };
   }
-  
+
   return dataValidator.fetchWithValidation('patient_routes', query);
 }
 
 // جلب الأرقام السرية
 export async function fetchPins(clinicId = null) {
   const query = {
-    select: '*'
+    select: '*',
   };
-  
+
   if (clinicId) {
     query.filters = { clinic_id: clinicId };
   }
-  
+
   return dataValidator.fetchWithValidation('pins', query);
 }
 
@@ -444,7 +443,7 @@ export async function saveToQueue(data) {
 export async function updateQueue(id, data) {
   return dataValidator.saveWithValidation('queues', data, {
     update: true,
-    match: { id }
+    match: { id },
   });
 }
 

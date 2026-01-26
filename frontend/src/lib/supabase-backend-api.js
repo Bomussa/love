@@ -39,19 +39,19 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
       .from('settings')
       .select('key, value')
       .in('key', ['prevent_duplicate_patient_daily', 'prevent_duplicate_device_daily']);
-    
+
     const settings = {};
     if (settingsData) {
-      settingsData.forEach(s => { settings[s.key] = s.value; });
+      settingsData.forEach((s) => { settings[s.key] = s.value; });
     }
-    
+
     const today = getTodayDateKey();
-    
+
     // التحقق من عدم تكرار الرقم العسكري/الشخصي في نفس اليوم (إذا كان مفعلاً)
     if (settings.prevent_duplicate_patient_daily !== false) {
-      const todayStart = today + 'T00:00:00';
-      const todayEnd = today + 'T23:59:59';
-      
+      const todayStart = `${today}T00:00:00`;
+      const todayEnd = `${today}T23:59:59`;
+
       const { data: existingEntry, error: checkError } = await supabase
         .from('unified_queue')
         .select('id, patient_id, entered_at')
@@ -59,21 +59,21 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
         .gte('entered_at', todayStart)
         .lte('entered_at', todayEnd)
         .limit(1);
-      
+
       if (checkError) {
         console.error('[patientLogin] Check error:', checkError);
       }
-      
+
       if (existingEntry && existingEntry.length > 0) {
         return {
           success: false,
           error: 'ALREADY_REGISTERED_TODAY',
           message: 'هذا الرقم مسجل بالفعل اليوم. يمكنك الدخول لفحص جديد غداً.',
-          messageEn: 'This ID is already registered today. You can register again tomorrow.'
+          messageEn: 'This ID is already registered today. You can register again tomorrow.',
         };
       }
     }
-    
+
     // التحقق من عدم استخدام الجهاز لرقم مختلف في نفس اليوم (إذا كان مفعلاً)
     if (settings.prevent_duplicate_device_daily !== false && deviceFingerprint) {
       const { data: deviceLogin, error: deviceError } = await supabase
@@ -82,11 +82,11 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
         .eq('device_fingerprint', deviceFingerprint)
         .eq('login_date', today)
         .limit(1);
-      
+
       if (deviceError) {
         console.error('[patientLogin] Device check error:', deviceError);
       }
-      
+
       // إذا كان الجهاز مسجل برقم مختلف اليوم
       if (deviceLogin && deviceLogin.length > 0 && deviceLogin[0].patient_id !== patientId) {
         return {
@@ -94,26 +94,26 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
           error: 'DEVICE_ALREADY_USED',
           message: `هذا الجهاز مسجل بالفعل برقم آخر (${deviceLogin[0].patient_id}) اليوم. يمكنك الدخول بنفس الرقم أو استخدام جهاز آخر.`,
           messageEn: `This device is already registered with another ID (${deviceLogin[0].patient_id}) today. You can use the same ID or use another device.`,
-          registeredPatientId: deviceLogin[0].patient_id
+          registeredPatientId: deviceLogin[0].patient_id,
         };
       }
     }
-    
+
     // استخدام API Router مباشرة
     const response = await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-router/patient/login', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ patientId, gender, deviceFingerprint })
+      body: JSON.stringify({ patientId, gender, deviceFingerprint }),
     });
 
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Login failed');
     }
-    
+
     // تسجيل دخول الجهاز في جدول device_logins
     if (deviceFingerprint) {
       try {
@@ -125,7 +125,7 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
           .eq('patient_id', patientId)
           .eq('login_date', today)
           .limit(1);
-        
+
         // إذا لم يكن مسجل، أضفه
         if (!existingDeviceLogin || existingDeviceLogin.length === 0) {
           await supabase
@@ -134,7 +134,7 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
               device_fingerprint: deviceFingerprint,
               patient_id: patientId,
               login_date: today,
-              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
             }]);
         }
       } catch (deviceLogError) {
@@ -151,8 +151,8 @@ export async function patientLogin(patientId, gender, deviceFingerprint = null) 
         gender: result.data.gender,
         sessionId: result.data.sessionId,
         loginTime: result.data.loginTime,
-        patient: result.data.patient
-      }
+        patient: result.data.patient,
+      },
     };
   } catch (error) {
     console.error('[patientLogin] Error:', error);
@@ -177,7 +177,7 @@ export async function getClinics() {
   } catch (error) {
     console.error('[getClinics] Error:', error);
     return { success: false, error: error.message, clinics: [] };
-   }
+  }
 }
 
 export async function getQueuePosition(clinicId, patientId) {
@@ -195,7 +195,7 @@ export async function getQueuePosition(clinicId, patientId) {
     if (!queueEntry) {
       return {
         success: false,
-        error: 'Not in queue'
+        error: 'Not in queue',
       };
     }
 
@@ -214,13 +214,13 @@ export async function getQueuePosition(clinicId, patientId) {
       position: queueEntry.position,
       ahead: count || 0,
       status: queueEntry.status,
-      display_number: queueEntry.display_number
+      display_number: queueEntry.display_number,
     };
   } catch (error) {
     console.error('[getQueuePosition] Error:', error);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -244,7 +244,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
       return {
         success: true,
         message: 'Already in queue',
-        data: existing
+        data: existing,
       };
     }
 
@@ -267,7 +267,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
       .maybeSingle();
 
     let newDisplayNumber;
-    
+
     if (!counter) {
       // إنشاء عداد جديد للعيادة
       const { data: newCounter } = await supabase
@@ -298,7 +298,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
         display_number: newDisplayNumber, // رقم تسلسلي ثابت خاص بكل عيادة
         status: 'waiting',
         entered_at: new Date().toISOString(),
-        exam_type: 'general'
+        exam_type: 'general',
       }])
       .select()
       .single();
@@ -308,7 +308,7 @@ export async function enterQueue(clinicId, patientId, patientName = 'مراجع'
     return {
       success: true,
       data: queueEntry,
-      position: newPosition
+      position: newPosition,
     };
   } catch (error) {
     console.error('[enterQueue] Error:', error);
@@ -324,7 +324,7 @@ export async function getQueueCount(clinicId) {
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinicId)
       .eq('status', 'waiting');
-    
+
     if (error) {
       console.error('[getQueueCount] Error:', error);
       return 0;
@@ -339,7 +339,7 @@ export async function getQueueCount(clinicId) {
 export async function getQueueStatus(clinicId) {
   try {
     const today = getTodayDateKey();
-    
+
     // جلب جميع عناصر الطابور للعيادة
     const { data: allQueue, error } = await supabase
       .from('unified_queue')
@@ -350,11 +350,11 @@ export async function getQueueStatus(clinicId) {
     if (error) throw error;
 
     const queue = allQueue || [];
-    
+
     // تصنيف حسب الحالة
-    const waiting = queue.filter(q => q.status === 'waiting');
-    const inService = queue.filter(q => q.status === 'called' || q.status === 'in_service');
-    const completed = queue.filter(q => q.status === 'completed');
+    const waiting = queue.filter((q) => q.status === 'waiting');
+    const inService = queue.filter((q) => q.status === 'called' || q.status === 'in_service');
+    const completed = queue.filter((q) => q.status === 'completed');
 
     // تحويل البيانات للتنسيق المطلوب
     const formatEntry = (entry) => ({
@@ -365,7 +365,7 @@ export async function getQueueStatus(clinicId) {
       issuedAt: entry.entered_at,
       calledAt: entry.called_at,
       doneAt: entry.completed_at,
-      status: entry.status
+      status: entry.status,
     });
 
     return {
@@ -375,23 +375,25 @@ export async function getQueueStatus(clinicId) {
       waiting: waiting.map(formatEntry),
       in: inService.map(formatEntry),
       done: completed.map(formatEntry),
-      queue: queue,
+      queue,
       stats: {
         totalWaiting: waiting.length,
         totalIn: inService.length,
         totalDone: completed.length,
-        totalToday: queue.length
-      }
+        totalToday: queue.length,
+      },
     };
   } catch (error) {
     console.error('[getQueueStatus] Error:', error);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message,
       waiting: [],
       in: [],
       done: [],
-      stats: { totalWaiting: 0, totalIn: 0, totalDone: 0, totalToday: 0 }
+      stats: {
+        totalWaiting: 0, totalIn: 0, totalDone: 0, totalToday: 0,
+      },
     };
   }
 }
@@ -407,9 +409,9 @@ export async function callNextPatient(clinicId, pin) {
     // إنهاء أي مريض قيد الخدمة حالياً
     await supabase
       .from('unified_queue')
-      .update({ 
-        status: 'completed', 
-        completed_at: new Date().toISOString() 
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
       })
       .eq('clinic_id', clinicId)
       .in('status', ['called', 'in_service']);
@@ -433,9 +435,9 @@ export async function callNextPatient(clinicId, pin) {
     // تحديث حالة المريض التالي
     const { data: calledPatient, error: updateError } = await supabase
       .from('unified_queue')
-      .update({ 
-        status: 'called', 
-        called_at: new Date().toISOString() 
+      .update({
+        status: 'called',
+        called_at: new Date().toISOString(),
       })
       .eq('id', nextPatient.id)
       .select()
@@ -446,7 +448,7 @@ export async function callNextPatient(clinicId, pin) {
     return {
       success: true,
       data: calledPatient,
-      message: `تم استدعاء المريض رقم ${calledPatient.position}`
+      message: `تم استدعاء المريض رقم ${calledPatient.position}`,
     };
   } catch (error) {
     console.error('[callNextPatient] Error:', error);
@@ -464,9 +466,9 @@ export async function queueDone(clinicId, patientId, pin) {
 
     const { data, error } = await supabase
       .from('unified_queue')
-      .update({ 
-        status: 'completed', 
-        completed_at: new Date().toISOString() 
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
       })
       .eq('clinic_id', clinicId)
       .eq('patient_id', patientId)
@@ -492,17 +494,19 @@ export async function getPatientPosition(clinicId, patientId) {
       .eq('status', 'waiting')
       .order('position', { ascending: true });
 
-    const position = queue?.findIndex(q => q.patient_id === patientId);
-    
+    const position = queue?.findIndex((q) => q.patient_id === patientId);
+
     if (position === -1 || position === undefined) {
-      return { success: true, position: 0, ahead: 0, displayNumber: 0 };
+      return {
+        success: true, position: 0, ahead: 0, displayNumber: 0,
+      };
     }
 
     return {
       success: true,
       position: position + 1,
       ahead: position,
-      displayNumber: queue[position]?.position || 0
+      displayNumber: queue[position]?.position || 0,
     };
   } catch (error) {
     console.error('[getPatientPosition] Error:', error);
@@ -531,7 +535,7 @@ export async function getCurrentPin(clinicId) {
         currentPin: null,
         totalIssued: 0,
         dateKey: getTodayDateKey(),
-        allPins: []
+        allPins: [],
       };
     }
 
@@ -545,7 +549,7 @@ export async function getCurrentPin(clinicId) {
       dateKey: getTodayDateKey(),
       allPins: clinic.pin_code ? [clinic.pin_code] : [],
       expiresAt: clinic.pin_expires_at,
-      isActive: isActive
+      isActive,
     };
   } catch (error) {
     console.error('[getCurrentPin] Error:', error);
@@ -564,7 +568,7 @@ export async function getAllPins() {
     if (error) throw error;
 
     const now = new Date();
-    const pins = (clinics || []).map(clinic => {
+    const pins = (clinics || []).map((clinic) => {
       const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null;
       const isActive = clinic.pin_code && expires && expires > now;
 
@@ -574,9 +578,9 @@ export async function getAllPins() {
         clinic_id: clinic.id,
         clinicName: clinic.name_ar || clinic.name_en,
         status: isActive ? 'active' : 'expired',
-        expiresAt: clinic.pin_expires_at
+        expiresAt: clinic.pin_expires_at,
       };
-    }).filter(p => p.currentPin);
+    }).filter((p) => p.currentPin);
 
     return { success: true, pins };
   } catch (error) {
@@ -597,7 +601,7 @@ export async function getPinStatus() {
     const pinStatus = {};
     const now = new Date();
 
-    (clinics || []).forEach(clinic => {
+    (clinics || []).forEach((clinic) => {
       const expires = clinic.pin_expires_at ? new Date(clinic.pin_expires_at) : null;
       const isActive = clinic.pin_code && expires && expires > now;
 
@@ -606,8 +610,8 @@ export async function getPinStatus() {
         clinicName: clinic.name_ar || clinic.name_en,
         pin: clinic.pin_code || null,
         expiresAt: clinic.pin_expires_at,
-        isActive: isActive,
-        isExpired: expires ? expires <= now : true
+        isActive,
+        isExpired: expires ? expires <= now : true,
       };
     });
 
@@ -622,7 +626,7 @@ export async function issuePin(clinicId) {
   try {
     // توليد PIN عشوائي من 2 رقم
     const newPin = String(Math.floor(Math.random() * 99) + 1).padStart(2, '0');
-    
+
     // تحديد وقت الانتهاء (نهاية اليوم)
     const now = new Date();
     const expiresAt = new Date(now);
@@ -632,7 +636,7 @@ export async function issuePin(clinicId) {
       .from('clinics')
       .update({
         pin_code: newPin,
-        pin_expires_at: expiresAt.toISOString()
+        pin_expires_at: expiresAt.toISOString(),
       })
       .eq('id', clinicId)
       .select()
@@ -644,7 +648,7 @@ export async function issuePin(clinicId) {
       success: true,
       pin: newPin,
       expiresAt: expiresAt.toISOString(),
-      clinicId: clinicId
+      clinicId,
     };
   } catch (error) {
     console.error('[issuePin] Error:', error);
@@ -691,11 +695,11 @@ export async function addNotification(patientId, message, type = 'info', title =
       .from('notifications')
       .insert([{
         patient_id: patientId,
-        message: message,
-        title: title,
-        type: type,
+        message,
+        title,
+        type,
         is_read: false,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       }])
       .select()
       .single();
@@ -754,24 +758,24 @@ export async function createPathway(patientId, gender, examType = 'general') {
   try {
     // تحديد المسار حسب نوع الفحص والجنس
     const pathways = {
-      'recruitment': ['lab', 'vitals', 'dental', 'eye', 'ent', 'surgery', 'internal', 'final'],
-      'promotion': ['lab', 'vitals', 'internal', 'final'],
-      'general': ['lab', 'vitals', 'internal', 'final'],
-      'transfer': ['lab', 'vitals', 'surgery', 'final']
+      recruitment: ['lab', 'vitals', 'dental', 'eye', 'ent', 'surgery', 'internal', 'final'],
+      promotion: ['lab', 'vitals', 'internal', 'final'],
+      general: ['lab', 'vitals', 'internal', 'final'],
+      transfer: ['lab', 'vitals', 'surgery', 'final'],
     };
 
-    const steps = pathways[examType] || pathways['general'];
+    const steps = pathways[examType] || pathways.general;
 
     const { data: route, error } = await supabase
       .from('routes')
       .insert([{
         patient_id: patientId,
-        gender: gender,
+        gender,
         exam_type: examType,
         status: 'active',
         current_step: 0,
         total_steps: steps.length,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       }])
       .select()
       .single();
@@ -789,7 +793,7 @@ export async function createPathway(patientId, gender, examType = 'general') {
       route_id: route.id,
       clinic_id: clinicId,
       step_order: index + 1,
-      status: index === 0 ? 'current' : 'pending'
+      status: index === 0 ? 'current' : 'pending',
     }));
 
     await supabase.from('route_steps').insert(routeSteps);
@@ -813,7 +817,7 @@ export async function getPathway(patientId) {
       .maybeSingle();
 
     if (queueError) throw queueError;
-    
+
     if (!queueEntry || !queueEntry.exam_type) {
       return { success: false, error: 'لا يوجد نوع فحص للمريض' };
     }
@@ -832,7 +836,7 @@ export async function getPathway(patientId) {
       return { success: false, error: 'لا يوجد مسار نشط' };
     }
 
-    return { success: true, pathway: route, route: route };
+    return { success: true, pathway: route, route };
   } catch (error) {
     console.error('[getPathway] Error:', error);
     return { success: false, error: error.message };
@@ -849,7 +853,7 @@ export async function updatePathwayStep(patientId, stepId, status = 'completed')
     // تحديث الخطوة الحالية
     const { error: stepError } = await supabase
       .from('route_steps')
-      .update({ status: status, completed_at: new Date().toISOString() })
+      .update({ status, completed_at: new Date().toISOString() })
       .eq('id', stepId);
 
     if (stepError) throw stepError;
@@ -863,7 +867,7 @@ export async function updatePathwayStep(patientId, stepId, status = 'completed')
       .single();
 
     if (route) {
-      const completedSteps = route.route_steps.filter(s => s.status === 'completed').length;
+      const completedSteps = route.route_steps.filter((s) => s.status === 'completed').length;
       await supabase
         .from('routes')
         .update({ current_step: completedSteps })
@@ -884,7 +888,7 @@ export async function updatePathwayStep(patientId, stepId, status = 'completed')
 export async function getAdminStatus() {
   try {
     const today = getTodayDateKey();
-    
+
     // إحصائيات الطوابير
     const { data: queueStats } = await supabase
       .from('unified_queue')
@@ -893,9 +897,9 @@ export async function getAdminStatus() {
 
     const stats = {
       totalToday: queueStats?.length || 0,
-      waiting: queueStats?.filter(q => q.status === 'waiting').length || 0,
-      inService: queueStats?.filter(q => ['called', 'in_service'].includes(q.status)).length || 0,
-      completed: queueStats?.filter(q => q.status === 'completed').length || 0
+      waiting: queueStats?.filter((q) => q.status === 'waiting').length || 0,
+      inService: queueStats?.filter((q) => ['called', 'in_service'].includes(q.status)).length || 0,
+      completed: queueStats?.filter((q) => q.status === 'completed').length || 0,
     };
 
     // عدد العيادات النشطة
@@ -922,7 +926,7 @@ export async function getAdminStatus() {
       totalPatients: stats.totalToday,
       waitingPatients: stats.waiting,
       completedToday: stats.completed,
-      activeQueues: stats.inService
+      activeQueues: stats.inService,
     };
   } catch (error) {
     console.error('[getAdminStatus] Error:', error);
@@ -933,7 +937,7 @@ export async function getAdminStatus() {
       waiting: 0,
       completed: 0,
       activeClinics: 0,
-      activePins: 0
+      activePins: 0,
     };
   }
 }
@@ -941,7 +945,7 @@ export async function getAdminStatus() {
 export async function getDailyReport(date = null) {
   try {
     const targetDate = date || getTodayDateKey();
-    
+
     // جلب بيانات الطوابير لليوم المحدد
     const { data: queueData, error } = await supabase
       .from('unified_queue')
@@ -954,7 +958,7 @@ export async function getDailyReport(date = null) {
 
     // تجميع الإحصائيات حسب العيادة
     const clinicStats = {};
-    (queueData || []).forEach(entry => {
+    (queueData || []).forEach((entry) => {
       const clinicId = entry.clinic_id;
       if (!clinicStats[clinicId]) {
         clinicStats[clinicId] = {
@@ -964,17 +968,17 @@ export async function getDailyReport(date = null) {
           waiting: 0,
           completed: 0,
           avgWaitTime: 0,
-          waitTimes: []
+          waitTimes: [],
         };
       }
-      
+
       clinicStats[clinicId].total++;
-      
+
       if (entry.status === 'waiting') {
         clinicStats[clinicId].waiting++;
       } else if (entry.status === 'completed') {
         clinicStats[clinicId].completed++;
-        
+
         // حساب وقت الانتظار
         if (entry.entered_at && entry.completed_at) {
           const waitTime = (new Date(entry.completed_at) - new Date(entry.entered_at)) / 1000 / 60;
@@ -984,10 +988,10 @@ export async function getDailyReport(date = null) {
     });
 
     // حساب متوسط وقت الانتظار
-    Object.values(clinicStats).forEach(stat => {
+    Object.values(clinicStats).forEach((stat) => {
       if (stat.waitTimes.length > 0) {
         stat.avgWaitTime = Math.round(
-          stat.waitTimes.reduce((a, b) => a + b, 0) / stat.waitTimes.length
+          stat.waitTimes.reduce((a, b) => a + b, 0) / stat.waitTimes.length,
         );
       }
       delete stat.waitTimes;
@@ -998,11 +1002,13 @@ export async function getDailyReport(date = null) {
       date: targetDate,
       total: queueData?.length || 0,
       clinics: Object.values(clinicStats),
-      rawData: queueData
+      rawData: queueData,
     };
   } catch (error) {
     console.error('[getDailyReport] Error:', error);
-    return { success: false, error: error.message, total: 0, clinics: [] };
+    return {
+      success: false, error: error.message, total: 0, clinics: [],
+    };
   }
 }
 
@@ -1022,7 +1028,7 @@ export async function getWeeklyReport() {
 
     // تجميع حسب اليوم
     const dailyStats = {};
-    (data || []).forEach(entry => {
+    (data || []).forEach((entry) => {
       const day = entry.entered_at.split('T')[0];
       if (!dailyStats[day]) {
         dailyStats[day] = { date: day, total: 0, completed: 0 };
@@ -1036,7 +1042,7 @@ export async function getWeeklyReport() {
     return {
       success: true,
       days: Object.values(dailyStats),
-      totalWeek: data?.length || 0
+      totalWeek: data?.length || 0,
     };
   } catch (error) {
     console.error('[getWeeklyReport] Error:', error);
@@ -1061,7 +1067,7 @@ export async function getMonthlyReport() {
     return {
       success: true,
       totalMonth: data?.length || 0,
-      completed: data?.filter(d => d.status === 'completed').length || 0
+      completed: data?.filter((d) => d.status === 'completed').length || 0,
     };
   } catch (error) {
     console.error('[getMonthlyReport] Error:', error);
@@ -1077,9 +1083,9 @@ export async function adminLogin(username, password) {
   // تسجيل دخول الإدارة - السوبر أدمن: Bomussa / 14490
   // اسم المستخدم غير حساس لحالة الأحرف
   if (username.toLowerCase() === 'bomussa' && password === '14490') {
-    return { success: true, token: 'admin-token-' + Date.now(), role: 'SUPER_ADMIN' };
+    return { success: true, token: `admin-token-${Date.now()}`, role: 'SUPER_ADMIN' };
   }
-  
+
   // التحقق من المستخدمين الآخرين من قاعدة البيانات
   try {
     const { data, error } = await supabase
@@ -1088,14 +1094,14 @@ export async function adminLogin(username, password) {
       .ilike('username', username)
       .eq('is_active', true)
       .single();
-    
+
     if (data && data.password === password) {
-      return { success: true, token: 'admin-token-' + Date.now(), role: data.role || 'ADMIN' };
+      return { success: true, token: `admin-token-${Date.now()}`, role: data.role || 'ADMIN' };
     }
   } catch (e) {
     console.log('[AdminLogin] DB check failed, using fallback');
   }
-  
+
   return { success: false, error: 'بيانات الدخول غير صحيحة' };
 }
 
@@ -1112,11 +1118,11 @@ export function subscribeToQueue(clinicId, callback) {
         event: '*',
         schema: 'public',
         table: 'queue',
-        filter: `clinic_id=eq.${clinicId}`
+        filter: `clinic_id=eq.${clinicId}`,
       },
       (payload) => {
         callback(payload);
-      }
+      },
     )
     .subscribe();
 
@@ -1134,11 +1140,11 @@ export function subscribeToNotifications(patientId, callback) {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        filter: `patient_id=eq.${patientId}`
+        filter: `patient_id=eq.${patientId}`,
       },
       (payload) => {
         callback(payload.new);
-      }
+      },
     )
     .subscribe();
 
@@ -1154,10 +1160,10 @@ export function subscribeToNotifications(patientId, callback) {
 export default {
   // Patient
   patientLogin,
-  
+
   // Clinics
   getClinics,
-  
+
   // Queue
   enterQueue,
   getQueueStatus,
@@ -1166,35 +1172,35 @@ export default {
   queueDone,
   getPatientPosition,
   subscribeToQueue,
-  
+
   // PIN
   getCurrentPin,
   getAllPins,
   getPinStatus,
   issuePin,
   verifyPin,
-  
+
   // Notifications
   addNotification,
   getNotifications,
   markNotificationRead,
   subscribeToNotifications,
-  
+
   // Pathways
   createPathway,
   getPathway,
   getRoute,
   updatePathwayStep,
-  
+
   // Reports
   getAdminStatus,
   getDailyReport,
   getWeeklyReport,
   getMonthlyReport,
-  
+
   // Admin
   adminLogin,
-  
+
   // Queue Count
-  getQueueCount
+  getQueueCount,
 };

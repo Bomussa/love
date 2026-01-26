@@ -11,7 +11,7 @@ export const translations = {
     male: 'ذكر',
     female: 'أنثى',
     confirm: 'تأكيد',
-    
+
     // Exam Selection
     selectExamType: 'اختر نوع الفحص',
     recruitmentExam: 'فحص التجنيد',
@@ -22,7 +22,7 @@ export const translations = {
     aviationExam: 'الفحص الطبي للطيران',
     cooksExam: 'فحص العاملين بالتغذية',
     coursesExam: 'فحص الدورات التدريبية',
-    
+
     // Patient Page
     yourMedicalRoute: 'مسارك الطبي',
     exam: 'الفحص',
@@ -39,7 +39,7 @@ export const translations = {
     enterClinic: 'دخول العيادة',
     exitClinic: 'خروج من العيادة',
     ticketNumber: 'رقم الدور',
-    
+
     // Clinics
     laboratory: 'المختبر',
     laboratoryRadiology: 'المختبر والأشعة',
@@ -54,13 +54,13 @@ export const translations = {
     ecg: 'تخطيط القلب',
     audiology: 'السمعيات',
     dermatology: 'الجلدية',
-    
+
     // Floors
     mezzanine: 'الميزانين',
     floor1: 'الطابق الأول',
     floor2: 'الطابق الثاني',
     floor3: 'الطابق الثالث',
-    
+
     // Notifications
     patientCalled: 'تم استدعاء المريض',
     yourTurn: 'دورك الآن',
@@ -71,7 +71,7 @@ export const translations = {
     loginSuccess: 'تم تسجيل الدخول بنجاح',
     loginFailed: 'فشل تسجيل الدخول',
     examSelected: 'تم اختيار نوع الفحص',
-    
+
     // Admin
     dashboard: 'لوحة التحكم',
     queueManagement: 'إدارة الطوابير',
@@ -88,13 +88,13 @@ export const translations = {
     noReports: 'لا توجد تقارير',
     logout: 'تسجيل الخروج',
     home: 'الرئيسية',
-    
+
     // Statistics
     todayPatients: 'مرضى اليوم',
     weekPatients: 'مرضى الأسبوع',
     monthPatients: 'مرضى الشهر',
     completionRate: 'نسبة الإنجاز',
-    
+
     // Users Management
     users: 'المستخدمون',
     permissions: 'الصلاحيات',
@@ -110,7 +110,7 @@ export const translations = {
     viewer: 'مشاهد',
     active: 'نشط',
     inactive: 'غير نشط',
-    
+
     // Actions
     save: 'حفظ',
     cancel: 'إلغاء',
@@ -122,21 +122,21 @@ export const translations = {
     export: 'تصدير',
     search: 'بحث',
     filter: 'تصفية',
-    
+
     // Status
     status: 'الحالة',
     enabled: 'مفعل',
     disabled: 'معطل',
     online: 'متصل',
     offline: 'غير متصل',
-    
+
     // Time
     minutes: 'دقيقة',
     hours: 'ساعة',
     today: 'اليوم',
     week: 'الأسبوع',
     month: 'الشهر',
-    
+
     // Themes
     classic: 'كلاسيكي',
     mintMedical: 'طبي نعناعي',
@@ -144,7 +144,7 @@ export const translations = {
     desertGold: 'ذهبي صحراوي',
     medicalRose: 'وردي طبي',
     nightShift: 'المناوبة الليلية',
-    
+
     // Messages
     note: 'ملاحظة',
     registerAtReception: 'يجب التسجيل من استقبال العطار',
@@ -153,13 +153,13 @@ export const translations = {
     error: 'حدث خطأ',
     success: 'تمت العملية بنجاح',
     confirmDelete: 'هل أنت متأكد من الحذف؟',
-    
+
     // Medical Committee
     militaryMedicalCommittee: 'اللجنة الطبية العسكرية',
     medicalServicesCommand: 'قيادة الخدمات الطبية العسكرية',
-    specializedMedicalCenter: 'المركز الطبي التخصصي العسكري - العطار'
+    specializedMedicalCenter: 'المركز الطبي التخصصي العسكري - العطار',
   },
-  
+
   en: {
     // Login Page
     welcome: 'Welcome to Medical Committee System',
@@ -169,7 +169,7 @@ export const translations = {
     male: 'Male',
     female: 'Female',
     confirm: 'Confirm',
-    
+
     // Exam Selection
     selectExamType: 'Select Examination Type',
     recruitmentExam: 'Recruitment Medical Exam',
@@ -180,7 +180,7 @@ export const translations = {
     aviationExam: 'Aviation Medical Exam',
     cooksExam: 'Food Handlers Medical Exam',
     coursesExam: 'Training Courses Medical Exam',
-    
+
     // Patient Page
     yourMedicalRoute: 'Your Medical Pathway',
     exam: 'Examination',
@@ -197,7 +197,7 @@ export const translations = {
     enterClinic: 'Enter Clinic',
     exitClinic: 'Exit Clinic',
     ticketNumber: 'Ticket Number',
-    
+
     // Clinics
     laboratory: 'Laboratory',
     laboratoryRadiology: 'Laboratory & Radiology',
@@ -212,13 +212,13 @@ export const translations = {
     ecg: 'ECG (Electrocardiogram)',
     audiology: 'Audiology',
     dermatology: 'Dermatology',
-    
+
     // Floors
     mezzanine: 'Mezzanine',
     floor1: 'First Floor',
     floor2: 'Second Floor',
     floor3: 'Third Floor',
-    
+
     // Notifications
     patientCalled: 'Patient Called',
     yourTurn: 'It\'s Your Turn',
@@ -229,7 +229,7 @@ export const translations = {
     loginSuccess: 'Login Successful',
     loginFailed: 'Login Failed',
     examSelected: 'Examination Type Selected',
-    
+
     // Admin
     dashboard: 'Dashboard',
     queueManagement: 'Queue Management',
@@ -246,13 +246,13 @@ export const translations = {
     noReports: 'No Reports Available',
     logout: 'Logout',
     home: 'Home',
-    
+
     // Statistics
     todayPatients: 'Today\'s Patients',
     weekPatients: 'This Week',
     monthPatients: 'This Month',
     completionRate: 'Completion Rate',
-    
+
     // Users Management
     users: 'Users',
     permissions: 'Permissions',
@@ -268,7 +268,7 @@ export const translations = {
     viewer: 'Viewer',
     active: 'Active',
     inactive: 'Inactive',
-    
+
     // Actions
     save: 'Save',
     cancel: 'Cancel',
@@ -280,21 +280,21 @@ export const translations = {
     export: 'Export',
     search: 'Search',
     filter: 'Filter',
-    
+
     // Status
     status: 'Status',
     enabled: 'Enabled',
     disabled: 'Disabled',
     online: 'Online',
     offline: 'Offline',
-    
+
     // Time
     minutes: 'min',
     hours: 'hr',
     today: 'Today',
     week: 'Week',
     month: 'Month',
-    
+
     // Themes
     classic: 'Classic',
     mintMedical: 'Mint Medical',
@@ -302,7 +302,7 @@ export const translations = {
     desertGold: 'Desert Gold',
     medicalRose: 'Medical Rose',
     nightShift: 'Night Shift',
-    
+
     // Messages
     note: 'Note',
     registerAtReception: 'Please register at Al-Attar Reception',
@@ -311,12 +311,12 @@ export const translations = {
     error: 'An Error Occurred',
     success: 'Operation Successful',
     confirmDelete: 'Are you sure you want to delete?',
-    
+
     // Medical Committee
     militaryMedicalCommittee: 'Military Medical Committee',
     medicalServicesCommand: 'Military Medical Services Command',
     specializedMedicalCenter: 'Military Specialized Medical Center - Al-Attar',
-    
+
     // ✅ إضافة ترجمات ناقصة
     yourTurnNow: "It's Your Turn NOW!",
     goImmediately: 'Go immediately to',
@@ -359,7 +359,7 @@ export const translations = {
     administration: 'Administration',
     radiology: 'Radiology',
     biometrics: 'Biometrics',
-    
+
     // ✅ إضافات جديدة للترجمة الإنجليزية
     waitForYourTurn: 'Wait for your turn',
     entryNotAvailable: 'Entry not available yet',
@@ -463,24 +463,24 @@ export const translations = {
     version: 'Version',
     copyright: 'Copyright',
     privacyPolicy: 'Privacy Policy',
-    termsOfService: 'Terms of Service'
-  }
-}
+    termsOfService: 'Terms of Service',
+  },
+};
 
 // Get translation based on language
 export function t(key, lang = 'ar') {
-  return translations[lang]?.[key] || translations['ar'][key] || key
+  return translations[lang]?.[key] || translations.ar[key] || key;
 }
 
 // Get current language from localStorage or default to Arabic
 export function getCurrentLanguage() {
-  return localStorage.getItem('language') || 'ar'
+  return localStorage.getItem('language') || 'ar';
 }
 
 // Set current language
 export function setCurrentLanguage(lang) {
-  localStorage.setItem('language', lang)
+  localStorage.setItem('language', lang);
   // Update document direction
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
-  document.documentElement.lang = lang
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
 }

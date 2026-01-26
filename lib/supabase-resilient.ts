@@ -1,6 +1,6 @@
 /**
  * Resilient Supabase Client
- * 
+ *
  * Purpose: Wrap Supabase calls with Circuit Breaker for reliability R ≥ 0.98
  * Ensures that database failures don't cascade through the system
  */
@@ -13,7 +13,7 @@ const supabaseBreaker = getCircuitBreaker('supabase', {
   failureThreshold: 3,
   successThreshold: 2,
   timeout: 30000,
-  requestTimeout: 10000
+  requestTimeout: 10000,
 });
 
 /**
@@ -34,16 +34,16 @@ export function getSupabaseClient(): SupabaseClient {
   supabaseClient = createClient(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: true,
-      persistSession: false
+      persistSession: false,
     },
     db: {
-      schema: 'public'
+      schema: 'public',
     },
     global: {
       headers: {
-        'x-application': 'mmc-mms'
-      }
-    }
+        'x-application': 'mmc-mms',
+      },
+    },
   });
 
   return supabaseClient;
@@ -54,7 +54,7 @@ export function getSupabaseClient(): SupabaseClient {
  */
 export async function executeWithBreaker<T>(
   operation: (client: SupabaseClient) => Promise<T>,
-  fallback?: T
+  fallback?: T,
 ): Promise<T> {
   try {
     return await supabaseBreaker.execute(async () => {
@@ -63,12 +63,12 @@ export async function executeWithBreaker<T>(
     });
   } catch (error) {
     console.error('[Supabase] Circuit breaker caught error:', error);
-    
+
     if (fallback !== undefined) {
       console.log('[Supabase] Returning fallback value');
       return fallback;
     }
-    
+
     throw error;
   }
 }

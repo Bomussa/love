@@ -16,8 +16,6 @@ import { supabase } from './supabase-client';
  * @returns {Object} Subscription object with unsubscribe method
  */
 export function subscribeToQueue(clinicId, callback) {
-  ;
-
   const subscription = supabase
     .channel(`queue:${clinicId}`)
     .on(
@@ -26,22 +24,20 @@ export function subscribeToQueue(clinicId, callback) {
         event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
         schema: 'public',
         table: 'queues',
-        filter: `clinic_id=eq.${clinicId}`
+        filter: `clinic_id=eq.${clinicId}`,
       },
       (payload) => {
-        ;
         callback(payload);
-      }
+      },
     )
     .subscribe((status) => {
-      ;
+
     });
 
   return {
     unsubscribe: () => {
-      ;
       subscription.unsubscribe();
-    }
+    },
   };
 }
 
@@ -51,8 +47,6 @@ export function subscribeToQueue(clinicId, callback) {
  * @returns {Object} Subscription object with unsubscribe method
  */
 export function subscribeToAllQueues(callback) {
-  ;
-
   const subscription = supabase
     .channel('queues:all')
     .on(
@@ -60,22 +54,20 @@ export function subscribeToAllQueues(callback) {
       {
         event: '*',
         schema: 'public',
-        table: 'queues'
+        table: 'queues',
       },
       (payload) => {
-        ;
         callback(payload);
-      }
+      },
     )
     .subscribe((status) => {
-      ;
+
     });
 
   return {
     unsubscribe: () => {
-      ;
       subscription.unsubscribe();
-    }
+    },
   };
 }
 
@@ -90,8 +82,6 @@ export function subscribeToAllQueues(callback) {
  * @returns {Object} Subscription object with unsubscribe method
  */
 export function subscribeToNotifications(patientId, callback) {
-  ;
-
   const subscription = supabase
     .channel(`notifications:${patientId}`)
     .on(
@@ -100,22 +90,20 @@ export function subscribeToNotifications(patientId, callback) {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
-        filter: `patient_id=eq.${patientId}`
+        filter: `patient_id=eq.${patientId}`,
       },
       (payload) => {
-        ;
         callback(payload.new);
-      }
+      },
     )
     .subscribe((status) => {
-      ;
+
     });
 
   return {
     unsubscribe: () => {
-      ;
       subscription.unsubscribe();
-    }
+    },
   };
 }
 
@@ -131,8 +119,6 @@ export function subscribeToNotifications(patientId, callback) {
  * @returns {Object} Subscription object with unsubscribe method
  */
 export function trackPatientPosition(clinicId, patientId, callback) {
-  ;
-
   let currentPosition = null;
 
   const updatePosition = async () => {
@@ -161,7 +147,7 @@ export function trackPatientPosition(clinicId, patientId, callback) {
       const position = {
         displayNumber: patientQueue.display_number,
         ahead: count || 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // Only call callback if position changed
@@ -185,7 +171,7 @@ export function trackPatientPosition(clinicId, patientId, callback) {
   return {
     unsubscribe: () => {
       subscription.unsubscribe();
-    }
+    },
   };
 }
 
@@ -199,8 +185,6 @@ export function trackPatientPosition(clinicId, patientId, callback) {
  * @returns {Object} Subscription object with unsubscribe method
  */
 export function subscribeToAdminDashboard(callback) {
-  ;
-
   const queueSubscription = subscribeToAllQueues((payload) => {
     callback({ type: 'queue', data: payload });
   });
@@ -212,23 +196,21 @@ export function subscribeToAdminDashboard(callback) {
       {
         event: 'INSERT',
         schema: 'public',
-        table: 'notifications'
+        table: 'notifications',
       },
       (payload) => {
-        ;
         callback({ type: 'notification', data: payload.new });
-      }
+      },
     )
     .subscribe((status) => {
-      ;
+
     });
 
   return {
     unsubscribe: () => {
-      ;
       queueSubscription.unsubscribe();
       notificationSubscription.unsubscribe();
-    }
+    },
   };
 }
 
@@ -242,20 +224,16 @@ export function subscribeToAdminDashboard(callback) {
  */
 export async function testRealtimeConnection() {
   try {
-    ;
-
     const testChannel = supabase.channel('test-connection');
 
     return new Promise((resolve) => {
       testChannel
         .on('presence', { event: 'sync' }, () => {
-          ;
           testChannel.unsubscribe();
           resolve(true);
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            ;
             testChannel.unsubscribe();
             resolve(true);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -290,9 +268,7 @@ export function getActiveSubscriptionsCount() {
  * Unsubscribe from all channels
  */
 export async function unsubscribeAll() {
-  ;
   await supabase.removeAllChannels();
-  ;
 }
 
 // Export all functions
@@ -304,5 +280,5 @@ export default {
   subscribeToAdminDashboard,
   testRealtimeConnection,
   getActiveSubscriptionsCount,
-  unsubscribeAll
+  unsubscribeAll,
 };

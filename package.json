@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "test": "npm run test --workspace frontend",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "node --test scripts/smoke.test.ts"
+    "test:smoke": "node --test scripts/smoke.test.ts",
+    "ci:resilient": "./scripts/resilient-ci.sh"
   },
   "engines": {
     "node": "20.x"

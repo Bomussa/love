@@ -1,7 +1,7 @@
 /**
  * حساب نسبة الإنجاز بالأوزان
  * Weight-based Completion Calculator
- * 
+ *
  * هذا الملف يحتوي على دوال حساب نسبة الإنجاز بناءً على أوزان العيادات
  * بدلاً من عدد العيادات الثابت
  */
@@ -15,7 +15,7 @@ export function calculateTotalWeight(stations) {
   if (!stations || !Array.isArray(stations) || stations.length === 0) {
     return 0;
   }
-  
+
   return stations.reduce((total, station) => {
     const weight = parseFloat(station.weight) || 1; // الوزن الافتراضي = 1
     return total + weight;
@@ -32,10 +32,10 @@ export function calculateCompletedWeight(stations, currentStationIndex) {
   if (!stations || !Array.isArray(stations) || stations.length === 0) {
     return 0;
   }
-  
+
   // العيادات المكتملة هي من 0 إلى (currentStationIndex - 1)
   const completedStations = stations.slice(0, currentStationIndex);
-  
+
   return completedStations.reduce((total, station) => {
     const weight = parseFloat(station.weight) || 1;
     return total + weight;
@@ -50,14 +50,14 @@ export function calculateCompletedWeight(stations, currentStationIndex) {
  */
 export function calculateWeightedCompletionRate(stations, currentStationIndex) {
   const totalWeight = calculateTotalWeight(stations);
-  
+
   if (totalWeight === 0) {
     return 0;
   }
-  
+
   const completedWeight = calculateCompletedWeight(stations, currentStationIndex);
   const rate = (completedWeight / totalWeight) * 100;
-  
+
   return Math.round(rate * 100) / 100; // تقريب إلى منزلتين عشريتين
 }
 
@@ -70,13 +70,13 @@ export function calculateCompletionByStatus(stations) {
   if (!stations || !Array.isArray(stations) || stations.length === 0) {
     return 0;
   }
-  
+
   const totalWeight = calculateTotalWeight(stations);
-  
+
   if (totalWeight === 0) {
     return 0;
   }
-  
+
   const completedWeight = stations.reduce((total, station) => {
     // العيادة مكتملة إذا كانت حالتها completed أو done
     if (station.status === 'completed' || station.status === 'done' || station.completed === true) {
@@ -85,7 +85,7 @@ export function calculateCompletionByStatus(stations) {
     }
     return total;
   }, 0);
-  
+
   const rate = (completedWeight / totalWeight) * 100;
   return Math.round(rate * 100) / 100;
 }
@@ -99,13 +99,13 @@ export function calculatePatientCompletionRate(patientRoute) {
   if (!patientRoute || !patientRoute.stations) {
     return 0;
   }
-  
-  const stations = typeof patientRoute.stations === 'string' 
-    ? JSON.parse(patientRoute.stations) 
+
+  const stations = typeof patientRoute.stations === 'string'
+    ? JSON.parse(patientRoute.stations)
     : patientRoute.stations;
-  
+
   const currentIndex = patientRoute.current_station_index || 0;
-  
+
   return calculateWeightedCompletionRate(stations, currentIndex);
 }
 
@@ -118,11 +118,9 @@ export function calculateAverageCompletionRate(patientRoutes) {
   if (!patientRoutes || !Array.isArray(patientRoutes) || patientRoutes.length === 0) {
     return 0;
   }
-  
-  const totalRate = patientRoutes.reduce((sum, route) => {
-    return sum + calculatePatientCompletionRate(route);
-  }, 0);
-  
+
+  const totalRate = patientRoutes.reduce((sum, route) => sum + calculatePatientCompletionRate(route), 0);
+
   return Math.round((totalRate / patientRoutes.length) * 100) / 100;
 }
 
@@ -141,14 +139,14 @@ export function getProgressDetails(stations, currentStationIndex) {
       totalWeight: 0,
       completedWeight: 0,
       remainingWeight: 0,
-      completionRate: 0
+      completionRate: 0,
     };
   }
-  
+
   const totalWeight = calculateTotalWeight(stations);
   const completedWeight = calculateCompletedWeight(stations, currentStationIndex);
   const remainingWeight = totalWeight - completedWeight;
-  
+
   return {
     totalStations: stations.length,
     completedStations: currentStationIndex,
@@ -156,7 +154,7 @@ export function getProgressDetails(stations, currentStationIndex) {
     totalWeight,
     completedWeight,
     remainingWeight,
-    completionRate: calculateWeightedCompletionRate(stations, currentStationIndex)
+    completionRate: calculateWeightedCompletionRate(stations, currentStationIndex),
   };
 }
 
@@ -167,5 +165,5 @@ export default {
   calculateCompletionByStatus,
   calculatePatientCompletionRate,
   calculateAverageCompletionRate,
-  getProgressDetails
+  getProgressDetails,
 };

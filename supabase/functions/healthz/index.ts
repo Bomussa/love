@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function: /api/v1/healthz
- * 
+ *
  * Purpose: Health check endpoint for API monitoring
  * Returns basic health status and timestamp
  */
@@ -20,7 +20,7 @@ Deno.serve((req: Request) => {
     return corsJsonResponse(
       { error: 'Method Not Allowed', allowed: ['GET', 'OPTIONS'] },
       405,
-      origin
+      origin,
     );
   }
 
@@ -34,6 +34,6 @@ Deno.serve((req: Request) => {
       version: '1.0.0',
     },
     200,
-    origin
+    origin,
   );
 });

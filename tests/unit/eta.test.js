@@ -1,4 +1,4 @@
-import { computeEtaMinutes, formatEtaTime } from '../../frontend/src/lib/eta';
+import { computeEtaMinutes, formatEtaTime } from 'frontend/src/lib/eta';
 
 describe('ETA Calculation', () => {
   test('ETA with ahead = 0 should return 0', () => {

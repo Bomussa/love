@@ -1,7 +1,7 @@
 /**
  * نظام تسجيل العمليات الشامل
  * Activity Logger System
- * 
+ *
  * يسجل جميع العمليات في التطبيق مع:
  * - الوقت والتاريخ
  * - رقم الجهاز
@@ -28,7 +28,7 @@ export const ActivityTypes = {
   PATIENT_EXITED_CLINIC: 'patient_exited_clinic',
   PATIENT_COMPLETED_EXAM: 'patient_completed_exam',
   PATIENT_SKIPPED: 'patient_skipped',
-  
+
   // عمليات الإدارة
   ADMIN_LOGIN: 'admin_login',
   ADMIN_LOGOUT: 'admin_logout',
@@ -36,11 +36,11 @@ export const ActivityTypes = {
   ADMIN_COMPLETED_PATIENT: 'admin_completed_patient',
   ADMIN_SKIPPED_PATIENT: 'admin_skipped_patient',
   ADMIN_CHANGED_SETTINGS: 'admin_changed_settings',
-  
+
   // عمليات النظام
   SYSTEM_AUTO_SKIP: 'system_auto_skip',
   SYSTEM_AUTO_COMPLETE: 'system_auto_complete',
-  SYSTEM_DAILY_RESET: 'system_daily_reset'
+  SYSTEM_DAILY_RESET: 'system_daily_reset',
 };
 
 /**
@@ -49,7 +49,7 @@ export const ActivityTypes = {
 export function getDeviceId() {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
-    deviceId = 'DEV_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    deviceId = `DEV_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
@@ -91,7 +91,7 @@ function saveLogs(logs) {
  */
 export function logActivity(type, data = {}) {
   const now = new Date();
-  
+
   const logEntry = {
     id: `LOG_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
     type,
@@ -99,50 +99,50 @@ export function logActivity(type, data = {}) {
     date: now.toLocaleDateString('ar-SA'),
     time: now.toLocaleTimeString('ar-SA'),
     deviceId: getDeviceId(),
-    
+
     // بيانات المراجع
     patientId: data.patientId || null,
     patientMilitaryId: data.patientMilitaryId || null,
     gender: data.gender || null,
-    
+
     // بيانات الفحص
     examType: data.examType || null,
     examTypeName: data.examTypeName || null,
     medicalPath: data.medicalPath || null,
-    
+
     // بيانات العيادة
     clinicId: data.clinicId || null,
     clinicName: data.clinicName || null,
     clinicFloor: data.clinicFloor || null,
-    
+
     // بيانات الدور
     queueNumber: data.queueNumber || null,
     queuePosition: data.queuePosition || null,
-    
+
     // أوقات الدخول والخروج
     entryTime: data.entryTime || null,
     exitTime: data.exitTime || null,
     duration: data.duration || null,
-    
+
     // النتيجة
     result: data.result || null,
     resultDetails: data.resultDetails || null,
-    
+
     // بيانات إضافية
     notes: data.notes || null,
     adminUser: data.adminUser || null,
-    
+
     // بيانات النظام
     userAgent: navigator.userAgent,
-    screenSize: `${window.innerWidth}x${window.innerHeight}`
+    screenSize: `${window.innerWidth}x${window.innerHeight}`,
   };
-  
+
   const logs = getAllLogs();
   logs.push(logEntry);
   saveLogs(logs);
-  
+
   console.log(`[ActivityLog] ${type}:`, logEntry);
-  
+
   return logEntry;
 }
 
@@ -153,7 +153,7 @@ export function logPatientRegistered(patientData) {
   return logActivity(ActivityTypes.PATIENT_REGISTERED, {
     patientId: patientData.id,
     patientMilitaryId: patientData.militaryId,
-    gender: patientData.gender
+    gender: patientData.gender,
   });
 }
 
@@ -167,7 +167,7 @@ export function logExamSelected(patientData, examType) {
     gender: patientData.gender,
     examType: examType.id,
     examTypeName: examType.name,
-    medicalPath: examType.stations?.map(s => s.name).join(' → ')
+    medicalPath: examType.stations?.map((s) => s.name).join(' → '),
   });
 }
 
@@ -183,7 +183,7 @@ export function logTicketReceived(patientData, clinic, queueNumber) {
     clinicId: clinic.id,
     clinicName: clinic.name,
     clinicFloor: clinic.floor,
-    queueNumber: queueNumber
+    queueNumber,
   });
 }
 
@@ -199,8 +199,8 @@ export function logClinicEntry(patientData, clinic, queueNumber) {
     clinicId: clinic.id,
     clinicName: clinic.name,
     clinicFloor: clinic.floor,
-    queueNumber: queueNumber,
-    entryTime: new Date().toISOString()
+    queueNumber,
+    entryTime: new Date().toISOString(),
   });
 }
 
@@ -211,7 +211,7 @@ export function logClinicExit(patientData, clinic, queueNumber, entryTime, resul
   const exitTime = new Date();
   const entry = entryTime ? new Date(entryTime) : null;
   const duration = entry ? Math.round((exitTime - entry) / 1000) : null;
-  
+
   return logActivity(ActivityTypes.PATIENT_EXITED_CLINIC, {
     patientId: patientData.id,
     patientMilitaryId: patientData.militaryId,
@@ -220,11 +220,11 @@ export function logClinicExit(patientData, clinic, queueNumber, entryTime, resul
     clinicId: clinic.id,
     clinicName: clinic.name,
     clinicFloor: clinic.floor,
-    queueNumber: queueNumber,
-    entryTime: entryTime,
+    queueNumber,
+    entryTime,
     exitTime: exitTime.toISOString(),
-    duration: duration,
-    result: result
+    duration,
+    result,
   });
 }
 
@@ -235,7 +235,7 @@ export function logExamCompleted(patientData, startTime) {
   const endTime = new Date();
   const start = startTime ? new Date(startTime) : null;
   const duration = start ? Math.round((endTime - start) / 1000) : null;
-  
+
   return logActivity(ActivityTypes.PATIENT_COMPLETED_EXAM, {
     patientId: patientData.id,
     patientMilitaryId: patientData.militaryId,
@@ -244,8 +244,8 @@ export function logExamCompleted(patientData, startTime) {
     examTypeName: patientData.examTypeName,
     entryTime: startTime,
     exitTime: endTime.toISOString(),
-    duration: duration,
-    result: 'completed'
+    duration,
+    result: 'completed',
   });
 }
 
@@ -261,7 +261,7 @@ export function logPatientSkipped(patientData, clinic, reason) {
     clinicId: clinic?.id,
     clinicName: clinic?.name,
     result: 'skipped',
-    notes: reason
+    notes: reason,
   });
 }
 
@@ -270,7 +270,7 @@ export function logPatientSkipped(patientData, clinic, reason) {
  */
 export function logAdminLogin(adminUser) {
   return logActivity(ActivityTypes.ADMIN_LOGIN, {
-    adminUser: adminUser
+    adminUser,
   });
 }
 
@@ -279,7 +279,7 @@ export function logAdminLogin(adminUser) {
  */
 export function logAdminLogout(adminUser) {
   return logActivity(ActivityTypes.ADMIN_LOGOUT, {
-    adminUser: adminUser
+    adminUser,
   });
 }
 
@@ -288,8 +288,8 @@ export function logAdminLogout(adminUser) {
  */
 export function logSettingsChanged(adminUser, settingName, oldValue, newValue) {
   return logActivity(ActivityTypes.ADMIN_CHANGED_SETTINGS, {
-    adminUser: adminUser,
-    notes: `${settingName}: ${oldValue} → ${newValue}`
+    adminUser,
+    notes: `${settingName}: ${oldValue} → ${newValue}`,
   });
 }
 
@@ -303,7 +303,7 @@ export function logSystemAutoSkip(patientData, clinic, reason) {
     clinicId: clinic?.id,
     clinicName: clinic?.name,
     result: 'auto_skipped',
-    notes: reason
+    notes: reason,
   });
 }
 
@@ -313,9 +313,9 @@ export function logSystemAutoSkip(patientData, clinic, reason) {
 export function filterLogsByPeriod(period = 'today') {
   const logs = getAllLogs();
   const now = new Date();
-  
+
   let startDate;
-  
+
   switch (period) {
     case 'today':
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -335,8 +335,8 @@ export function filterLogsByPeriod(period = 'today') {
     default:
       return logs;
   }
-  
-  return logs.filter(log => new Date(log.timestamp) >= startDate);
+
+  return logs.filter((log) => new Date(log.timestamp) >= startDate);
 }
 
 /**
@@ -344,7 +344,7 @@ export function filterLogsByPeriod(period = 'today') {
  */
 export function filterLogsByType(logs, types) {
   if (!types || types.length === 0) return logs;
-  return logs.filter(log => types.includes(log.type));
+  return logs.filter((log) => types.includes(log.type));
 }
 
 /**
@@ -352,7 +352,7 @@ export function filterLogsByType(logs, types) {
  */
 export function filterLogsByClinic(logs, clinicId) {
   if (!clinicId) return logs;
-  return logs.filter(log => log.clinicId === clinicId);
+  return logs.filter((log) => log.clinicId === clinicId);
 }
 
 /**
@@ -360,7 +360,7 @@ export function filterLogsByClinic(logs, clinicId) {
  */
 export function filterLogsByExamType(logs, examType) {
   if (!examType) return logs;
-  return logs.filter(log => log.examType === examType);
+  return logs.filter((log) => log.examType === examType);
 }
 
 /**
@@ -375,49 +375,49 @@ export function getLogStatistics(logs) {
     byGender: { male: 0, female: 0 },
     avgDuration: 0,
     completedExams: 0,
-    skippedPatients: 0
+    skippedPatients: 0,
   };
-  
+
   let totalDuration = 0;
   let durationCount = 0;
-  
-  logs.forEach(log => {
+
+  logs.forEach((log) => {
     // إحصائيات حسب النوع
     stats.byType[log.type] = (stats.byType[log.type] || 0) + 1;
-    
+
     // إحصائيات حسب العيادة
     if (log.clinicName) {
       stats.byClinic[log.clinicName] = (stats.byClinic[log.clinicName] || 0) + 1;
     }
-    
+
     // إحصائيات حسب نوع الفحص
     if (log.examTypeName) {
       stats.byExamType[log.examTypeName] = (stats.byExamType[log.examTypeName] || 0) + 1;
     }
-    
+
     // إحصائيات حسب الجنس
     if (log.gender === 'male') stats.byGender.male++;
     if (log.gender === 'female') stats.byGender.female++;
-    
+
     // حساب متوسط المدة
     if (log.duration) {
       totalDuration += log.duration;
       durationCount++;
     }
-    
+
     // عدد الفحوصات المكتملة
     if (log.type === ActivityTypes.PATIENT_COMPLETED_EXAM) {
       stats.completedExams++;
     }
-    
+
     // عدد المراجعين المتخطين
     if (log.type === ActivityTypes.PATIENT_SKIPPED || log.type === ActivityTypes.SYSTEM_AUTO_SKIP) {
       stats.skippedPatients++;
     }
   });
-  
+
   stats.avgDuration = durationCount > 0 ? Math.round(totalDuration / durationCount) : 0;
-  
+
   return stats;
 }
 
@@ -428,12 +428,12 @@ export function clearOldLogs() {
   const logs = getAllLogs();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
-  const todayLogs = logs.filter(log => new Date(log.timestamp) >= today);
+
+  const todayLogs = logs.filter((log) => new Date(log.timestamp) >= today);
   saveLogs(todayLogs);
-  
+
   console.log(`[ActivityLog] Cleared old logs. Kept ${todayLogs.length} logs from today.`);
-  
+
   return todayLogs.length;
 }
 
@@ -457,15 +457,15 @@ export function exportLogsAsJSON(logs) {
  */
 export function exportLogsAsCSV(logs, columns) {
   if (!logs || logs.length === 0) return '';
-  
+
   const defaultColumns = [
     'timestamp', 'type', 'patientMilitaryId', 'gender',
-    'examTypeName', 'clinicName', 'queueNumber', 'duration', 'result'
+    'examTypeName', 'clinicName', 'queueNumber', 'duration', 'result',
   ];
-  
+
   const cols = columns || defaultColumns;
-  
-  const headers = cols.map(col => {
+
+  const headers = cols.map((col) => {
     const headerNames = {
       timestamp: 'التاريخ والوقت',
       type: 'نوع العملية',
@@ -479,22 +479,20 @@ export function exportLogsAsCSV(logs, columns) {
       entryTime: 'وقت الدخول',
       exitTime: 'وقت الخروج',
       deviceId: 'رقم الجهاز',
-      notes: 'ملاحظات'
+      notes: 'ملاحظات',
     };
     return headerNames[col] || col;
   });
-  
-  const rows = logs.map(log => 
-    cols.map(col => {
-      let value = log[col];
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'string' && value.includes(',')) {
-        return `"${value}"`;
-      }
-      return value;
-    }).join(',')
-  );
-  
+
+  const rows = logs.map((log) => cols.map((col) => {
+    const value = log[col];
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string' && value.includes(',')) {
+      return `"${value}"`;
+    }
+    return value;
+  }).join(','));
+
   return [headers.join(','), ...rows].join('\n');
 }
 
@@ -503,11 +501,11 @@ function scheduleDailyCleanup() {
   const now = new Date();
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
   const timeUntilMidnight = midnight - now;
-  
+
   setTimeout(() => {
     clearOldLogs();
     logActivity(ActivityTypes.SYSTEM_DAILY_RESET, {
-      notes: 'Daily log cleanup completed'
+      notes: 'Daily log cleanup completed',
     });
     // إعادة الجدولة لليوم التالي
     scheduleDailyCleanup();
@@ -543,5 +541,5 @@ export default {
   exportLogsAsJSON,
   exportLogsAsCSV,
   getDeviceId,
-  ActivityTypes
+  ActivityTypes,
 };

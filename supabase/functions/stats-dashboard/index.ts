@@ -1,19 +1,19 @@
 // Supabase Edge Function: stats-dashboard
 // Get real-time dashboard statistics
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "https://mmc-mms.com",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  'access-control-allow-origin': 'https://mmc-mms.com',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -22,16 +22,16 @@ serve(async (req: Request) => {
 
     // Get today's stats from view
     const { data: todayStats, error: e1 } = await db
-      .from("vw_today_now")
-      .select("*")
+      .from('vw_today_now')
+      .select('*')
       .single();
 
     if (e1) throw e1;
 
     // Get clinic performance
     const { data: clinicPerf, error: e2 } = await db
-      .from("vw_clinic_performance")
-      .select("*");
+      .from('vw_clinic_performance')
+      .select('*');
 
     if (e2) throw e2;
 
@@ -53,12 +53,12 @@ serve(async (req: Request) => {
           timestamp: new Date().toISOString(),
         },
       }),
-      { headers: { "content-type": "application/json", ...corsHeaders } }
+      { headers: { 'content-type': 'application/json', ...corsHeaders } },
     );
   } catch (err) {
     return new Response(
       JSON.stringify({ success: false, error: String(err) }),
-      { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
+      { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
     );
   }
 });

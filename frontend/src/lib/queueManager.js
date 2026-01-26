@@ -25,16 +25,20 @@ export async function getQueueSnapshot(clinicId) {
       WHERE clinic_id = $1 AND DATE(created_at) = CURRENT_DATE
       GROUP BY status
     `, [clinicId]);
-    
-    const snapshot = { waiting: 0, called: 0, in: 0, done: 0, no_show: 0 };
-    rows.forEach(row => {
+
+    const snapshot = {
+      waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
+    };
+    rows.forEach((row) => {
       snapshot[row.status] = row.cnt;
     });
-    
+
     return snapshot;
   } catch (error) {
     // console.error(`Error getting queue snapshot for clinic ${clinicId}:`, error);
-    return { waiting: 0, called: 0, in: 0, done: 0, no_show: 0 };
+    return {
+      waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
+    };
   }
 }
 
@@ -63,20 +67,24 @@ export async function getQueueDetails(clinicId) {
         END,
         number ASC
     `, [clinicId]);
-    
+
     const snapshot = await getQueueSnapshot(clinicId);
-    
+
     return {
       ...snapshot,
       patients: rows,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
   } catch (error) {
     // console.error(`Error getting queue details for clinic ${clinicId}:`, error);
     return {
-      waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
+      waiting: 0,
+      called: 0,
+      in: 0,
+      done: 0,
+      no_show: 0,
       patients: [],
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
   }
 }
@@ -88,13 +96,13 @@ export async function getQueueDetails(clinicId) {
  */
 export async function callNextPatient(clinicId) {
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const config = await getSystemConfig();
-    const graceMinutes = config.graceMinutes;
-    
+    const { graceMinutes } = config;
+
     // التحقق من السعة الحالية
     const { rows: loadRows } = await client.query(`
       SELECT 
@@ -103,11 +111,11 @@ export async function callNextPatient(clinicId) {
       FROM queue_status 
       WHERE clinic_id = $1 AND DATE(created_at) = CURRENT_DATE
     `, [clinicId]);
-    
+
     const currentCalled = loadRows[0]?.called || 0;
     const currentIn = loadRows[0]?.current_in || 0;
     const totalEngaged = currentCalled + currentIn;
-    
+
     // التحقق من عدم تجاوز السعة القصوى
     if (totalEngaged >= config.maxCapacity) {
       await client.query('COMMIT');
@@ -115,10 +123,10 @@ export async function callNextPatient(clinicId) {
         success: false,
         reason: 'capacity_full',
         message: 'العيادة وصلت للسعة القصوى',
-        currentLoad: { called: currentCalled, in: currentIn, total: totalEngaged }
+        currentLoad: { called: currentCalled, in: currentIn, total: totalEngaged },
       };
     }
-    
+
     // البحث عن أول مراجع في الانتظار
     const { rows: nextRows } = await client.query(`
       SELECT id, patient_id, number 
@@ -134,7 +142,7 @@ export async function callNextPatient(clinicId) {
         success: false,
         reason: 'no_waiting',
         message: 'لا يوجد مراجعين في الانتظار',
-        currentLoad: { called: currentCalled, in: currentIn, total: totalEngaged }
+        currentLoad: { called: currentCalled, in: currentIn, total: totalEngaged },
       };
     }
 
@@ -183,11 +191,10 @@ export async function callNextPatient(clinicId) {
         patientId: patient.patient_id,
         number: patient.number,
         calledAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       },
-      currentLoad: { called: currentCalled + 1, in: currentIn, total: totalEngaged + 1 }
+      currentLoad: { called: currentCalled + 1, in: currentIn, total: totalEngaged + 1 },
     };
-
   } catch (error) {
     await client.query('ROLLBACK');
     // console.error(`Error calling next patient for clinic ${clinicId}:`, error);
@@ -195,7 +202,7 @@ export async function callNextPatient(clinicId) {
       success: false,
       reason: 'database_error',
       message: 'خطأ في قاعدة البيانات',
-      error: error.message
+      error: error.message,
     };
   } finally {
     client.release();
@@ -210,10 +217,10 @@ export async function callNextPatient(clinicId) {
  */
 export async function checkInAtClinic(clinicId, patientId) {
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const { rows } = await client.query(`
       UPDATE queue_status
       SET status = 'in', started_at = NOW(), updated_at = NOW()
@@ -230,9 +237,9 @@ export async function checkInAtClinic(clinicId, patientId) {
     const { rows: loadRows } = await client.query(`
       SELECT current_called, current_in FROM clinic_load WHERE clinic_id = $1
     `, [clinicId]);
-    
+
     const currentLoad = loadRows[0] || { current_called: 0, current_in: 0 };
-    
+
     await client.query(`
       UPDATE clinic_load
       SET 
@@ -254,7 +261,6 @@ export async function checkInAtClinic(clinicId, patientId) {
 
     await client.query('COMMIT');
     return true;
-
   } catch (error) {
     await client.query('ROLLBACK');
     // console.error(`Error checking in patient ${patientId} at clinic ${clinicId}:`, error);
@@ -272,10 +278,10 @@ export async function checkInAtClinic(clinicId, patientId) {
  */
 export async function completeClinicForPatient(clinicId, patientId) {
   const client = await db.getClient();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const { rows } = await client.query(`
       UPDATE queue_status
       SET status = 'done', finished_at = NOW(), updated_at = NOW()
@@ -319,7 +325,6 @@ export async function completeClinicForPatient(clinicId, patientId) {
 
     await client.query('COMMIT');
     return true;
-
   } catch (error) {
     await client.query('ROLLBACK');
     // console.error(`Error completing clinic for patient ${patientId} at clinic ${clinicId}:`, error);
@@ -390,7 +395,7 @@ export async function expireNoShows(clinicId) {
 export async function getDailyStats(clinicId, date = null) {
   try {
     const targetDate = date || new Date().toISOString().split('T')[0];
-    
+
     const { rows } = await db.query(`
       SELECT 
         total_patients, completed_patients, no_show_patients,
@@ -409,7 +414,7 @@ export async function getDailyStats(clinicId, date = null) {
         averageWaitTime: 0,
         averageServiceTime: 0,
         peakLoadTime: null,
-        efficiencyScore: 1.0
+        efficiencyScore: 1.0,
       };
     }
 
@@ -422,7 +427,7 @@ export async function getDailyStats(clinicId, date = null) {
       averageWaitTime: stats.average_wait_time,
       averageServiceTime: stats.average_service_time,
       peakLoadTime: stats.peak_load_time,
-      efficiencyScore: parseFloat(stats.efficiency_score)
+      efficiencyScore: parseFloat(stats.efficiency_score),
     };
   } catch (error) {
     // console.error(`Error getting daily stats for clinic ${clinicId}:`, error);
@@ -434,7 +439,7 @@ export async function getDailyStats(clinicId, date = null) {
       averageWaitTime: 0,
       averageServiceTime: 0,
       peakLoadTime: null,
-      efficiencyScore: 1.0
+      efficiencyScore: 1.0,
     };
   }
 }
@@ -446,5 +451,5 @@ export default {
   checkInAtClinic,
   completeClinicForPatient,
   expireNoShows,
-  getDailyStats
+  getDailyStats,
 };

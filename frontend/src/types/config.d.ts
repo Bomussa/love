@@ -1,4 +1,4 @@
-declare module "../../config/constants.json" {
+declare module '../../config/constants.json' {
   interface Constants {
     TIMEZONE: string;
     SERVICE_DAY_PIVOT: string;
@@ -15,7 +15,7 @@ declare module "../../config/constants.json" {
   export default constants;
 }
 
-declare module "../../config/clinics.json" {
+declare module '../../config/clinics.json' {
   interface Clinic {
     id: string;
     name: string;
@@ -28,7 +28,7 @@ declare module "../../config/clinics.json" {
   export default clinics;
 }
 
-declare module "../../../config/routeMap.json" {
+declare module '../../../config/routeMap.json' {
   interface RouteMapGeneral {
     prefix: string;
     M: string[];
@@ -40,4 +40,3 @@ declare module "../../../config/routeMap.json" {
   const routeMap: RouteMap;
   export default routeMap;
 }
-

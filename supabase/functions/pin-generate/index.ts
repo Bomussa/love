@@ -1,15 +1,15 @@
 // Supabase Edge Function: pin-generate
 // Generate daily PIN for clinic entry (Updated 2025-11-18)
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 const generatePIN = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -26,7 +26,7 @@ const getEndOfDay = () => {
 };
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -36,8 +36,8 @@ serve(async (req: Request) => {
 
     if (!clinic_id) {
       return new Response(
-        JSON.stringify({ success: false, error: "clinic_id required" }),
-        { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
+        JSON.stringify({ success: false, error: 'clinic_id required' }),
+        { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
       );
     }
 
@@ -46,11 +46,11 @@ serve(async (req: Request) => {
 
     // Check if PIN already exists for today
     const { data: existingPin, error: checkError } = await db
-      .from("pins")
-      .select("*")
-      .eq("clinic_id", clinic_id)
-      .gte("valid_until", new Date().toISOString())
-      .order("created_at", { ascending: false })
+      .from('pins')
+      .select('*')
+      .eq('clinic_id', clinic_id)
+      .gte('valid_until', new Date().toISOString())
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -74,7 +74,7 @@ serve(async (req: Request) => {
               is_existing: true,
             },
           }),
-          { headers: { "content-type": "application/json", ...corsHeaders } }
+          { headers: { 'content-type': 'application/json', ...corsHeaders } },
         );
       }
     }
@@ -83,12 +83,12 @@ serve(async (req: Request) => {
     const pin = generatePIN();
 
     const { data, error } = await db
-      .from("pins")
-      .insert({ 
-        clinic_id, 
-        pin, 
+      .from('pins')
+      .insert({
+        clinic_id,
+        pin,
         valid_until: endOfDay,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -108,12 +108,12 @@ serve(async (req: Request) => {
           is_existing: false,
         },
       }),
-      { headers: { "content-type": "application/json", ...corsHeaders } }
+      { headers: { 'content-type': 'application/json', ...corsHeaders } },
     );
   } catch (err) {
     return new Response(
       JSON.stringify({ success: false, error: String(err) }),
-      { status: 400, headers: { "content-type": "application/json", ...corsHeaders } }
+      { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
     );
   }
 });

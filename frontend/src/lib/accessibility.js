@@ -1,7 +1,7 @@
 /**
  * Accessibility Utilities
  * أدوات إمكانية الوصول
- * 
+ *
  * @module accessibility
  * @description مجموعة من الأدوات لتحسين إمكانية الوصول للتطبيق
  */
@@ -15,36 +15,36 @@ export const ariaLabels = {
   mainNav: 'القائمة الرئيسية',
   sideNav: 'القائمة الجانبية',
   breadcrumb: 'مسار التنقل',
-  
+
   // Forms
   loginForm: 'نموذج تسجيل الدخول',
   searchForm: 'نموذج البحث',
   filterForm: 'نموذج التصفية',
-  
+
   // Buttons
   submitButton: 'إرسال',
   cancelButton: 'إلغاء',
   closeButton: 'إغلاق',
   menuButton: 'فتح القائمة',
-  
+
   // Status
   loading: 'جارٍ التحميل',
   error: 'حدث خطأ',
   success: 'تمت العملية بنجاح',
-  
+
   // Queue
   queueNumber: 'رقم الدور',
   currentServing: 'يتم خدمة الرقم',
   waitingCount: 'عدد المنتظرين',
   estimatedTime: 'الوقت المتوقع',
-  
+
   // Clinics
   clinicName: 'اسم العيادة',
   clinicStatus: 'حالة العيادة',
-  
+
   // Notifications
   notification: 'إشعار',
-  alertMessage: 'رسالة تنبيه'
+  alertMessage: 'رسالة تنبيه',
 };
 
 // ============================================================================
@@ -58,18 +58,18 @@ export const ariaLabels = {
  */
 export function handleKeyboardNavigation(event, handlers) {
   const keyHandlers = {
-    'Enter': handlers.onEnter,
+    Enter: handlers.onEnter,
     ' ': handlers.onSpace,
-    'Escape': handlers.onEscape,
-    'ArrowUp': handlers.onArrowUp,
-    'ArrowDown': handlers.onArrowDown,
-    'ArrowLeft': handlers.onArrowLeft,
-    'ArrowRight': handlers.onArrowRight,
-    'Tab': handlers.onTab,
-    'Home': handlers.onHome,
-    'End': handlers.onEnd
+    Escape: handlers.onEscape,
+    ArrowUp: handlers.onArrowUp,
+    ArrowDown: handlers.onArrowDown,
+    ArrowLeft: handlers.onArrowLeft,
+    ArrowRight: handlers.onArrowRight,
+    Tab: handlers.onTab,
+    Home: handlers.onHome,
+    End: handlers.onEnd,
   };
-  
+
   const handler = keyHandlers[event.key];
   if (handler) {
     handler(event);
@@ -83,10 +83,10 @@ export function handleKeyboardNavigation(event, handlers) {
  */
 export function enableListKeyboardNavigation(container, itemSelector) {
   if (!container) return;
-  
+
   const items = container.querySelectorAll(itemSelector);
   let currentIndex = 0;
-  
+
   container.addEventListener('keydown', (event) => {
     switch (event.key) {
       case 'ArrowDown':
@@ -123,30 +123,28 @@ export function enableListKeyboardNavigation(container, itemSelector) {
  */
 export function trapFocus(element) {
   if (!element) return;
-  
+
   const focusableElements = element.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
   );
-  
+
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
-  
+
   element.addEventListener('keydown', (event) => {
     if (event.key !== 'Tab') return;
-    
+
     if (event.shiftKey) {
       if (document.activeElement === firstElement) {
         event.preventDefault();
         lastElement?.focus();
       }
-    } else {
-      if (document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement?.focus();
-      }
+    } else if (document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement?.focus();
     }
   });
-  
+
   // التركيز على العنصر الأول
   firstElement?.focus();
 }
@@ -172,7 +170,7 @@ let announcer = null;
  */
 function createAnnouncer() {
   if (announcer) return announcer;
-  
+
   announcer = document.createElement('div');
   announcer.setAttribute('role', 'status');
   announcer.setAttribute('aria-live', 'polite');
@@ -190,7 +188,7 @@ function createAnnouncer() {
     border: 0;
   `;
   document.body.appendChild(announcer);
-  
+
   return announcer;
 }
 
@@ -202,7 +200,7 @@ function createAnnouncer() {
 export function announce(message, priority = 'polite') {
   const el = createAnnouncer();
   el.setAttribute('aria-live', priority);
-  
+
   // مسح المحتوى السابق ثم إضافة الجديد
   el.textContent = '';
   setTimeout(() => {
@@ -243,18 +241,18 @@ export function announcePatientCall(ticketNumber, clinicName) {
 export function getContrastRatio(foreground, background) {
   const getLuminance = (color) => {
     const rgb = color.match(/\d+/g).map(Number);
-    const [r, g, b] = rgb.map(c => {
-      c = c / 255;
-      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const [r, g, b] = rgb.map((c) => {
+      c /= 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     });
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
-  
+
   const l1 = getLuminance(foreground);
   const l2 = getLuminance(background);
   const lighter = Math.max(l1, l2);
   const darker = Math.min(l1, l2);
-  
+
   return (lighter + 0.05) / (darker + 0.05);
 }
 
@@ -280,5 +278,5 @@ export default {
   announceQueueUpdate,
   announcePatientCall,
   getContrastRatio,
-  meetsContrastRequirements
+  meetsContrastRequirements,
 };

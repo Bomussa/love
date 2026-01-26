@@ -1,10 +1,10 @@
 /**
  * نظام مرونة الخدمات الاحترافي
  * Service Resilience System (SRS)
- * 
+ *
  * حلول احترافية عالمية للتعامل مع فشل الخدمات
  * مستوحى من: Netflix Hystrix, AWS, Google Cloud
- * 
+ *
  * ✅ Circuit Breaker - قاطع الدائرة
  * ✅ Retry with Exponential Backoff - إعادة المحاولة
  * ✅ Fallback Strategies - استراتيجيات بديلة
@@ -21,31 +21,31 @@
 const CONFIG = {
   // Circuit Breaker
   circuitBreaker: {
-    failureThreshold: 5,      // عدد الفشل قبل فتح الدائرة
-    successThreshold: 3,       // عدد النجاح لإغلاق الدائرة
-    timeout: 30000,            // مهلة الدائرة المفتوحة (30 ثانية)
-    halfOpenRequests: 3        // عدد الطلبات في حالة نصف مفتوح
+    failureThreshold: 5, // عدد الفشل قبل فتح الدائرة
+    successThreshold: 3, // عدد النجاح لإغلاق الدائرة
+    timeout: 30000, // مهلة الدائرة المفتوحة (30 ثانية)
+    halfOpenRequests: 3, // عدد الطلبات في حالة نصف مفتوح
   },
-  
+
   // Retry
   retry: {
-    maxAttempts: 5,            // الحد الأقصى للمحاولات
-    baseDelay: 1000,           // التأخير الأساسي (1 ثانية)
-    maxDelay: 30000,           // الحد الأقصى للتأخير (30 ثانية)
-    backoffMultiplier: 2       // مضاعف التأخير
+    maxAttempts: 5, // الحد الأقصى للمحاولات
+    baseDelay: 1000, // التأخير الأساسي (1 ثانية)
+    maxDelay: 30000, // الحد الأقصى للتأخير (30 ثانية)
+    backoffMultiplier: 2, // مضاعف التأخير
   },
-  
+
   // Health Check
   healthCheck: {
-    interval: 30000,           // فترة الفحص (30 ثانية)
-    timeout: 5000              // مهلة الفحص (5 ثواني)
+    interval: 30000, // فترة الفحص (30 ثانية)
+    timeout: 5000, // مهلة الفحص (5 ثواني)
   },
-  
+
   // Offline Queue
   offlineQueue: {
-    maxSize: 100,              // الحد الأقصى للطابور
-    retryInterval: 5000        // فترة إعادة المحاولة (5 ثواني)
-  }
+    maxSize: 100, // الحد الأقصى للطابور
+    retryInterval: 5000, // فترة إعادة المحاولة (5 ثواني)
+  },
 };
 
 // ============================================================================
@@ -87,7 +87,6 @@ class CircuitBreaker {
       const result = await fn();
       this.onSuccess();
       return result;
-
     } catch (error) {
       this.onFailure();
       console.error(`❌ [${this.name}] Error:`, error.message);
@@ -97,7 +96,7 @@ class CircuitBreaker {
 
   onSuccess() {
     this.failureCount = 0;
-    
+
     if (this.state === 'HALF_OPEN') {
       this.successCount++;
       if (this.successCount >= this.options.successThreshold) {
@@ -142,7 +141,7 @@ class CircuitBreaker {
       state: this.state,
       failureCount: this.failureCount,
       successCount: this.successCount,
-      lastFailureTime: this.lastFailureTime
+      lastFailureTime: this.lastFailureTime,
     };
   }
 
@@ -171,7 +170,7 @@ class RetryHandler {
         return await fn();
       } catch (error) {
         lastError = error;
-        
+
         if (attempt < maxAttempts) {
           const delay = this.calculateDelay(attempt);
           console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} failed. Retrying in ${delay}ms...`);
@@ -184,14 +183,14 @@ class RetryHandler {
   }
 
   calculateDelay(attempt) {
-    const delay = this.options.baseDelay * Math.pow(this.options.backoffMultiplier, attempt - 1);
+    const delay = this.options.baseDelay * this.options.backoffMultiplier ** (attempt - 1);
     // إضافة jitter لتجنب thundering herd
     const jitter = Math.random() * 0.3 * delay;
     return Math.min(delay + jitter, this.options.maxDelay);
   }
 
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -211,7 +210,7 @@ class HealthMonitor {
       healthCheckFn,
       status: 'unknown',
       lastCheck: null,
-      consecutiveFailures: 0
+      consecutiveFailures: 0,
     });
   }
 
@@ -223,9 +222,7 @@ class HealthMonitor {
       const startTime = Date.now();
       await Promise.race([
         service.healthCheckFn(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Health check timeout')), CONFIG.healthCheck.timeout)
-        )
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), CONFIG.healthCheck.timeout)),
       ]);
 
       const responseTime = Date.now() - startTime;
@@ -235,7 +232,6 @@ class HealthMonitor {
       service.responseTime = responseTime;
 
       return { healthy: true, responseTime };
-
     } catch (error) {
       service.status = 'unhealthy';
       service.lastCheck = new Date();
@@ -257,7 +253,7 @@ class HealthMonitor {
 
   startMonitoring() {
     if (this.checkInterval) return;
-    
+
     this.checkInterval = setInterval(() => {
       this.checkAllServices();
     }, CONFIG.healthCheck.interval);
@@ -296,7 +292,7 @@ class HealthMonitor {
         lastCheck: service.lastCheck,
         consecutiveFailures: service.consecutiveFailures,
         responseTime: service.responseTime,
-        lastError: service.lastError
+        lastError: service.lastError,
       };
     }
     return status;
@@ -311,11 +307,11 @@ class OfflineQueue {
     this.queue = [];
     this.processing = false;
     this.isOnline = navigator.onLine;
-    
+
     // مراقبة حالة الاتصال
     window.addEventListener('online', () => this.onOnline());
     window.addEventListener('offline', () => this.onOffline());
-    
+
     // استعادة الطابور من localStorage
     this.loadQueue();
   }
@@ -341,7 +337,7 @@ class OfflineQueue {
       id: Date.now() + Math.random(),
       request,
       timestamp: new Date().toISOString(),
-      attempts: 0
+      attempts: 0,
     });
 
     this.saveQueue();
@@ -360,7 +356,7 @@ class OfflineQueue {
 
     while (this.queue.length > 0 && this.isOnline) {
       const item = this.queue[0];
-      
+
       try {
         await item.request.execute();
         this.queue.shift();
@@ -373,7 +369,7 @@ class OfflineQueue {
           console.error(`❌ Failed after 3 attempts: ${item.id}`);
         } else {
           // الانتظار قبل المحاولة التالية
-          await new Promise(r => setTimeout(r, CONFIG.offlineQueue.retryInterval));
+          await new Promise((r) => setTimeout(r, CONFIG.offlineQueue.retryInterval));
         }
       }
     }
@@ -384,11 +380,11 @@ class OfflineQueue {
   saveQueue() {
     try {
       // حفظ فقط البيانات القابلة للتسلسل
-      const serializable = this.queue.map(item => ({
+      const serializable = this.queue.map((item) => ({
         id: item.id,
         timestamp: item.timestamp,
         attempts: item.attempts,
-        requestData: item.request.data || null
+        requestData: item.request.data || null,
       }));
       localStorage.setItem('offline_queue', JSON.stringify(serializable));
     } catch (e) {
@@ -442,7 +438,7 @@ class Bulkhead {
 
   async run(fn) {
     this.currentCount++;
-    
+
     try {
       return await fn();
     } finally {
@@ -463,7 +459,7 @@ class Bulkhead {
       name: this.name,
       current: this.currentCount,
       max: this.maxConcurrent,
-      queued: this.queue.length
+      queued: this.queue.length,
     };
   }
 }
@@ -506,10 +502,10 @@ class FallbackManager {
 
   getDefaultFallback(serviceName) {
     const defaults = {
-      'queues': [],
-      'clinics': [],
-      'notifications': [],
-      'statistics': { total: 0, waiting: 0, completed: 0 }
+      queues: [],
+      clinics: [],
+      notifications: [],
+      statistics: { total: 0, waiting: 0, completed: 0 },
     };
     return defaults[serviceName] || null;
   }
@@ -517,7 +513,7 @@ class FallbackManager {
   updateCache(serviceName, data) {
     this.cache.set(serviceName, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -549,7 +545,7 @@ class ServiceResilienceManager {
 
     // بدء مراقبة الصحة
     this.healthMonitor.startMonitoring();
-    
+
     this.isInitialized = true;
     console.log('🛡️ Service Resilience Manager initialized');
   }
@@ -576,9 +572,9 @@ class ServiceResilienceManager {
     // تنفيذ مع جميع طبقات الحماية
     return circuitBreaker.execute(
       () => bulkhead.execute(
-        () => this.retryHandler.execute(fn, options)
+        () => this.retryHandler.execute(fn, options),
       ),
-      fallback
+      fallback,
     );
   }
 
@@ -587,7 +583,7 @@ class ServiceResilienceManager {
    */
   registerService(name, healthCheckFn, fallbackFn = null) {
     this.healthMonitor.registerService(name, healthCheckFn);
-    
+
     if (fallbackFn) {
       this.fallbackManager.registerFallback(name, fallbackFn);
     }
@@ -613,7 +609,7 @@ class ServiceResilienceManager {
       circuitBreakers: circuitBreakerStatus,
       bulkheads: bulkheadStatus,
       health: this.healthMonitor.getStatus(),
-      offlineQueueSize: this.offlineQueue.getQueueSize()
+      offlineQueueSize: this.offlineQueue.getQueueSize(),
     };
   }
 

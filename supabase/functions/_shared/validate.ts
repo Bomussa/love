@@ -1,6 +1,6 @@
 /**
  * Shared validation utilities for Supabase Edge Functions
- * 
+ *
  * Provides common validation logic for request handling
  */
 

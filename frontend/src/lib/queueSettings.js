@@ -2,12 +2,12 @@
  * ============================================================================
  * إعدادات نظام الدور المحلية - Queue Settings (localStorage)
  * ============================================================================
- * 
+ *
  * هذا الملف يحتوي على إعدادات نظام الدور التي تُحفظ محلياً في localStorage
  * بدون الحاجة لقاعدة بيانات.
- * 
+ *
  * ⚠️ تحذير: هذا الكود مقفل ولا يجب تعديله إلا بموافقة صريحة
- * 
+ *
  * @version 1.0.0
  * @locked true
  * @author MMC-MMS System
@@ -21,28 +21,28 @@
 
 export const DEFAULT_QUEUE_SETTINGS = {
   // توقيتات النظام (بالثواني)
-  queueIntervalSeconds: 120,        // 2 دقيقة - فترة النداء التلقائي
-  patientMaxWaitSeconds: 240,       // 4 دقائق - المهلة قبل الدخول (بعد النداء)
-  examMaxSeconds: 300,              // 5 دقائق - الحد الأقصى للفحص داخل العيادة
-  refreshIntervalSeconds: 30,       // تحديث البيانات العادي
-  nearTurnRefreshSeconds: 7,        // تحديث عند قرب الدور
-  
+  queueIntervalSeconds: 120, // 2 دقيقة - فترة النداء التلقائي
+  patientMaxWaitSeconds: 240, // 4 دقائق - المهلة قبل الدخول (بعد النداء)
+  examMaxSeconds: 300, // 5 دقائق - الحد الأقصى للفحص داخل العيادة
+  refreshIntervalSeconds: 30, // تحديث البيانات العادي
+  nearTurnRefreshSeconds: 7, // تحديث عند قرب الدور
+
   // تفعيل/تعطيل الأنظمة
-  autoCallEnabled: true,            // النداء التلقائي
-  timeoutHandlerEnabled: true,      // نقل المراجع المتأخر
-  examTimeoutEnabled: true,         // حد الفحص داخل العيادة
-  notificationsEnabled: true,       // الإشعارات
-  
+  autoCallEnabled: true, // النداء التلقائي
+  timeoutHandlerEnabled: true, // نقل المراجع المتأخر
+  examTimeoutEnabled: true, // حد الفحص داخل العيادة
+  notificationsEnabled: true, // الإشعارات
+
   // إعدادات العرض للمراجعين
-  showCountdownTimer: true,         // عرض العد التنازلي
-  showQueuePosition: true,          // عرض الموقع في الدور
-  showEstimatedWait: true,          // عرض الوقت المتوقع
-  showAheadCount: true,             // عرض عدد المنتظرين قبله
-  
+  showCountdownTimer: true, // عرض العد التنازلي
+  showQueuePosition: true, // عرض الموقع في الدور
+  showEstimatedWait: true, // عرض الوقت المتوقع
+  showAheadCount: true, // عرض عدد المنتظرين قبله
+
   // إعدادات إضافية
-  notifyNearAhead: 3,               // إشعار للـ3 التاليين
-  graceMinutes: 4,                  // مهلة الدخول بالدقائق
-  noticeTtlSeconds: 30              // مدة عرض الإشعار
+  notifyNearAhead: 3, // إشعار للـ3 التاليين
+  graceMinutes: 4, // مهلة الدخول بالدقائق
+  noticeTtlSeconds: 30, // مدة عرض الإشعار
 };
 
 // مفتاح التخزين المحلي
@@ -79,12 +79,12 @@ export function saveQueueSettings(settings) {
   try {
     const merged = { ...DEFAULT_QUEUE_SETTINGS, ...settings };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    
+
     // إرسال حدث لتحديث جميع الشاشات
-    window.dispatchEvent(new CustomEvent('queueSettingsUpdated', { 
-      detail: merged 
+    window.dispatchEvent(new CustomEvent('queueSettingsUpdated', {
+      detail: merged,
     }));
-    
+
     return true;
   } catch (error) {
     console.error('خطأ في حفظ إعدادات الدور:', error);
@@ -111,8 +111,8 @@ export function updateQueueSetting(key, value) {
 export function resetQueueSettings() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_QUEUE_SETTINGS));
-    window.dispatchEvent(new CustomEvent('queueSettingsUpdated', { 
-      detail: DEFAULT_QUEUE_SETTINGS 
+    window.dispatchEvent(new CustomEvent('queueSettingsUpdated', {
+      detail: DEFAULT_QUEUE_SETTINGS,
     }));
     return { ...DEFAULT_QUEUE_SETTINGS };
   } catch (error) {
@@ -175,15 +175,15 @@ export function getRemainingTime(calledAt, status) {
   const settings = getQueueSettings();
   const now = Date.now();
   const elapsed = Math.floor((now - calledAt) / 1000);
-  
+
   if (status === 'called') {
     // المهلة قبل الدخول
     return Math.max(0, settings.patientMaxWaitSeconds - elapsed);
-  } else if (status === 'in') {
+  } if (status === 'in') {
     // الحد الأقصى للفحص
     return Math.max(0, settings.examMaxSeconds - elapsed);
   }
-  
+
   return 0;
 }
 
@@ -195,9 +195,9 @@ export function getRemainingTime(calledAt, status) {
  */
 export function shouldSkipPatient(calledAt, status) {
   const settings = getQueueSettings();
-  
+
   if (!settings.timeoutHandlerEnabled) return false;
-  
+
   const remaining = getRemainingTime(calledAt, status);
   return remaining <= 0;
 }
@@ -215,9 +215,9 @@ export function onQueueSettingsChange(callback) {
   const handler = (event) => {
     callback(event.detail);
   };
-  
+
   window.addEventListener('queueSettingsUpdated', handler);
-  
+
   return () => {
     window.removeEventListener('queueSettingsUpdated', handler);
   };
@@ -239,5 +239,5 @@ export default {
   isNearTurn,
   getRemainingTime,
   shouldSkipPatient,
-  onQueueSettingsChange
+  onQueueSettingsChange,
 };

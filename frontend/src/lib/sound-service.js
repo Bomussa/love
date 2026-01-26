@@ -25,9 +25,7 @@ const toggleMute = () => {
   return isMuted;
 };
 
-const isMutedStatus = () => {
-  return isMuted;
-};
+const isMutedStatus = () => isMuted;
 
 export default {
   playSound,

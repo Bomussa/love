@@ -1,14 +1,14 @@
 // Simple CORS helper for Supabase Edge Functions (Deno)
 export const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Cache-Control": "no-cache, no-store, must-revalidate",
-  "Content-Type": "application/json; charset=utf-8",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Content-Type': 'application/json; charset=utf-8',
 };
 
 export function isOptions(req: Request) {
-  return req.method === "OPTIONS";
+  return req.method === 'OPTIONS';
 }
 
 export function ok(body: unknown, extraHeaders: Record<string, string> = {}) {

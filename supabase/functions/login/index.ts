@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function: /api/v1/login
- * 
+ *
  * Purpose: Handle user login/authentication
  * Validates credentials and returns auth tokens
  */
@@ -52,12 +52,12 @@ Deno.serve(async (req: Request) => {
 
     if (error) {
       console.error('Login error:', error);
-      
+
       // Return appropriate status codes
       if (error.message.includes('Invalid') || error.message.includes('credentials')) {
         return corsErrorResponse('Invalid email or password', 401, origin);
       }
-      
+
       return corsErrorResponse(error.message, 400, origin);
     }
 
@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
         user: data.user,
       },
       200,
-      origin
+      origin,
     );
   } catch (error) {
     console.error('Unexpected login error:', error);
