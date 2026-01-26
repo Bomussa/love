@@ -498,35 +498,95 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const currentIdx = stations.findIndex(s => s.id === station.id)
       const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
       
-      // إذا كانت هناك عيادة تالية، نفتحها فقط (بدون دخول تلقائي)
+      // ✅ إذا كانت هناك عيادة تالية، نفتحها وندخل الطابور تلقائياً
       if (hasNextClinic) {
+        const nextClinic = stations[currentIdx + 1];
+        const nextClinicName = language === 'ar' ? nextClinic?.nameAr : nextClinic?.name;
+        
         // تحديث العيادات: إكمال الحالية وفتح التالية
         setStations(prev => prev.map((s, i) => {
           if (i === currentIdx) {
             // العيادة الحالية - مكتملة
-            return { ...s, status: 'completed', exitTime: new Date() }
+            return { ...s, status: 'completed', exitTime: new Date(), isEntered: false }
           } else if (i === currentIdx + 1) {
-            // العيادة التالية - مفتوحة لكن غير مدخولة (يجب على المراجع الدخول يدوياً)
-            return { ...s, status: 'ready', isEntered: false }
+            // العيادة التالية - مفتوحة وجاهزة للدخول
+            return { ...s, status: 'ready', isEntered: false, yourNumber: null, current: null, ahead: null }
           }
           return s
         }))
         
-        // إشعار بفتح العيادة التالية
-        const nextClinicName = stations[currentIdx + 1]?.nameAr || 'العيادة التالية'
-        setCurrentNotice({
-          type: 'next_clinic',
-          message: language === 'ar' 
-            ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
-            : `✅ Examination completed. Please enter ${nextClinicName}`,
-          clinic: nextClinicName
-        })
-        setTimeout(() => setCurrentNotice(null), 5000)
+        // ✅ تمرير الدور للعيادة التالية تلقائياً - دخول الطابور
+        try {
+          const enterResult = await api.enterQueue(nextClinic.id, patientData.id, true, patientData.name, patientData.queueType);
+          
+          if (enterResult && (enterResult.success || enterResult.display_number)) {
+            // جلب الموقع الفعلي
+            const positionData = await api.getQueuePosition(nextClinic.id, patientData.id);
+            
+            if (positionData && positionData.success) {
+              setActiveTicket({ clinicId: nextClinic.id, ticket: positionData.display_number });
+              setStations(prev => prev.map((s, i) => {
+                if (i === currentIdx + 1) {
+                  return {
+                    ...s,
+                    yourNumber: positionData.display_number,
+                    current: positionData.current_number,
+                    ahead: positionData.ahead,
+                    totalWaiting: positionData.total_waiting,
+                    status: 'ready',
+                    isEntered: true,
+                    entered_at: new Date().toISOString()
+                  };
+                }
+                return s;
+              }));
+              
+              // إشعار بالدخول التلقائي للعيادة التالية
+              setCurrentNotice({
+                type: 'next_clinic',
+                message: language === 'ar' 
+                  ? `✅ تم التمرير إلى ${nextClinicName} - رقمك ${positionData.display_number}`
+                  : `✅ Moved to ${nextClinicName} - Your # ${positionData.display_number}`,
+                clinic: nextClinicName
+              });
+            } else {
+              // إشعار بفتح العيادة التالية
+              setCurrentNotice({
+                type: 'next_clinic',
+                message: language === 'ar' 
+                  ? `✅ تم إكمال الفحص. تم الدخول إلى ${nextClinicName}`
+                  : `✅ Examination completed. Entered ${nextClinicName}`,
+                clinic: nextClinicName
+              });
+            }
+          } else {
+            // فشل الدخول التلقائي - إشعار بالدخول اليدوي
+            setCurrentNotice({
+              type: 'next_clinic',
+              message: language === 'ar' 
+                ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
+                : `✅ Examination completed. Please enter ${nextClinicName}`,
+              clinic: nextClinicName
+            });
+          }
+        } catch (autoEnterError) {
+          console.error('Auto-enter next clinic failed:', autoEnterError);
+          // إشعار بفتح العيادة التالية للدخول اليدوي
+          setCurrentNotice({
+            type: 'next_clinic',
+            message: language === 'ar' 
+              ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
+              : `✅ Examination completed. Please enter ${nextClinicName}`,
+            clinic: nextClinicName
+          });
+        }
+        
+        setTimeout(() => setCurrentNotice(null), 6000);
       } else {
         // لا توجد عيادة تالية - فقط نكمل العيادة الحالية
         setStations(prev => prev.map((s, i) => 
-          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
-        ))
+          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date(), isEntered: false } : s
+        ));
       }
 
       setPinInput('')
