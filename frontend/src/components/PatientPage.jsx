@@ -837,18 +837,43 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
+                  {/* ✅ إصلاح: زر العيادة يفتح فقط عند حلول الدور بالضبط */}
                   {station.status === 'ready' && !station.isEntered && (
                     <div className="mt-4 pt-4 border-t border-gray-600">
-                      <Button
-                        variant="gradientPrimary"
-                        onClick={() => handleEnterClinic(station)}
-                        disabled={loading}
-                        className="w-full"
-                        data-test="enter-clinic-btn"
-                      >
-                        <LogIn className="icon icon-md me-2" />
-                        {t('enterClinic', language)}
-                      </Button>
+                      {/* التحقق من أن دورك قد حان بالضبط */}
+                      {(station.yourNumber === station.current || station.ahead === 0) ? (
+                        <Button
+                          variant="gradientPrimary"
+                          onClick={() => handleEnterClinic(station)}
+                          disabled={loading}
+                          className="w-full"
+                          data-test="enter-clinic-btn"
+                        >
+                          <LogIn className="icon icon-md me-2" />
+                          {t('enterClinic', language)}
+                        </Button>
+                      ) : (
+                        <div className="text-center space-y-3">
+                          <div className="p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-xl">
+                            <p className="text-yellow-400 font-bold text-lg">
+                              {language === 'ar' ? '⏳ انتظر دورك' : '⏳ Wait for your turn'}
+                            </p>
+                            <p className="text-yellow-200 text-sm mt-2">
+                              {language === 'ar' 
+                                ? `رقمك ${station.yourNumber} - الحالي ${station.current || 0} - أمامك ${station.ahead} شخص`
+                                : `Your # ${station.yourNumber} - Current ${station.current || 0} - ${station.ahead} ahead`}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            disabled={true}
+                            className="w-full opacity-50 cursor-not-allowed border-gray-600"
+                          >
+                            <Lock className="icon icon-md me-2" />
+                            {language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
