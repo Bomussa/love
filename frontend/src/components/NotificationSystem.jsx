@@ -17,11 +17,18 @@ export default function NotificationSystem({
 }) {
   const [notification, setNotification] = useState(null);
   const [hasPermission, setHasPermission] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   
   // Queue للإشعارات لمنع التداخل
   const notificationQueueRef = useRef([]);
   const isShowingNotificationRef = useRef(false);
   const notificationTimeoutRef = useRef(null);
+  
+  // ✅ إصلاح: تحميل فوري للإشعارات عند فتح التطبيق
+  useEffect(() => {
+    // تفعيل النظام فوراً بدون تأخير
+    setIsReady(true);
+  }, []);
   
   const lastPositionRef = useRef(null);
   const lastClinicRef = useRef(null);
@@ -562,12 +569,12 @@ export default function NotificationSystem({
             {notification.icon || '🔔'}
           </div>
           
-          {/* النص */}
+          {/* النص - ✅ إصلاح: تكبير حجم الخط */}
           <div className="flex-1 min-w-0">
-            <div className="font-black text-lg sm:text-xl mb-1" style={{ letterSpacing: '0.3px', lineHeight: '1.3' }}>
+            <div className="font-black text-xl sm:text-2xl mb-2" style={{ letterSpacing: '0.3px', lineHeight: '1.3' }}>
               {notification.title}
             </div>
-            <div className="text-sm sm:text-base font-bold opacity-100 whitespace-pre-line" style={{ letterSpacing: '0.2px', lineHeight: '1.5' }}>
+            <div className="text-base sm:text-lg font-bold opacity-100 whitespace-pre-line" style={{ letterSpacing: '0.2px', lineHeight: '1.6' }}>
               {notification.message}
             </div>
           </div>
