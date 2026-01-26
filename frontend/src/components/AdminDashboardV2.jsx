@@ -5149,7 +5149,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         clinicsData.forEach(clinic => {
           const clinicQueues = queueData.filter(q => q.clinic_id === clinic.id);
           const completed = clinicQueues.filter(q => q.status === 'completed');
-          const waiting = clinicQueues.filter(q => q.status === 'waiting');
+          // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
+          const waiting = clinicQueues.filter(q => ['waiting', 'called', 'serving'].includes(q.status));
           
           // حساب متوسط مدة الانتظار (من entered_at إلى called_at)
           let avgWaitTime = 0;
@@ -5201,8 +5202,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const processQueueData = (data, dateField) => {
     // إجمالي المرضى = عدد السجلات الكلي (مجموع جميع الزيارات)
     const totalPatients = data.length;
-    // في الانتظار = مجموع المنتظرين في جميع العيادات
-    const waitingCount = data.filter(item => item.status === 'waiting').length;
+    // في الانتظار = مجموع المنتظرين + من تم استدعاؤهم ولم يكتملوا بعد (called, serving)
+    const waitingCount = data.filter(item => ['waiting', 'called', 'serving'].includes(item.status)).length;
     const completedCount = data.filter(item => item.status === 'completed').length;
 
     let avgWait = 0;
