@@ -1,4 +1,5 @@
 // ✅ المسارات الديناميكية - محسّن للحساب الصحيح والعمل التلقائي
+// الترتيب حسب الوزن (الأقل ازدحاماً أولاً) عند بداية المسار فقط
 import routeMap from '../../config/routeMap.json' assert { type: 'json' }
 import clinicsData from '../../config/clinics.json' assert { type: 'json' }
 import { queueQueries } from './supabase-queries'
@@ -61,25 +62,37 @@ async function fetchClinicWeights(clinicIds) {
   })
   
   try {
-    const promises = clinicIds.map(async (clinicId) => {
-      try {
-        const status = await queueQueries.getStatus(clinicId)
-        weights[clinicId] = status.waiting || 0
-      } catch (err) {
-        // Keep default weight of 0
-        
-      }
-    })
+    const today = new Date().toISOString().split('T')[0];
     
-    await Promise.all(promises)
+    // جلب عدد المنتظرين لكل عيادة من unified_queue
+    if (window.supabase) {
+      const promises = clinicIds.map(async (clinicId) => {
+        try {
+          const { count, error } = await window.supabase
+            .from('unified_queue')
+            .select('*', { count: 'exact', head: true })
+            .eq('clinic_id', clinicId)
+            .eq('queue_date', today)
+            .eq('status', 'waiting');
+          
+          if (!error && count !== null) {
+            weights[clinicId] = count;
+          }
+        } catch (err) {
+          // Keep default weight of 0
+        }
+      });
+      
+      await Promise.all(promises);
+    }
   } catch (err) {
-    
+    console.warn('Failed to fetch clinic weights:', err);
   }
   
   return weights
 }
 
-// ترتيب العيادات حسب الأوزان مع احترام قيود الطوابق
+// ✅ ترتيب العيادات حسب الأوزان (الأقل ازدحاماً أولاً)
 function sortClinicsByWeight(clinics, weights) {
   // إضافة الوزن لكل عيادة
   const clinicsWithWeights = clinics.map(clinic => ({
@@ -89,13 +102,13 @@ function sortClinicsByWeight(clinics, weights) {
   
   // ترتيب حسب الوزن أولاً (الفارغة أولاً)
   clinicsWithWeights.sort((a, b) => {
-    // الترتيب الأساسي: حسب الوزن
+    // الترتيب الأساسي: حسب الوزن (الأقل ازدحاماً أولاً)
     if (a.weight !== b.weight) {
       return a.weight - b.weight
     }
     
-    // إذا كان الوزن متساوي، نرتب حسب الطابق
-    const floorOrder = { 'M': 1, 'G': 2, '2': 3, '3': 4 }
+    // إذا كان الوزن متساوي، نرتب حسب الطابق (الأقرب أولاً)
+    const floorOrder = { 'M': 1, 'G': 2, '1': 3, '2': 4, '3': 5 }
     const floorA = floorOrder[a.floorCode] || 3
     const floorB = floorOrder[b.floorCode] || 3
     return floorA - floorB
@@ -106,6 +119,7 @@ function sortClinicsByWeight(clinics, weights) {
 
 // ✅ الحصول على المسار الطبي حسب نوع الفحص والجنس
 // يجلب الترتيب من قاعدة البيانات أولاً (routes table) مع حساب الأوزان الصحيح
+// ✅ الترتيب حسب الوزن عند بداية المسار فقط
 export async function getDynamicMedicalPathway(examType, gender) {
   console.log('[getDynamicMedicalPathway] بدء جلب المسار:', examType, gender);
   
@@ -143,28 +157,32 @@ export async function getDynamicMedicalPathway(examType, gender) {
       if (dbRoute && dbRoute.clinics && Array.isArray(dbRoute.clinics) && dbRoute.clinics.length > 0) {
         console.log('[getDynamicMedicalPathway] تم جلب المسار من قاعدة البيانات:', dbRoute.route_name, dbRoute.clinics);
         
-        // استخدام الترتيب من قاعدة البيانات
+        // تحويل رموز العيادات إلى كائنات
         const clinics = await mapClinicCodes(dbRoute.clinics, true);
         
         if (clinics.length > 0) {
-          // إضافة الأوزان للعرض (عدد المنتظرين)
+          // ✅ جلب الأوزان الحقيقية (عدد المنتظرين في كل عيادة)
           const clinicIds = clinics.map(c => c.id);
           let weights = {};
           try {
             weights = await fetchClinicWeights(clinicIds);
+            console.log('[getDynamicMedicalPathway] أوزان العيادات:', weights);
           } catch (err) {
             clinicIds.forEach(id => { weights[id] = 0; });
           }
           
-          // إضافة الوزن والترتيب لكل عيادة
-          const result = clinics.map((clinic, index) => ({
+          // ✅ ترتيب العيادات حسب الوزن (الأقل ازدحاماً أولاً)
+          const sortedClinics = sortClinicsByWeight(clinics, weights);
+          
+          // إضافة الترتيب النهائي لكل عيادة
+          const result = sortedClinics.map((clinic, index) => ({
             ...clinic,
-            weight: weights[clinic.id] || 0,
             order: index + 1,
             status: index === 0 ? 'ready' : 'locked'
           }));
           
-          console.log('[getDynamicMedicalPathway] المسار النهائي:', result.length, 'عيادة');
+          console.log('[getDynamicMedicalPathway] المسار النهائي (مرتب حسب الوزن):', 
+            result.map(c => `${c.nameAr}(${c.weight})`).join(' → '));
           return result;
         }
       }
@@ -204,25 +222,29 @@ export async function getDynamicMedicalPathway(examType, gender) {
     return [];
   }
   
-  // إضافة الأوزان للعرض
+  // ✅ جلب الأوزان الحقيقية
   const clinicIds = clinics.map(c => c.id);
   let weights = {};
   
   try {
     weights = await fetchClinicWeights(clinicIds);
+    console.log('[getDynamicMedicalPathway] أوزان العيادات (محلي):', weights);
   } catch (err) {
     clinicIds.forEach(id => { weights[id] = 0; });
   }
   
-  // إضافة الوزن والترتيب لكل عيادة
-  const result = clinics.map((clinic, index) => ({
+  // ✅ ترتيب العيادات حسب الوزن (الأقل ازدحاماً أولاً)
+  const sortedClinics = sortClinicsByWeight(clinics, weights);
+  
+  // إضافة الترتيب النهائي لكل عيادة
+  const result = sortedClinics.map((clinic, index) => ({
     ...clinic,
-    weight: weights[clinic.id] || 0,
     order: index + 1,
     status: index === 0 ? 'ready' : 'locked'
   }));
   
-  console.log('[getDynamicMedicalPathway] المسار النهائي (محلي):', result.length, 'عيادة');
+  console.log('[getDynamicMedicalPathway] المسار النهائي (محلي - مرتب حسب الوزن):', 
+    result.map(c => `${c.nameAr}(${c.weight})`).join(' → '));
   return result;
 }
 
@@ -250,4 +272,3 @@ export function enrichStationsWithClinicData(stations) {
 }
 
 export default getDynamicMedicalPathway
-
