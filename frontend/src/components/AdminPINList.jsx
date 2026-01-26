@@ -191,7 +191,7 @@ export function AdminPINList({ language = 'ar' }) {
             ${clinics.map((clinic, idx) => {
               const pinData = pins[clinic.id]
               const pinDisplay = pinData?.pin || (isRTL ? 'غير متوفر' : 'N/A')
-              const statusDisplay = pinData?.status === 'active' 
+              const statusDisplay = pinData?.pin 
                 ? (isRTL ? '✅ نشط' : '✅ Active')
                 : (isRTL ? '❌ غير متوفر' : '❌ Not Available')
               
