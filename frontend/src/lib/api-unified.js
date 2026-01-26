@@ -163,18 +163,54 @@ const api = {
 
       if (entryError) throw entryError;
 
-      // جلب رقم من يُفحص الآن (serving) - اليوم فقط
-      const { data: servingEntry, error: servingError } = await supabase
+      // ✅ جلب رقم من يُفحص الآن (called أو serving) - اليوم فقط
+      // نبحث عن called أولاً (الحالة الفعلية في قاعدة البيانات)
+      let currentNumber = 0;
+      
+      // محاولة 1: البحث عن called
+      const { data: calledEntry } = await supabase
         .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
-        .eq('queue_date', today) // ✅ فقط اليوم
-        .eq('status', 'serving')
+        .eq('queue_date', today)
+        .eq('status', 'called')
         .order('called_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      const currentNumber = servingEntry ? servingEntry.display_number : 0;
+      
+      if (calledEntry) {
+        currentNumber = calledEntry.display_number;
+      } else {
+        // محاولة 2: البحث عن serving
+        const { data: servingEntry } = await supabase
+          .from('unified_queue')
+          .select('display_number')
+          .eq('clinic_id', clinicId)
+          .eq('queue_date', today)
+          .eq('status', 'serving')
+          .order('called_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (servingEntry) {
+          currentNumber = servingEntry.display_number;
+        } else {
+          // محاولة 3: آخر مكتمل (إذا لم يوجد أحد يُفحص حالياً)
+          const { data: lastCompleted } = await supabase
+            .from('unified_queue')
+            .select('display_number')
+            .eq('clinic_id', clinicId)
+            .eq('queue_date', today)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (lastCompleted) {
+            currentNumber = lastCompleted.display_number;
+          }
+        }
+      }
 
       const { count, error: countError } = await supabase
         .from('unified_queue')
@@ -490,7 +526,8 @@ const api = {
         issuedAt: q.entered_at
       }));
 
-      const inService = data.filter(q => q.status === 'serving').map(q => ({
+      // ✅ إصلاح: تضمين called و serving كحالات في الخدمة
+      const inService = data.filter(q => q.status === 'serving' || q.status === 'called').map(q => ({
         ticket: q.display_number,
         visitId: q.patient_id,
         calledAt: q.called_at
@@ -1502,7 +1539,8 @@ const api = {
       if (error) throw error;
       
       const waiting = data.filter(q => q.status === 'waiting');
-      const serving = data.filter(q => q.status === 'serving');
+      // ✅ إصلاح: تضمين called و serving كحالات في الخدمة
+      const serving = data.filter(q => q.status === 'serving' || q.status === 'called');
       const completed = data.filter(q => q.status === 'completed');
       const skipped = data.filter(q => q.status === 'skipped');
       
