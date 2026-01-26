@@ -257,7 +257,10 @@ export default function NotificationSystem({
     if (!hasShownQueueExplanation.current && currentClinic && yourNumber !== null) {
       hasShownQueueExplanation.current = true;
       
-      const aheadCount = Math.max(0, (yourNumber || 0) - (currentServing || 0));
+      // إصلاح: الحساب الصحيح لعدد من أمامك
+      // إذا كان الحالي يُخدم، فأنت التالي إذا كان رقمك = الحالي + 1
+      // أمامك = رقمك - الحالي - 1 (لأن الحالي يُخدم وليس أمامك)
+      const aheadCount = Math.max(0, (yourNumber || 0) - (currentServing || 1) - 1);
       const waitTime = getEstimatedWaitTime(aheadCount);
       
       queueNotification({
