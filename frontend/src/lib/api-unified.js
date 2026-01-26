@@ -1511,13 +1511,39 @@ const api = {
    */
   async getClinicsWithPins() {
     try {
-      const { data, error } = await supabase
+      // جلب العيادات أولاً
+      const { data: clinics, error: clinicsError } = await supabase
         .from('clinics')
-        .select('id, name, name_ar, pin_code, updated_at')
-        .order('name');
+        .select('id, name, name_ar')
+        .eq('is_active', true)
+        .order('name_ar');
 
-      if (error) throw error;
-      return { success: true, data };
+      if (clinicsError) throw clinicsError;
+
+      // جلب الـ PINs النشطة اليوم
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data: pins, error: pinsError } = await supabase
+        .from('pins')
+        .select('*')
+        .eq('is_active', true)
+        .gte('expires_at', today.toISOString());
+
+      if (pinsError) throw pinsError;
+
+      // دمج البيانات
+      const combinedData = clinics.map(clinic => {
+        const pinEntry = pins.find(p => p.clinic_code === clinic.id);
+        return {
+          ...clinic,
+          pin_code: pinEntry ? pinEntry.pin : null,
+          pin_expires_at: pinEntry ? pinEntry.expires_at : null,
+          pin_status: pinEntry ? 'active' : 'none'
+        };
+      });
+
+      return { success: true, data: combinedData };
     } catch (error) {
       console.error('[api-unified] getClinicsWithPins error:', error);
       return { success: false, data: [], error: error.message };
