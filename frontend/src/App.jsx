@@ -11,6 +11,9 @@ import { ClinicLoginPage } from './components/ClinicLoginPage'
 import getDynamicMedicalPathway from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
+import { autoRepairSystem } from './lib/auto-repair-system'
+import { functionTableMonitor } from './lib/function-table-monitor'
+import { elementMonitor } from './lib/element-monitor'
 
 // Lazy Loading للمكونات الثقيلة
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
@@ -87,6 +90,24 @@ function App() {
   const [currentView, setCurrentView] = useState('login')
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
   const [language, setLanguage] = useState(getCurrentLanguage())
+
+  // ============= AUTO REPAIR SYSTEM =============
+  useEffect(() => {
+    // تفعيل نظام الإصلاح التلقائي
+    autoRepairSystem.startMonitoring();
+    console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
+    
+    functionTableMonitor.startMonitoring();
+    
+    // تفعيل نظام مراقبة العناصر التفاعلية
+    elementMonitor.startMonitoring();
+    console.log('✅ نظام مراقبة العناصر: تم التفعيل');
+    console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
+    
+    return () => {
+      // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
+    };
+  }, []);
 
   // ============= ROUTING LOGIC =============
   useEffect(() => {
