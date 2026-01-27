@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client';
+import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
 
 /**
@@ -2053,5 +2054,9 @@ export const supabaseApi = {
   getAllPins: () => api.getActivePins(),
 };
 
+// تفعيل نظام التزامن اليومي لأرقام PIN
+const pinDailySync = new PINDailySync(supabase);
+pinDailySync.startDailySync();
+console.log('✅ نظام التزامن اليومي لأرقام PIN: تم التفعيل');
 export default api;
 export { api };
