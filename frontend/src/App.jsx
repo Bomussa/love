@@ -1,3 +1,4 @@
+import AdvancedAutoRepair from './lib/advanced-auto-repair';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -101,6 +102,11 @@ function App() {
     
     // تفعيل نظام مراقبة العناصر التفاعلية
     elementMonitor.startMonitoring();
+    
+    // تفعيل نظام الإصلاح التلقائي المتقدم
+    const advancedRepair = new AdvancedAutoRepair(supabase);
+    advancedRepair.startAutoRepair();
+    console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
     console.log('✅ نظام مراقبة العناصر: تم التفعيل');
     console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
     
