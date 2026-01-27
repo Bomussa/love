@@ -1,3 +1,4 @@
+import InteractiveElementReporter from './lib/interactive-element-reporter';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
@@ -106,6 +107,11 @@ function App() {
     // تفعيل نظام الإصلاح التلقائي المتقدم
     const advancedRepair = new AdvancedAutoRepair(supabase);
     advancedRepair.startAutoRepair();
+    
+    // تفعيل نظام التقارير للعناصر التفاعلية
+    const elementReporter = new InteractiveElementReporter();
+    elementReporter.startReporting();
+    console.log('✅ نظام التقارير: تم التفعيل');
     console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
     console.log('✅ نظام مراقبة العناصر: تم التفعيل');
     console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
