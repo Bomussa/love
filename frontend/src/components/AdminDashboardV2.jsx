@@ -1,3 +1,4 @@
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 import React, { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
@@ -3976,6 +3977,8 @@ const BackupExport = ({ language, t }) => {
       let filename = '';
       
       switch(type) {
+        case 'diagnostics':
+          return <DiagnosticsPanel />;
         case 'queues':
           const { data: queuesData } = await supabase.from('unified_queue').select('*');
           data = queuesData;
