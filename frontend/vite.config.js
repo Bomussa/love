@@ -18,7 +18,7 @@ export default defineConfig({
       modernPolyfills: true,
     }),
   ],
-  base: './',
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
