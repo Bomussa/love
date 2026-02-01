@@ -936,12 +936,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   {station.status === 'ready' && !station.isEntered && (
                     <div className="mt-4 pt-4 border-t border-gray-600">
                       {/* 
-                        التحقق من أن دورك قد حان فعلياً:
-                        المنطق الصحيح: إذا كان أمامك = 0 (ahead === 0) فدورك الآن
-                        أو: إذا كان رقمك أقل من أو يساوي الحالي
+                        ✅ إصلاح: التحقق من أن دورك قد حان فعلياً
+                        المنطق الصحيح: 
+                        1. إذا كان أمامك = 0 (ahead === 0) فدورك الآن
+                        2. أو إذا كان رقمك يساوي الحالي (yourNumber === current)
+                        3. أو إذا كان رقمك أقل من الحالي (حالة نادرة)
                       */}
-                      {(station.yourNumber > 0 && (station.ahead === 0 || station.ahead === null || 
-                        (station.current > 0 && station.yourNumber <= station.current))) ? (
+                      {(station.yourNumber > 0 && (
+                        station.ahead === 0 || 
+                        station.ahead === null || 
+                        station.yourNumber === station.current ||
+                        (station.current > 0 && station.yourNumber < station.current)
+                      )) ? (
                         <Button
                           variant="gradientPrimary"
                           onClick={() => handleEnterClinic(station)}
