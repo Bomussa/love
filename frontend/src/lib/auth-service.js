@@ -5,7 +5,7 @@
  */
 
 import api from './api-unified';
-import { validateAdminCredentials } from '../config/admin-credentials';
+import { validateAdminCredentials, ADMIN_CREDENTIALS } from '../config/admin-credentials';
 
 // ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
@@ -74,11 +74,20 @@ class AuthService {
   }
 
   async login(username, password) {
+    console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
+
     try {
       // ✅ إصلاح: التحقق من السوبر أدمن أولاً وفوراً (بدون انتظار API)
       // اسم المستخدم غير حساس لحالة الأحرف
-      if (validateAdminCredentials(username, password)) {
-        console.log('[Auth] ✅ Super Admin Login - Instant Access');
+      const isValid = validateAdminCredentials(username, password);
+      console.log('[AuthService] validateAdminCredentials result:', isValid);
+      console.log('[AuthService] Expected credentials:', { 
+        username: ADMIN_CREDENTIALS.username, 
+        passwordLength: ADMIN_CREDENTIALS.password?.length 
+      });
+
+      if (isValid) {
+        console.log('[AuthService] ✅ Super Admin Login - Instant Access');
         const session = this.createSession(username, 'SUPER_ADMIN');
         return { success: true, session };
       }
@@ -97,13 +106,15 @@ class AuthService {
         }
         return { success: false, error: response.message || 'Invalid credentials' };
       } catch (apiError) {
-        console.warn('[Auth] API timeout or error, checking local credentials');
+        console.warn('[AuthService] API timeout or error:', apiError);
         return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
       }
     } catch (error) {
-      console.error('[Auth] Login error:', error);
+      console.error('[AuthService] Login error:', error);
       // Fallback للسوبر أدمن في حالة الأخطاء
-      if (validateAdminCredentials(username, password)) {
+      const isValid = validateAdminCredentials(username, password);
+      console.log('[AuthService] Fallback validation:', isValid);
+      if (isValid) {
         const session = this.createSession(username, 'SUPER_ADMIN');
         return { success: true, session };
       }
@@ -145,13 +156,48 @@ class AuthService {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
   }
 
-  isAuthenticated() {
-    return this.getSession() !== null;
+  // ✅ إصلاح: التحقق من الصلاحيات
+  hasPermission(permission) {
+    const session = this.getSession();
+    if (!session) return false;
+
+    const role = USER_ROLES[session.role];
+    if (!role) return false;
+
+    // السوبر أدمن لديه جميع الصلاحيات
+    if (role.permissions.includes('*')) return true;
+
+    return role.permissions.includes(permission);
   }
 
-  isSuperAdmin() {
+  // ✅ إصلاح: التحقق من عدة صلاحيات (واحد أو أكثر)
+  hasAnyPermission(permissions) {
+    return permissions.some(p => this.hasPermission(p));
+  }
+
+  // ✅ إصلاح: التحقق من جميع الصلاحيات المطلوبة
+  hasAllPermissions(permissions) {
+    return permissions.every(p => this.hasPermission(p));
+  }
+
+  // ✅ إصلاح: الحصول على صلاحيات المستخدم الحالي
+  getCurrentPermissions() {
     const session = this.getSession();
-    return session && session.role === 'SUPER_ADMIN';
+    if (!session) return [];
+
+    const role = USER_ROLES[session.role];
+    return role ? role.permissions : [];
+  }
+
+  // ✅ إصلاح: التحقق إذا كان المستخدم طبيب (للعرض في العيادات فقط)
+  isDoctor() {
+    const session = this.getSession();
+    return session && session.role === 'DOCTOR';
+  }
+
+  // ✅ إصلاح: التحقق من صلاحية العيادة فقط
+  canAccessClinicOnly() {
+    return this.hasPermission('clinic_only');
   }
 }
 
