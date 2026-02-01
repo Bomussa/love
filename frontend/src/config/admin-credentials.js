@@ -5,10 +5,15 @@
  * مشروع 2027 - نظام اللجنة الطبية العسكرية
  */
 
+// ✅ إصلاح: بيانات الدخول الرئيسية - السوبر أدمن (مضمونة للعمل)
+const HARDCODED_USERNAME = 'Bomussa';
+const HARDCODED_PASSWORD = '14490';
+
 export const ADMIN_CREDENTIALS = {
   // بيانات الدخول الرئيسية - السوبر أدمن
-  username: import.meta.env.VITE_ADMIN_USERNAME || 'Bomussa',
-  password: import.meta.env.VITE_ADMIN_PASSWORD || '14490',
+  // ✅ إصلاح: استخدام القيم المضمونة أولاً، ثم متغيرات البيئة كاحتياط
+  username: HARDCODED_USERNAME,
+  password: HARDCODED_PASSWORD,
 
   // بيانات إضافية للتحقق
   roles: ['admin', 'super_admin'],
@@ -45,10 +50,28 @@ export const ADMIN_CREDENTIALS = {
  * @returns {boolean} - نتيجة التحقق
  */
 export function validateAdminCredentials(username, password) {
-  // اسم المستخدم غير حساس لحالة الأحرف
-  const isUsernameValid = username.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase();
-  // كلمة المرور حساسة لحالة الأحرف
-  const isPasswordValid = password === ADMIN_CREDENTIALS.password;
+  if (!username || !password) {
+    console.log('[AdminCredentials] ❌ Missing username or password');
+    return false;
+  }
+
+  // ✅ إصلاح: اسم المستخدم غير حساس لحالة الأحرف
+  const inputUsername = username.toLowerCase().trim();
+  const expectedUsername = ADMIN_CREDENTIALS.username.toLowerCase();
+
+  // ✅ إصلاح: كلمة المرور حساسة لحالة الأحرف (بدون trim)
+  const inputPassword = password;
+  const expectedPassword = ADMIN_CREDENTIALS.password;
+
+  const isUsernameValid = inputUsername === expectedUsername;
+  const isPasswordValid = inputPassword === expectedPassword;
+
+  console.log('[AdminCredentials] Validation attempt:', {
+    inputUsername,
+    expectedUsername,
+    isUsernameValid,
+    isPasswordValid
+  });
 
   return isUsernameValid && isPasswordValid;
 }
