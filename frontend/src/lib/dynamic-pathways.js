@@ -1,7 +1,31 @@
 // ✅ المسارات الديناميكية - محسّن للحساب الصحيح والعمل التلقائي
 // الترتيب حسب الوزن (الأقل ازدحاماً أولاً) عند بداية المسار فقط
-import routeMap from '../../config/routeMap.json' assert { type: 'json' };
-import clinicsData from '../../config/clinics.json' assert { type: 'json' };
+// ✅ إصلاح: استخدام fetch بدلاً من assert لأن assert قد لا يعمل في جميع المتصفحات
+let routeMap = null;
+let clinicsData = null;
+
+// تحميل البيانات بشكل ديناميكي
+async function loadConfigFiles() {
+  if (!routeMap) {
+    try {
+      const response = await fetch('/config/routeMap.json');
+      routeMap = await response.json();
+    } catch (e) {
+      console.warn('Failed to load routeMap.json, using fallback');
+      routeMap = {};
+    }
+  }
+  if (!clinicsData) {
+    try {
+      const response = await fetch('/config/clinics.json');
+      clinicsData = await response.json();
+    } catch (e) {
+      console.warn('Failed to load clinics.json, using fallback');
+      clinicsData = {};
+    }
+  }
+  return { routeMap, clinicsData };
+}
 import { queueQueries } from './supabase-queries';
 
 // ✅ تحويل رموز العيادات إلى كائنات كاملة - مع دعم قاعدة البيانات
@@ -9,7 +33,7 @@ async function mapClinicCodes(codes, useDatabase = true) {
   const mappedClinics = [];
 
   for (const code of codes) {
-    let clinic = clinicsData[code];
+    let clinic = currentClinicsData[code];
 
     // إذا لم توجد العيادة في الملف المحلي، نحاول جلبها من قاعدة البيانات
     if (!clinic && useDatabase && window.supabase) {
@@ -125,6 +149,11 @@ function sortClinicsByWeight(clinics, weights) {
 export async function getDynamicMedicalPathway(examType, gender) {
   console.log('[getDynamicMedicalPathway] بدء جلب المسار:', examType, gender);
 
+  // ✅ إصلاح: تحميل ملفات الإعداد أولاً
+  const { routeMap: rm, clinicsData: cd } = await loadConfigFiles();
+  const currentRouteMap = rm || routeMap || {};
+  const currentClinicsData = cd || clinicsData || {};
+
   // تحويل examType من الإنجليزية إلى العربية
   const examTypeMap = {
     recruitment: 'تجنيد',
@@ -197,7 +226,7 @@ export async function getDynamicMedicalPathway(examType, gender) {
 
   // ✅ Fallback: استخدام الملف المحلي
   console.log('[getDynamicMedicalPathway] استخدام الملف المحلي للمسار:', arabicExamType);
-  const route = routeMap[arabicExamType];
+  const route = currentRouteMap[arabicExamType];
 
   if (!route) {
     console.warn('[getDynamicMedicalPathway] لا يوجد مسار للنوع:', arabicExamType);
