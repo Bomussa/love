@@ -1,5 +1,7 @@
 import InteractiveElementReporter from './lib/interactive-element-reporter';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
+import enhancedAutoRepair from './lib/enhanced-auto-repair';
+import offlineManager from './lib/offline-manager';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
