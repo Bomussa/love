@@ -3,7 +3,7 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
@@ -24,7 +24,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
-  
+
   // إعدادات النظام - التحكم في إظهار/إخفاء وتفعيل/إيقاف الميزات
   const [systemSettings, setSystemSettings] = useState({
     pin_system_enabled: true,
@@ -50,7 +50,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         console.error('Failed to fetch system settings:', err)
       }
     }
-    
+
     fetchSystemSettings()
     // تحديث كل 30 ثانية للتأكد من التغييرات اللحظية
     const interval = setInterval(fetchSystemSettings, 30000)
@@ -62,25 +62,24 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     try {
       // فقط أخذ رقم دور (بدون دخول)
       await api.enterQueue(station.id, patientData.id, false) // false = لا تدخل تلقائياً
-      
+
       // جلب الرقم فقط
       const positionData = await api.getQueuePosition(station.id, patientData.id)
-      
+
       if (positionData && positionData.success) {
         // حفظ الرقم فقط بدون تفعيل isEntered
         setStations(prev => prev.map((s, idx) => idx === 0 ? {
           ...s,
           yourNumber: positionData.display_number,
-          current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
+          current: positionData.current_number,
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
           status: 'ready',
-          isEntered: false, // ✅ لم يدخل بعد - يحتاج للضغط على زر "دخول العيادة"
+          isEntered: false,
         } : s))
       }
     } catch (e) {
       console.error('Get ticket for first clinic failed:', e)
-      // في حالة الفشل، العيادة تبقى جاهزة بدون رقم
     }
   }
 
@@ -88,13 +87,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
-      
+
       // تسجيل وقت الدخول الفعلي
       const entryTime = new Date().toISOString();
-      
+
       // دخول الدور
       const enterResult = await api.enterQueue(station.id, patientData.id, true, patientData.name, patientData.queueType)
-      
+
       // التحقق من نجاح الدخول
       if (enterResult && !enterResult.success && enterResult.error) {
         setCurrentNotice({
@@ -105,10 +104,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setLoading(false)
         return
       }
-      
+
       // جلب الموقع الفعلي من Backend
       const positionData = await api.getQueuePosition(station.id, patientData.id)
-      
+
       if (positionData && positionData.success) {
         setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
         setStations(prev => prev.map(s => s.id === station.id ? {
@@ -119,9 +118,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           totalWaiting: positionData.total_waiting,
           status: 'ready',
           isEntered: true,
-          entered_at: positionData.entered_at || entryTime // ✅ حفظ وقت الدخول الفعلي
+          entered_at: positionData.entered_at || entryTime
         } : s))
-        
+
         // إشعار بنجاح الدخول
         setCurrentNotice({
           type: 'success',
@@ -143,7 +142,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           } : s))
         }
       }
-      
+
       setLoading(false)
     } catch (e) {
       console.error('Enter clinic failed:', e)
@@ -169,13 +168,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             clinicsMap[key] = data.clinics[key]
           })
           setClinicPins(clinicsMap)
-
         }
       } catch (err) {
         // console.error('Failed to fetch daily PINs:', err)
       }
     }
-    
+
     fetchDailyPins()
     // تحديث كل 5 دقائق
     const interval = setInterval(() => { if (!document.hidden) fetchDailyPins() }, 5 * 60 * 1000)
@@ -187,22 +185,21 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const loadPathway = async () => {
       try {
         let examStations = null
-        
+
         // محاولة جلب المسار المحفوظ أولاً
         try {
           const savedRoute = await api.getRoute(patientData.id)
           if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
             examStations = savedRoute.route.stations
-
           }
         } catch (err) {
-
+          console.log('No saved route found');
         }
-        
+
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
           examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
-          
+
           // حفظ المسار الجديد في Backend
           try {
             await api.createRoute(
@@ -211,14 +208,30 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               patientData.gender,
               examStations
             )
-
           } catch (err) {
-            // console.error('❌ Failed to save route:', err)
+            console.log('Failed to save route:', err);
           }
         }
-        
+
+        // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
+        let sortedStations = [...examStations];
+        try {
+          const queueCounts = await Promise.all(
+            examStations.map(async (station) => {
+              const count = await api.getQueueCount(station.id);
+              return { station, count: count || 0 };
+            })
+          );
+          // ترتيب العيادات حسب الأقل ازدحاماً (الأقل في الاعلى)
+          queueCounts.sort((a, b) => a.count - b.count);
+          sortedStations = queueCounts.map(q => q.station);
+          console.log('[PatientPage] Stations sorted by queue count:', queueCounts.map(q => `${q.station.nameAr}: ${q.count}`));
+        } catch (sortError) {
+          console.warn('[PatientPage] Failed to sort stations:', sortError);
+        }
+
         // الدخول التلقائي للعيادة الأولى
-        const initialStations = examStations.map((station, index) => ({
+        const initialStations = sortedStations.map((station, index) => ({
           ...station,
           status: index === 0 ? 'ready' : 'locked',
           current: 0,
@@ -226,14 +239,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           ahead: 0,
           isEntered: false
         }))
-        
+
         setStations(initialStations)
-        
+
         // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
-        if (examStations.length > 0) {
-          const firstClinic = examStations[0]
+        if (sortedStations.length > 0) {
+          const firstClinic = sortedStations[0]
           await handleGetTicketForFirstClinic(firstClinic)
-          
+
           // إشعار الطابق
           if (firstClinic.floor) {
             setCurrentNotice({
@@ -245,10 +258,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         }
       } catch (err) {
-        // console.error('Failed to load pathway:', err)
+        console.error('Failed to load pathway:', err)
       }
     }
-    
+
     loadPathway()
   }, [patientData.examType, patientData.queueType, patientData.gender])
 
@@ -268,105 +281,92 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   // تحديث لحظي لحالة الطابور مع آلية الإصلاح التلقائي
   useEffect(() => {
     if (!patientData?.id || stations.length === 0) return;
-    
+
     let retryCount = 0;
     let lastResponseTime = Date.now();
     let dynamicInterval = GENERAL_REFRESH_INTERVAL;
-    const MAX_RETRY = 3;
-    const RECOVERY_DELAY = 5000; // 5 ثواني
-    const lastStateRef = { current: null };
     let pollingInterval = null;
     let isSSEActive = false;
-    
+    const MAX_RETRY = 3;
+    const RECOVERY_DELAY = 5000;
+    const lastStateRef = { current: null };
+
     // مراقبة حالة SSE
     const handleSSEConnected = () => {
       isSSEActive = true;
-
-      // إيقاف Polling عند اتصال SSE
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
       }
     };
-    
+
     const handleSSEError = () => {
       isSSEActive = false;
-
-      // تفعيل Polling عند فشل SSE
       if (!pollingInterval) {
         pollingInterval = setInterval(() => {
           updateQueueStatus();
         }, dynamicInterval);
       }
     };
-    
-    // الاستماع لحالة SSE
+
     const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
     const unsubscribeError = eventBus.on('sse:error', handleSSEError);
-    
-    // التحقق من حالة SSE الحالية
+
     if (window.eventBusSSE?.isConnected()) {
       handleSSEConnected();
     } else {
       handleSSEError();
     }
-    
+
     const updateQueueStatus = async () => {
       if (document.hidden) return;
-      
+
       const start = Date.now();
       try {
-        // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط (تقليل 429 Errors)
+        // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
-        
+
         if (currentStation) {
-          // استخدام endpoint position للحصول على موقع دقيق
-          const station = currentStation;
-          const positionData = await api.getQueuePosition(station.id, patientData.id);
+          const positionData = await api.getQueuePosition(currentStation.id, patientData.id);
           if (positionData && positionData.success) {
-            // تجنب التحديثات المكررة
-            const stateKey = `${station.id}-${positionData.display_number}`;
+            const stateKey = `${currentStation.id}-${positionData.display_number}`;
             if (lastStateRef.current !== stateKey) {
               lastStateRef.current = stateKey;
-              
-              // تحديث الأرقام من الباك اند
+
               setStations(prev => prev.map(s => {
-                if (s.id === station.id) {
-                  // إشعار فوري عند تغيير الموقع (لتجنب التكرار)
+                if (s.id === currentStation.id) {
+                  // إشعار عند تغيير الموقع
                   const previousNumber = s.lastNotifiedPosition || 999;
-                  if (positionData.display_number !== previousNumber) {
+                  if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
                     const messages = {
                       0: language === 'ar' ? '🔔 دورك الآن!' : '🔔 Your turn now!',
                       1: language === 'ar' ? '⚠️ أنت التالي - كن جاهزاً' : '⚠️ You are next - be ready',
                       2: language === 'ar' ? 'ℹ️ أنت الثاني - استعد' : 'ℹ️ You are second - get ready'
                     };
-                    
+
                     const message = messages[positionData.display_number];
-                    // إظهار إشعار للمراكز 0, 1, 2 فقط
-                    if (message && positionData.display_number >= 0 && positionData.display_number <= 2) {
+                    if (message) {
                       setCurrentNotice({
                         type: 'queue_update',
                         message: message,
-                        clinic: station.nameAr
+                        clinic: s.nameAr
                       });
-                      
-                      // تشغيل صوت عند دورك الآن (0) - استخدام notification engine
+
                       if (positionData.display_number === 0) {
                         eventBus.emit('queue:your_turn', {
-                          clinicName: station.nameAr,
+                          clinicName: s.nameAr,
                           position: positionData.display_number
                         });
                       }
-                      
+
                       setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
                     }
                   }
-                  
-                  // حفظ الموقع لتجنب التكرار
+
                   return {
                     ...s,
                     yourNumber: positionData.display_number,
-                    current: positionData.current_number, // ✅ إصلاح: عرض رقم الدور الحالي
+                    current: positionData.current_number,
                     ahead: positionData.ahead,
                     totalWaiting: positionData.total_waiting,
                     estimatedWait: positionData.estimated_wait_minutes,
@@ -378,75 +378,61 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             }
           }
         }
-        
-        // نجاح – إعادة العداد
+
         retryCount = 0;
         const duration = Date.now() - start;
         lastResponseTime = Date.now();
-        // تعديل فترات التحديث ديناميكيًا حسب وقت الاستجابة
         dynamicInterval = Math.max(5000, GENERAL_REFRESH_INTERVAL + duration);
       } catch (err) {
-
         retryCount++;
         dynamicInterval = Math.min(60000, dynamicInterval * 1.5);
-        
+
         if (retryCount <= MAX_RETRY) {
-          // إعادة المحاولة بعد تأخير
           setTimeout(updateQueueStatus, RECOVERY_DELAY);
         } else {
-          // console.error('⚠️ فشل التحديث بعد 3 محاولات - الاعتماد على SSE');
-          // إعادة تعيين العداد والانتظار على SSE
           retryCount = 0;
         }
       }
     };
-    
-    // تحديث فوري
+
     updateQueueStatus();
-    
-    // Adaptive Polling: يعمل فقط إذا SSE غير نشط
-    // سيتم تفعيله/إيقافه تلقائياً حسب حالة SSE
-    
-    // Heartbeat لمراقبة الصفحة (تحذير فقط، بدون إعادة تحميل)
+
     const heartbeatInterval = setInterval(() => {
       const now = Date.now();
-      if (now - lastResponseTime > 120000) { // دقيقتان بدلاً من دقيقة
-
-        // إعادة تعيين الوقت لتجنب التحذيرات المتكررة
+      if (now - lastResponseTime > 120000) {
         lastResponseTime = Date.now();
       }
     }, 60000);
-    
+
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
       unsubscribeConnected();
       unsubscribeError();
       clearInterval(heartbeatInterval);
     };
-  }, [patientData?.id, language, stations.length]); // Use stations.length instead of stations object
-  
-  // Listen to real-time notifications via eventBus (no duplicate EventSource)
+  }, [patientData?.id, language, stations.length]);
+
+  // Listen to real-time notifications via eventBus
   useEffect(() => {
     if (!patientData?.id) return;
-    
-    // Listen to queue events from eventBus
+
     const handleQueueUpdate = (data) => {
       try {
         const message = language === 'ar' ? data.message : data.messageEn;
-        
+
         setCurrentNotice({
           type: data.type,
           message,
           position: data.position,
           clinic: data.clinic
         });
-        
+
         setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
-        // console.error('Event bus parse error:', err);
+        console.error('Event bus parse error:', err);
       }
     };
-    
+
     eventBus.on('queue:update', handleQueueUpdate);
     eventBus.on('queue:near_turn', handleQueueUpdate);
     eventBus.on('queue:your_turn', handleQueueUpdate);
@@ -458,11 +444,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     };
   }, [patientData?.id, language])
 
-  // الخروج من العيادة باستخدام رقم البن كود
+  // ✅ الخروج من العيادة باستخدام رقم البن كود - مع تحسين تمرير الدور
   const handleClinicExit = async (station) => {
     try {
       setLoading(true)
-      
+
       // التحقق من إدخال PIN
       if (!pinInput || !pinInput.trim()) {
         setCurrentNotice({
@@ -476,8 +462,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       // استدعاء API للخروج
       const exitResult = await api.queueDone(station.id, patientData.id, pinInput)
-      
-      // التحقق من نجاح العملية
+
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
         setCurrentNotice({
@@ -488,41 +473,33 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         setLoading(false)
         return
       }
-      
-      // Log duration for analytics
-      if (exitResult && exitResult.duration_minutes) {
-
-      }
 
       // تحديد العيادة التالية
       const currentIdx = stations.findIndex(s => s.id === station.id)
       const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
-      
-      // ✅ إذا كانت هناك عيادة تالية، نفتحها وندخل الطابور تلقائياً
+
+      // ✅ إصلاح: إذا كانت هناك عيادة تالية، نفتحها وندخل الطابور تلقائياً
       if (hasNextClinic) {
         const nextClinic = stations[currentIdx + 1];
         const nextClinicName = language === 'ar' ? nextClinic?.nameAr : nextClinic?.name;
-        
+
         // تحديث العيادات: إكمال الحالية وفتح التالية
         setStations(prev => prev.map((s, i) => {
           if (i === currentIdx) {
-            // العيادة الحالية - مكتملة
             return { ...s, status: 'completed', exitTime: new Date(), isEntered: false }
           } else if (i === currentIdx + 1) {
-            // العيادة التالية - مفتوحة وجاهزة للدخول
             return { ...s, status: 'ready', isEntered: false, yourNumber: null, current: null, ahead: null }
           }
           return s
         }))
-        
-        // ✅ تمرير الدور للعيادة التالية تلقائياً - دخول الطابور
+
+        // ✅ تمرير الدور للعيادة التالية تلقائياً
         try {
           const enterResult = await api.enterQueue(nextClinic.id, patientData.id, true, patientData.name, patientData.queueType);
-          
+
           if (enterResult && (enterResult.success || enterResult.display_number)) {
-            // جلب الموقع الفعلي
             const positionData = await api.getQueuePosition(nextClinic.id, patientData.id);
-            
+
             if (positionData && positionData.success) {
               setActiveTicket({ clinicId: nextClinic.id, ticket: positionData.display_number });
               setStations(prev => prev.map((s, i) => {
@@ -540,8 +517,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                 }
                 return s;
               }));
-              
-              // إشعار بالدخول التلقائي للعيادة التالية
+
+              // ✅ إصلاح: إشارة واضحة بتمرير الدور
               setCurrentNotice({
                 type: 'next_clinic',
                 message: language === 'ar' 
@@ -550,55 +527,52 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                 clinic: nextClinicName
               });
             } else {
-              // إشعار بفتح العيادة التالية
               setCurrentNotice({
                 type: 'next_clinic',
                 message: language === 'ar' 
-                  ? `✅ تم إكمال الفحص. تم الدخول إلى ${nextClinicName}`
-                  : `✅ Examination completed. Entered ${nextClinicName}`,
+                  ? `✅ تم التمرير إلى ${nextClinicName}`
+                  : `✅ Moved to ${nextClinicName}`,
                 clinic: nextClinicName
               });
             }
           } else {
-            // فشل الدخول التلقائي - إشعار بالدخول اليدوي
             setCurrentNotice({
               type: 'next_clinic',
               message: language === 'ar' 
-                ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
-                : `✅ Examination completed. Please enter ${nextClinicName}`,
+                ? `✅ يرجى الدخول إلى ${nextClinicName}`
+                : `✅ Please enter ${nextClinicName}`,
               clinic: nextClinicName
             });
           }
         } catch (autoEnterError) {
           console.error('Auto-enter next clinic failed:', autoEnterError);
-          // إشعار بفتح العيادة التالية للدخول اليدوي
           setCurrentNotice({
             type: 'next_clinic',
             message: language === 'ar' 
-              ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
-              : `✅ Examination completed. Please enter ${nextClinicName}`,
+              ? `✅ يرجى الدخول إلى ${nextClinicName}`
+              : `✅ Please enter ${nextClinicName}`,
             clinic: nextClinicName
           });
         }
-        
+
         setTimeout(() => setCurrentNotice(null), 6000);
       } else {
-        // لا توجد عيادة تالية - فقط نكمل العيادة الحالية
+        // لا توجد عيادة تالية
         setStations(prev => prev.map((s, i) => 
           i === currentIdx ? { ...s, status: 'completed', exitTime: new Date(), isEntered: false } : s
         ));
+
+        setCurrentNotice({
+          type: 'success',
+          message: language === 'ar' ? '✅ تم إنهاء جميع الفحوصات' : '✅ All examinations completed'
+        });
+        setTimeout(() => setCurrentNotice(null), 5000);
       }
 
       setPinInput('')
       setSelectedStation(null)
-
-      setCurrentNotice({
-        type: 'success',
-        message: language === 'ar' ? '✅ تم الخروج بنجاح' : '✅ Successfully exited'
-      })
-      setTimeout(() => setCurrentNotice(null), 4000)
     } catch (e) {
-      // console.error('Complete clinic failed', e)
+      console.error('Complete clinic failed', e)
       setCurrentNotice({
         type: 'error',
         message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
@@ -609,15 +583,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
-  // الخروج من العيادة بدون رقم سري (عندما يكون نظام البن كود موقف)
+  // الخروج بدون PIN
   const handleClinicExitWithoutPin = async (station) => {
     try {
       setLoading(true)
+      const exitResult = await api.queueDone(station.id, patientData.id, null, true)
 
-      // استدعاء API للخروج بدون PIN
-      const exitResult = await api.queueDone(station.id, patientData.id, null, true) // true = skip PIN check
-      
-      // التحقق من نجاح العملية
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل الخروج' : 'Exit failed')
         setCurrentNotice({
@@ -629,10 +600,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         return
       }
 
-      // تحديد العيادة التالية
       const currentIdx = stations.findIndex(s => s.id === station.id)
       const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
-      
+
       if (hasNextClinic) {
         setStations(prev => prev.map((s, i) => {
           if (i === currentIdx) {
@@ -642,7 +612,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
           return s
         }))
-        
+
         const nextClinicName = stations[currentIdx + 1]?.nameAr || 'العيادة التالية'
         setCurrentNotice({
           type: 'next_clinic',
@@ -689,7 +659,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
         <div className="max-w-2xl mx-auto space-y-6 text-center">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
-          
+
           <h1 className="text-xl font-bold text-white">
             {'اللجنة الطبية العسكرية'}
           </h1>
@@ -705,7 +675,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               <h1 className="text-3xl font-bold text-white">
                 {language === 'ar' ? '✅ تم إنهاء الفحص الطبي' : '✅ Medical Examination Completed'}
               </h1>
-              
+
               <div className="space-y-4 text-lg">
                 <p className="text-gray-300">
                   {language === 'ar' 
@@ -843,14 +813,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </CardHeader>
           <CardContent className="space-y-4">
             {stations.map((station, index) => (
-              <Card key={station.id} className="bg-gray-700/50 border-gray-600">
+              <Card key={station.id} className={`bg-gray-700/50 border-gray-600 ${station.status === 'completed' ? 'opacity-70' : ''}`}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       {station.status === 'ready' ? (
                         <Unlock className="icon icon-lg icon-success" />
                       ) : station.status === 'completed' ? (
-                        <Lock className="icon icon-lg icon-primary" />
+                        <CheckCircle className="icon icon-lg text-green-400" />
                       ) : (
                         <Lock className="icon icon-lg icon-muted" />
                       )}
@@ -866,11 +836,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     <div className="text-right">
                       <span className={`px-4 py-2 rounded-full text-base sm:text-lg font-semibold ${
                         station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
-                        station.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                        station.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                         'bg-gray-500/20 text-gray-400'
                       }`}>
                         {station.status === 'ready' ? t('ready', language) :
-                          station.status === 'completed' ? t('completed', language) :
+                          station.status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') :
                           t('locked', language)}
                       </span>
                     </div>
@@ -882,42 +852,29 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
-                    <div className="p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="current-number">
-                        {typeof station.current === 'number' ? station.current : '-'}
+                  {station.status !== 'completed' && (
+                    <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
+                      <div className="p-3 bg-gray-700/50 rounded-lg">
+                        <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="current-number">
+                          {typeof station.current === 'number' ? station.current : '-'}
+                        </div>
+                        <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('current', language)}</div>
                       </div>
-                      <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('current', language)}</div>
-                    </div>
-                    <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
-                      <div className="text-4xl sm:text-5xl font-bold text-yellow-400 mb-3" data-test="your-number">
-                        {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
+                      <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
+                        <div className="text-4xl sm:text-5xl font-bold text-yellow-400 mb-3" data-test="your-number">
+                          {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
+                        </div>
+                        <div className="text-yellow-200 text-base sm:text-lg font-semibold">{t('yourNumber', language)}</div>
                       </div>
-                      <div className="text-yellow-200 text-base sm:text-lg font-semibold">{t('yourNumber', language)}</div>
-                    </div>
-                    <div className="p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="ahead-count">
-                        {station.ahead || 0}
+                      <div className="p-3 bg-gray-700/50 rounded-lg">
+                        <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="ahead-count">
+                          {station.ahead || 0}
+                        </div>
+                        <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('ahead', language)}</div>
                       </div>
-                      <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('ahead', language)}</div>
-                    </div>
-                  </div>
-                  
-                  {/* عرض العد التنازلي قبل الدخول */}
-                  {station.status === 'ready' && !station.isEntered && station.entered_at && (
-                    <div className="mt-3">
-                      <CountdownTimer
-                        enteredAt={station.entered_at}
-                        maxSeconds={240}
-                        show={true}
-                        language={language}
-                        onTimeout={() => {
-                          console.log('Countdown timeout for station:', station.id)
-                        }}
-                      />
                     </div>
                   )}
-                  
+
                   {/* عرض الوقت المتوقع قبل الدخول */}
                   {station.status === 'ready' && !station.isEntered && (
                     <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
@@ -932,16 +889,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     </div>
                   )}
 
-                  {/* ✅ إصلاح: زر العيادة يفتح فقط عند حلول الدور الفعلي */}
+                  {/* ✅ إصلاح: زر الدخول للعيادة - يظهر فقط عند حلول الدور */}
                   {station.status === 'ready' && !station.isEntered && (
                     <div className="mt-4 pt-4 border-t border-gray-600">
-                      {/* 
-                        ✅ إصلاح: التحقق من أن دورك قد حان فعلياً
-                        المنطق الصحيح: 
-                        1. إذا كان أمامك = 0 (ahead === 0) فدورك الآن
-                        2. أو إذا كان رقمك يساوي الحالي (yourNumber === current)
-                        3. أو إذا كان رقمك أقل من الحالي (حالة نادرة)
-                      */}
                       {(station.yourNumber > 0 && (
                         station.ahead === 0 || 
                         station.ahead === null || 
@@ -1024,7 +974,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                           </Button>
                         </div>
                       ) : null}
-                      
+
                       {/* إذا كان النظام مخفي فقط (لكن مفعل) - الخروج يتم تلقائياً بواسطة الطبيب */}
                       {systemSettings.pin_system_enabled && !systemSettings.pin_system_visible && (
                         <div className="text-center text-sm text-gray-400 p-3 bg-gray-700/50 rounded">
@@ -1072,4 +1022,3 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     </div>
   )
 }
-
