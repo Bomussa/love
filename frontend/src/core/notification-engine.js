@@ -71,8 +71,74 @@ class RealtimeNotificationEngine {
     this.subscribers = new Map(); // patientId -> Set<callback>
     this.adminSubscribers = new Set();
 
+    // ✅ إصلاح: تحميل الإشعارات المحفوظة فوراً عند التهيئة
+    this.loadAllNotifications();
+
     // ربط مع event bus للإشعارات العامة
     this.setupEventBusListeners();
+
+    // ✅ إصلاح: إعداد تحديث دوري للإشعارات
+    this.startNotificationSync();
+  }
+
+  // ✅ إصلاح: تحميل جميع الإشعارات المحفوظة
+  loadAllNotifications() {
+    try {
+      // تحميل إشعارات المرضى
+      const storedNotifications = localStorage.getItem('patient_notifications');
+      if (storedNotifications) {
+        const parsed = JSON.parse(storedNotifications);
+        Object.keys(parsed).forEach(patientId => {
+          this.notifications.set(patientId, parsed[patientId]);
+        });
+      }
+
+      // تحميل إشعارات الإدارة
+      const storedAdminNotifications = localStorage.getItem('admin_notifications');
+      if (storedAdminNotifications) {
+        this.adminNotifications = JSON.parse(storedAdminNotifications);
+      }
+
+      console.log('[NotificationEngine] Loaded saved notifications');
+    } catch (e) {
+      console.warn('[NotificationEngine] Failed to load saved notifications:', e);
+    }
+  }
+
+  // ✅ إصلاح: مزامنة الإشعارات بشكل دوري
+  startNotificationSync() {
+    // مزامنة كل 30 ثانية
+    setInterval(() => {
+      this.syncNotifications();
+    }, 30000);
+  }
+
+  // ✅ إصلاح: مزامنة الإشعارات مع الخادم
+  async syncNotifications() {
+    try {
+      // يمكن إضافة منطق مزامنة مع الخادم هنا
+      // حالياً نكتفي بالحفظ المحلي
+      this.saveAllNotifications();
+    } catch (e) {
+      console.warn('[NotificationEngine] Sync failed:', e);
+    }
+  }
+
+  // ✅ إصلاح: حفظ جميع الإشعارات
+  saveAllNotifications() {
+    try {
+      // حفظ إشعارات المرضى
+      const notificationsObj = {};
+      this.notifications.forEach((value, key) => {
+        notificationsObj[key] = value;
+      });
+      localStorage.setItem('patient_notifications', JSON.stringify(notificationsObj));
+
+      // حفظ إشعارات الإدارة
+      localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications));
+    } catch (e) {
+      console.warn('[NotificationEngine] Failed to save notifications:', e);
+    }
   }
 
   // === الاشتراك والإلغاء ===
