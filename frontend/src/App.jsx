@@ -1,7 +1,5 @@
 import InteractiveElementReporter from './lib/interactive-element-reporter';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
-import enhancedAutoRepair from './lib/enhanced-auto-repair';
-import offlineManager from './lib/offline-manager';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -80,14 +78,20 @@ function App() {
     } catch (error) { return null }
   })
 
+  // ✅ إصلاح: التحقق من حالة الإدارة بطريقة أفضل
   const [isAdmin, setIsAdmin] = useState(() => {
     try {
       const adminSession = localStorage.getItem('mmc_admin_session');
       if (adminSession) {
         const session = JSON.parse(adminSession);
-        return new Date(session.expiresAt) > new Date();
+        const isValid = new Date(session.expiresAt) > new Date();
+        console.log('[App] Admin session check:', { isValid, expiresAt: session.expiresAt });
+        return isValid;
       }
-    } catch (e) { return false }
+    } catch (e) { 
+      console.error('[App] Error checking admin session:', e);
+      return false 
+    }
     return false
   })
 
@@ -100,16 +104,16 @@ function App() {
     // تفعيل نظام الإصلاح التلقائي
     autoRepairSystem.startMonitoring();
     console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
-    
+
     functionTableMonitor.startMonitoring();
-    
+
     // تفعيل نظام مراقبة العناصر التفاعلية
     elementMonitor.startMonitoring();
-    
+
     // تفعيل نظام الإصلاح التلقائي المتقدم
     const advancedRepair = new AdvancedAutoRepair(supabase);
     advancedRepair.startAutoRepair();
-    
+
     // تفعيل نظام التقارير للعناصر التفاعلية
     const elementReporter = new InteractiveElementReporter();
     elementReporter.startReporting();
@@ -117,39 +121,43 @@ function App() {
     console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
     console.log('✅ نظام مراقبة العناصر: تم التفعيل');
     console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
-    
+
     return () => {
       // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
     };
   }, []);
 
-  // ============= ROUTING LOGIC =============
+  // ============= ROUTING LOGIC - ✅ إصلاح شامل =============
   useEffect(() => {
     setCurrentLanguage(language)
-    
+
     const path = window.location.pathname;
-    
-    // Priority 1: Patient flow
-    if (patientData) {
-      // If patient is logged in, they MUST NOT see admin screen
-      setCurrentView(patientData.queueType || patientData.examType ? 'patient' : 'examSelection');
-      return;
-    }
-    
-    // Priority 2: Admin routes
+    console.log('[App] Route check:', { path, isAdmin, hasPatientData: !!patientData });
+
+    // ✅ إصلاح: الأولوية 1 - المسارات الإدارية (يجب التحقق منها أولاً)
     if (path === '/admin' || path.startsWith('/admin/')) {
+      console.log('[App] Admin path detected');
       if (isAdmin) {
+        console.log('[App] Admin session valid, showing admin dashboard');
         setCurrentView('admin');
       } else {
-        // We stay on login but can show admin login UI if needed
+        console.log('[App] No admin session, showing login with admin mode');
         setCurrentView('login');
       }
       return;
     }
-    
-    // Priority 2.5: Admin session - يجب الدخول عبر /admin فقط
-    // لا يتم التوجيه التلقائي للإدارة - شاشة التسجيل هي الافتراضية دائماً
-    
+
+    // ✅ إصلاح: إذا كان المستخدم على الصفحة الرئيسية ومتصل كإدمن، نبقى على تسجيل الدخول
+    // (لا نوجه تلقائياً للإدارة - يجب استخدام /admin)
+
+    // Priority 2: Patient flow
+    if (patientData) {
+      console.log('[App] Patient data found, showing patient view');
+      // If patient is logged in, they MUST NOT see admin screen
+      setCurrentView(patientData.queueType || patientData.examType ? 'patient' : 'examSelection');
+      return;
+    }
+
     // Priority 3: Clinic routes
     if (path === '/clinic/login' || path === '/clinic/login/') {
       setCurrentView('clinic_login');
@@ -163,14 +171,15 @@ function App() {
       setCurrentView(clinicSession ? 'clinic_dashboard' : 'clinic_login');
       return;
     }
-    
+
     // Priority 4: QR Scan
     if (path.includes('/qr')) {
       setCurrentView('qrscan');
       return;
     }
-    
+
     // Default: Login
+    console.log('[App] Default to login view');
     setCurrentView('login');
   }, [language, isAdmin, patientData, clinicSession])
 
@@ -215,10 +224,10 @@ function App() {
     try {
       // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
       const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import('./lib/supabase-client.js');
-      
+
       // التحقق من تفعيل نظام منع الجهاز
       const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
-      
+
       if (deviceRestrictionEnabled) {
         const deviceCheck = await checkDeviceLogin(patientId);
         if (!deviceCheck.allowed) {
@@ -231,13 +240,13 @@ function App() {
           return;
         }
       }
-      
+
       const res = await api.patientLogin(patientId, gender)
-      
+
       if (res.success) {
         // تسجيل الجهاز في قاعدة البيانات
         await registerDeviceLogin(patientId);
-        
+
         // تسجيل النشاط اليومي
         await logDailyActivity('patient_login', {
           patientId,
@@ -248,7 +257,7 @@ function App() {
         // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);
-        
+
         setPatientData(res.data)
         localStorage.setItem('patientData', JSON.stringify(res.data))
         setCurrentView('examSelection')
@@ -264,22 +273,22 @@ function App() {
 
   const handleAdminLogin = async (credentials) => {
     try {
-      ;
+      console.log('[App] Admin login attempt');
       const [username, password] = credentials.split(':')
-      
+
       if (!username || !password) {
         showNotification(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password', 'error')
         return;
       }
-      
+
       const result = await authService.login(username, password)
-      ;
-      
+      console.log('[App] Auth result:', result);
+
       if (result.success) {
         // Clear patient data when admin logs in
         localStorage.removeItem('patientData');
         setPatientData(null);
-        
+
         setIsAdmin(true)
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
@@ -311,7 +320,7 @@ function App() {
 
   // ============= RENDER =============
   const theme = enhancedMedicalThemes.find(t => t.id === currentTheme)
-  
+
   // Apply theme background to body for full coverage
   React.useEffect(() => {
     if (theme?.gradients?.background) {
@@ -321,7 +330,7 @@ function App() {
       document.documentElement.style.backgroundAttachment = 'fixed';
     }
   }, [theme]);
-  
+
   return (
     <div className="min-h-screen" style={{ background: 'transparent' }}>
       <main className="relative z-10">
@@ -346,37 +355,34 @@ function App() {
           <ExamSelectionPage
             patientData={patientData}
             onExamSelect={async (examType) => {
-              ;
               try {
                 // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
                 const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
-                
+
                 if (!clinics || clinics.length === 0) {
                   console.error('[App] No clinics found for:', examType, patientData.gender);
                   throw new Error('No clinics found');
                 }
-                
-                // حساب الأوزان - اختيار العيادة الأقل ازدحاماً
+
+                // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
                 let firstClinic = clinics[0].id;
                 try {
                   const queueCounts = await Promise.all(
                     clinics.map(async (clinic) => {
                       const count = await api.getQueueCount(clinic.id);
-                      return { id: clinic.id, count: count || 0 };
+                      return { id: clinic.id, count: count || 0, clinic };
                     })
                   );
                   // ترتيب العيادات حسب الأقل ازدحاماً
                   queueCounts.sort((a, b) => a.count - b.count);
                   firstClinic = queueCounts[0].id;
-                  console.log('[App] Weighted clinic selection:', queueCounts, 'Selected:', firstClinic);
+                  console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
                 } catch (weightError) {
                   console.warn('[App] Weight calculation failed, using first clinic:', weightError);
                 }
-                ;
-                
+
                 const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
-                ;
-                
+
                 if (queueRes.success) {
                   const updatedPatientData = {
                     ...patientData,
@@ -386,7 +392,7 @@ function App() {
                     ahead: queueRes.ahead || 0,
                     pathway: clinics
                   };
-                  
+
                   setPatientData(updatedPatientData)
                   localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
                   setCurrentView('patient')
