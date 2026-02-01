@@ -7,12 +7,70 @@
 import api from './api-unified';
 import { validateAdminCredentials } from '../config/admin-credentials';
 
+// ✅ إصلاح: تعريف الأدوار والصلاحيات
+export const USER_ROLES = {
+  SUPER_ADMIN: {
+    id: 'SUPER_ADMIN',
+    name: 'مدير النظام',
+    nameEn: 'System Administrator',
+    permissions: ['*'] // جميع الصلاحيات
+  },
+  ADMIN: {
+    id: 'ADMIN',
+    name: 'مدير',
+    nameEn: 'Administrator',
+    permissions: [
+      'dashboard',
+      'queue_management',
+      'pin_management',
+      'reports',
+      'clinic_configuration',
+      'settings',
+      'user_management',
+      'activity_logs'
+    ]
+  },
+  DOCTOR: {
+    id: 'DOCTOR',
+    name: 'طبيب',
+    nameEn: 'Doctor',
+    permissions: [
+      'dashboard',
+      'queue_management',
+      'clinic_only', // ✅ صلاحية خاصة بالعيادات فقط
+      'patient_view'
+    ]
+  },
+  RECEPTIONIST: {
+    id: 'RECEPTIONIST',
+    name: 'موظف استقبال',
+    nameEn: 'Receptionist',
+    permissions: [
+      'dashboard',
+      'patient_registration',
+      'queue_view',
+      'reports_view'
+    ]
+  },
+  VIEWER: {
+    id: 'VIEWER',
+    name: 'مشاهد',
+    nameEn: 'Viewer',
+    permissions: [
+      'dashboard_view',
+      'queue_view',
+      'reports_view'
+    ]
+  }
+};
+
 class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
     this.maxAttempts = 5;
     this.lockoutDuration = 5 * 60 * 1000; // 5 mins
     this.sessionTimeout = 60 * 60 * 1000; // 60 mins
+    this.failedAttempts = new Map(); // تتبع المحاولات الفاشلة
   }
 
   async login(username, password) {
