@@ -1,5 +1,6 @@
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import React, { useState, useEffect } from 'react';
+import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
