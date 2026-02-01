@@ -467,9 +467,18 @@ export const translations = {
   },
 };
 
-// Get translation based on language
+// ✅ إصلاح: Get translation based on language with better fallback
 export function t(key, lang = 'ar') {
-  return translations[lang]?.[key] || translations.ar[key] || key;
+  // التحقق من وجود الترجمة في اللغة المطلوبة
+  if (translations[lang] && translations[lang][key]) {
+    return translations[lang][key];
+  }
+  // الرجوع للعربية إذا لم توجد الترجمة
+  if (translations.ar && translations.ar[key]) {
+    return translations.ar[key];
+  }
+  // إرجاع المفتاح نفسه إذا لم توجد أي ترجمة
+  return key;
 }
 
 // Get current language from localStorage or default to Arabic
