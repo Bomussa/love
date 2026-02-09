@@ -8,15 +8,15 @@
 
 @layer base {
   :root {
-    --background: 220 20% 10%; /* Dark Blue */
+    --background: 0 0% 5%; /* Almost black */ /* Dark Blue */
     --foreground: 210 40% 98%; /* White */
-    --card: 220 20% 15%; /* Slightly lighter dark blue for cards */
+    --card: 0 0% 10%; /* Dark grey for cards */ /* Slightly lighter dark blue for cards */
     --card-foreground: 210 40% 98%; /* White */
     --popover: 220 20% 15%; /* Popover background */
     --popover-foreground: 210 40% 98%; /* Popover text */
-    --primary: 345 76% 32%; /* Official Maroon #8A1538 */
+    --primary: 270 70% 40%; /* Deep purple */ /* Official Maroon #8A1538 */
     --primary-foreground: 210 40% 98%; /* White */
-    --secondary: 43 48% 54%; /* Official Gold #C9A54C */
+    --secondary: 40 90% 50%; /* Vibrant gold */ /* Official Gold #C9A54C */
     --secondary-foreground: 210 40% 98%; /* White */
     --muted: 220 15% 25%; /* Muted dark blue */
     --muted-foreground: 215 20.2% 65.1%; /* Gray */
@@ -97,15 +97,15 @@
 
 /* Custom gradients for buttons */
 .gradient-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 50%, hsl(var(--primary)) 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(280 70% 50%) 100%); /* Purple gradient */
 }
 
 .gradient-secondary {
-  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--secondary)) 100%);
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(45 90% 60%) 100%); /* Gold gradient */
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--secondary)) 100%);
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(45 90% 60%) 100%); /* Gold gradient */
 }
 
 .gradient-danger {
@@ -114,33 +114,93 @@
 
 /* Theme colors */
 .theme-classic {
-  --theme-primary: #ef4444;
-  --theme-secondary: #fbbf24;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 .theme-mint {
-  --theme-primary: #10b981;
-  --theme-secondary: #fbbf24;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 .theme-navy {
-  --theme-primary: #3b82f6;
-  --theme-secondary: #fbbf24;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 .theme-desert {
-  --theme-primary: #fbbf24;
-  --theme-secondary: #ef4444;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 .theme-rose {
-  --theme-primary: #ef4444;
-  --theme-secondary: #fbbf24;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 .theme-night {
-  --theme-primary: #fbbf24;
-  --theme-secondary: #ef4444;
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
 }
 
 /* Animations */
