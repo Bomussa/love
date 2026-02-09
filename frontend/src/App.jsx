@@ -130,7 +130,9 @@ function App() {
   // ============= ROUTING LOGIC - ✅ إصلاح شامل =============
   useEffect(() => {
     setCurrentLanguage(language)
+  }, [language])
 
+  useEffect(() => {
     const path = window.location.pathname;
     console.log('[App] Route check:', { path, isAdmin, hasPatientData: !!patientData });
 

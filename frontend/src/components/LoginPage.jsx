@@ -142,10 +142,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
               variant="ghost"
               size="sm"
               className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
-              onClick={() => {
-
-                setIsAdminMode(!isAdminMode)
-              }}
+              onClick={() => setIsAdminMode(!isAdminMode)}
               title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
             >
               <Shield className="w-4 h-4 mr-2" />
@@ -282,16 +279,12 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  variant="gradient"
-                  className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !patientId.trim()}
-                  onClick={(e) => {
-                    console.log('=== Button CLICKED ===')
-                    // الزر type=submit سيستدعي onSubmit تلقائياً
-                  }}
-                >
+                  <Button
+                    type="submit"
+                    variant="gradient"
+                    className="w-full h-12 text-lg font-semibold"
+                    disabled={loading || !patientId.trim()}
+                  >
                   {loading
                     ? (language === 'ar' ? 'جاري المعالجة...' : 'Processing...')
                     : (language === 'ar' ? 'تأكيد ←' : 'Confirm →')}
