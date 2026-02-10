@@ -45,6 +45,12 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   const [adminCode] = useState('BOMUSSA14490')
   const [queues, setQueues] = useState([])
   const [recentReports, setRecentReports] = useState([])
+  const [settings, setSettings] = useState({
+    autoRefresh: true,
+    soundEnabled: false,
+    notificationsEnabled: true
+  })
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
   // مرجع للاحتفاظ بكائن SSE
   const sseRef = useRef(null)
@@ -167,6 +173,76 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       setRecentReports([])
     }
   }
+
+  const handleProductionLine = () => {
+    // تنفيذ منطق خط الإنتاجات
+    console.log('Production line clicked')
+    // يمكن إضافة منطق إضافي هنا حسب المتطلبات
+  }
+
+  const handleGenerateReport = async (type, format) => {
+    setIsGeneratingReport(true)
+    try {
+      const reportData = {
+        type,
+        format,
+        date: new Date().toISOString(),
+        stats: stats,
+        queues: queues
+      }
+      
+      if (format === 'pdf') {
+        // توليد PDF
+        const response = await api.generatePDFReport(reportData)
+        if (response && response.url) {
+          window.open(response.url, '_blank')
+        }
+      } else if (format === 'excel') {
+        // توليد Excel
+        const response = await api.generateExcelReport(reportData)
+        if (response && response.url) {
+          window.open(response.url, '_blank')
+        }
+      }
+      
+      // تحديث قائمة التقارير
+      await loadRecentReports()
+    } catch (error) {
+      console.error('Failed to generate report:', error)
+      // يمكن إضافة toast notification هنا
+    } finally {
+      setIsGeneratingReport(false)
+    }
+  }
+
+  const handleDownloadReport = (report) => {
+    if (report && report.url) {
+      window.open(report.url, '_blank')
+    } else {
+      console.error('Report URL not found')
+    }
+  }
+
+  const handleSettingToggle = (key) => {
+    setSettings(prev => {
+      const newSettings = { ...prev, [key]: !prev[key] }
+      // حفظ الإعدادات في localStorage
+      localStorage.setItem('adminSettings', JSON.stringify(newSettings))
+      return newSettings
+    })
+  }
+
+  // تحميل الإعدادات من localStorage عند التحميل
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('adminSettings')
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings))
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+      }
+    }
+  }, [])
 
   const handleCallNext = async (queueType) => {
     setLoading(true)
@@ -531,7 +607,11 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">إنشاء التقارير</h1>
-        <Button variant="outline" className="border-yellow-500 text-yellow-400">
+        <Button 
+          variant="outline" 
+          className="border-yellow-500 text-yellow-400"
+          onClick={handleProductionLine}
+        >
           خط الإنتاجات
         </Button>
       </div>
@@ -543,13 +623,23 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             <CardTitle className="text-white text-lg">تقارير يومية</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="gradient" className="w-full justify-start gap-2 text-xs">
+            <Button 
+              variant="gradient" 
+              className="w-full justify-start gap-2 text-xs"
+              onClick={() => handleGenerateReport('daily', 'pdf')}
+              disabled={isGeneratingReport}
+            >
               <FileText className="w-4 h-4 flex-shrink-0" />
-              <span>تقرير يومي PDF</span>
+              <span>{isGeneratingReport ? 'جاري الإنشاء...' : 'تقرير يومي PDF'}</span>
             </Button>
-            <Button variant="gradientSecondary" className="w-full justify-start gap-2 text-xs">
+            <Button 
+              variant="gradientSecondary" 
+              className="w-full justify-start gap-2 text-xs"
+              onClick={() => handleGenerateReport('daily', 'excel')}
+              disabled={isGeneratingReport}
+            >
               <FileText className="w-4 h-4 flex-shrink-0" />
-              <span>تقرير يومي Excel</span>
+              <span>{isGeneratingReport ? 'جاري الإنشاء...' : 'تقرير يومي Excel'}</span>
             </Button>
           </CardContent>
         </Card>
@@ -559,13 +649,23 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             <CardTitle className="text-white text-lg">تقارير أسبوعية</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="gradient" className="w-full justify-start gap-2 text-xs">
+            <Button 
+              variant="gradient" 
+              className="w-full justify-start gap-2 text-xs"
+              onClick={() => handleGenerateReport('weekly', 'pdf')}
+              disabled={isGeneratingReport}
+            >
               <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span>تقرير إجمالي أسبوعي</span>
+              <span>{isGeneratingReport ? 'جاري الإنشاء...' : 'تقرير إجمالي أسبوعي'}</span>
             </Button>
-            <Button variant="gradientSecondary" className="w-full justify-start gap-2 text-xs">
+            <Button 
+              variant="gradientSecondary" 
+              className="w-full justify-start gap-2 text-xs"
+              onClick={() => handleGenerateReport('weekly', 'excel')}
+              disabled={isGeneratingReport}
+            >
               <Activity className="w-4 h-4 flex-shrink-0" />
-              <span>تقرير الأداء الأسبوعي</span>
+              <span>{isGeneratingReport ? 'جاري الإنشاء...' : 'تقرير الأداء الأسبوعي'}</span>
             </Button>
           </CardContent>
         </Card>
@@ -591,7 +691,12 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
                     <p className="text-gray-400 text-sm">{report.size} - {report.date}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="border-yellow-500 text-yellow-400 flex-shrink-0 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-yellow-500 text-yellow-400 flex-shrink-0 gap-2"
+                  onClick={() => handleDownloadReport(report)}
+                >
                   <Download className="w-4 h-4" />
                   <span>تحميل</span>
                 </Button>
@@ -626,21 +731,42 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-white">التحديث التلقائي</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div>
-              </div>
+              <button
+                onClick={() => handleSettingToggle('autoRefresh')}
+                className={`w-12 h-6 rounded-full relative transition-colors ${
+                  settings.autoRefresh ? 'bg-green-500' : 'bg-gray-600'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
+                  settings.autoRefresh ? 'right-0.5' : 'left-0.5'
+                }`}></div>
+              </button>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-white">تفعيل الصوت</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div>
-              </div>
+              <button
+                onClick={() => handleSettingToggle('soundEnabled')}
+                className={`w-12 h-6 rounded-full relative transition-colors ${
+                  settings.soundEnabled ? 'bg-green-500' : 'bg-gray-600'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
+                  settings.soundEnabled ? 'right-0.5' : 'left-0.5'
+                }`}></div>
+              </button>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-white">الإشعارات</span>
-              <div className="w-12 h-6 bg-green-500 rounded-full relative">
-                <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5"></div>
-              </div>
+              <button
+                onClick={() => handleSettingToggle('notificationsEnabled')}
+                className={`w-12 h-6 rounded-full relative transition-colors ${
+                  settings.notificationsEnabled ? 'bg-green-500' : 'bg-gray-600'
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
+                  settings.notificationsEnabled ? 'right-0.5' : 'left-0.5'
+                }`}></div>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -716,7 +842,12 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-yellow-500 text-yellow-400">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-yellow-500 text-yellow-400"
+              onClick={() => setCurrentView('dashboard')}
+            >
               <Home className="icon icon-md me-2" />
               Home
             </Button>

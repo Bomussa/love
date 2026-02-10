@@ -38,8 +38,16 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
   const loadClinics = async () => {
       try {
           const res = await api.getClinics()
-          if(res.success) setClinics(res.clinics)
-      } catch(e) { console.error(e) }
+          if(res.success) {
+            setClinics(res.clinics)
+          } else {
+            console.error('Failed to load clinics:', res)
+            // يمكن إضافة toast notification هنا
+          }
+      } catch(e) { 
+        console.error('Error loading clinics:', e)
+        // يمكن إضافة toast.error('فشل في تحميل العيادات')
+      }
   }
 
   const loadStats = async () => {
@@ -48,10 +56,13 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
       const response = await (api.getStats ? api.getStats() : api.getAdminStatus())
       if (response && (response.data || response.success)) {
         setStats(response.data || response)
+      } else {
+        console.error('Failed to load stats:', response)
+        // يمكن إضافة toast notification هنا
       }
     } catch (err) {
-      // console.error('[AdminPage] Error loading stats:', err)
-      // setError('فشل في تحميل الإحصائيات') // Silent fail improved UI
+      console.error('[AdminPage] Error loading stats:', err)
+      // يمكن إضافة toast.error('فشل في تحميل الإحصائيات')
     } finally {
       setLoading(false)
     }
