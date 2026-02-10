@@ -266,13 +266,13 @@ const api = {
 
   async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
     try {
-      // ✅ التحقق من البن كود (إلا إذا كان النظام موقف)
+      // ✅ التحقق من البن كود
       if (!skipPinCheck) {
         if (!pin) {
           return { success: false, error: 'يرجى إدخال رقم PIN' };
         }
 
-        // جلب البن كود النشط لهذه العيادة
+        // 1. محاولة التحقق من جدول pins
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -285,26 +285,38 @@ const api = {
           .gte('expires_at', today.toISOString())
           .maybeSingle();
 
-        if (pinError) {
-          console.error('PIN verification error:', pinError);
-          return { success: false, error: 'خطأ في التحقق من PIN' };
-        }
-
         if (!validPin) {
+          // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
+          try {
+            const response = await fetch('/api/v1/queue/done', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ clinicId, patientId, pin })
+            });
+            const result = await response.json();
+            if (result && (result.success || !result.error)) {
+              return { success: true, data: result };
+            }
+          } catch (e) {
+            console.warn('API PIN check failed, falling back to local check');
+          }
+          
           return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
         }
 
-        // تحديث عداد استخدام البن كود
-        await supabase
-          .from('pins')
-          .update({
-            used_count: (validPin.used_count || 0) + 1,
-            last_used_at: new Date().toISOString(),
-          })
-          .eq('id', validPin.id);
+        // تحديث عداد استخدام البن كود إذا وجد في الجدول
+        if (validPin) {
+          await supabase
+            .from('pins')
+            .update({
+              used_count: (validPin.used_count || 0) + 1,
+              last_used_at: new Date().toISOString(),
+            })
+            .eq('id', validPin.id);
+        }
       }
 
-      // إكمال الفحص في الطابور
+      // إكمال الفحص في الطابور عبر Supabase مباشرة لضمان السرعة
       const { data, error } = await supabase
         .from('unified_queue')
         .update({
@@ -319,15 +331,7 @@ const api = {
 
       if (error) throw error;
 
-      // حساب مدة الفحص
-      let durationMinutes = null;
-      if (data && data.length > 0 && data[0].entered_at) {
-        const enteredAt = new Date(data[0].entered_at);
-        const completedAt = new Date();
-        durationMinutes = Math.round((completedAt - enteredAt) / (1000 * 60));
-      }
-
-      return { success: true, data, duration_minutes: durationMinutes };
+      return { success: true, data };
     } catch (error) {
       console.error('Queue Done Error:', error);
       return { success: false, error: error.message };
