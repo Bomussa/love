@@ -3534,6 +3534,33 @@ const UsersManagement = ({ language, t }) => {
     }
   };
 
+  // دوال مساعدة لإدارة الصلاحيات
+  const togglePermission = (permId) => {
+    if (newUser.permissions.includes(permId)) {
+      setNewUser({...newUser, permissions: newUser.permissions.filter(p => p !== permId)});
+    } else {
+      setNewUser({...newUser, permissions: [...newUser.permissions, permId]});
+    }
+  };
+
+  const toggleAllPermissions = () => {
+    setNewUser({...newUser, permissions: allPermissions.map(p => p.id)});
+  };
+
+  const clearAllPermissions = () => {
+    setNewUser({...newUser, permissions: []});
+  };
+
+  const toggleEditPermission = (permId) => {
+    if (!editingUser) return;
+    const currentPerms = editingUser.permissions || [];
+    if (currentPerms.includes(permId)) {
+      setEditingUser({...editingUser, permissions: currentPerms.filter(p => p !== permId)});
+    } else {
+      setEditingUser({...editingUser, permissions: [...currentPerms, permId]});
+    }
+  };
+
   const addUser = async () => {
     try {
       // السوبر أدمن له جميع الصلاحيات
@@ -3746,14 +3773,10 @@ const UsersManagement = ({ language, t }) => {
                       <label key={perm.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 p-1 rounded">
                         <input
                           type="checkbox"
+                          data-permission-id={perm.id}
+                          data-testid={`permission-${perm.id}`}
                           checked={newUser.permissions.includes(perm.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewUser({...newUser, permissions: [...newUser.permissions, perm.id]});
-                            } else {
-                              setNewUser({...newUser, permissions: newUser.permissions.filter(p => p !== perm.id)});
-                            }
-                          }}
+                          onChange={() => togglePermission(perm.id)}
                           className="rounded border-white/20 bg-white/5 text-[#C9A54C]"
                         />
                         {perm.label}
@@ -3763,14 +3786,14 @@ const UsersManagement = ({ language, t }) => {
                   <div className="flex gap-2 mt-2">
                     <button
                       type="button"
-                      onClick={() => setNewUser({...newUser, permissions: allPermissions.map(p => p.id)})}
+                      onClick={toggleAllPermissions}
                       className="text-xs text-[#C9A54C] hover:underline"
                     >
                       {t('تحديد الكل', 'Select All')}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewUser({...newUser, permissions: []})}
+                      onClick={clearAllPermissions}
                       className="text-xs text-gray-400 hover:underline"
                     >
                       {t('إلغاء الكل', 'Clear All')}
@@ -3818,13 +3841,10 @@ const UsersManagement = ({ language, t }) => {
                   <label key={perm.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5 p-1 rounded">
                     <input
                       type="checkbox"
+                      data-permission-id={perm.id}
+                      data-testid={`edit-permission-${perm.id}`}
                       checked={(editingUser.permissions || []).includes(perm.id)}
-                      onChange={(e) => {
-                        const newPerms = e.target.checked
-                          ? [...(editingUser.permissions || []), perm.id]
-                          : (editingUser.permissions || []).filter(p => p !== perm.id);
-                        setEditingUser({...editingUser, permissions: newPerms});
-                      }}
+                      onChange={() => toggleEditPermission(perm.id)}
                       className="rounded border-white/20 bg-white/5 text-[#C9A54C]"
                     />
                     {perm.label}
