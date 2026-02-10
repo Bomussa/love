@@ -365,18 +365,18 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       {/* أيقونة التعليمات على يسار الشاشة */}
       {!isAdminMode && (
         <>
-          {/* الأيقونة الصغيرة */}
+          {/* أيقونة صغيرة بسيطة على اليسار */}
           <button
             onClick={() => setShowUsageGuide(!showUsageGuide)}
-            className="fixed left-4 top-1/2 -translate-y-1/2 z-50 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 border-2 border-white/20"
+            className="fixed left-3 top-1/2 -translate-y-1/2 z-40 bg-purple-500/70 hover:bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105 border border-white/10"
             title={language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}
           >
-            <span className="text-2xl">ℹ️</span>
+            <span className="text-lg">ℹ️</span>
           </button>
 
-          {/* النافذة المنبثقة */}
+          {/* النافذة المنبثقة من اليسار */}
           {showUsageGuide && (
-            <div className="fixed left-20 top-1/2 -translate-y-1/2 z-50 max-w-sm animate-slide-in-left">
+            <div className="fixed left-20 top-1/2 -translate-y-1/2 z-50 max-w-sm">
               <div className="bg-purple-600 rounded-2xl shadow-2xl p-5 text-white border-2 border-white/20">
                 <button 
                   onClick={() => setShowUsageGuide(false)}
