@@ -672,27 +672,27 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
           <Card className="bg-gradient-to-br from-green-900/30 to-blue-900/30 border-green-500/30">
             <CardContent className="p-8 space-y-6">
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="text-5xl font-bold text-white mb-4">
                 {language === 'ar' ? '✅ تم إنهاء الفحص الطبي' : '✅ Medical Examination Completed'}
               </h1>
 
-              <div className="space-y-4 text-lg">
-                <p className="text-gray-300">
+              <div className="space-y-6 text-xl">
+                <p className="text-gray-300 font-medium">
                   {language === 'ar' 
                     ? 'تهانينا! لقد أكملت جميع الفحوصات الطبية المطلوبة بنجاح'
                     : 'Congratulations! You have successfully completed all required medical examinations'}
                 </p>
 
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 mt-6">
-                  <h2 className="text-2xl font-bold text-yellow-400 mb-4">
+                <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-8 mt-6">
+                  <h2 className="text-3xl font-bold text-yellow-400 mb-6">
                     {language === 'ar' ? '📋 الخطوة التالية' : '📋 Next Step'}
                   </h2>
-                  <p className="text-xl text-white font-semibold">
+                  <p className="text-2xl text-white font-bold">
                     {language === 'ar'
                       ? 'يرجى التوجه إلى استقبال اللجنة الطبية'
                       : 'Please proceed to the Medical Committee Reception'}
                   </p>
-                  <p className="text-gray-300 mt-3">
+                  <p className="text-gray-300 text-lg mt-4 font-medium">
                     {language === 'ar'
                       ? 'الموقع: الطابق الأول - مكتب الاستقبال'
                       : 'Location: First Floor - Reception Office'}
@@ -853,37 +853,52 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-                    <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center px-2 sm:px-4 py-4 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
-                      <div className="p-3 bg-gray-700/50 rounded-lg">
-                        <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="current-number">
-                          {typeof station.current === 'number' ? station.current : '-'}
+                    <div className="grid grid-cols-3 gap-4 sm:gap-6 text-center px-4 py-6 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
+                      <div className="p-4 bg-gray-700/50 rounded-lg">
+                        <div className="text-6xl font-bold text-white mb-4" data-test="current-number">
+                          {typeof station.current === 'number' ? station.current : '0'}
                         </div>
-                        <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('current', language)}</div>
+                        <div className="text-gray-300 text-xl font-semibold">{t('current', language)}</div>
                       </div>
-                      <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
-                        <div className="text-4xl sm:text-5xl font-bold text-yellow-400 mb-3" data-test="your-number">
-                          {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
+                      <div className="p-4 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
+                        <div className="text-6xl font-bold text-yellow-400 mb-4" data-test="your-number">
+                          {typeof station.yourNumber === 'number' ? station.yourNumber : '1'}
                         </div>
-                        <div className="text-yellow-200 text-base sm:text-lg font-semibold">{t('yourNumber', language)}</div>
+                        <div className="text-yellow-200 text-xl font-semibold">{t('yourNumber', language)}</div>
                       </div>
-                      <div className="p-3 bg-gray-700/50 rounded-lg">
-                        <div className="text-4xl sm:text-5xl font-bold text-white mb-3" data-test="ahead-count">
+                      <div className="p-4 bg-gray-700/50 rounded-lg">
+                        <div className="text-6xl font-bold text-white mb-4" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
-                        <div className="text-gray-200 text-base sm:text-lg font-semibold">{t('ahead', language)}</div>
+                        <div className="text-gray-300 text-xl font-semibold">{t('ahead', language)}</div>
                       </div>
                     </div>
                   )}
 
-                  {/* عرض الوقت المتوقع قبل الدخول */}
+                  {/* عداد تنازلي كبير للتوقيت */}
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
-                          🕒 {language === 'ar' ? 'الوقت المتوقع:' : 'Est. Wait:'}
+                    <div className="mt-4 p-6 bg-blue-500/10 border-2 border-blue-500/30 rounded-xl">
+                      <div className="flex items-center justify-end gap-3 mb-3">
+                        <span className="text-blue-300 text-xl font-medium">
+                          {language === 'ar' ? 'وقت متبقي' : 'وقت متبقي'}
                         </span>
-                        <span className="text-blue-400 font-bold">
-                          {station.ahead > 0 ? `~${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}` : language === 'ar' ? 'دورك الآن!' : 'Your turn!'}
+                        <span className="text-3xl">🕒</span>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-5xl font-bold text-blue-400 mb-2">
+                          {station.ahead > 0 ? `${computeEtaMinutes(station.ahead, 2)}:00` : language === 'ar' ? 'دورك الآن!' : 'دورك الآن!'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* الوقت المتوقع بعد الدخول */}
+                  {station.status === 'ready' && station.isEntered && station.ahead === 0 && (
+                    <div className="mt-4 p-6 bg-green-500/10 border-2 border-green-500/30 rounded-xl">
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-3xl">⏰</span>
+                        <span className="text-green-300 text-2xl font-bold">
+                          {language === 'ar' ? 'دورك الآن!' : 'دورك الآن!'}
                         </span>
                       </div>
                     </div>
