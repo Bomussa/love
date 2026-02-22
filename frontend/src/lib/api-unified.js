@@ -1215,54 +1215,16 @@ const api = {
    */
   async deactivatePIN(clinicId) {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('pins')
         .update({ is_active: false })
-        .eq('clinic_code', clinicId);
+        .eq('clinic_code', clinicId)
+        .select();
 
       if (error) throw error;
-      return { success: true };
+      return { success: true, data };
     } catch (error) {
       console.error('Deactivate PIN Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  async deletePin(pinId) {
-    try {
-      const { error } = await supabase
-        .from('pins')
-        .delete()
-        .eq('id', pinId);
-
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Delete PIN Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  /**
-   * ✅ مزامنة العمليات من OfflineManager
-   * @param {object} item - عنصر المزامنة من IndexedDB
-   */
-  async syncOperation(item) {
-    try {
-      const { operation, store, data } = item;
-      console.log(`[API-Unified] Syncing ${operation} on ${store}...`);
-
-      let result;
-      if (operation === 'create' || operation === 'update') {
-        result = await supabase.from(store).upsert(data);
-      } else if (operation === 'delete') {
-        result = await supabase.from(store).delete().eq('id', data.id);
-      }
-
-      if (result.error) throw result.error;
-      return { success: true };
-    } catch (error) {
-      console.error('[API-Unified] Sync Operation Error:', error);
       return { success: false, error: error.message };
     }
   },

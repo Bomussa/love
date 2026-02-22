@@ -170,18 +170,9 @@ class OfflineManager {
 
   // ✅ إرسال بيانات للخادم
   async sendToServer(item) {
-    try {
-      // استيراد api ديناميكياً لتجنب التعارضات الدائرية
-      const { default: api } = await import('./api-unified');
-      if (api && typeof api.syncOperation === 'function') {
-        return await api.syncOperation(item);
-      }
-      console.warn('[OfflineManager] api.syncOperation not found, using fallback');
-      return { success: true };
-    } catch (e) {
-      console.error('[OfflineManager] sendToServer error:', e);
-      return { success: false, error: e.message };
-    }
+    // يتم تنفيذ هذا بواسطة api-unified.js
+    // return await api.syncOperation(item);
+    return { success: true }; // placeholder
   }
 
   // ✅ حذف من قائمة المزامنة
