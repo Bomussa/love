@@ -99,9 +99,10 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       })
       
       if (!validation.isValid) {
-        setValidationError(validation.errors[0])
-        setIsSubmitting(false)
-        return
+        // ✅ عرض جميع الأخطاء بدلاً من الخطأ الأول فقط لتحسين تجربة المستخدم
+        setValidationError(validation.errors.join(' | '));
+        setIsSubmitting(false);
+        return;
       }
 
       setLoading(true)
