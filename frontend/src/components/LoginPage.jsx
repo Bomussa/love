@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -22,6 +22,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [showStatistics, setShowStatistics] = useState(false)
   const [validationError, setValidationError] = useState('')
   const [showUsageGuide, setShowUsageGuide] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
@@ -82,23 +83,28 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
   const handleAdminSubmit = async (e) => {
     e.preventDefault()
+    
+    // منع double submit
+    if (isSubmitting) return
+    
     setValidationError('')
+    setIsSubmitting(true)
     
-    // التحقق من صحة بيانات الإدارة
-    const validation = validateAdminData({
-      username: sanitizeInput(adminUsername),
-      password: adminPassword
-    })
-    
-    if (!validation.isValid) {
-      setValidationError(validation.errors[0])
-      return
-    }
-
-    setLoading(true)
     try {
-      // تسجيل دخول الإدارة
+      // التحقق من صحة بيانات الإدارة
       const sanitizedUsername = sanitizeInput(adminUsername)
+      const validation = validateAdminData({
+        username: sanitizedUsername,
+        password: adminPassword
+      })
+      
+      if (!validation.isValid) {
+        setValidationError(validation.errors[0])
+        setIsSubmitting(false)
+        return
+      }
+
+      setLoading(true)
       logAdminLogin(sanitizedUsername)
       
       // إرسال username:password كرمز واحد
@@ -107,6 +113,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
     } finally {
       setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -143,7 +150,6 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
               size="sm"
               className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
               onClick={() => {
-
                 setIsAdminMode(!isAdminMode)
               }}
               title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
@@ -171,8 +177,6 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
-
-          {/* تمت إزالة محدد الثيم من هذا المكان ونقلُه إلى داخل البطاقة فوق حقل اسم المستخدم */}
         </div>
 
         {/* Login Form */}
@@ -248,37 +252,26 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                     <Button
                       type="button"
                       variant={gender === 'male' ? 'gradient' : 'outline'}
-                      className={`h-12 ${gender === 'male' ? '' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}`}
                       onClick={() => setGender('male')}
                     >
-                      👨 {t('male', language)}
+                      {t('male', language)}
                     </Button>
                     <Button
                       type="button"
                       variant={gender === 'female' ? 'gradient' : 'outline'}
-                      className={`h-12 ${gender === 'female' ? '' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}`}
                       onClick={() => setGender('female')}
                     >
-                      👩 {t('female', language)}
+                      {t('female', language)}
                     </Button>
                   </div>
                 </div>
 
-                {/* إشعار خاص للنساء */}
-                {gender === 'female' && (
-                  <div className="bg-pink-900/30 border-2 border-pink-500/50 rounded-xl p-4 text-center">
-                    <div className="text-pink-300 text-lg font-bold mb-2">⚠️ ملاحظة مهمة للعنصر النسائي</div>
-                    <div className="text-pink-200 text-sm leading-relaxed">
-                      يرجى التسجيل في <span className="font-bold">استقبال المركز الطبي التخصصي العسكري الرئيسي</span> قبل البدء بالفحوصات
-                    </div>
-                  </div>
-                )}
-
-                {/* عرض رسالة الخطأ */}
                 {validationError && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    {validationError}
+                  <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-400">
+                      {validationError}
+                    </div>
                   </div>
                 )}
 
@@ -289,7 +282,6 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   disabled={loading || !patientId.trim()}
                   onClick={(e) => {
                     console.log('=== Button CLICKED ===')
-                    // الزر type=submit سيستدعي onSubmit تلقائياً
                   }}
                 >
                   {loading
@@ -307,7 +299,8 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                     type="text"
                     placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
                     value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
+                    onChange={(e) => setAdminUsername(sanitizeInput(e.target.value))}
+                    autoComplete="username"
                     className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
                     required
                   />
@@ -322,18 +315,28 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                     placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
+                    autoComplete="current-password"
                     className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
                     required
                   />
                 </div>
 
+                {validationError && (
+                  <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-400">
+                      {validationError}
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   variant="gradient"
                   className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !adminUsername.trim() || !adminPassword.trim()}
+                  disabled={loading || isSubmitting || !adminUsername.trim() || !adminPassword.trim()}
                 >
-                  {loading
+                  {loading || isSubmitting
                     ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...')
                     : (language === 'ar' ? 'دخول ←' : 'Login →')}
                 </Button>
@@ -378,47 +381,14 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           {showUsageGuide && (
             <div className="fixed left-20 top-1/2 -translate-y-1/2 z-50 max-w-sm">
               <div className="bg-purple-600 rounded-2xl shadow-2xl p-5 text-white border-2 border-white/20">
-                <button 
-                  onClick={() => setShowUsageGuide(false)}
-                  className="absolute top-2 right-2 text-white/80 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center"
-                >
-                  ×
-                </button>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-4xl">👋</span>
-                  <h3 className="text-xl font-bold">
-                    {language === 'ar' ? 'مرحباً بك' : 'Welcome'}
-                  </h3>
-                </div>
-                <div className="text-lg font-medium leading-relaxed">
-                  {language === 'ar' ? (
-                    <>
-                      📋 طريقة الاستخدام:<br/>
-                      1️⃣ أدخل رقمك العسكري<br/>
-                      2️⃣ اختر نوع الفحص<br/>
-                      3️⃣ تابع دورك على الشاشة<br/>
-                      4️⃣ ادخل العيادة عند حلول دورك
-                    </>
-                  ) : (
-                    <>
-                      📋 How to use:<br/>
-                      1️⃣ Enter your military ID<br/>
-                      2️⃣ Select exam type<br/>
-                      3️⃣ Watch your turn on screen<br/>
-                      4️⃣ Enter clinic when it's your turn
-                    </>
-                  )}
-                </div>
+                <h3 className="font-bold text-lg mb-3">{language === 'ar' ? 'كيفية الاستخدام' : 'How to Use'}</h3>
+                <ul className="space-y-2 text-sm">
+                  <li>✓ {language === 'ar' ? 'أدخل رقمك العسكري' : 'Enter your military ID'}</li>
+                  <li>✓ {language === 'ar' ? 'اختر جنسك' : 'Select your gender'}</li>
+                  <li>✓ {language === 'ar' ? 'انقر على تأكيد' : 'Click confirm'}</li>
+                  <li>✓ {language === 'ar' ? 'اتبع التعليمات على الشاشة' : 'Follow on-screen instructions'}</li>
+                </ul>
               </div>
-              <style>{`
-                @keyframes slide-in-left {
-                  from { transform: translate(-100%, -50%); opacity: 0; }
-                  to { transform: translate(0, -50%); opacity: 1; }
-                }
-                .animate-slide-in-left {
-                  animation: slide-in-left 0.3s ease-out;
-                }
-              `}</style>
             </div>
           )}
         </>

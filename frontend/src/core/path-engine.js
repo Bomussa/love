@@ -30,6 +30,55 @@ const CLINIC_NAMES = {
 class PathEngine {
   constructor() {
     this.patientPaths = new Map(); // patientId -> { examType, currentStep, path, history }
+    this.STORAGE_PREFIX = 'mmc_patient_path_';
+  }
+
+  // إنشاء مفتاح تخزين فريد
+  getStorageKey(patientId, examType) {
+    return `${this.STORAGE_PREFIX}${patientId}_${examType}`;
+  }
+
+  // حفظ مسار المريض في localStorage
+  savePathToStorage(patientId, examType) {
+    try {
+      const patientPath = this.patientPaths.get(patientId);
+      if (patientPath) {
+        const key = this.getStorageKey(patientId, examType);
+        localStorage.setItem(key, JSON.stringify(patientPath));
+        console.log(`[PathEngine] Saved path for patient ${patientId} to storage`);
+      }
+    } catch (e) {
+      console.error('[PathEngine] Error saving path to storage:', e);
+    }
+  }
+
+  // تحميل مسار المريض من localStorage
+  loadPathFromStorage(patientId, examType) {
+    try {
+      const key = this.getStorageKey(patientId, examType);
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const patientPath = JSON.parse(stored);
+        this.patientPaths.set(patientId, patientPath);
+        console.log(`[PathEngine] Loaded saved path for patient ${patientId} from storage`);
+        return patientPath;
+      }
+    } catch (e) {
+      console.error('[PathEngine] Error loading path from storage:', e);
+    }
+    return null;
+  }
+
+  // مسح مسار المريض من التخزين
+  clearPatientPath(patientId, examType) {
+    try {
+      const key = this.getStorageKey(patientId, examType);
+      localStorage.removeItem(key);
+      this.patientPaths.delete(patientId);
+      console.log(`[PathEngine] Cleared path for patient ${patientId}`);
+    } catch (e) {
+      console.error('[PathEngine] Error clearing path:', e);
+    }
   }
 
   // توليد مسار ديناميكي عشوائي
@@ -78,6 +127,14 @@ class PathEngine {
   }
 
   async initializePatientPath(patientId, examType) {
+    // التحقق من وجود مسار محفوظ
+    const savedPath = this.loadPathFromStorage(patientId, examType);
+    if (savedPath) {
+      console.log(`[PathEngine] Using saved path for patient ${patientId}`);
+      return savedPath;
+    }
+
+    // توليد مسار جديد
     const path = this.getPathForExam(examType);
 
     const patientPath = {
@@ -91,6 +148,7 @@ class PathEngine {
     };
 
     this.patientPaths.set(patientId, patientPath);
+    this.savePathToStorage(patientId, examType);
     return patientPath;
   }
 
@@ -111,10 +169,14 @@ class PathEngine {
     // الانتقال للخطوة التالية
     patientPath.currentStep++;
 
+    // حفظ التقدم
+    this.savePathToStorage(patientId, patientPath.examType);
+
     // التحقق من الانتهاء
     if (patientPath.currentStep >= patientPath.path.length) {
       patientPath.status = 'completed';
       patientPath.completedAt = new Date().toISOString();
+      this.savePathToStorage(patientId, patientPath.examType);
       return null; // انتهى المسار
     }
 
