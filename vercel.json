@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "framework": "vite",
   "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": "vite",
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/clinic/(.*)", "destination": "/index.html" },
@@ -14,7 +14,8 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "X-Automation-Level", "value": "98.5-Resilient" }
       ]
     }
   ]

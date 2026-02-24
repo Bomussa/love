@@ -1,0 +1,21 @@
+name: conn-smoke (add-only)
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run connectivity check
+        env:
+          FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN || 'https://mmc-mms.com' }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: node scripts/conn-check.mjs

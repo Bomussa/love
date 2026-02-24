@@ -1,0 +1,390 @@
+@import './styles/qr-safe.css';
+@import './admin-sidebar-fix.css';
+@import './fixed-sizing.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 5%; /* Almost black */ /* Dark Blue */
+    --foreground: 210 40% 98%; /* White */
+    --card: 0 0% 10%; /* Dark grey for cards */ /* Slightly lighter dark blue for cards */
+    --card-foreground: 210 40% 98%; /* White */
+    --popover: 220 20% 15%; /* Popover background */
+    --popover-foreground: 210 40% 98%; /* Popover text */
+    --primary: 270 70% 40%; /* Deep purple */ /* Official Maroon #8A1538 */
+    --primary-foreground: 210 40% 98%; /* White */
+    --secondary: 40 90% 50%; /* Vibrant gold */ /* Official Gold #C9A54C */
+    --secondary-foreground: 210 40% 98%; /* White */
+    --muted: 220 15% 25%; /* Muted dark blue */
+    --muted-foreground: 215 20.2% 65.1%; /* Gray */
+    --accent: 38 40% 82%; /* Light Beige #E8DABE */
+    --accent-foreground: 210 40% 98%; /* White */
+    --destructive: 0 62.8% 30.6%; /* Red */
+    --destructive-foreground: 210 40% 98%; /* White */
+    --border: 220 15% 25%; /* Border color */
+    --input: 220 15% 20%; /* Input background */
+    --ring: 200 80% 50%; /* Ring color */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+  html {
+    width: 100%;
+    height: 100%;
+    height: -webkit-fill-available;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    @apply text-foreground;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    background: transparent;
+    /* Theme background is controlled by App.jsx div */
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+  }
+  #root {
+    width: 100%;
+    flex: 1;
+    min-height: 100%;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Icon system: أحجام/ألوان/هوامش موحّدة لكل الأيقونات */
+@layer components {
+  /* أحجام الأيقونات */
+  .icon { display: inline-block; vertical-align: middle; }
+  .icon-sm { @apply w-4 h-4; }
+  .icon-md { @apply w-5 h-5; }
+  .icon-lg { @apply w-6 h-6; }
+  .icon-xl { @apply w-8 h-8; }
+
+  /* ألوان الأيقونات وفق الثيم الطبي */
+  .icon-brand { color: var(--theme-primary); }
+  .icon-secondary { color: var(--theme-secondary); }
+  .icon-accent { color: var(--theme-accent); }
+  .icon-muted { @apply text-gray-400; }
+  .icon-success { @apply text-green-500; }
+  .icon-warning { @apply text-yellow-500; }
+  .icon-danger { @apply text-red-500; }
+
+  /* هوامش منطقية تدعم RTL/LTR */
+  .me-1 { margin-inline-end: 0.25rem; }
+  .me-2 { margin-inline-end: 0.5rem; }
+  .me-3 { margin-inline-end: 0.75rem; }
+  .ms-1 { margin-inline-start: 0.25rem; }
+  .ms-2 { margin-inline-start: 0.5rem; }
+  .ms-3 { margin-inline-start: 0.75rem; }
+}
+
+/* Custom gradients for buttons */
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(280 70% 50%) 100%); /* Purple gradient */
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(45 90% 60%) 100%); /* Gold gradient */
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(45 90% 60%) 100%); /* Gold gradient */
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, hsl(var(--destructive)) 0%, hsl(var(--destructive)) 50%, hsl(var(--destructive)) 100%);
+}
+
+/* Theme colors */
+.theme-classic {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+.theme-mint {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+.theme-navy {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+.theme-desert {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+.theme-rose {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+.theme-night {
+  --theme-primary: 270 70% 40%; /* Deep purple */
+  --theme-secondary: 40 90% 50%; /* Vibrant gold */
+  --theme-accent: 38 40% 82%; /* Light Beige */
+  --theme-background: 0 0% 5%; /* Almost black */
+  --theme-surface: 0 0% 10%; /* Dark grey for cards */
+  --theme-text: 210 40% 98%; /* White */
+  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
+  --theme-border: 220 15% 25%; /* Border color */
+  --theme-success: 142 76% 36%; /* Green */
+  --theme-warning: 48 96% 40%; /* Yellow */
+  --theme-error: 0 84% 60%; /* Red */
+  --theme-info: 200 80% 50%; /* Blue */
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.7);
+}
+
+/* باقي الستايلات تحت */
+
+/* ============================================
+   توحيد الخطوط والمقاسات - Professional Typography System
+   ============================================ */
+
+/* Typography Scale - مقياس الخطوط الموحد */
+@layer components {
+  /* العناوين الرئيسية */
+  .heading-1 {
+    font-size: 2.25rem;      /* 36px */
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  
+  .heading-2 {
+    font-size: 1.875rem;     /* 30px */
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  
+  .heading-3 {
+    font-size: 1.5rem;       /* 24px */
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  
+  .heading-4 {
+    font-size: 1.25rem;      /* 20px */
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  
+  .heading-5 {
+    font-size: 1.125rem;     /* 18px */
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  
+  /* النصوص العادية */
+  .body-large {
+    font-size: 1.125rem;     /* 18px */
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  
+  .body-base {
+    font-size: 1rem;         /* 16px */
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  
+  .body-small {
+    font-size: 0.875rem;     /* 14px */
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  
+  .body-xs {
+    font-size: 0.75rem;      /* 12px */
+    line-height: 1.4;
+    font-weight: 400;
+  }
+  
+  /* الأرقام الكبيرة - للإحصائيات */
+  .stat-number {
+    font-size: 2.5rem;       /* 40px */
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .stat-number-large {
+    font-size: 3.5rem;       /* 56px */
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* الأزرار */
+  .btn-text {
+    font-size: 0.875rem;     /* 14px */
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  
+  .btn-text-large {
+    font-size: 1rem;         /* 16px */
+    line-height: 1;
+    font-weight: 500;
+  }
+  
+  /* التسميات والعلامات */
+  .label {
+    font-size: 0.75rem;      /* 12px */
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  
+  .caption {
+    font-size: 0.75rem;      /* 12px */
+    line-height: 1.4;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* RTL Typography Adjustments */
+[dir="rtl"] .heading-1,
+[dir="rtl"] .heading-2,
+[dir="rtl"] .heading-3,
+[dir="rtl"] .heading-4,
+[dir="rtl"] .heading-5,
+[dir="rtl"] .body-large,
+[dir="rtl"] .body-base,
+[dir="rtl"] .body-small {
+  font-family: 'Cairo', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Consistent spacing for admin and patient screens */
+@layer components {
+  /* Card spacing */
+  .card-padding {
+    padding: 1.5rem;
+  }
+  
+  .card-padding-sm {
+    padding: 1rem;
+  }
+  
+  /* Section spacing */
+  .section-gap {
+    gap: 1.5rem;
+  }
+  
+  /* Consistent border radius */
+  .radius-sm { border-radius: 0.5rem; }
+  .radius-md { border-radius: 0.75rem; }
+  .radius-lg { border-radius: 1rem; }
+  .radius-xl { border-radius: 1.25rem; }
+  .radius-2xl { border-radius: 1.5rem; }
+}
