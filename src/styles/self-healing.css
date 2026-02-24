@@ -1,0 +1,361 @@
+/**
+ * MMC Self-Healing System - Styles
+ */
+
+/* Safe Screen Styles */
+.mmc-safe-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 99999;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.mmc-safe-screen-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.mmc-safe-screen-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.mmc-safe-screen-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.mmc-safe-screen-message {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.mmc-safe-screen-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.mmc-safe-screen-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.mmc-safe-screen-button-primary {
+  background: #0d9488;
+  color: white;
+}
+
+.mmc-safe-screen-button-primary:hover {
+  background: #0f766e;
+}
+
+.mmc-safe-screen-button-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.mmc-safe-screen-button-secondary:hover {
+  background: #e5e7eb;
+}
+
+.mmc-safe-screen-footer {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.mmc-safe-screen-contact {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+}
+
+.mmc-safe-screen-correlation {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: monospace;
+  margin: 0;
+}
+
+/* Safe Mode Banner */
+.mmc-safe-mode-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: white;
+  padding: 8px 16px;
+  z-index: 9999;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mmc-safe-mode-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mmc-safe-mode-banner-icon {
+  font-size: 16px;
+}
+
+.mmc-safe-mode-banner-text {
+  font-weight: 500;
+}
+
+.mmc-safe-mode-banner-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.mmc-safe-mode-banner-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Read-Only Banner */
+.mmc-read-only-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  color: white;
+  padding: 8px 16px;
+  z-index: 9999;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mmc-read-only-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mmc-read-only-banner-icon {
+  font-size: 16px;
+}
+
+.mmc-read-only-banner-text {
+  font-weight: 500;
+}
+
+/* Health Status Card */
+.mmc-health-card {
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid;
+  transition: all 0.2s ease;
+  min-width: 180px;
+}
+
+.mmc-health-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mmc-health-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mmc-health-card-icon {
+  font-size: 20px;
+}
+
+.mmc-health-card-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.mmc-health-card-module {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.mmc-health-card-details {
+  font-size: 12px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.mmc-health-card-metric {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.mmc-health-card-last-check {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Status Colors */
+.mmc-status-ok {
+  background-color: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.mmc-status-degraded {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.mmc-status-fail {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+/* Self-Healing Center */
+.self-healing-center {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.self-healing-center h1 {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+  color: white;
+}
+
+.self-healing-center p {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Logs Table */
+.mmc-logs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mmc-logs-table th,
+.mmc-logs-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mmc-logs-table th {
+  font-weight: 600;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.mmc-logs-table tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Severity Badges */
+.mmc-severity-info {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.mmc-severity-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.mmc-severity-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Animation for recovery in progress */
+@keyframes mmc-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.mmc-recovery-in-progress {
+  animation: mmc-pulse 1.5s ease-in-out infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .self-healing-center {
+    padding: 12px;
+  }
+  
+  .mmc-safe-screen-card {
+    padding: 24px;
+  }
+  
+  .mmc-safe-screen-title {
+    font-size: 20px;
+  }
+  
+  .mmc-safe-screen-buttons {
+    flex-direction: column;
+  }
+  
+  .mmc-safe-screen-button {
+    width: 100%;
+  }
+}
