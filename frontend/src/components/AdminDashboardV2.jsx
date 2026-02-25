@@ -2587,6 +2587,7 @@ const SystemStatus = ({ language, t }) => {
 // مكون الإعدادات
 const SettingsSection = ({ language, t }) => {
   const [settings, setSettings] = useState({});
+  const [localValues, setLocalValues] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2611,6 +2612,7 @@ const SettingsSection = ({ language, t }) => {
       settingsObj.device_restriction_enabled = deviceRestriction;
       
       setSettings(settingsObj);
+      setLocalValues(settingsObj);
     } catch (e) {
       console.error('Error loading settings:', e);
     } finally {
@@ -2670,8 +2672,9 @@ const SettingsSection = ({ language, t }) => {
           <label className="block text-sm text-gray-400 mb-2">{t('اسم المركز', 'Center Name')}</label>
           <input
             type="text"
-            value={settings.center_name || ''}
-            onChange={(e) => updateSetting('center_name', e.target.value)}
+            value={localValues.center_name ?? settings.center_name ?? ''}
+            onChange={(e) => setLocalValues(prev => ({...prev, center_name: e.target.value}))}
+            onBlur={(e) => updateSetting('center_name', e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
             placeholder={t('المركز الطبي التخصصي العسكري', 'Military Specialized Medical Center')}
           />
@@ -2691,9 +2694,11 @@ const SettingsSection = ({ language, t }) => {
           <label className="block text-sm text-gray-400 mb-2">{t('الحد الأقصى للانتظار (دقيقة)', 'Max Wait Time (minutes)')}</label>
           <input
             type="number"
-            value={settings.max_wait_time || 60}
-            onChange={(e) => updateSetting('max_wait_time', e.target.value)}
+            value={localValues.max_wait_time ?? settings.max_wait_time ?? 60}
+            onChange={(e) => setLocalValues(prev => ({...prev, max_wait_time: e.target.value}))}
+            onBlur={(e) => { if (e.target.value) updateSetting('max_wait_time', e.target.value); }}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+            min="1" max="9999"
           />
         </div>
 
@@ -2792,8 +2797,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('النداء التالي بعد (دقيقة)', 'Next Call After (minutes)')}</label>
               <input
                 type="number"
-                value={settings.queue_skip_time || 2}
-                onChange={(e) => updateSetting('queue_skip_time', e.target.value)}
+                value={localValues.queue_skip_time ?? settings.queue_skip_time ?? 2}
+                onChange={(e) => setLocalValues(prev => ({...prev, queue_skip_time: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('queue_skip_time', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="10"
@@ -2805,8 +2810,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('نقل للنهاية بعد (دقيقة)', 'Move to End After (minutes)')}</label>
               <input
                 type="number"
-                value={settings.queue_late_time || 4}
-                onChange={(e) => updateSetting('queue_late_time', e.target.value)}
+                value={localValues.queue_late_time ?? settings.queue_late_time ?? 4}
+                onChange={(e) => setLocalValues(prev => ({...prev, queue_late_time: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('queue_late_time', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="15"
@@ -2818,8 +2823,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('مدة الفحص (دقيقة)', 'Exam Duration (minutes)')}</label>
               <input
                 type="number"
-                value={settings.exam_duration || 5}
-                onChange={(e) => updateSetting('exam_duration', e.target.value)}
+                value={localValues.exam_duration ?? settings.exam_duration ?? 5}
+                onChange={(e) => setLocalValues(prev => ({...prev, exam_duration: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('exam_duration', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="30"
@@ -2831,8 +2836,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('الحد الأقصى للمراجعين يومياً', 'Max Daily Patients')}</label>
               <input
                 type="number"
-                value={settings.max_daily_patients || 150}
-                onChange={(e) => updateSetting('max_daily_patients', e.target.value)}
+                value={localValues.max_daily_patients ?? settings.max_daily_patients ?? 150}
+                onChange={(e) => setLocalValues(prev => ({...prev, max_daily_patients: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('max_daily_patients', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="500"
@@ -2895,8 +2900,8 @@ const SettingsSection = ({ language, t }) => {
           <div className="mt-4">
             <label className="block text-sm text-gray-400 mb-2">{t('رسالة إيقاف التسجيل', 'Registration Closed Message')}</label>
             <textarea
-              value={settings.registration_closed_message || ''}
-              onChange={(e) => updateSetting('registration_closed_message', e.target.value)}
+              value={localValues.registration_closed_message ?? settings.registration_closed_message ?? ''}
+              onChange={(e) => setLocalValues(prev => ({...prev, registration_closed_message: e.target.value}))} onBlur={(e) => updateSetting('registration_closed_message', e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white h-24"
               placeholder={t('نعتذر، تم إيقاف التسجيل لهذا اليوم. يرجى الحضور والتسجيل غداً.', 'Sorry, registration is closed for today. Please come back tomorrow.')}
             />
@@ -3064,8 +3069,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('مهلة الانتظار قبل الترحيل (دقيقة)', 'Wait Time Before Postpone (minutes)')}</label>
               <input
                 type="number"
-                value={settings.postpone_wait_minutes || 2}
-                onChange={(e) => updateSetting('postpone_wait_minutes', e.target.value)}
+                value={localValues.postpone_wait_minutes ?? settings.postpone_wait_minutes ?? 2}
+                onChange={(e) => setLocalValues(prev => ({...prev, postpone_wait_minutes: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('postpone_wait_minutes', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="10"
@@ -3077,8 +3082,8 @@ const SettingsSection = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('الحد الأقصى لمرات الترحيل', 'Max Postpone Count')}</label>
               <input
                 type="number"
-                value={settings.max_postpones || 3}
-                onChange={(e) => updateSetting('max_postpones', e.target.value)}
+                value={localValues.max_postpones ?? settings.max_postpones ?? 3}
+                onChange={(e) => setLocalValues(prev => ({...prev, max_postpones: e.target.value}))} onBlur={(e) => { if (e.target.value) updateSetting('max_postpones', e.target.value); }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
                 min="1"
                 max="10"
@@ -4037,18 +4042,23 @@ const ContentManagement = ({ language, t }) => {
         .upsert({
           key: item.key,
           category: activeCategory,
-          value_ar: item.ar,
-          value_en: item.en,
+          value_ar: item.ar || item.value_ar,
+          value_en: item.en || item.value_en,
           description: item.description,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' });
       
       if (!error) {
+        showSuccessToast(t('تم حفظ المحتوى بنجاح', 'Content saved successfully'));
         setEditingItem(null);
         loadContents();
+      } else {
+        console.error('Error saving content:', error);
+        showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving content'));
       }
     } catch (e) {
       console.error('Error saving content:', e);
+      showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving content'));
     }
   };
 
@@ -4181,11 +4191,11 @@ const AppearanceManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('app_settings')
         .select('*')
-        .eq('category', 'appearance')
+        .eq('key', 'appearance')
         .single();
       
-      if (!error && data) {
-        setSettings({...settings, ...data.value});
+      if (!error && data && data.value) {
+        setSettings(prev => ({...prev, ...data.value}));
       }
     } catch (e) {
       console.error('Error loading appearance settings:', e);
@@ -4195,21 +4205,21 @@ const AppearanceManagement = ({ language, t }) => {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      await supabase
+      const { error: upsertError } = await supabase
         .from('app_settings')
         .upsert({
           key: 'appearance',
-          category: 'appearance',
           value: settings,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' });
+      if (upsertError) throw upsertError;
       
       // تطبيق التغييرات مباشرة
       document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
       document.documentElement.style.setProperty('--secondary-color', settings.secondaryColor);
       document.documentElement.style.setProperty('--bg-color', settings.backgroundColor);
       
-      alert(t('تم حفظ الإعدادات', 'Settings saved'));
+      showSuccessToast(t('تم حفظ إعدادات المظهر', 'Appearance settings saved'));
     } catch (e) {
       console.error('Error saving settings:', e);
     } finally {
