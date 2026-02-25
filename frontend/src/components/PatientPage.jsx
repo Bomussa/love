@@ -198,38 +198,43 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           console.log('No saved route found');
         }
 
-        // إذا لم يوجد مسار محفوظ، احسب مسار جديد
+        // إذا لم يوجد مسار محفوظ، احسب مسار جديد (يُحفظ بعد الترتيب)
         if (!examStations) {
           examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
-
-          // حفظ المسار الجديد في Backend
-          try {
-            await api.createRoute(
-              patientData.id,
-              patientData.examType || patientData.queueType,
-              patientData.gender,
-              examStations
-            )
-          } catch (err) {
-            console.log('Failed to save route:', err);
-          }
         }
 
-        // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
+        // ✅ Sticky Path: الترتيب يحدث مرة واحدة فقط عند حساب المسار الجديد
+        // إذا كان المسار محفوظاً مسبقاً فيُستخدم كما هو بدون إعادة ترتيب
         let sortedStations = [...examStations];
-        try {
-          const queueCounts = await Promise.all(
-            examStations.map(async (station) => {
-              const count = await api.getQueueCount(station.id);
-              return { station, count: count || 0 };
-            })
-          );
-          // ترتيب العيادات حسب الأقل ازدحاماً (الأقل في الاعلى)
-          queueCounts.sort((a, b) => a.count - b.count);
-          sortedStations = queueCounts.map(q => q.station);
-          console.log('[PatientPage] Stations sorted by queue count:', queueCounts.map(q => `${q.station.nameAr}: ${q.count}`));
-        } catch (sortError) {
-          console.warn('[PatientPage] Failed to sort stations:', sortError);
+        const isNewRoute = !savedRoute?.success; // مسار جديد = لم يكن محفوظاً
+        if (isNewRoute) {
+          try {
+            const queueCounts = await Promise.all(
+              examStations.map(async (station) => {
+                const count = await api.getQueueCount(station.id);
+                return { station, count: count || 0 };
+              })
+            );
+            // ترتيب العيادات حسب الأقل ازدحاماً (الأقل أولاً)
+            queueCounts.sort((a, b) => a.count - b.count);
+            sortedStations = queueCounts.map(q => q.station);
+            console.log('[PatientPage] ✅ مسار جديد - ترتيب حسب الازدحام:', queueCounts.map(q => `${q.station.nameAr}: ${q.count}`));
+            // حفظ المسار المرتّب في Backend
+            try {
+              await api.createRoute(
+                patientData.id,
+                patientData.examType || patientData.queueType,
+                patientData.gender,
+                sortedStations
+              );
+            } catch (saveErr) {
+              console.warn('[PatientPage] فشل حفظ المسار المرتّب:', saveErr);
+            }
+          } catch (sortError) {
+            console.warn('[PatientPage] فشل ترتيب العيادات:', sortError);
+          }
+        } else {
+          console.log('[PatientPage] ✅ مسار محفوظ - لا يتغير (Sticky)');
         }
 
         // الدخول التلقائي للعيادة الأولى
