@@ -135,15 +135,61 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           </Button>
         </div>
         
-        {/* Admin quick access (Right) */}
+        {/* Admin quick access (Right) + Info icon on same row */}
         {onAdminLogin && (
-          <div className="absolute top-4 right-4 z-50">
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+            {!isAdminMode && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUsageGuide(!showUsageGuide)}
+                  className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white rounded-lg px-2 py-1 transition-all duration-200 border border-white/10"
+                  title={language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}
+                >
+                  <span className="text-sm">ℹ️</span>
+                  <span className="text-[10px] font-medium leading-tight max-w-[70px] text-right">
+                    {language === 'ar' ? 'تعليمات الدخول' : 'Instructions'}
+                  </span>
+                </button>
+                {showUsageGuide && (
+                  <div className="absolute top-10 right-0 z-50 w-60">
+                    <div className="bg-gray-900/95 rounded-xl shadow-2xl p-4 text-white border border-white/20 backdrop-blur-sm">
+                      <button
+                        onClick={() => setShowUsageGuide(false)}
+                        className="absolute top-2 left-2 text-white/60 hover:text-white text-base font-bold"
+                      >×</button>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">👋</span>
+                        <h3 className="text-xs font-bold">{language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}</h3>
+                      </div>
+                      <div className="text-xs leading-relaxed space-y-1 text-white/90">
+                        {language === 'ar' ? (
+                          <>
+                            <div>1️⃣ أدخل رقمك الشخصي أو العسكري</div>
+                            <div>2️⃣ اختر الجنس (ذكر / أنثى)</div>
+                            <div>3️⃣ اضغط تأكيد لأخذ دورك</div>
+                            <div>4️⃣ تابع رقم دورك على الشاشة</div>
+                            <div>5️⃣ ادخل العيادة عند مناداتك</div>
+                          </>
+                        ) : (
+                          <>
+                            <div>1️⃣ Enter your personal or military ID</div>
+                            <div>2️⃣ Select gender (Male / Female)</div>
+                            <div>3️⃣ Press confirm to get your turn</div>
+                            <div>4️⃣ Watch your number on screen</div>
+                            <div>5️⃣ Enter clinic when called</div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
               className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
               onClick={() => {
-
                 setIsAdminMode(!isAdminMode)
               }}
               title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
@@ -362,67 +408,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
         language={language}
       />
       
-      {/* أيقونة التعليمات على يسار الشاشة */}
-      {!isAdminMode && (
-        <>
-          {/* أيقونة صغيرة بسيطة على اليسار */}
-          <button
-            onClick={() => setShowUsageGuide(!showUsageGuide)}
-            className="fixed left-3 top-1/2 -translate-y-1/2 z-40 bg-purple-500/70 hover:bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105 border border-white/10"
-            title={language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}
-          >
-            <span className="text-lg">ℹ️</span>
-          </button>
 
-          {/* النافذة المنبثقة من اليسار */}
-          {showUsageGuide && (
-            <div className="fixed left-20 top-1/2 -translate-y-1/2 z-50 max-w-sm">
-              <div className="bg-purple-600 rounded-2xl shadow-2xl p-5 text-white border-2 border-white/20">
-                <button 
-                  onClick={() => setShowUsageGuide(false)}
-                  className="absolute top-2 right-2 text-white/80 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center"
-                >
-                  ×
-                </button>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-4xl">👋</span>
-                  <h3 className="text-xl font-bold">
-                    {language === 'ar' ? 'مرحباً بك' : 'Welcome'}
-                  </h3>
-                </div>
-                <div className="text-lg font-medium leading-relaxed">
-                  {language === 'ar' ? (
-                    <>
-                      📋 طريقة الاستخدام:<br/>
-                      1️⃣ أدخل رقمك العسكري<br/>
-                      2️⃣ اختر نوع الفحص<br/>
-                      3️⃣ تابع دورك على الشاشة<br/>
-                      4️⃣ ادخل العيادة عند حلول دورك
-                    </>
-                  ) : (
-                    <>
-                      📋 How to use:<br/>
-                      1️⃣ Enter your military ID<br/>
-                      2️⃣ Select exam type<br/>
-                      3️⃣ Watch your turn on screen<br/>
-                      4️⃣ Enter clinic when it's your turn
-                    </>
-                  )}
-                </div>
-              </div>
-              <style>{`
-                @keyframes slide-in-left {
-                  from { transform: translate(-100%, -50%); opacity: 0; }
-                  to { transform: translate(0, -50%); opacity: 1; }
-                }
-                .animate-slide-in-left {
-                  animation: slide-in-left 0.3s ease-out;
-                }
-              `}</style>
-            </div>
-          )}
-        </>
-      )}
     </div>
   )
 }
