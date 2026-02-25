@@ -10,7 +10,7 @@ import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
-import NotificationSystem from './NotificationSystem'
+import NotificationSystem, { useNotifications } from './NotificationSystem'
 import { CountdownTimer } from './CountdownTimer'
 import eventBus from '../core/event-bus'
 import { supabase } from '../lib/supabase-client'
@@ -26,6 +26,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [routeWithZFD, setRouteWithZFD] = useState(null)
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
   const [directAlerts, setDirectAlerts] = useState([]) // التنبيهات المباشرة من الإدارة
+  const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
   // إعدادات النظام - التحكم في إظهار/إخفاء وتفعيل/إيقاف الميزات
   const [systemSettings, setSystemSettings] = useState({
@@ -98,11 +99,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       // التحقق من نجاح الدخول
       if (enterResult && !enterResult.success && enterResult.error) {
-        setCurrentNotice({
+        pushNotif({
           type: 'error',
           message: enterResult.error
         })
-        setTimeout(() => setCurrentNotice(null), 5000)
         setLoading(false)
         return
       }
@@ -124,13 +124,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
 
         // إشعار بنجاح الدخول
-        setCurrentNotice({
+        pushNotif({
           type: 'success',
-          message: language === 'ar' 
-            ? `✅ تم الدخول بنجاح - رقمك ${positionData.display_number}`
-            : `✅ Entered successfully - Your # ${positionData.display_number}`
+          title: language === 'ar' ? 'تم الدخول بنجاح' : 'Entered Successfully',
+          message: language === 'ar'
+            ? `رقمك في الطابور: ${positionData.display_number}`
+            : `Your queue number: ${positionData.display_number}`,
+          clinic: language === 'ar' ? station.nameAr : (station.name || station.nameAr),
+          floor: station.floor
         })
-        setTimeout(() => setCurrentNotice(null), 4000)
       } else {
         // في حالة عدم الحصول على بيانات الموقع، نستخدم بيانات الدخول
         if (enterResult && enterResult.display_number) {
@@ -148,11 +150,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setLoading(false)
     } catch (e) {
       console.error('Enter clinic failed:', e)
-      setCurrentNotice({
+      pushNotif({
         type: 'error',
         message: language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.'
       })
-      setTimeout(() => setCurrentNotice(null), 5000)
       setLoading(false)
     }
   }
@@ -249,14 +250,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           const firstClinic = sortedStations[0]
           await handleGetTicketForFirstClinic(firstClinic)
 
-          // إشعار الطابق
+          // إشعار التوجيه للطابق
           if (firstClinic.floor) {
-            setCurrentNotice({
+            pushNotif({
               type: 'floor_guide',
-              message: `📍 يرجى التوجه إلى ${firstClinic.floor}`,
-              clinic: firstClinic.nameAr
+              title: language === 'ar' ? 'توجه إلى العيادة' : 'Go to Clinic',
+              message: language === 'ar'
+                ? `يرجى التوجه إلى ${firstClinic.floor}`
+                : `Please go to ${firstClinic.floor}`,
+              clinic: language === 'ar' ? firstClinic.nameAr : (firstClinic.name || firstClinic.nameAr),
+              floor: firstClinic.floor
             })
-            setTimeout(() => setCurrentNotice(null), 5000)
           }
         }
       } catch (err) {
@@ -340,18 +344,26 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   // إشعار عند تغيير الموقع
                   const previousNumber = s.lastNotifiedPosition || 999;
                   if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
+                    const notifTypes = { 0: 'your_turn', 1: 'near_turn', 2: 'near_turn' };
                     const messages = {
-                      0: language === 'ar' ? '🔔 دورك الآن!' : '🔔 Your turn now!',
-                      1: language === 'ar' ? '⚠️ أنت التالي - كن جاهزاً' : '⚠️ You are next - be ready',
-                      2: language === 'ar' ? 'ℹ️ أنت الثاني - استعد' : 'ℹ️ You are second - get ready'
+                      0: language === 'ar' ? 'دورك الآن! توجه للعيادة فوراً' : 'Your turn now! Go to the clinic immediately',
+                      1: language === 'ar' ? 'أنت التالي - كن جاهزاً' : 'You are next - be ready',
+                      2: language === 'ar' ? 'أنت الثاني في الانتظار' : 'You are second in line'
+                    };
+                    const notifTitles = {
+                      0: language === 'ar' ? 'دورك الآن!' : 'Your Turn!',
+                      1: language === 'ar' ? 'تنبيه: أنت التالي' : 'Alert: You are next',
+                      2: language === 'ar' ? 'تنبيه' : 'Alert'
                     };
 
                     const message = messages[positionData.display_number];
                     if (message) {
-                      setCurrentNotice({
-                        type: 'queue_update',
+                      pushNotif({
+                        type: notifTypes[positionData.display_number] || 'queue_update',
+                        title: notifTitles[positionData.display_number],
                         message: message,
-                        clinic: s.nameAr
+                        clinic: s.nameAr,
+                        floor: s.floor
                       });
 
                       if (positionData.display_number === 0) {
@@ -360,8 +372,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                           position: positionData.display_number
                         });
                       }
-
-                      setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
                     }
                   }
 
@@ -422,14 +432,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       try {
         const message = language === 'ar' ? data.message : data.messageEn;
 
-        setCurrentNotice({
+        pushNotif({
           type: data.type,
           message,
           position: data.position,
           clinic: data.clinic
         });
-
-        setTimeout(() => setCurrentNotice(null), NEAR_TURN_REFRESH_INTERVAL);
       } catch (err) {
         console.error('Event bus parse error:', err);
       }
@@ -500,11 +508,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       // التحقق من إدخال PIN
       if (!pinInput || !pinInput.trim()) {
-        setCurrentNotice({
+        pushNotif({
           type: 'warning',
           message: language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN'
         })
-        setTimeout(() => setCurrentNotice(null), 4000)
         setLoading(false)
         return
       }
@@ -514,11 +521,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
-        setCurrentNotice({
+        pushNotif({
           type: 'error',
           message: errorMsg
         })
-        setTimeout(() => setCurrentNotice(null), 5000)
         setLoading(false)
         return
       }
@@ -567,66 +573,69 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                 return s;
               }));
 
-              // ✅ إصلاح: إشارة واضحة بتمرير الدور
-              setCurrentNotice({
+              // ✅ إشارة واضحة بتمرير الدور مع معلومات التوجيه
+              pushNotif({
                 type: 'next_clinic',
-                message: language === 'ar' 
-                  ? `✅ تم التمرير إلى ${nextClinicName} - رقمك ${positionData.display_number}`
-                  : `✅ Moved to ${nextClinicName} - Your # ${positionData.display_number}`,
-                clinic: nextClinicName
+                title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
+                message: language === 'ar'
+                  ? `رقمك في ${nextClinicName}: ${positionData.display_number}`
+                  : `Your # at ${nextClinicName}: ${positionData.display_number}`,
+                clinic: nextClinicName,
+                floor: stations[stations.findIndex(s => s.nameAr === nextClinicName || s.name === nextClinicName)]?.floor
               });
             } else {
-              setCurrentNotice({
+              pushNotif({
                 type: 'next_clinic',
-                message: language === 'ar' 
-                  ? `✅ تم التمرير إلى ${nextClinicName}`
-                  : `✅ Moved to ${nextClinicName}`,
+                title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
+                message: language === 'ar'
+                  ? `توجه إلى ${nextClinicName}`
+                  : `Go to ${nextClinicName}`,
                 clinic: nextClinicName
               });
             }
           } else {
-            setCurrentNotice({
+            pushNotif({
               type: 'next_clinic',
-              message: language === 'ar' 
-                ? `✅ يرجى الدخول إلى ${nextClinicName}`
-                : `✅ Please enter ${nextClinicName}`,
+              title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
+              message: language === 'ar'
+                ? `يرجى الدخول إلى ${nextClinicName}`
+                : `Please enter ${nextClinicName}`,
               clinic: nextClinicName
             });
           }
         } catch (autoEnterError) {
-          console.error('Auto-enter next clinic failed:', autoEnterError);
-          setCurrentNotice({
+          pushNotif({
             type: 'next_clinic',
-            message: language === 'ar' 
-              ? `✅ يرجى الدخول إلى ${nextClinicName}`
-              : `✅ Please enter ${nextClinicName}`,
+            title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
+            message: language === 'ar'
+              ? `يرجى الدخول إلى ${nextClinicName}`
+              : `Please enter ${nextClinicName}`,
             clinic: nextClinicName
           });
-        }
-
-        setTimeout(() => setCurrentNotice(null), 6000);
+        };
       } else {
         // لا توجد عيادة تالية
         setStations(prev => prev.map((s, i) => 
           i === currentIdx ? { ...s, status: 'completed', exitTime: new Date(), isEntered: false } : s
         ));
 
-        setCurrentNotice({
+        pushNotif({
           type: 'success',
-          message: language === 'ar' ? '✅ تم إنهاء جميع الفحوصات' : '✅ All examinations completed'
-        });
-        setTimeout(() => setCurrentNotice(null), 5000);
+          title: language === 'ar' ? 'تم إنهاء جميع الفحوصات' : 'All Examinations Done',
+          message: language === 'ar'
+            ? 'مبروك! يرجى التوجه للاستقبال لاستلام النتائج'
+            : 'Congratulations! Please go to reception for results'
+        });;
       }
 
       setPinInput('')
       setSelectedStation(null)
     } catch (e) {
       console.error('Complete clinic failed', e)
-      setCurrentNotice({
+      pushNotif({
         type: 'error',
         message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
       })
-      setTimeout(() => setCurrentNotice(null), 5000)
     } finally {
       setLoading(false)
     }
@@ -640,11 +649,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       if (!exitResult || !exitResult.success) {
         const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل الخروج' : 'Exit failed')
-        setCurrentNotice({
+        pushNotif({
           type: 'error',
           message: errorMsg
         })
-        setTimeout(() => setCurrentNotice(null), 5000)
         setLoading(false)
         return
       }
@@ -663,31 +671,28 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         }))
 
         const nextClinicName = stations[currentIdx + 1]?.nameAr || 'العيادة التالية'
-        setCurrentNotice({
+        pushNotif({
           type: 'next_clinic',
           message: language === 'ar' 
             ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
             : `✅ Examination completed. Please enter ${nextClinicName}`,
           clinic: nextClinicName
         })
-        setTimeout(() => setCurrentNotice(null), 5000)
       } else {
         setStations(prev => prev.map((s, i) => 
           i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
         ))
       }
 
-      setCurrentNotice({
+      pushNotif({
         type: 'success',
         message: language === 'ar' ? '✅ تم الخروج بنجاح' : '✅ Successfully exited'
       })
-      setTimeout(() => setCurrentNotice(null), 4000)
     } catch (e) {
-      setCurrentNotice({
+      pushNotif({
         type: 'error',
         message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
       })
-      setTimeout(() => setCurrentNotice(null), 5000)
     } finally {
       setLoading(false)
     }
@@ -808,12 +813,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   return (
     <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page">
-      {currentNotice && (
-        <ZFDBanner
-          notice={currentNotice}
-          onDismiss={() => setCurrentNotice(null)}
-        />
-      )}
+      {/* ZFDBanner removed - notifications now handled by NotificationSystem */}
 
       {/* التنبيهات المباشرة من الإدارة */}
       {directAlerts.length > 0 && (
@@ -844,12 +844,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         </div>
       )}
       <NotificationSystem
-        patientId={patientData?.id}
-        currentClinic={stations.find(s => s.status === 'active' || s.status === 'ready')}
-        yourNumber={stations.find(s => s.status === 'active' || s.status === 'ready')?.yourNumber}
-        currentServing={stations.find(s => s.status === 'active' || s.status === 'ready')?.current}
-        allStationsCompleted={allStationsCompleted}
-        language={language}
+        notifications={notifList}
+        onDismiss={dismissNotif}
       />
 
       <div className="w-full max-w-xl mx-auto space-y-4 sm:space-y-5">
