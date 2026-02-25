@@ -5,12 +5,13 @@ import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
-import { LoginPage } from './components/LoginPage.jsx'
-import { ExamSelectionPage } from './components/ExamSelectionPage.jsx'
-import { PatientPage } from './components/PatientPage.jsx'
+// Lazy loading للمكونات الرئيسية لتسريع التحميل الأولي
+const LoginPage = lazy(() => import('./components/LoginPage.jsx').then(m => ({ default: m.LoginPage })))
+const ExamSelectionPage = lazy(() => import('./components/ExamSelectionPage.jsx').then(m => ({ default: m.ExamSelectionPage })))
+const PatientPage = lazy(() => import('./components/PatientPage.jsx').then(m => ({ default: m.PatientPage })))
 import api from './lib/api-unified'
 import authService from './lib/auth-service'
-import { ClinicLoginPage } from './components/ClinicLoginPage'
+const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m => ({ default: m.ClinicLoginPage })))
 import getDynamicMedicalPathway from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
@@ -23,6 +24,15 @@ const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
 const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
+
+// Preload المكونات عند بدء التطبيق لتسريع التنقل
+const preloadComponents = () => {
+  import('./components/LoginPage.jsx');
+  import('./components/PatientPage.jsx');
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', preloadComponents, { once: true });
+}
 
 // Loading Fallback Component
 const LoadingFallback = () => (

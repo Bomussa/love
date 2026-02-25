@@ -96,13 +96,12 @@ const QueueManagement = ({ language, t }) => {
     const subscription = supabase
       .channel('queues_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue' }, (payload) => {
-        console.log('Queue change detected:', payload);
         loadQueues();
       })
       .subscribe();
     
     // تحديث احتياطي كل 30 ثانية
-    const interval = setInterval(loadQueues, 30000);
+    const interval = setInterval(loadQueues, 10000);
     
     return () => {
       clearInterval(interval);
@@ -2062,14 +2061,11 @@ const RoutesManagement = ({ language, t }) => {
   };
 
   const addRoute = async () => {
-    console.log('addRoute called with:', newRoute);
     if (!newRoute.exam_type || !newRoute.route_name) {
-      console.log('Validation failed - missing fields');
       alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
       return;
     }
     try {
-      console.log('Inserting route...');
       const { data, error } = await supabase.from('routes').insert({
         exam_type: newRoute.exam_type,
         route_name: newRoute.route_name,
@@ -2080,9 +2076,7 @@ const RoutesManagement = ({ language, t }) => {
         updated_at: new Date().toISOString()
       });
       
-      console.log('Insert result - data:', data, 'error:', error);
       if (!error) {
-        console.log('Route added successfully!');
         await logActivity('route_created', `تم إنشاء مسار جديد: ${newRoute.route_name}`);
         loadRoutes();
         setShowAddForm(false);

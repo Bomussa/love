@@ -1,8 +1,6 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
   <head>
-    <script type="module" crossorigin src="/assets/js/polyfills-BWg4hGgN.js"></script>
-
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/mms-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -15,13 +13,16 @@
     <link rel="preconnect" href="https://rujwuruuosffcxazymit.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://rujwuruuosffcxazymit.supabase.co" />
     
-    <!-- Google Fonts - Cairo as the ONLY font -->
+    <!-- Google Fonts - Cairo - optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- تحميل الأوزان الأساسية فقط لتسريع التحميل -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
     
     <title>اللجنة الطبية العسكرية - Military Medical Committee</title>
-    <!-- Build Version: 2026-02-23-v5-cairo-unified -->
+    <!-- Build Version: 2026-02-26-v6-performance-optimized -->
+    <meta http-equiv="x-dns-prefetch-control" content="on" />
     
     <!-- Inline critical CSS for faster first paint -->
     <style>
@@ -79,21 +80,21 @@
         100% { transform: rotate(360deg); }
       }
     </style>
-    <script type="module" crossorigin src="/assets/js/index-C2xbmKZp.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/js/vendor-DWh9j_x1.js">
-    <link rel="modulepreload" crossorigin href="/assets/js/vendor-react-Dr_LJyfg.js">
-    <link rel="modulepreload" crossorigin href="/assets/js/vendor-supabase-DibR20xz.js">
-    <link rel="stylesheet" crossorigin href="/assets/css/index-DexzxVr4.css">
-    <script type="module">import.meta.url;import("_").catch(()=>1);(async function*(){})().next();window.__vite_is_modern_browser=true</script>
-    <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
+    <script type="module" crossorigin src="/assets/js/index-DD5OPl3J.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/js/vendor-wd4WEhFW.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/vendor-react-DwZaPwgq.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/vendor-react-dom-BPLxF4u1.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/vendor-supabase-rt-BryzWUwd.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/vendor-supabase-DZ84EK7k.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/admin-notifications-Bfp7-CMI.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/admin-monitoring-CVJyRvFz.js">
+    <link rel="modulepreload" crossorigin href="/assets/js/admin-dashboard-DWjed-KU.js">
+    <link rel="stylesheet" crossorigin href="/assets/css/index-CCrfcFRu.css">
   </head>
   <body>
     <div id="root">
       <!-- Loading indicator -->
       <div class="loading"></div>
     </div>
-    <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
-    <script nomodule crossorigin id="vite-legacy-polyfill" src="/assets/js/polyfills-legacy-0VSqEhPj.js"></script>
-    <script nomodule crossorigin id="vite-legacy-entry" data-src="/assets/js/index-legacy-DAV744C_.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
   </body>
 </html>

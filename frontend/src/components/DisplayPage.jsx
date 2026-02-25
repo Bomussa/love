@@ -8,7 +8,7 @@ export function DisplayPage({ clinicId, language }) {
   const [currentStep, setCurrentStep] = useState(null)
   
   useEffect(() => {
-    const interval = setInterval(fetchStatus, 3000)
+    const interval = setInterval(fetchStatus, 2000)
     fetchStatus()
     return () => clearInterval(interval)
   }, [clinicId])

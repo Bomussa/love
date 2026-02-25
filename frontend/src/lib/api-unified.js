@@ -82,7 +82,6 @@ const api = {
 
       if (!rpcError && rpcResult && rpcResult.length > 0) {
         const result = rpcResult[0];
-        console.log('[enterQueue] RPC result:', result);
         return {
           success: true,
           id: result.id,
@@ -94,7 +93,6 @@ const api = {
 
       // في حال فشل RPC، نستخدم الطريقة البديلة
       if (rpcError) {
-        console.warn('[enterQueue] RPC failed, using fallback:', rpcError.message);
       }
 
       // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة اليوم
@@ -111,7 +109,6 @@ const api = {
         .maybeSingle();
 
       if (existingEntry) {
-        console.log('[enterQueue] المراجع موجود مسبقاً برقم:', existingEntry.display_number);
         return { success: true, ...existingEntry, alreadyExists: true };
       }
 
@@ -298,7 +295,6 @@ const api = {
               return { success: true, data: result };
             }
           } catch (e) {
-            console.warn('API PIN check failed, falling back to local check');
           }
           
           return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
@@ -418,7 +414,6 @@ const api = {
 
       if (error) {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
-        console.warn('RPC verify_clinic_pin failed, using fallback:', error.message);
         const { data: pinData, error: pinError } = await supabase
           .from('pins')
           .select('id, clinic_code, is_active, expires_at')
@@ -2068,6 +2063,5 @@ export const supabaseApi = {
 // تفعيل نظام التزامن اليومي لأرقام PIN
 const pinDailySync = new PINDailySync(supabase);
 pinDailySync.startDailySync();
-console.log('✅ نظام التزامن اليومي لأرقام PIN: تم التفعيل');
 export default api;
 export { api };

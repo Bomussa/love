@@ -56,7 +56,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
     fetchSystemSettings()
     // تحديث كل 30 ثانية للتأكد من التغييرات اللحظية
-    const interval = setInterval(fetchSystemSettings, 30000)
+    const interval = setInterval(fetchSystemSettings, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -294,7 +294,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     let pollingInterval = null;
     let isSSEActive = false;
     const MAX_RETRY = 3;
-    const RECOVERY_DELAY = 5000;
+    const RECOVERY_DELAY = 3000;
     const lastStateRef = { current: null };
 
     // مراقبة حالة SSE
@@ -394,7 +394,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         retryCount = 0;
         const duration = Date.now() - start;
         lastResponseTime = Date.now();
-        dynamicInterval = Math.max(5000, GENERAL_REFRESH_INTERVAL + duration);
+        dynamicInterval = Math.max(3000, Math.min(GENERAL_REFRESH_INTERVAL, duration * 2 + 2000));
       } catch (err) {
         retryCount++;
         dynamicInterval = Math.min(60000, dynamicInterval * 1.5);
@@ -414,7 +414,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       if (now - lastResponseTime > 120000) {
         lastResponseTime = Date.now();
       }
-    }, 60000);
+    }, 30000);
 
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);

@@ -1,4 +1,4 @@
-// Build timestamp: 2026-01-08-07:05:00 - Force cache bust
+// Build timestamp: 2026-02-26 - Performance Optimized
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
@@ -14,8 +14,8 @@ export default defineConfig({
     }),
     legacy({
       targets: ['defaults', 'not IE 11'],
-      // تقليل polyfills غير الضرورية
-      modernPolyfills: true,
+      modernPolyfills: false,
+      renderLegacyChunks: false,
     }),
   ],
   base: '/',
@@ -41,15 +41,18 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false,
+        drop_console: true,
         drop_debugger: true,
-        // تحسينات إضافية
-        // pure_funcs: ['console.log', 'console.info', 'console.debug'],
-        passes: 2,
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
+        passes: 3,
         unsafe: true,
         unsafe_comps: true,
         unsafe_math: true,
         unsafe_methods: true,
+        dead_code: true,
+        collapse_vars: true,
+        reduce_vars: true,
+        sequences: true,
       },
       mangle: {
         safari10: true,
@@ -61,30 +64,30 @@ export default defineConfig({
     cssCodeSplit: true,
     cssMinify: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
+    target: ['es2020', 'chrome80', 'firefox78', 'safari14'],
     // تحسين حجم الـ chunks
     reportCompressedSize: false,
     rollupOptions: {
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Split vendor chunks for better caching
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor-react';
-            }
-            if (id.includes('@supabase')) {
-              return 'vendor-supabase';
-            }
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
-            // تقسيم المكتبات الكبيرة
-            if (id.includes('react-router')) {
-              return 'vendor-router';
-            }
-            // Other node_modules go to vendor
+            if (id.includes('react-dom')) return 'vendor-react-dom';
+            if (id.includes('react')) return 'vendor-react';
+            if (id.includes('@supabase/realtime')) return 'vendor-supabase-rt';
+            if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('react-router')) return 'vendor-router';
             return 'vendor';
           }
+          // تقسيم AdminDashboard لتحميله منفصلاً
+          if (id.includes('AdminDashboardV2')) return 'admin-dashboard';
+          if (id.includes('AdvancedNotificationsManager') || id.includes('NotificationsManagementV2') || id.includes('OperationalNotificationsManager')) return 'admin-notifications';
+          if (id.includes('APIMonitor') || id.includes('AdminQueueMonitor') || id.includes('AdminPINMonitor') || id.includes('LiveStatisticsPanel')) return 'admin-monitoring';
         },
         assetFileNames: (assetInfo) => {
           let extType = assetInfo.name.split('.').at(1);
@@ -110,11 +113,12 @@ export default defineConfig({
     exclude: [],
   },
   esbuild: {
-    // تحسين esbuild
     legalComments: 'none',
     minifyIdentifiers: true,
     minifySyntax: true,
     minifyWhitespace: true,
     treeShaking: true,
+    target: 'es2020',
+    drop: ['console', 'debugger'],
   },
 });
