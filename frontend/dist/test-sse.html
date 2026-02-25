@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8">
+<h3>SSE smoke test (/api/v1/queue/sse)</h3>
+<pre id="log"></pre>
+<script>
+  const log = (m) => document.getElementById('log').textContent += m + '\n';
+  const es = new EventSource('/api/v1/queue/sse');
+  es.onopen    = () => log('SSE OPEN');
+  es.onmessage = (e) => log('MSG ' + e.data);
+  es.addEventListener('ping', (e) => log('PING ' + e.data));
+  es.onerror   = (e) => log('ERR ' + JSON.stringify(e));
+</script>

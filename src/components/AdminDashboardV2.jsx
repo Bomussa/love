@@ -1283,7 +1283,7 @@ ${clinicStatsTable}
         <meta charset="UTF-8">
         <title>تقرير اللجنة الطبية العسكرية</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 20px; direction: rtl; }
+          body { font-family: 'Cairo', sans-serif; padding: 20px; direction: rtl; }
           .header { text-align: center; border-bottom: 3px double #8A1538; padding-bottom: 20px; margin-bottom: 20px; }
           .logo { width: 80px; height: 80px; margin: 0 auto 10px; }
           .title { color: #8A1538; font-size: 24px; font-weight: bold; margin: 10px 0; }
@@ -5301,7 +5301,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
+        className="lg:hidden fixed top-4 right-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
         aria-label="Toggle Menu"
       >
         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -5311,8 +5311,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       <aside 
         data-sidebar="admin"
         data-mobile-open={mobileMenuOpen}
-        className={`fixed left-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
-          mobileMenuOpen ? 'translate-x-0 sidebar-open' : '-translate-x-full lg:translate-x-0'
+        className={`fixed right-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
+          mobileMenuOpen ? 'translate-x-0 sidebar-open' : 'translate-x-full lg:translate-x-0'
         }`}
         style={{ 
           WebkitOverflowScrolling: 'touch',

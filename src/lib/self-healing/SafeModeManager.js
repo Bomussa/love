@@ -268,7 +268,7 @@ export const safeModeStyles = `
     color: white;
     padding: 8px 16px;
     z-index: 9999;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Cairo', -apple-system, sans-serif;
     font-size: 14px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   }

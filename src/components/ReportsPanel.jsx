@@ -202,7 +202,7 @@ const ReportsPanel = ({ isOpen, onClose, language = 'ar' }) => {
         <meta charset="UTF-8">
         <title>تقرير المركز الطبي</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+          body { font-family: 'Cairo', sans-serif; padding: 20px; direction: rtl; }
           .header { text-align: center; margin-bottom: 30px; }
           .header img { width: 80px; height: 80px; }
           .header h1 { margin: 10px 0; font-size: 24px; }

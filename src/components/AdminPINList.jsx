@@ -134,7 +134,7 @@ export function AdminPINList({ language = 'ar' }) {
         <meta charset="UTF-8">
         <style>
           body { 
-            font-family: Arial, sans-serif; 
+            font-family: 'Cairo', sans-serif; 
             padding: 20px;
             direction: ${isRTL ? 'rtl' : 'ltr'};
           }

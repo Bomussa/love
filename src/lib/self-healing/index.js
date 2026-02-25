@@ -73,10 +73,21 @@ export {
   downloadLogs,
 } from './RepairLog';
 
-// Import for initialization
-import { startHealthMonitoring } from './HealthMonitor';
-import { initSafeMode, injectSafeModeStyles } from './SafeModeManager';
-import { logRepair } from './RepairLog';
+// Imports for initialization + admin helpers (ESM-safe; no require())
+import { getHealthState, getOverallStatus, startHealthMonitoring } from './HealthMonitor';
+import { initSafeMode, injectSafeModeStyles, isSafeModeEnabled, getSafeModeStatus } from './SafeModeManager';
+import {
+  softReloadOnce,
+  hardRefresh,
+  resetRealtimeSubscribe,
+  safeCacheClear,
+  enterReadOnlyMode,
+  exitReadOnlyMode,
+  i18nCacheRepair,
+  notificationDedupRepair,
+  isReadOnlyMode,
+} from './RecoveryPlaybooks';
+import { logRepair, getRepairStatistics } from './RepairLog';
 import { STATUS, SEVERITY } from './constants';
 
 /**
@@ -113,11 +124,6 @@ export function initSelfHealingSystem() {
  * Get full system status for admin dashboard
  */
 export function getFullSystemStatus() {
-  const { getHealthState, getOverallStatus } = require('./HealthMonitor');
-  const { isSafeModeEnabled, getSafeModeStatus } = require('./SafeModeManager');
-  const { isReadOnlyMode } = require('./RecoveryPlaybooks');
-  const { getRepairStatistics } = require('./RepairLog');
-  
   return {
     health: getHealthState(),
     overallStatus: getOverallStatus(),
@@ -133,28 +139,52 @@ export function getFullSystemStatus() {
 
 /**
  * Run a playbook by name (for admin UI)
+ * IMPORTANT: Each playbook has its own signature; this router calls them correctly.
+ *
  * @param {string} playbookName - Name of playbook to run
  * @param {Object} params - Parameters for playbook
  */
 export async function runPlaybook(playbookName, params = {}) {
-  const playbooks = require('./RecoveryPlaybooks');
-  
   const playbookMap = {
-    softReload: playbooks.softReloadOnce,
-    resetRealtime: playbooks.resetRealtimeSubscribe,
-    clearCache: playbooks.safeCacheClear,
-    fixNotifications: playbooks.notificationDedupRepair,
-    repairI18n: playbooks.i18nCacheRepair,
-    enterReadOnly: playbooks.enterReadOnlyMode,
-    exitReadOnly: playbooks.exitReadOnlyMode,
+    softReload: softReloadOnce,
+    hardRefresh: hardRefresh,
+    resetRealtime: resetRealtimeSubscribe,
+    clearCache: safeCacheClear,
+    fixNotifications: notificationDedupRepair,
+    repairI18n: i18nCacheRepair,
+    enterReadOnly: enterReadOnlyMode,
+    exitReadOnly: exitReadOnlyMode,
   };
-  
+
   const playbook = playbookMap[playbookName];
   if (!playbook) {
     throw new Error(`Unknown playbook: ${playbookName}`);
   }
-  
-  return await playbook(params.module || 'admin', params);
+
+  // Route by playbook name to match the real function signature
+  switch (playbookName) {
+    case 'softReload':
+      return await playbook(params.module || 'admin');
+    case 'hardRefresh':
+      return await playbook();
+    case 'resetRealtime': {
+      const clinicId = params.clinicId || params.clinic || params.module || 'admin';
+      const options = params.options && typeof params.options === 'object' ? params.options : {};
+      return await playbook(clinicId, options);
+    }
+    case 'clearCache':
+      return await playbook(params.scope || 'all');
+    case 'fixNotifications':
+      return await playbook();
+    case 'repairI18n':
+      return await playbook();
+    case 'enterReadOnly':
+      return await playbook(params.reason || 'MANUAL_ADMIN');
+    case 'exitReadOnly':
+      return await playbook();
+    default:
+      return await playbook();
+  }
 }
 
 export default {

@@ -37,6 +37,7 @@ const PRESET_COLORS = [
 ];
 
 const NotificationsManagementV2 = ({ language, t }) => {
+  const [activeTab, setActiveTab] = useState('manual');
   const [notifications, setNotifications] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -571,15 +572,49 @@ const NotificationsManagementV2 = ({ language, t }) => {
     </div>
   );
 
-  return (
+   return (
     <div className="space-y-6">
       {/* معاينة الإشعار */}
       {showPreview && previewNotification && (
         <NotificationPreview notification={previewNotification} />
       )}
-
+      {/* العنوان الرئيسي */}
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">{t('إدارة الإشعارات', 'Notifications Management')}</h3>
+      </div>
+      {/* تبويبات الإشعارات */}
+      <div className="flex gap-2 border-b border-white/10 pb-0">
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`px-5 py-3 font-medium rounded-t-xl transition-all flex items-center gap-2 ${
+            activeTab === 'manual'
+              ? 'bg-[#8A1538] text-white border border-white/10 border-b-0'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Bell size={16} />
+          {t('الإشعارات اليدوية', 'Manual Notifications')}
+        </button>
+        <button
+          onClick={() => setActiveTab('operational')}
+          className={`px-5 py-3 font-medium rounded-t-xl transition-all flex items-center gap-2 ${
+            activeTab === 'operational'
+              ? 'bg-[#8A1538] text-white border border-white/10 border-b-0'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Zap size={16} />
+          {t('الإشعارات التشغيلية', 'Operational Notifications')}
+        </button>
+      </div>
+      {/* محتوى التبويب: الإشعارات التشغيلية */}
+      {activeTab === 'operational' && (
+        <OperationalNotificationsManager language={language} t={t} />
+      )}
+      {/* محتوى التبويب: الإشعارات اليدوية */}
+      {activeTab === 'manual' && (<>
+      <div className="flex items-center justify-between">
+        <div />
         <div className="flex gap-2">
           <button 
             onClick={() => setShowAddForm(true)}
@@ -726,6 +761,7 @@ const NotificationsManagementV2 = ({ language, t }) => {
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 };

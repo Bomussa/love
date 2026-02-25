@@ -80,7 +80,7 @@ export function AdminReports({ language = 'ar' }) {
         <head>
           <meta charset="UTF-8">
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
+            body { font-family: 'Cairo', sans-serif; padding: 20px; }
             h1 { color: #1e40af; text-align: center; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
             th, td { border: 1px solid #ddd; padding: 12px; text-align: ${isRTL ? 'right' : 'left'}; }

@@ -35,7 +35,7 @@
   * {
     @apply border-border;
     box-sizing: border-box;
-    font-family: 'Cairo', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif !important;
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif !important;
   }
   html {
     width: 100%;
@@ -362,7 +362,7 @@
 [dir="rtl"] .body-large,
 [dir="rtl"] .body-base,
 [dir="rtl"] .body-small {
-  font-family: 'Cairo', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Consistent spacing for admin and patient screens */
