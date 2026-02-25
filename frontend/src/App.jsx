@@ -148,8 +148,12 @@ function App() {
       return;
     }
 
-    // ✅ إصلاح: إذا كان المستخدم على الصفحة الرئيسية ومتصل كإدمن، نبقى على تسجيل الدخول
-    // (لا نوجه تلقائياً للإدارة - يجب استخدام /admin)
+    // ✅ إصلاح: إذا كان المستخدم admin، نوجهه لشاشة الإدارة مباشرة
+    if (isAdmin) {
+      console.log('[App] Admin logged in, redirecting to admin dashboard');
+      setCurrentView('admin');
+      return;
+    }
 
     // Priority 2: Patient flow
     if (patientData) {
