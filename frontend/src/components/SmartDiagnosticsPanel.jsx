@@ -340,24 +340,27 @@ const SmartDiagnosticsPanelInner = ({ language, t: tProp }) => {
   // حفظ في Supabase
   // ============================================================
   const saveError = async (item) => {
+    const errorId = `${item.id}_${Date.now()}`;
     await supabase.from('smart_errors_log').insert({
-      error_id:   `${item.id}_${Date.now()}`,
+      error_id:   errorId,
       error_type: item.id,
       severity:   item.status === 'error' ? 'high' : 'medium',
-      message:    item.detail,
-      source:     item.category,
+      message:    item.detail || 'unknown error',
+      source:     item.category || 'SmartDiagnostics',
       is_fixed:   false,
     });
   };
 
   const saveFix = async (fix) => {
+    const fixId = fix.id || `fix_${Date.now()}`;
+    const errorId = fix.errorId || `unknown_${Date.now()}`;
     await supabase.from('smart_fixes_log').insert({
-      fix_id:        fix.id,
-      error_id:      fix.errorId,
-      strategy:      fix.strategy,
-      strategy_name: fix.name,
-      success:       fix.success,
-      duration_ms:   fix.duration,
+      fix_id:        fixId,
+      error_id:      errorId,
+      strategy:      fix.strategy || 'manual',
+      strategy_name: fix.name || 'Manual Fix',
+      success:       fix.success ?? false,
+      duration_ms:   fix.duration || 0,
     });
   };
 
