@@ -5158,7 +5158,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
     { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
-    { id: 'floor_directions', icon: Navigation, label: t('توجيه الطوابق', 'Floor Directions') },
+    { id: 'floor_directions', icon: MapPin, label: t('توجيه الطوابق', 'Floor Directions') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
     { id: 'clinics', icon: Activity, label: t('العيادات', 'Clinics') },
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
