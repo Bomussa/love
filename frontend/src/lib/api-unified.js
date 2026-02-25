@@ -464,42 +464,49 @@ const api = {
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
 
-      // 1. Total Patients Today
-      const { count: totalToday, error: totalError } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .gte('entered_at', todayISO);
-
-      // 2. Waiting Patients
+      // 1. منتظرون اليوم (فلتر اليوم ضروري)
       const { count: waiting, error: waitingError } = await supabase
         .from('unified_queue')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'waiting');
+        .eq('status', 'waiting')
+        .gte('entered_at', todayISO);
 
-      // 3. Completed Today
+      // 2. يُخدَّمون الآن اليوم (serving + called)
+      const { count: serving, error: servingError } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['serving', 'called'])
+        .gte('entered_at', todayISO);
+
+      // 3. مكتملون اليوم (فلتر اليوم)
       const { count: completed, error: completedError } = await supabase
         .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'completed')
-        .gte('completed_at', todayISO);
+        .gte('entered_at', todayISO);
 
-      // 4. Active Clinics (with serving patients)
+      // 4. الإجمالي = منتظرون + يُخدَّمون + مكتملون (المنطق الصحيح الواقعي)
+      const totalToday = (waiting || 0) + (serving || 0) + (completed || 0);
+
+      // 5. عيادات نشطة اليوم
       const { data: activeData, error: activeError } = await supabase
         .from('unified_queue')
         .select('clinic_id')
-        .eq('status', 'serving');
+        .in('status', ['serving', 'called'])
+        .gte('entered_at', todayISO);
 
       const activeQueues = activeData ? new Set(activeData.map((q) => q.clinic_id)).size : 0;
 
-      if (totalError || waitingError || completedError || activeError) {
+      if (waitingError || servingError || completedError || activeError) {
         throw new Error('Error fetching stats');
       }
 
       return {
         success: true,
         data: {
-          totalPatients: totalToday || 0,
+          totalPatients: totalToday,
           waitingPatients: waiting || 0,
+          servingPatients: serving || 0,
           completedToday: completed || 0,
           activeQueues: activeQueues || 0,
         },

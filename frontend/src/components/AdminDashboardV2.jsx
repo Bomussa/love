@@ -5234,12 +5234,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   };
 
   const processQueueData = (data, dateField) => {
-    // إجمالي المرضى = عدد المرضى الفريدين (وليس عدد الزيارات)
-    const totalPatients = new Set(data.map(item => item.patient_id)).size;
-    // في الانتظار = مجموع المنتظرين + من تم استدعاؤهم ولم يكتملوا بعد (called, serving)
-        // في الانتظار = مجموع المنتظرين + من تم استدعاؤهم ولم يكتملوا بعد (called, serving)
-        const waitingCount = data.filter(item => ['waiting', 'called', 'serving'].includes(item.status)).length;
+    // المنطق الصحيح: الإجمالي = انتظار + يُخدَّم + مكتمل (دائماً أكبر من أي مكوّن)
+    const waitingCount   = data.filter(item => item.status === 'waiting').length;
+    const servingCount   = data.filter(item => ['called', 'serving'].includes(item.status)).length;
     const completedCount = data.filter(item => item.status === 'completed').length;
+    const totalPatients  = waitingCount + servingCount + completedCount;
 
     let avgWait = 0;
     const completedItems = data.filter(item => item.status === 'completed' && item[dateField] && item.called_at);

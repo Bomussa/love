@@ -37,6 +37,7 @@ import {
   exportLogsAsJSON,
   ActivityTypes 
 } from '../lib/activityLogger';
+import { getPeriodStats } from '../lib/statistics-engine';
 
 // تعريف الأعمدة المتاحة
 const AVAILABLE_COLUMNS = [
@@ -86,13 +87,40 @@ const ReportsPanel = ({ isOpen, onClose, language = 'ar' }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const tableRef = useRef(null);
 
-  // تحميل البيانات
-  const loadData = () => {
+  // تحميل البيانات - مصدر موحد: Supabase (statistics-engine) + localStorage (activityLogger)
+  const loadData = async () => {
     setIsLoading(true);
-    const allLogs = filterLogsByPeriod(period);
-    setLogs(allLogs);
-    setStats(getLogStatistics(allLogs));
-    setIsLoading(false);
+    try {
+      // جلب الإحصاءات الحقيقية من Supabase
+      const supabaseStats = await getPeriodStats(period);
+      if (supabaseStats.success) {
+        setStats({
+          uniquePatients: supabaseStats.total,
+          completedExams: supabaseStats.completed,
+          avgDuration: supabaseStats.avgWaitMinutes * 60,
+          skippedPatients: supabaseStats.cancelled || 0,
+          waiting: supabaseStats.waiting,
+          serving: supabaseStats.serving,
+          total: supabaseStats.total,
+          byClinic: supabaseStats.byClinic,
+          byExamType: supabaseStats.byExamType,
+          chartData: supabaseStats.chartData,
+          period: supabaseStats.period,
+          startDate: supabaseStats.startDate,
+          endDate: supabaseStats.endDate,
+        });
+      }
+      // سجلات localStorage للجدول التفصيلي
+      const allLogs = filterLogsByPeriod(period);
+      setLogs(allLogs);
+    } catch (e) {
+      console.error('[ReportsPanel] loadData error:', e);
+      const allLogs = filterLogsByPeriod(period);
+      setLogs(allLogs);
+      setStats(getLogStatistics(allLogs));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
