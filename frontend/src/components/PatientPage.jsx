@@ -187,27 +187,25 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const loadPathway = async () => {
       try {
         let examStations = null
-
+        let routeAlreadySaved = false // هل المسار محفوظ مسبقاً
         // محاولة جلب المسار المحفوظ أولاً
         try {
           const savedRoute = await api.getRoute(patientData.id)
           if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
             examStations = savedRoute.route.stations
+            routeAlreadySaved = true // ✅ مسار محفوظ - لا يتغير
           }
         } catch (err) {
           console.log('No saved route found');
         }
-
-        // إذا لم يوجد مسار محفوظ، احسب مسار جديد (يُحفظ بعد الترتيب)
+        // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
           examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
         }
-
         // ✅ Sticky Path: الترتيب يحدث مرة واحدة فقط عند حساب المسار الجديد
         // إذا كان المسار محفوظاً مسبقاً فيُستخدم كما هو بدون إعادة ترتيب
         let sortedStations = [...examStations];
-        const isNewRoute = !savedRoute?.success; // مسار جديد = لم يكن محفوظاً
-        if (isNewRoute) {
+        if (!routeAlreadySaved) {
           try {
             const queueCounts = await Promise.all(
               examStations.map(async (station) => {
