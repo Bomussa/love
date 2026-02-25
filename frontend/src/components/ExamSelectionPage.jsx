@@ -1,22 +1,22 @@
 import React from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
-import { Globe, ArrowLeft } from 'lucide-react'
+import {
+  Globe, ArrowLeft,
+  UserCheck, TrendingUp, ArrowLeftRight, ClipboardList,
+  FileSignature, Plane, ChefHat, GraduationCap
+} from 'lucide-react'
 import { examTypes } from '../lib/utils'
 import { t } from '../lib/i18n'
 
+const iconMap = {
+  UserCheck, TrendingUp, ArrowLeftRight, ClipboardList,
+  FileSignature, Plane, ChefHat, GraduationCap,
+}
+
 export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLanguage }) {
-  ;
-  
   const handleExamClick = (examId) => {
-    ;
-    ;
-    if (onExamSelect) {
-      ;
-      onExamSelect(examId);
-    } else {
-      console.error('[ExamSelectionPage] onExamSelect is undefined!');
-    }
+    if (onExamSelect) onExamSelect(examId);
   };
   
   return (
@@ -75,22 +75,27 @@ export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLangua
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {examTypes.map((exam) => (
-                <Button
-                  key={exam.id}
-                  variant="outline"
-                  className="h-32 flex-col gap-3 border-gray-600 hover:bg-gray-700/50 hover:border-yellow-500 transition-all duration-200"
-                  onClick={() => handleExamClick(exam.id)}
-                  data-test={`exam-option-${exam.id}`}
-                >
-                  <div className="text-3xl">{exam.icon}</div>
-                  <div className="text-center">
-                    <div className="text-white font-medium text-sm">
-                      {language === 'ar' ? exam.nameAr : exam.name}
+              {examTypes.map((exam) => {
+                const IconComponent = iconMap[exam.icon]
+                return (
+                  <Button
+                    key={exam.id}
+                    variant="outline"
+                    className="h-32 flex-col gap-3 border-gray-600 hover:bg-gray-700/50 hover:border-yellow-500 transition-all duration-200"
+                    onClick={() => handleExamClick(exam.id)}
+                    data-test={`exam-option-${exam.id}`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${exam.color} shadow-md`}>
+                      {IconComponent && <IconComponent className="w-6 h-6 text-white" strokeWidth={1.8} />}
                     </div>
-                  </div>
-                </Button>
-              ))}
+                    <div className="text-center">
+                      <div className="text-white font-medium text-sm leading-tight">
+                        {language === 'ar' ? exam.nameAr : exam.name}
+                      </div>
+                    </div>
+                  </Button>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
