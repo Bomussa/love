@@ -807,7 +807,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="min-h-screen px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page">
+    <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page">
       {currentNotice && (
         <ZFDBanner
           notice={currentNotice}
@@ -852,7 +852,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         language={language}
       />
 
-      <div className="w-full max-w-2xl mx-auto space-y-5 px-2 sm:px-4">
+      <div className="w-full max-w-xl mx-auto space-y-4 sm:space-y-5">
         <div className="absolute top-4 left-4">
           <Button
             variant="ghost"
@@ -865,17 +865,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
 
-        <div className="text-center space-y-1">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
-
-          <div>
-            <h1 className="text-lg font-bold text-white">
+         <div className="text-center space-y-2 pt-8 sm:pt-4">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 sm:w-24 sm:h-24 object-contain" />
+          <div className="space-y-0.5">
+            <h1 className="text-base sm:text-lg font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xs text-[#C9A54C] font-semibold mt-1">
+            <p className="text-xs text-[#C9A54C] font-semibold">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-400 text-xs mt-1">
+            <p className="text-gray-400 text-xs">
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
@@ -883,19 +882,19 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </div>
         </div>
 
-        <Card className="bg-gray-800/50 border-gray-700">
-          <CardHeader className="text-center pb-3 pt-4">
-            <CardTitle className="text-white text-xl sm:text-2xl font-bold">{t('yourMedicalRoute', language)}</CardTitle>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1">{t('exam', language)}: <span className="font-semibold text-white">{getExamName()}</span></p>
+        <Card className="bg-gray-800/50 border-gray-700 shadow-xl">
+          <CardHeader className="text-center pb-3 pt-4 sm:pt-5">
+            <CardTitle className="text-white text-xl sm:text-2xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
           </CardHeader>
-          <CardContent className="space-y-3 px-3 sm:px-4 pb-4">
+          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 pb-4 sm:pb-5">
             {stations.map((station, index) => (
-              <Card key={station.id} className={`bg-gray-700/50 border-gray-600 ${station.status === 'completed' ? 'opacity-70' : ''}`}>
-                <CardContent className="p-4 sm:p-5">
+              <Card key={station.id} className={`border transition-all duration-200 ${station.status === 'ready' ? 'bg-gray-700/60 border-green-500/30 shadow-md' : station.status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-65' : 'bg-gray-700/40 border-gray-600/60'}`}>
+                <CardContent className="p-3.5 sm:p-5">
                   {/* رأس البطاقة */}
-                  <div className="flex items-start justify-between mb-4 gap-2">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                      <div className={`flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${
                         station.status === 'ready' ? 'bg-green-500/20' :
                         station.status === 'completed' ? 'bg-green-500/15' :
                         'bg-gray-600/50'
@@ -909,11 +908,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         )}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-white text-base sm:text-lg font-bold leading-tight">
+                        <h3 className="text-white text-sm sm:text-base font-bold leading-tight">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-gray-400 text-xs sm:text-sm mt-0.5">
-                          {t('floor', language)}: <span className="text-gray-300 font-medium">{language === 'ar' ? station.floor : station.floorCode}</span>
+                        <p className="text-gray-400 text-xs mt-0.5">
+                          {t('floor', language)}: <span className="text-gray-200 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span>
                         </p>
                       </div>
                     </div>
@@ -937,40 +936,40 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-                    <div className="grid grid-cols-2 gap-3 text-center px-3 py-4 bg-gray-800/30 rounded-xl" data-test="queue-info">
-                      <div className="p-4 bg-yellow-500/20 rounded-xl border-2 border-yellow-500/50">
-                        <div className="text-4xl font-bold text-yellow-400 mb-2" data-test="your-number">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-center" data-test="queue-info">
+                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-yellow-500/15 rounded-xl sm:rounded-2xl border-2 border-yellow-500/40">
+                        <div className="text-4xl sm:text-5xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">
                           {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
                         </div>
-                        <div className="text-yellow-200 text-sm font-semibold tracking-wide">{t('yourNumber', language)}</div>
+                        <div className="text-yellow-300/80 text-xs font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
                       </div>
-                      <div className="p-4 bg-gray-700/60 rounded-xl border border-gray-600">
-                        <div className="text-4xl font-bold text-white mb-2" data-test="ahead-count">
+                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-gray-700/50 rounded-xl sm:rounded-2xl border border-gray-500/50">
+                        <div className="text-4xl sm:text-5xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
-                        <div className="text-gray-300 text-sm font-semibold tracking-wide">{t('ahead', language)}</div>
+                        <div className="text-gray-400 text-xs font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
                       </div>
                     </div>
                   )}
 
                   {/* وقت الانتظار المتوقع */}
                   {station.status === 'ready' && !station.isEntered && station.ahead > 0 && (
-                    <div className="mt-3 flex items-center justify-between px-4 py-3 bg-blue-500/10 border border-blue-500/25 rounded-xl">
-                      <div className="text-2xl font-bold text-blue-400">
-                        {`${computeEtaMinutes(station.ahead, 2)}:00`}
+                    <div className="mt-3 flex items-center justify-between px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🕒</span>
+                        <span className="text-blue-300 text-sm font-semibold">{language === 'ar' ? 'وقت انتظار تقريبي' : 'Est. wait time'}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-blue-300">
-                        <span className="text-sm font-medium">{language === 'ar' ? 'وقت انتظار تقريبي' : 'Est. wait time'}</span>
-                        <span className="text-xl">🕒</span>
+                      <div className="text-xl font-black text-blue-400">
+                        {`${computeEtaMinutes(station.ahead, 2)} ${language === 'ar' ? 'دقيقة' : 'min'}`}
                       </div>
                     </div>
                   )}
 
                   {/* دورك الآن */}
                   {station.status === 'ready' && station.isEntered && station.ahead === 0 && (
-                    <div className="mt-3 flex items-center justify-center gap-3 px-4 py-3 bg-green-500/10 border border-green-500/25 rounded-xl">
-                      <span className="text-2xl">⏰</span>
-                      <span className="text-green-300 text-lg font-bold">
+                    <div className="mt-3 flex items-center justify-center gap-3 px-4 py-4 bg-green-500/15 border border-green-500/30 rounded-xl">
+                      <span className="text-2xl animate-bounce">⏰</span>
+                      <span className="text-green-300 text-xl font-black tracking-tight">
                         {language === 'ar' ? 'دورك الآن!' : 'Your turn now!'}
                       </span>
                     </div>
@@ -978,7 +977,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                   {/* زر الدخول للعيادة */}
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-4 pt-3 border-t border-gray-600/60">
+                    <div className="mt-4 pt-4 border-t border-gray-600/40">
                       {(station.yourNumber > 0 && (
                         station.ahead === 0 || 
                         station.ahead === null || 
