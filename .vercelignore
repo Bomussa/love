@@ -1,0 +1,8 @@
+# Neutralize backend & duplicate configs (لا حذف – فقط تجاهل للنشر على Vercel)
+# api - ENABLED: نحتاج ملفات API للعمل
+supabase
+backend
+server
+functions
+frontend/vercel.json
+vercel.functions-proxy.json

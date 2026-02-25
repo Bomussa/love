@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "service": "mmc-mms-frontend",
+  "ts": "${BUILD_TS}"
+}
