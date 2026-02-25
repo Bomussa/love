@@ -196,7 +196,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             routeAlreadySaved = true // ✅ مسار محفوظ - لا يتغير
           }
         } catch (err) {
-          console.log('No saved route found');
         }
         // إذا لم يوجد مسار محفوظ، احسب مسار جديد
         if (!examStations) {
@@ -216,7 +215,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             // ترتيب العيادات حسب الأقل ازدحاماً (الأقل أولاً)
             queueCounts.sort((a, b) => a.count - b.count);
             sortedStations = queueCounts.map(q => q.station);
-            console.log('[PatientPage] ✅ مسار جديد - ترتيب حسب الازدحام:', queueCounts.map(q => `${q.station.nameAr}: ${q.count}`));
             // حفظ المسار المرتّب في Backend
             try {
               await api.createRoute(
@@ -232,7 +230,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             console.warn('[PatientPage] فشل ترتيب العيادات:', sortError);
           }
         } else {
-          console.log('[PatientPage] ✅ مسار محفوظ - لا يتغير (Sticky)');
         }
 
         // الدخول التلقائي للعيادة الأولى

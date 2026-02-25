@@ -148,7 +148,6 @@ function sortClinicsByWeight(clinics, weights) {
 // يجلب الترتيب من قاعدة البيانات أولاً (routes table) مع حساب الأوزان الصحيح
 // ✅ الترتيب حسب الوزن عند بداية المسار فقط
 export async function getDynamicMedicalPathway(examType, gender) {
-  console.log('[getDynamicMedicalPathway] بدء جلب المسار:', examType, gender);
 
   // ✅ إصلاح: تحميل ملفات الإعداد أولاً
   const { routeMap: rm, clinicsData: cd } = await loadConfigFiles();
@@ -187,7 +186,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
       }
 
       if (dbRoute && dbRoute.clinics && Array.isArray(dbRoute.clinics) && dbRoute.clinics.length > 0) {
-        console.log('[getDynamicMedicalPathway] تم جلب المسار من قاعدة البيانات:', dbRoute.route_name, dbRoute.clinics);
 
         // تحويل رموز العيادات إلى كائنات
         const clinics = await mapClinicCodes(dbRoute.clinics, true);
@@ -198,7 +196,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
           let weights = {};
           try {
             weights = await fetchClinicWeights(clinicIds);
-            console.log('[getDynamicMedicalPathway] أوزان العيادات:', weights);
           } catch (err) {
             clinicIds.forEach((id) => { weights[id] = 0; });
           }
@@ -212,11 +209,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
             order: index + 1,
             status: index === 0 ? 'ready' : 'locked',
           }));
-
-          console.log(
-            '[getDynamicMedicalPathway] المسار النهائي (مرتب حسب الوزن):',
-            result.map((c) => `${c.nameAr}(${c.weight})`).join(' → '),
-          );
           return result;
         }
       }
@@ -226,7 +218,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
   }
 
   // ✅ Fallback: استخدام الملف المحلي
-  console.log('[getDynamicMedicalPathway] استخدام الملف المحلي للمسار:', arabicExamType);
   const route = currentRouteMap[arabicExamType];
 
   if (!route) {
@@ -262,7 +253,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
 
   try {
     weights = await fetchClinicWeights(clinicIds);
-    console.log('[getDynamicMedicalPathway] أوزان العيادات (محلي):', weights);
   } catch (err) {
     clinicIds.forEach((id) => { weights[id] = 0; });
   }
@@ -276,11 +266,6 @@ export async function getDynamicMedicalPathway(examType, gender) {
     order: index + 1,
     status: index === 0 ? 'ready' : 'locked',
   }));
-
-  console.log(
-    '[getDynamicMedicalPathway] المسار النهائي (محلي - مرتب حسب الوزن):',
-    result.map((c) => `${c.nameAr}(${c.weight})`).join(' → '),
-  );
   return result;
 }
 
