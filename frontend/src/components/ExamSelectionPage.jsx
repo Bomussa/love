@@ -20,7 +20,7 @@ export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLangua
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" data-test="exam-selection-page">
+    <div className="h-screen max-h-screen flex items-center justify-center p-4 overflow-hidden" data-test="exam-selection-page" style={{overflowX: "hidden"}}>
       <div className="w-full max-w-4xl space-y-8">
         {/* Language Selector */}
         <div className="absolute top-4 left-4">

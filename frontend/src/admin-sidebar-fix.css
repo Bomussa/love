@@ -101,7 +101,7 @@ aside.fixed nav {
   /* القائمة المخفية */
   aside[data-sidebar="admin"]:not(.sidebar-open):not([data-mobile-open="true"]),
   aside.fixed.-translate-x-full {
-    transform: translateX(-100%) !important;
+    transform: translateX(100%) !important;
     visibility: hidden;
     pointer-events: none;
   }
@@ -177,8 +177,8 @@ html[dir="rtl"] aside.fixed,
 
 html[dir="rtl"] aside[data-sidebar="admin"].-translate-x-full,
 html[dir="rtl"] aside.fixed.-translate-x-full,
-[dir="rtl"] aside[data-sidebar="admin"].-translate-x-full,
-[dir="rtl"] aside.fixed.-translate-x-full {
+[dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]),
+[dir="rtl"] aside.fixed:not(.sidebar-open) {
   transform: translateX(100%) !important;
 }
 
@@ -345,4 +345,26 @@ aside.fixed {
 aside[data-sidebar="admin"],
 aside.fixed {
   isolation: isolate;
+}
+
+
+/* ======================================
+   RTL CRITICAL FIX - Sidebar Direction
+   ====================================== */
+[dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]):not(.sidebar-open) {
+  transform: translateX(100%) !important;
+  visibility: hidden !important;
+}
+
+[dir="rtl"] aside[data-sidebar="admin"][data-mobile-open="true"],
+[dir="rtl"] aside[data-sidebar="admin"].sidebar-open {
+  transform: translateX(0) !important;
+  visibility: visible !important;
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* منع overflow أفقي في الـ body عند فتح القائمة */
+body:has(aside[data-mobile-open="true"]) {
+  overflow: hidden !important;
 }

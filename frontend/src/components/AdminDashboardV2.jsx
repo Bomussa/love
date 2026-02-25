@@ -5311,7 +5311,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       <aside 
         data-sidebar="admin"
         data-mobile-open={mobileMenuOpen}
-        className={`fixed right-0 top-0 h-full w-64 sm:w-72 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
+        className={`fixed right-0 top-0 h-full w-72 sm:w-80 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
           mobileMenuOpen ? 'translate-x-0 sidebar-open' : 'translate-x-full lg:translate-x-0'
         }`}
         style={{ 
@@ -5360,7 +5360,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
               }}
             >
               <item.icon size={18} className="sm:w-5 sm:h-5 flex-shrink-0 pointer-events-none" />
-              <span className="font-medium text-sm sm:text-base truncate pointer-events-none">{item.label}</span>
+              <span className="font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1 text-right pointer-events-none">{item.label}</span>
               {activeTab === item.id && <ChevronRight size={14} className="ml-auto flex-shrink-0 sm:w-4 sm:h-4 pointer-events-none" />}
             </button>
           ))}

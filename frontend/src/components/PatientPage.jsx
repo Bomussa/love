@@ -807,7 +807,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="min-h-screen p-4" data-test="patient-page">
+    <div className="min-h-screen p-4 overflow-x-hidden" data-test="patient-page">
       {currentNotice && (
         <ZFDBanner
           notice={currentNotice}
@@ -932,19 +932,19 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   {station.status !== 'completed' && (
                     <div className="grid grid-cols-3 gap-4 sm:gap-6 text-center px-4 py-6 bg-gray-800/30 rounded-xl mx-2" data-test="queue-info">
                       <div className="p-4 bg-gray-700/50 rounded-lg">
-                        <div className="text-6xl font-bold text-white mb-4" data-test="current-number">
+                        <div className="text-4xl font-bold text-white mb-2" data-test="current-number">
                           {typeof station.current === 'number' ? station.current : '0'}
                         </div>
                         <div className="text-gray-300 text-xl font-semibold">{t('current', language)}</div>
                       </div>
                       <div className="p-4 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
-                        <div className="text-6xl font-bold text-yellow-400 mb-4" data-test="your-number">
+                        <div className="text-4xl font-bold text-yellow-400 mb-2" data-test="your-number">
                           {typeof station.yourNumber === 'number' ? station.yourNumber : '1'}
                         </div>
                         <div className="text-yellow-200 text-xl font-semibold">{t('yourNumber', language)}</div>
                       </div>
                       <div className="p-4 bg-gray-700/50 rounded-lg">
-                        <div className="text-6xl font-bold text-white mb-4" data-test="ahead-count">
+                        <div className="text-4xl font-bold text-white mb-2" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
                         <div className="text-gray-300 text-xl font-semibold">{t('ahead', language)}</div>
@@ -962,7 +962,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         <span className="text-3xl">🕒</span>
                       </div>
                       <div className="text-center">
-                        <div className="text-5xl font-bold text-blue-400 mb-2">
+                        <div className="text-3xl font-bold text-blue-400 mb-2">
                           {station.ahead > 0 ? `${computeEtaMinutes(station.ahead, 2)}:00` : language === 'ar' ? 'دورك الآن!' : 'دورك الآن!'}
                         </div>
                       </div>
