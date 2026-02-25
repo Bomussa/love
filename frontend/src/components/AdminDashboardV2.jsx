@@ -51,6 +51,7 @@ import NotificationsManagementV2 from './NotificationsManagementV2';
 import AdvancedNotificationsManager from './AdvancedNotificationsManager';
 import FeatureControlPanel from './FeatureControlPanel';
 import APIMonitor from './APIMonitor';
+import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
 import { supabase } from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
@@ -5172,6 +5173,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
     { id: 'features', icon: Settings, label: t('التحكم بالميزات', 'Feature Control') },
     { id: 'apimonitor', icon: Activity, label: t('مراقبة API', 'API Monitor') },
+    { id: 'smart', icon: Zap, label: t('النظام الذكي', 'Smart System') },
   ];
 
   return (
@@ -5489,6 +5491,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
+        {activeTab === 'smart' && <SmartDiagnosticsPanel language={language} t={t} />}
       </main>
       <Toaster />
     </div>
