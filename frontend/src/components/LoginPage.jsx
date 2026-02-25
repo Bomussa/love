@@ -111,7 +111,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full max-w-full">
       <div className="w-full max-w-md mx-auto space-y-8">
         {/* Language Selector (Left) and Admin Access (Right) */}
         <div className="absolute top-4 left-4 z-50 flex gap-2">
