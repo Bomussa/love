@@ -891,37 +891,30 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           <CardContent className="space-y-3 px-3 sm:px-4 pb-4">
             {stations.map((station, index) => (
               <Card key={station.id} className={`bg-gray-700/50 border-gray-600 ${station.status === 'completed' ? 'opacity-70' : ''}`}>
-                <CardContent className="p-4 sm:p-5">
-                  {/* رأس البطاقة */}
-                  <div className="flex items-start justify-between mb-4 gap-2">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-                        station.status === 'ready' ? 'bg-green-500/20' :
-                        station.status === 'completed' ? 'bg-green-500/15' :
-                        'bg-gray-600/50'
-                      }`}>
-                        {station.status === 'ready' ? (
-                          <Unlock className="icon icon-md icon-success" />
-                        ) : station.status === 'completed' ? (
-                          <CheckCircle className="icon icon-md text-green-400" />
-                        ) : (
-                          <Lock className="icon icon-md icon-muted" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-white text-base sm:text-lg font-bold leading-tight">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {station.status === 'ready' ? (
+                        <Unlock className="icon icon-lg icon-success" />
+                      ) : station.status === 'completed' ? (
+                        <CheckCircle className="icon icon-lg text-green-400" />
+                      ) : (
+                        <Lock className="icon icon-lg icon-muted" />
+                      )}
+                      <div>
+                        <h3 className="text-white text-base sm:text-lg font-bold">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <p className="text-gray-400 text-xs sm:text-sm mt-0.5">
-                          {t('floor', language)}: <span className="text-gray-300 font-medium">{language === 'ar' ? station.floor : station.floorCode}</span>
+                        <p className="text-gray-300 text-sm sm:text-base">
+                          {t('floor', language)}: {language === 'ar' ? station.floor : station.floorCode}
                         </p>
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
-                        station.status === 'ready' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                        station.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
-                        'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                    <div className="text-right">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        station.status === 'ready' ? 'bg-green-500/20 text-green-400' :
+                        station.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                        'bg-gray-500/20 text-gray-400'
                       }`}>
                         {station.status === 'ready' ? t('ready', language) :
                           station.status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') :
@@ -937,48 +930,60 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-                    <div className="grid grid-cols-2 gap-3 text-center px-3 py-4 bg-gray-800/30 rounded-xl" data-test="queue-info">
-                      <div className="p-4 bg-yellow-500/20 rounded-xl border-2 border-yellow-500/50">
-                        <div className="text-4xl font-bold text-yellow-400 mb-2" data-test="your-number">
-                          {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
+                    <div className="grid grid-cols-3 gap-2 text-center px-2 py-3 bg-gray-800/30 rounded-xl" data-test="queue-info">
+                      <div className="p-3 bg-gray-700/50 rounded-lg">
+                        <div className="text-3xl font-bold text-white mb-1" data-test="current-number">
+                          {typeof station.current === 'number' ? station.current : '0'}
                         </div>
-                        <div className="text-yellow-200 text-sm font-semibold tracking-wide">{t('yourNumber', language)}</div>
+                        <div className="text-gray-300 text-sm font-medium">{t('current', language)}</div>
                       </div>
-                      <div className="p-4 bg-gray-700/60 rounded-xl border border-gray-600">
-                        <div className="text-4xl font-bold text-white mb-2" data-test="ahead-count">
+                      <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
+                        <div className="text-3xl font-bold text-yellow-400 mb-1" data-test="your-number">
+                          {typeof station.yourNumber === 'number' ? station.yourNumber : '1'}
+                        </div>
+                        <div className="text-yellow-200 text-sm font-medium">{t('yourNumber', language)}</div>
+                      </div>
+                      <div className="p-3 bg-gray-700/50 rounded-lg">
+                        <div className="text-3xl font-bold text-white mb-1" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
-                        <div className="text-gray-300 text-sm font-semibold tracking-wide">{t('ahead', language)}</div>
+                        <div className="text-gray-300 text-sm font-medium">{t('ahead', language)}</div>
                       </div>
                     </div>
                   )}
 
-                  {/* وقت الانتظار المتوقع */}
-                  {station.status === 'ready' && !station.isEntered && station.ahead > 0 && (
-                    <div className="mt-3 flex items-center justify-between px-4 py-3 bg-blue-500/10 border border-blue-500/25 rounded-xl">
-                      <div className="text-2xl font-bold text-blue-400">
-                        {`${computeEtaMinutes(station.ahead, 2)}:00`}
-                      </div>
-                      <div className="flex items-center gap-2 text-blue-300">
-                        <span className="text-sm font-medium">{language === 'ar' ? 'وقت انتظار تقريبي' : 'Est. wait time'}</span>
-                        <span className="text-xl">🕒</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* دورك الآن */}
-                  {station.status === 'ready' && station.isEntered && station.ahead === 0 && (
-                    <div className="mt-3 flex items-center justify-center gap-3 px-4 py-3 bg-green-500/10 border border-green-500/25 rounded-xl">
-                      <span className="text-2xl">⏰</span>
-                      <span className="text-green-300 text-lg font-bold">
-                        {language === 'ar' ? 'دورك الآن!' : 'Your turn now!'}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* زر الدخول للعيادة */}
+                  {/* عداد تنازلي كبير للتوقيت */}
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-4 pt-3 border-t border-gray-600/60">
+                    <div className="mt-3 p-4 bg-blue-500/10 border-2 border-blue-500/30 rounded-xl">
+                      <div className="flex items-center justify-end gap-2 mb-2">
+                        <span className="text-blue-300 text-sm font-medium">
+                          {language === 'ar' ? 'وقت متبقي' : 'وقت متبقي'}
+                        </span>
+                        <span className="text-3xl">🕒</span>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-400 mb-1">
+                          {station.ahead > 0 ? `${computeEtaMinutes(station.ahead, 2)}:00` : language === 'ar' ? 'دورك الآن!' : 'دورك الآن!'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* الوقت المتوقع بعد الدخول */}
+                  {station.status === 'ready' && station.isEntered && station.ahead === 0 && (
+                    <div className="mt-3 p-4 bg-green-500/10 border-2 border-green-500/30 rounded-xl">
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-3xl">⏰</span>
+                        <span className="text-green-300 text-xl font-bold">
+                          {language === 'ar' ? 'دورك الآن!' : 'دورك الآن!'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ✅ إصلاح: زر الدخول للعيادة - يظهر فقط عند حلول الدور */}
+                  {station.status === 'ready' && !station.isEntered && (
+                    <div className="mt-4 pt-4 border-t border-gray-600">
                       {(station.yourNumber > 0 && (
                         station.ahead === 0 || 
                         station.ahead === null || 
@@ -989,33 +994,30 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                           variant="gradientPrimary"
                           onClick={() => handleEnterClinic(station)}
                           disabled={loading}
-                          className="w-full py-3 text-base font-bold"
+                          className="w-full"
                           data-test="enter-clinic-btn"
                         >
                           <LogIn className="icon icon-md me-2" />
                           {t('enterClinic', language)}
                         </Button>
                       ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">⏳</span>
-                              <span className="text-yellow-400 font-semibold text-sm">
-                                {language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}
-                              </span>
-                            </div>
-                            <span className="text-yellow-200 text-xs font-medium">
+                        <div className="text-center space-y-3">
+                          <div className="p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-xl">
+                            <p className="text-yellow-400 font-bold text-lg">
+                              {language === 'ar' ? '⏳ انتظر دورك' : '⏳ Wait for your turn'}
+                            </p>
+                            <p className="text-yellow-200 text-sm mt-2">
                               {language === 'ar' 
-                                ? `أمامك ${station.ahead} شخص`
-                                : `${station.ahead} ahead`}
-                            </span>
+                                ? `رقمك ${station.yourNumber} - الحالي ${station.current || 0} - أمامك ${station.ahead} شخص`
+                                : `Your # ${station.yourNumber} - Current ${station.current || 0} - ${station.ahead} ahead`}
+                            </p>
                           </div>
                           <Button
                             variant="outline"
                             disabled={true}
-                            className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm"
+                            className="w-full opacity-50 cursor-not-allowed border-gray-600"
                           >
-                            <Lock className="icon icon-sm me-2" />
+                            <Lock className="icon icon-md me-2" />
                             {language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
                           </Button>
                         </div>
@@ -1081,8 +1083,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status === 'ready' && station.ahead > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-600/60">
-                      <p className="text-gray-400 text-xs">
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <p className="text-gray-400 text-sm">
                         {language === 'ar'
                           ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}`
                           : `You can reach via elevator – press ${station.floorCode}`}
@@ -1091,8 +1093,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.note && (
-                    <div className="mt-3 pt-3 border-t border-gray-600/60">
-                      <p className="text-yellow-400 text-xs">
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <p className="text-yellow-400 text-sm">
                         ⚠️ {t('note', language)}: {t('registerAtReception', language)}
                       </p>
                     </div>
