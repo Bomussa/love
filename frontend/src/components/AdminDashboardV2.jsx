@@ -2419,6 +2419,253 @@ const RoutesManagement = ({ language, t }) => {
   );
 };
 
+
+// ===== مكون إدارة توجيه الطوابق =====
+const FloorDirectionsManager = ({ language, t }) => {
+  const [directions, setDirections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDirection, setNewDirection] = useState({
+    floor_key: '',
+    floor_label_ar: '',
+    floor_label_en: '',
+    directions_ar: '',
+    directions_en: '',
+    icon: '🏢',
+    is_active: true,
+    sort_order: 10
+  });
+
+  useEffect(() => { loadDirections(); }, []);
+
+  const loadDirections = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('floor_directions')
+        .select('*')
+        .order('sort_order');
+      if (!error && data) setDirections(data);
+    } catch (e) { }
+    finally { setLoading(false); }
+  };
+
+  const saveDirection = async (dir) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('floor_directions')
+        .update({
+          floor_label_ar: dir.floor_label_ar,
+          floor_label_en: dir.floor_label_en,
+          directions_ar: dir.directions_ar,
+          directions_en: dir.directions_en,
+          icon: dir.icon,
+          is_active: dir.is_active,
+          sort_order: dir.sort_order,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', dir.id);
+      if (!error) {
+        showSuccessToast(t('تم حفظ تعليمات التوجيه', 'Floor direction saved'));
+        setEditingId(null);
+        loadDirections();
+      } else {
+        showErrorToast(t('خطأ في الحفظ', 'Error saving'));
+      }
+    } catch (e) { }
+    finally { setSaving(false); }
+  };
+
+  const addDirection = async () => {
+    if (!newDirection.floor_key || !newDirection.floor_label_ar || !newDirection.directions_ar) {
+      showErrorToast(t('يرجى ملء الحقول المطلوبة', 'Please fill required fields'));
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('floor_directions')
+        .insert({
+          ...newDirection,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      if (!error) {
+        showSuccessToast(t('تم إضافة الطابق', 'Floor added'));
+        setShowAddForm(false);
+        setNewDirection({ floor_key: '', floor_label_ar: '', floor_label_en: '', directions_ar: '', directions_en: '', icon: '🏢', is_active: true, sort_order: 10 });
+        loadDirections();
+      } else {
+        showErrorToast(t('خطأ في الإضافة', 'Error adding'));
+      }
+    } catch (e) { }
+    finally { setSaving(false); }
+  };
+
+  const deleteDirection = async (id) => {
+    if (!window.confirm(t('هل تريد حذف هذا الطابق؟', 'Delete this floor direction?'))) return;
+    try {
+      const { error } = await supabase.from('floor_directions').delete().eq('id', id);
+      if (!error) {
+        showSuccessToast(t('تم الحذف', 'Deleted'));
+        loadDirections();
+      }
+    } catch (e) { }
+  };
+
+  const toggleActive = async (dir) => {
+    try {
+      const { error } = await supabase
+        .from('floor_directions')
+        .update({ is_active: !dir.is_active, updated_at: new Date().toISOString() })
+        .eq('id', dir.id);
+      if (!error) {
+        showSuccessToast(dir.is_active ? t('تم الإخفاء', 'Hidden') : t('تم الإظهار', 'Shown'));
+        loadDirections();
+      }
+    } catch (e) { }
+  };
+
+  if (loading) return (
+    <div className="flex justify-center items-center py-12">
+      <RefreshCw size={32} className="animate-spin text-[#C9A54C]" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">{t('إدارة توجيه الطوابق', 'Floor Directions Management')}</h2>
+          <p className="text-gray-400 text-sm mt-1">{t('تعليمات الوصول لكل طابق تظهر للمريض عند التسجيل والانتقال', 'Floor access instructions shown to patients on registration and transition')}</p>
+        </div>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#8A1538] hover:bg-[#a01a42] text-white rounded-lg transition-colors"
+        >
+          <Plus size={16} />
+          {t('إضافة طابق', 'Add Floor')}
+        </button>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-[#1a1a2e] border border-[#8A1538]/50 rounded-xl p-4 space-y-3">
+          <h3 className="text-white font-semibold">{t('إضافة طابق جديد', 'Add New Floor')}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">{t('مفتاح الطابق (M, 1, 2...)', 'Floor Key')}</label>
+              <input type="text" value={newDirection.floor_key} onChange={e => setNewDirection(p => ({...p, floor_key: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" placeholder="M" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">{t('الأيقونة', 'Icon')}</label>
+              <input type="text" value={newDirection.icon} onChange={e => setNewDirection(p => ({...p, icon: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" placeholder="🏢" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">{t('اسم الطابق (عربي)', 'Floor Name (AR)')}</label>
+              <input type="text" value={newDirection.floor_label_ar} onChange={e => setNewDirection(p => ({...p, floor_label_ar: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" placeholder="طابق الميزانين" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">{t('اسم الطابق (إنجليزي)', 'Floor Name (EN)')}</label>
+              <input type="text" value={newDirection.floor_label_en} onChange={e => setNewDirection(p => ({...p, floor_label_en: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" placeholder="Mezzanine Floor" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-gray-400 text-xs mb-1 block">{t('تعليمات الوصول (عربي) *', 'Directions (AR) *')}</label>
+              <textarea value={newDirection.directions_ar} onChange={e => setNewDirection(p => ({...p, directions_ar: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" rows={3} placeholder="للوصول إلى طابق الميزانين: توجه إلى المصعد واضغط على حرف M، أو الدرج بجانب البوابة الخلفية" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-gray-400 text-xs mb-1 block">{t('تعليمات الوصول (إنجليزي)', 'Directions (EN)')}</label>
+              <textarea value={newDirection.directions_en} onChange={e => setNewDirection(p => ({...p, directions_en: e.target.value}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" rows={2} placeholder="To reach the Mezzanine: go to elevator and press M, or use stairs near back gate" />
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block">{t('الترتيب', 'Sort Order')}</label>
+              <input type="number" value={newDirection.sort_order} onChange={e => setNewDirection(p => ({...p, sort_order: parseInt(e.target.value) || 1}))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowAddForm(false)} className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-600">{t('إلغاء', 'Cancel')}</button>
+            <button onClick={addDirection} disabled={saving} className="px-4 py-2 bg-[#8A1538] text-white rounded-lg text-sm hover:bg-[#a01a42] disabled:opacity-50">{saving ? t('جاري الحفظ...', 'Saving...') : t('إضافة', 'Add')}</button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {directions.map(dir => (
+          <div key={dir.id} className={`bg-[#1a1a2e] border rounded-xl p-4 ${dir.is_active ? 'border-[#8A1538]/50' : 'border-gray-700 opacity-60'}`}>
+            {editingId === dir.id ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">{t('اسم الطابق (عربي)', 'Floor Name (AR)')}</label>
+                    <input type="text" value={dir.floor_label_ar} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, floor_label_ar: e.target.value} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">{t('اسم الطابق (إنجليزي)', 'Floor Name (EN)')}</label>
+                    <input type="text" value={dir.floor_label_en || ''} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, floor_label_en: e.target.value} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-gray-400 text-xs mb-1 block">{t('تعليمات الوصول (عربي)', 'Directions (AR)')}</label>
+                    <textarea value={dir.directions_ar} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, directions_ar: e.target.value} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" rows={3} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-gray-400 text-xs mb-1 block">{t('تعليمات الوصول (إنجليزي)', 'Directions (EN)')}</label>
+                    <textarea value={dir.directions_en || ''} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, directions_en: e.target.value} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" rows={2} />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">{t('الأيقونة', 'Icon')}</label>
+                    <input type="text" value={dir.icon || '🏢'} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, icon: e.target.value} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">{t('الترتيب', 'Sort Order')}</label>
+                    <input type="number" value={dir.sort_order} onChange={e => setDirections(prev => prev.map(d => d.id === dir.id ? {...d, sort_order: parseInt(e.target.value) || 1} : d))} className="w-full bg-[#0b0b0f] border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-600">{t('إلغاء', 'Cancel')}</button>
+                  <button onClick={() => saveDirection(dir)} disabled={saving} className="px-3 py-1.5 bg-green-700 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50">{saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <span className="text-2xl">{dir.icon || '🏢'}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-semibold">{dir.floor_label_ar}</span>
+                      <span className="text-xs bg-[#8A1538]/30 text-[#C9A54C] px-2 py-0.5 rounded">{dir.floor_key}</span>
+                      {!dir.is_active && <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">{t('مخفي', 'Hidden')}</span>}
+                    </div>
+                    <p className="text-gray-300 text-sm mt-1 leading-relaxed">{dir.directions_ar}</p>
+                    {dir.directions_en && <p className="text-gray-500 text-xs mt-1">{dir.directions_en}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => toggleActive(dir)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${dir.is_active ? 'bg-green-900/50 text-green-400 hover:bg-red-900/50 hover:text-red-400' : 'bg-gray-700 text-gray-400 hover:bg-green-900/50 hover:text-green-400'}`}>
+                    {dir.is_active ? t('ظاهر', 'Visible') : t('مخفي', 'Hidden')}
+                  </button>
+                  <button onClick={() => setEditingId(dir.id)} className="p-1.5 bg-blue-900/50 text-blue-400 rounded-lg hover:bg-blue-800/50 transition-colors" title={t('تعديل', 'Edit')}>
+                    <Edit size={14} />
+                  </button>
+                  <button onClick={() => deleteDirection(dir.id)} className="p-1.5 bg-red-900/50 text-red-400 rounded-lg hover:bg-red-800/50 transition-colors" title={t('حذف', 'Delete')}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {directions.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            {t('لا توجد تعليمات توجيه. اضغط على "إضافة طابق" لإضافة تعليمات جديدة.', 'No floor directions. Click "Add Floor" to add.')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // مكون حالة النظام وقاعدة البيانات
 const SystemStatus = ({ language, t }) => {
   const [status, setStatus] = useState({});
@@ -3121,6 +3368,7 @@ const UsersManagement = ({ language, t }) => {
     { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', label: t('الإشعارات', 'Notifications') },
     { id: 'routes', label: t('المسارات', 'Routes') },
+    { id: 'floor_directions', label: t('توجيه الطوابق', 'Floor Directions') },
     { id: 'reports', label: t('التقارير', 'Reports') },
     { id: 'clinics', label: t('العيادات', 'Clinics') },
     { id: 'system', label: t('حالة النظام', 'System Status') },
@@ -5225,6 +5473,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
+        {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}
         {activeTab === 'reports' && <ReportsSection language={language} t={t} />}
         {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} />}
         {activeTab === 'system' && <SystemStatus language={language} t={t} />}

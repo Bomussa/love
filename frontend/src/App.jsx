@@ -1,4 +1,6 @@
 import InteractiveElementReporter from './lib/interactive-element-reporter';
+import healthMonitor from './lib/app-health-monitor';
+import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
 import { supabase } from './lib/supabase-client';
 import './core/notification-engine.js';
@@ -124,6 +126,8 @@ function App() {
     // تفعيل نظام الإصلاح التلقائي المتقدم
     const advancedRepair = new AdvancedAutoRepair(supabase);
     advancedRepair.startAutoRepair();
+    // تهيئة نظام المراقبة الذاتية الشامل
+    healthMonitor.init(supabase);
 
     // تفعيل نظام التقارير للعناصر التفاعلية
     const elementReporter = new InteractiveElementReporter();
@@ -441,7 +445,8 @@ function App() {
 
         {currentView === 'admin' && isAdmin && (
           <Suspense fallback={<LoadingFallback />}>
-            <AdminErrorBoundary>
+            <HealthAlertBanner language={language} />
+      <AdminErrorBoundary>
               <AdminDashboardV2
                 onLogout={handleLogout}
                 language={language}
