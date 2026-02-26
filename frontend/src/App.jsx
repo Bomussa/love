@@ -22,6 +22,7 @@ import { autoRepairSystem } from './lib/auto-repair-system'
 import { functionTableMonitor } from './lib/function-table-monitor'
 import { elementMonitor } from './lib/element-monitor'
 import { zfd } from './core/zfd-engine' // 🛡️ ZFD Engine: Zero-Failure Dynamics (ابتكار المهندس المالك)
+import { aae } from './core/auto-advance-engine' // ⏱️ AAE Engine: Auto-Advance Engine (ابتكار المهندس المالك)
 
 // Lazy Loading للمكونات الثقيلة
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
@@ -118,6 +119,8 @@ function App() {
   useEffect(() => {
     // 🛡️ تفعيل محرك ZFD (Zero-Failure Dynamics) - الابتكار الحصري
     zfd.init();
+    // ⏱️ تفعيل محرك التمرير التلقائي (AAE) - الابتكار الحصري
+    aae.start();
     
     // الاستماع لإشارات الإصلاح الذاتي (Self-Healing Signals)
     const handleZFDRecovery = (event) => {
