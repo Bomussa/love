@@ -1,4 +1,5 @@
 import InteractiveElementReporter from './lib/interactive-element-reporter';
+import StabilitySystem, { offlineGuard, memoryGuard, stabilityMonitor } from './lib/stability-system';
 import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
@@ -114,6 +115,14 @@ function App() {
 
   // ============= AUTO REPAIR SYSTEM =============
   useEffect(() => {
+    // تفعيل نظام الاستقرار الشامل
+    stabilityMonitor.log('APP_INIT', 'بدء تشغيل التطبيق', { version: '2.0', online: navigator.onLine });
+    const unsubOffline = offlineGuard.subscribe(({ type }) => {
+      if (type === 'offline') showNotification('⚠️ انقطع الاتصال — يعمل من البيانات المحفوظة', 'error');
+      if (type === 'online') showNotification('✅ عاد الاتصال بالإنترنت', 'success');
+    });
+    console.log('✅ نظام الاستقرار الشامل: تم التفعيل');
+
     // تفعيل نظام الإصلاح التلقائي
     autoRepairSystem.startMonitoring();
     console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
@@ -139,6 +148,7 @@ function App() {
 
     return () => {
       // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
+      if (unsubOffline) unsubOffline();
     };
   }, []);
 
