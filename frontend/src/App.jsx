@@ -21,6 +21,7 @@ import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 import { autoRepairSystem } from './lib/auto-repair-system'
 import { functionTableMonitor } from './lib/function-table-monitor'
 import { elementMonitor } from './lib/element-monitor'
+import { zfd } from './core/zfd-engine' // 🛡️ ZFD Engine: Zero-Failure Dynamics (ابتكار المهندس المالك)
 
 // Lazy Loading للمكونات الثقيلة
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
@@ -115,6 +116,20 @@ function App() {
 
   // ============= AUTO REPAIR SYSTEM =============
   useEffect(() => {
+    // 🛡️ تفعيل محرك ZFD (Zero-Failure Dynamics) - الابتكار الحصري
+    zfd.init();
+    
+    // الاستماع لإشارات الإصلاح الذاتي (Self-Healing Signals)
+    const handleZFDRecovery = (event) => {
+      console.log('💊 ZFD Recovery Signal Received: [State Recovered]', event.detail);
+      // ZFD: تم استعادة إعدادات النظام الحيوية لضمان استقرار الواجهة
+      if (event.detail.settings) {
+        showNotification(language === 'ar' ? '🛡️ ZFD: تم استعادة استقرار النظام' : '🛡️ ZFD: System Stability Restored', 'success');
+      }
+    };
+
+    window.addEventListener('zfd-state-recovery', handleZFDRecovery);
+
     // تفعيل نظام الاستقرار الشامل
     stabilityMonitor.log('APP_INIT', 'بدء تشغيل التطبيق', { version: '2.0', online: navigator.onLine });
     const unsubOffline = offlineGuard.subscribe(({ type }) => {
