@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
+import UIEffectsManager from './UIEffectsManager';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
@@ -4752,6 +4753,11 @@ const AppearanceManagement = ({ language, t }) => {
             {t('زر تجريبي', 'Sample Button')}
           </button>
         </div>
+      </div>
+
+      {/* ===== قسم التأثيرات البصرية ===== */}
+      <div className="mt-8 pt-8 border-t border-white/10">
+        <UIEffectsManager language={language} t={t} />
       </div>
     </div>
   );
