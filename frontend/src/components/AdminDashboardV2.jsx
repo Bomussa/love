@@ -47,12 +47,13 @@ const showErrorToast = (message) => {
     },
   });
 };
-import NotificationsManagementV2 from './NotificationsManagementV2';
-import AdvancedNotificationsManager from './AdvancedNotificationsManager';
-import FeatureControlPanel from './FeatureControlPanel';
-import APIMonitor from './APIMonitor';
-import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
-import FilesCenter from './FilesCenter';
+// Lazy loading للمكونات الثقيلة - تُحمَّل عند الطلب فقط
+const NotificationsManagementV2 = React.lazy(() => import('./NotificationsManagementV2'));
+const AdvancedNotificationsManager = React.lazy(() => import('./AdvancedNotificationsManager'));
+const FeatureControlPanel = React.lazy(() => import('./FeatureControlPanel'));
+const APIMonitor = React.lazy(() => import('./APIMonitor'));
+const SmartDiagnosticsPanel = React.lazy(() => import('./SmartDiagnosticsPanel'));
+const FilesCenter = React.lazy(() => import('./FilesCenter'));
 import { supabase } from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
@@ -5476,7 +5477,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
-        {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
+        {activeTab === 'notifications' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><NotificationsManagementV2 language={language} t={t} /></React.Suspense>}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}
         {activeTab === 'reports' && <ReportsSection language={language} t={t} />}
@@ -5490,11 +5491,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'content' && <ContentManagement language={language} t={t} />}
         {activeTab === 'appearance' && <AppearanceManagement language={language} t={t} />}
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
-        {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
-        {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
-        {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
-        {activeTab === 'smart' && <SmartDiagnosticsPanel language={language} t={t} />}
-        {activeTab === 'files' && <FilesCenter language={language} t={t} />}
+        {activeTab === 'features' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><FeatureControlPanel language={language} t={t} /></React.Suspense>}
+        {activeTab === 'apimonitor' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><APIMonitor language={language} t={t} /></React.Suspense>}
+        {activeTab === 'advanced-notifications' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><AdvancedNotificationsManager language={language} t={t} /></React.Suspense>}
+        {activeTab === 'smart' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><SmartDiagnosticsPanel language={language} t={t} /></React.Suspense>}
+        {activeTab === 'files' && <React.Suspense fallback={<div className='flex items-center justify-center h-64'><div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#C9A54C]'></div></div>}><FilesCenter language={language} t={t} /></React.Suspense>}
       </main>
       <Toaster />
     </div>
