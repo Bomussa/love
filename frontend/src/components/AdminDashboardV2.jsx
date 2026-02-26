@@ -682,6 +682,41 @@ const PINManagement = ({ language, t }) => {
   const [newPin, setNewPin] = useState({ pin_code: '', clinic_id: '', max_uses: 100 });
   const [clinics, setClinics] = useState([]);
   const [generatingBulk, setGeneratingBulk] = useState(false);
+  const [dailyPins, setDailyPins] = useState([]);
+  const [loadingDaily, setLoadingDaily] = useState(false);
+  const [deletingOld, setDeletingOld] = useState(false);
+  const [generatingDaily, setGeneratingDaily] = useState(false);
+
+  const loadDailyPins = async () => {
+    try {
+      setLoadingDaily(true);
+      const cutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase.from('clinic_pins').select('*').gte('created_at', cutoff).order('created_at', { ascending: false });
+      if (!error && data) setDailyPins(data);
+    } catch (e) { console.error('Error loading daily pins:', e); }
+    finally { setLoadingDaily(false); }
+  };
+
+  const deleteOldPins = async () => {
+    if (!window.confirm(t('هل تريد حذف كل أرقام PIN الأقدم من 20 ساعة؟', 'Delete all PINs older than 20 hours?'))) return;
+    try {
+      setDeletingOld(true);
+      const cutoff = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase.from('clinic_pins').delete().lt('created_at', cutoff);
+      if (!error) { showSuccessToast(t('تم حذف الأرقام القديمة بنجاح', 'Old PINs deleted')); loadDailyPins(); }
+    } catch (e) { console.error('Error:', e); }
+    finally { setDeletingOld(false); }
+  };
+
+  const generateDailyPinsNow = async () => {
+    try {
+      setGeneratingDaily(true);
+      const { error } = await supabase.rpc('generate_daily_pins');
+      if (!error) { showSuccessToast(t('تم توليد أرقام PIN اليومية', 'Daily PINs generated')); loadDailyPins(); }
+      else showErrorToast(error.message);
+    } catch (e) { console.error('Error:', e); }
+    finally { setGeneratingDaily(false); }
+  };
 
   useEffect(() => {
     loadPins();
@@ -1038,6 +1073,47 @@ const PINManagement = ({ language, t }) => {
             {t('لا توجد أرقام سرية', 'No PINs found')}
           </div>
         )}
+      </div>
+
+      {/* ===== قسم أرقام PIN اليومية ===== */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h4 className="text-lg font-bold text-[#C9A54C]">{t("أرقام PIN اليومية الحديثة", "Daily PINs (Recent)")}</h4>
+            <p className="text-xs text-gray-400 mt-0.5">{t("أُنشئت خلال آخر 20 ساعة — تُجدَّد تلقائياً الساعة 5 فجراً", "Created in last 20h — auto-renewed at 5 AM Doha")}</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={generateDailyPinsNow} disabled={generatingDaily} className="px-3 py-1.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all flex items-center gap-1.5 text-sm disabled:opacity-50">
+              {generatingDaily ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+              {t("توليد الآن", "Generate Now")}
+            </button>
+            <button onClick={deleteOldPins} disabled={deletingOld} className="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/30 transition-all flex items-center gap-1.5 text-sm disabled:opacity-50">
+              {deletingOld ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              {t("حذف القديمة +20 ساعة", "Delete Old +20h")}
+            </button>
+            <button onClick={loadDailyPins} className="p-1.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all">
+              <RefreshCw size={16} className={loadingDaily ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+        {loadingDaily ? (<div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C9A54C]"></div></div>) : dailyPins.length === 0 ? (
+          <div className="text-center py-6 text-gray-400"><Key size={32} className="mx-auto mb-2 opacity-40" /><p>{t("لا توجد أرقام PIN حديثة — اضغط توليد الآن", "No recent PINs — click Generate Now")}</p></div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {dailyPins.map(dp => (
+              <div key={dp.id} className="bg-white/5 border border-white/10 rounded-xl p-3 text-center hover:bg-white/10 transition-all">
+                <div className="text-2xl font-black text-[#C9A54C] mb-1">{dp.pin_code}</div>
+                <div className="text-xs text-gray-300 font-semibold truncate">{dp.clinic_id}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{new Date(dp.created_at).toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"})}</div>
+                <div className={`mt-1.5 text-xs px-2 py-0.5 rounded-full inline-block ${dp.is_used ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>{dp.is_used ? t("مستخدم","Used") : t("متاح","Available")}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-gray-400">
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          {t(`إجمالي: ${dailyPins.length} رقم PIN اليوم`, `Total: ${dailyPins.length} PINs today`)}
+        </div>
       </div>
     </div>
   );

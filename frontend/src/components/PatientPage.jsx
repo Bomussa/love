@@ -904,7 +904,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         )}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-white text-base sm:text-lg font-bold leading-tight">
+                        <h3 className="text-white text-2xl sm:text-3xl font-black leading-tight">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
                         <p className="text-gray-400 text-sm mt-0.5">
@@ -933,14 +933,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                   {station.status !== 'completed' && (
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-center" data-test="queue-info">
-                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-yellow-500/15 rounded-xl sm:rounded-2xl border-2 border-yellow-500/40">
-                        <div className="text-4xl sm:text-5xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">
+                      <div className="py-3 sm:py-4 px-2 sm:px-3 bg-yellow-500/15 rounded-xl sm:rounded-2xl border-2 border-yellow-500/40">
+                        <div className="text-2xl sm:text-3xl font-black text-yellow-400 mb-1 leading-none" data-test="your-number">
                           {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
                         </div>
                         <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
                       </div>
-                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-gray-700/50 rounded-xl sm:rounded-2xl border border-gray-500/50">
-                        <div className="text-4xl sm:text-5xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">
+                      <div className="py-3 sm:py-4 px-2 sm:px-3 bg-gray-700/50 rounded-xl sm:rounded-2xl border border-gray-500/50">
+                        <div className="text-2xl sm:text-3xl font-black text-white mb-1 leading-none" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
                         <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
@@ -1015,6 +1015,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             disabled={loading || !pinInput || !pinInput.trim()}
                             title={t('exitClinic', language)}
                             data-test="exit-clinic-btn"
+                            className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg"
                           >
                             <LogOut className="icon icon-md me-2" />
                             {t('exitClinic', language)}
