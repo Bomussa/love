@@ -36,28 +36,54 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     queue_system_visible: true
   })
 
-  // جلب إعدادات النظام من قاعدة البيانات
+  // جلب إعدادات النظام من قاعدة البيانات مع تفعيل المزامنة الفورية (Real-time)
   useEffect(() => {
     const fetchSystemSettings = async () => {
       try {
-        const response = await api.getSettings()
-        if (response && response.settings) {
-          setSystemSettings({
-            pin_system_enabled: response.settings.pin_system_enabled !== 'false',
-            pin_system_visible: response.settings.pin_system_visible !== 'false',
-            queue_system_enabled: response.settings.queue_system_enabled !== 'false',
-            queue_system_visible: response.settings.queue_system_visible !== 'false'
-          })
+        const { data, error } = await supabase
+          .from('settings')
+          .select('*')
+          .like('key', 'feature_%');
+        
+        if (!error && data) {
+          const settingsObj = {};
+          data.forEach(s => {
+            const key = s.key.replace('feature_', '');
+            try {
+              settingsObj[key] = JSON.parse(s.value);
+            } catch {
+              settingsObj[key] = { is_active: s.value === 'true', is_hidden: false };
+            }
+          });
+          
+          setSystemSettings(prev => ({
+            ...prev,
+            pin_system_enabled: settingsObj.pin_system?.is_active !== false,
+            pin_system_visible: settingsObj.pin_system?.is_hidden !== true,
+            queue_system_enabled: settingsObj.queue_system?.is_active !== false,
+            queue_system_visible: settingsObj.queue_system?.is_hidden !== true,
+            show_daily_pin: settingsObj.auto_pin_generate?.is_active !== false,
+            theme: settingsObj.appearance?.theme || 'default'
+          }));
         }
       } catch (err) {
         console.error('Failed to fetch system settings:', err)
       }
     }
 
-    fetchSystemSettings()
-    // تحديث كل 30 ثانية للتأكد من التغييرات اللحظية
-    const interval = setInterval(fetchSystemSettings, 60000)
-    return () => clearInterval(interval)
+    fetchSystemSettings();
+
+    // الاشتراك في التغييرات اللحظية من قاعدة البيانات
+    const subscription = supabase
+      .channel('system_settings_changes')
+      .on('postgres_changes', { event: '*', table: 'settings', schema: 'public' }, () => {
+        fetchSystemSettings();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    }
   }, [])
 
   // ✅ أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
@@ -632,15 +658,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
                       {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
                         <div className="flex flex-col gap-3">
-                          {/* عرض رمز الـ PIN اليومي للعيادة */}
-                          <div className="flex items-center justify-between px-4 py-2 bg-[#C9A54C]/10 border border-[#C9A54C]/30 rounded-xl">
-                            <span className="text-[#C9A54C] text-sm font-bold">
-                              {language === 'ar' ? 'رمز العيادة اليومي:' : 'Daily Clinic PIN:'}
-                            </span>
-                            <span className="text-white text-lg font-black tracking-widest">
-                              {clinicPins[station.id]?.pin_code || '—'}
-                            </span>
-                          </div>
+                          {/* عرض رمز الـ PIN اليومي للعيادة (إذا كان مفعلاً من الإدارة) */}
+                          {systemSettings.show_daily_pin !== false && (
+                            <div className="flex items-center justify-between px-4 py-2 bg-[#C9A54C]/10 border border-[#C9A54C]/30 rounded-xl animate-pulse">
+                              <span className="text-[#C9A54C] text-sm font-bold">
+                                {language === 'ar' ? 'رمز العيادة اليومي:' : 'Daily Clinic PIN:'}
+                              </span>
+                              <span className="text-white text-lg font-black tracking-widest">
+                                {clinicPins[station.id]?.pin_code || '—'}
+                              </span>
+                            </div>
+                          )}
                           
                           <div className="flex flex-wrap gap-2 items-center">
                             <Input
