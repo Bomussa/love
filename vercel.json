@@ -6,8 +6,14 @@
   "framework": "vite",
   "redirects": [
     {
-      "source": "www.mmc-mms.com",
-      "destination": "https://mmc-mms.com",
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.mmc-mms.com"
+        }
+      ],
+      "destination": "https://mmc-mms.com/$1",
       "permanent": true
     }
   ],

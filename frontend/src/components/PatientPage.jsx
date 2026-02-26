@@ -230,7 +230,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           } catch (sortError) {
             console.warn('[PatientPage] فشل ترتيب العيادات:', sortError);
           }
-        } else {
         }
 
         // الدخول التلقائي للعيادة الأولى
@@ -269,535 +268,171 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
 
     loadPathway()
-  }, [patientData.examType, patientData.queueType, patientData.gender])
+  }, [patientData.id, patientData.examType, patientData.queueType, patientData.gender, language])
 
-  // Fetch route with ZFD validation
+  // Real-time queue position update
   useEffect(() => {
-    if (patientData?.id) {
-      api.getRoute(patientData.id)
-        .then(data => {
-          if (data?.route) {
-            setRouteWithZFD(data)
-          }
-        })
-        .catch(err => console.warn('Route fetch failed:', err))
-    }
-  }, [patientData?.id])
-
-  // تحديث لحظي لحالة الطابور مع آلية الإصلاح التلقائي
-  useEffect(() => {
-    if (!patientData?.id || stations.length === 0) return;
-
-    let retryCount = 0;
-    let lastResponseTime = Date.now();
-    let dynamicInterval = GENERAL_REFRESH_INTERVAL;
-    let pollingInterval = null;
-    let isSSEActive = false;
-    const MAX_RETRY = 3;
-    const RECOVERY_DELAY = 3000;
-    const lastStateRef = { current: null };
-
-    // مراقبة حالة SSE
-    const handleSSEConnected = () => {
-      isSSEActive = true;
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-      }
-    };
-
-    const handleSSEError = () => {
-      isSSEActive = false;
-      if (!pollingInterval) {
-        pollingInterval = setInterval(() => {
-          updateQueueStatus();
-        }, dynamicInterval);
-      }
-    };
-
-    const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
-    const unsubscribeError = eventBus.on('sse:error', handleSSEError);
-
-    if (window.eventBusSSE?.isConnected()) {
-      handleSSEConnected();
-    } else {
-      handleSSEError();
-    }
-
-    const updateQueueStatus = async () => {
+    const updatePositions = async () => {
       if (document.hidden) return;
-
-      const start = Date.now();
       try {
-        // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط
-        const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
-
-        if (currentStation) {
-          const positionData = await api.getQueuePosition(currentStation.id, patientData.id);
-          if (positionData && positionData.success) {
-            const stateKey = `${currentStation.id}-${positionData.display_number}`;
-            if (lastStateRef.current !== stateKey) {
-              lastStateRef.current = stateKey;
-
-              setStations(prev => prev.map(s => {
-                if (s.id === currentStation.id) {
-                  // إشعار عند تغيير الموقع
-                  const previousNumber = s.lastNotifiedPosition || 999;
-                  if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
-                    const notifTypes = { 0: 'your_turn', 1: 'near_turn', 2: 'near_turn' };
-                    const messages = {
-                      0: language === 'ar' ? 'دورك الآن! توجه للعيادة فوراً' : 'Your turn now! Go to the clinic immediately',
-                      1: language === 'ar' ? 'أنت التالي - كن جاهزاً' : 'You are next - be ready',
-                      2: language === 'ar' ? 'أنت الثاني في الانتظار' : 'You are second in line'
-                    };
-                    const notifTitles = {
-                      0: language === 'ar' ? 'دورك الآن!' : 'Your Turn!',
-                      1: language === 'ar' ? 'تنبيه: أنت التالي' : 'Alert: You are next',
-                      2: language === 'ar' ? 'تنبيه' : 'Alert'
-                    };
-
-                    const message = messages[positionData.display_number];
-                    if (message) {
-                      pushNotif({
-                        type: notifTypes[positionData.display_number] || 'queue_update',
-                        title: notifTitles[positionData.display_number],
-                        message: message,
-                        clinic: s.nameAr,
-                        floor: s.floor
-                      });
-
-                      if (positionData.display_number === 0) {
-                        eventBus.emit('queue:your_turn', {
-                          clinicName: s.nameAr,
-                          position: positionData.display_number
-                        });
-                      }
-                    }
-                  }
-
-                  return {
-                    ...s,
-                    yourNumber: positionData.display_number,
-                    current: positionData.current_number,
-                    ahead: positionData.ahead,
-                    totalWaiting: positionData.total_waiting,
-                    estimatedWait: positionData.estimated_wait_minutes,
-                    lastNotifiedPosition: positionData.display_number
-                  };
-                }
-                return s;
-              }));
+        const updatedStations = await Promise.all(stations.map(async (station) => {
+          if (station.status === 'ready' || station.status === 'locked') {
+            const positionData = await api.getQueuePosition(station.id, patientData.id)
+            if (positionData && positionData.success) {
+              return {
+                ...station,
+                current: positionData.current_number,
+                ahead: positionData.ahead,
+                totalWaiting: positionData.total_waiting,
+                yourNumber: positionData.display_number || station.yourNumber
+              }
             }
           }
-        }
-
-        retryCount = 0;
-        const duration = Date.now() - start;
-        lastResponseTime = Date.now();
-        dynamicInterval = Math.max(3000, Math.min(GENERAL_REFRESH_INTERVAL, duration * 2 + 2000));
+          return station
+        }))
+        setStations(updatedStations)
       } catch (err) {
-        retryCount++;
-        dynamicInterval = Math.min(60000, dynamicInterval * 1.5);
-
-        if (retryCount <= MAX_RETRY) {
-          setTimeout(updateQueueStatus, RECOVERY_DELAY);
-        } else {
-          retryCount = 0;
-        }
       }
-    };
+    }
 
-    updateQueueStatus();
+    const interval = setInterval(updatePositions, 10000)
+    return () => clearInterval(interval)
+  }, [stations, patientData.id])
 
-    const heartbeatInterval = setInterval(() => {
-      const now = Date.now();
-      if (now - lastResponseTime > 120000) {
-        lastResponseTime = Date.now();
-      }
-    }, 30000);
-
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-      unsubscribeConnected();
-      unsubscribeError();
-      clearInterval(heartbeatInterval);
-    };
-  }, [patientData?.id, language, stations.length]);
-
-  // Listen to real-time notifications via eventBus
-  useEffect(() => {
-    if (!patientData?.id) return;
-
-    const handleQueueUpdate = (data) => {
-      try {
-        const message = language === 'ar' ? data.message : data.messageEn;
-
-        pushNotif({
-          type: data.type,
-          message,
-          position: data.position,
-          clinic: data.clinic
-        });
-      } catch (err) {
-        console.error('Event bus parse error:', err);
-      }
-    };
-
-    eventBus.on('queue:update', handleQueueUpdate);
-    eventBus.on('queue:near_turn', handleQueueUpdate);
-    eventBus.on('queue:your_turn', handleQueueUpdate);
-
-    return () => {
-      eventBus.off('queue:update', handleQueueUpdate);
-      eventBus.off('queue:near_turn', handleQueueUpdate);
-      eventBus.off('queue:your_turn', handleQueueUpdate);
-    };
-  }, [patientData?.id, language])
-
-  // ✅ Direct Alerts: استقبال التنبيهات المباشرة من الإدارة في الوقت الفعلي
-  useEffect(() => {
-    if (!patientData?.military_number) return;
-    const patientId = String(patientData.military_number);
-    // جلب التنبيهات النشطة عند التحميل
-    const fetchActiveAlerts = async () => {
-      try {
-        const { data } = await supabase
-          .from('direct_alerts')
-          .select('*')
-          .eq('patient_id', patientId)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-        if (data && data.length > 0) setDirectAlerts(data);
-      } catch (e) { console.error('Error fetching direct alerts:', e); }
-    };
-    fetchActiveAlerts();
-    // Realtime subscription
-    const channel = supabase
-      .channel(`direct_alerts_${patientId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'direct_alerts',
-        filter: `patient_id=eq.${patientId}`
-      }, (payload) => {
-        const alert = payload.new;
-        if (alert.is_active && new Date(alert.expires_at) > new Date()) {
-          setDirectAlerts(prev => [alert, ...prev]);
-          // تشغيل صوت إذا مفعّل
-          if (alert.sound_enabled) {
-            try { new Audio('/notification.mp3').play().catch(() => {}); } catch(e) {}
-          }
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [patientData?.military_number]);
-
-  const dismissDirectAlert = async (alertId) => {
-    try {
-      await supabase.from('direct_alerts').update({ read_at: new Date().toISOString() }).eq('id', alertId);
-      setDirectAlerts(prev => prev.filter(a => a.id !== alertId));
-    } catch (e) { console.error('Error dismissing alert:', e); }
-  };
-
-  // ✅ الخروج من العيادة باستخدام رقم البن كود - مع تحسين تمرير الدور
   const handleClinicExit = async (station) => {
     try {
-      setLoading(true)
-
-      // التحقق من إدخال PIN
       if (!pinInput || !pinInput.trim()) {
         pushNotif({
           type: 'warning',
-          message: language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN'
+          message: language === 'ar' ? 'يرجى إدخال رقم البن كود' : 'Please enter the PIN code'
         })
-        setLoading(false)
         return
       }
 
-      // استدعاء API للخروج
+      setLoading(true)
+      // Use the provided pinInput to complete the clinic session
       const exitResult = await api.queueDone(station.id, patientData.id, pinInput)
 
-      if (!exitResult || !exitResult.success) {
-        const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
-        pushNotif({
-          type: 'error',
-          message: errorMsg
-        })
-        setLoading(false)
-        return
-      }
+      if (exitResult && exitResult.success) {
+        // Update station status to completed
+        const updatedStations = stations.map(s =>
+          s.id === station.id ? { ...s, status: 'completed', isEntered: false, exitTime: new Date().toISOString() } : s
+        )
 
-      // تحديد العيادة التالية
-      const currentIdx = stations.findIndex(s => s.id === station.id)
-      const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
+        // Find next station to unlock
+        const currentIndex = updatedStations.findIndex(s => s.id === station.id)
+        if (currentIndex < updatedStations.length - 1) {
+          updatedStations[currentIndex + 1].status = 'ready'
+          // Get ticket for next clinic
+          await handleGetTicketForFirstClinic(updatedStations[currentIndex + 1])
+        }
 
-      // ✅ إصلاح: إذا كانت هناك عيادة تالية، نفتحها وندخل الطابور تلقائياً
-      if (hasNextClinic) {
-        const nextClinic = stations[currentIdx + 1];
-        const nextClinicName = language === 'ar' ? nextClinic?.nameAr : nextClinic?.name;
-
-        // تحديث العيادات: إكمال الحالية وفتح التالية
-        setStations(prev => prev.map((s, i) => {
-          if (i === currentIdx) {
-            return { ...s, status: 'completed', exitTime: new Date(), isEntered: false }
-          } else if (i === currentIdx + 1) {
-            return { ...s, status: 'ready', isEntered: false, yourNumber: null, current: null, ahead: null }
-          }
-          return s
-        }))
-
-        // ✅ تمرير الدور للعيادة التالية تلقائياً
-        try {
-          const enterResult = await api.enterQueue(nextClinic.id, patientData.id, true, patientData.name, patientData.queueType);
-
-          if (enterResult && (enterResult.success || enterResult.display_number)) {
-            const positionData = await api.getQueuePosition(nextClinic.id, patientData.id);
-
-            if (positionData && positionData.success) {
-              setActiveTicket({ clinicId: nextClinic.id, ticket: positionData.display_number });
-              setStations(prev => prev.map((s, i) => {
-                if (i === currentIdx + 1) {
-                  return {
-                    ...s,
-                    yourNumber: positionData.display_number,
-                    current: positionData.current_number,
-                    ahead: positionData.ahead,
-                    totalWaiting: positionData.total_waiting,
-                    status: 'ready',
-                    isEntered: true,
-                    entered_at: new Date().toISOString()
-                  };
-                }
-                return s;
-              }));
-
-              // ✅ إشارة واضحة بتمرير الدور مع معلومات التوجيه
-              pushNotif({
-                type: 'next_clinic',
-                title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
-                message: language === 'ar'
-                  ? `رقمك في ${nextClinicName}: ${positionData.display_number}`
-                  : `Your # at ${nextClinicName}: ${positionData.display_number}`,
-                clinic: nextClinicName,
-                floor: stations[stations.findIndex(s => s.nameAr === nextClinicName || s.name === nextClinicName)]?.floor
-              });
-            } else {
-              pushNotif({
-                type: 'next_clinic',
-                title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
-                message: language === 'ar'
-                  ? `توجه إلى ${nextClinicName}`
-                  : `Go to ${nextClinicName}`,
-                clinic: nextClinicName
-              });
-            }
-          } else {
-            pushNotif({
-              type: 'next_clinic',
-              title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
-              message: language === 'ar'
-                ? `يرجى الدخول إلى ${nextClinicName}`
-                : `Please enter ${nextClinicName}`,
-              clinic: nextClinicName
-            });
-          }
-        } catch (autoEnterError) {
-          pushNotif({
-            type: 'next_clinic',
-            title: language === 'ar' ? 'انتقل للعيادة التالية' : 'Move to Next Clinic',
-            message: language === 'ar'
-              ? `يرجى الدخول إلى ${nextClinicName}`
-              : `Please enter ${nextClinicName}`,
-            clinic: nextClinicName
-          });
-        };
-      } else {
-        // لا توجد عيادة تالية
-        setStations(prev => prev.map((s, i) => 
-          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date(), isEntered: false } : s
-        ));
+        setStations(updatedStations)
+        setPinInput('')
+        setSelectedStation(null)
 
         pushNotif({
           type: 'success',
-          title: language === 'ar' ? 'تم إنهاء جميع الفحوصات' : 'All Examinations Done',
-          message: language === 'ar'
-            ? 'مبروك! يرجى التوجه للاستقبال لاستلام النتائج'
-            : 'Congratulations! Please go to reception for results'
-        });;
+          message: language === 'ar' ? 'تم إنهاء العيادة بنجاح' : 'Clinic session completed successfully'
+        })
+      } else {
+        pushNotif({
+          type: 'error',
+          message: exitResult?.error || (language === 'ar' ? 'رقم البن كود غير صحيح' : 'Incorrect PIN code')
+        })
       }
-
-      setPinInput('')
-      setSelectedStation(null)
+      setLoading(false)
     } catch (e) {
-      console.error('Complete clinic failed', e)
+      console.error('Clinic exit failed:', e)
       pushNotif({
         type: 'error',
-        message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
+        message: language === 'ar' ? 'فشل إنهاء العيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to exit clinic. Please try again.'
       })
-    } finally {
       setLoading(false)
     }
   }
 
-  // الخروج بدون PIN
   const handleClinicExitWithoutPin = async (station) => {
     try {
       setLoading(true)
-      const exitResult = await api.queueDone(station.id, patientData.id, null, true)
+      // Exit without PIN (when system is disabled)
+      const exitResult = await api.queueDone(station.id, patientData.id, 'SYSTEM_OVERRIDE')
 
-      if (!exitResult || !exitResult.success) {
-        const errorMsg = exitResult?.error || (language === 'ar' ? 'فشل الخروج' : 'Exit failed')
+      if (exitResult && exitResult.success) {
+        const updatedStations = stations.map(s =>
+          s.id === station.id ? { ...s, status: 'completed', isEntered: false, exitTime: new Date().toISOString() } : s
+        )
+
+        const currentIndex = updatedStations.findIndex(s => s.id === station.id)
+        if (currentIndex < updatedStations.length - 1) {
+          updatedStations[currentIndex + 1].status = 'ready'
+          await handleGetTicketForFirstClinic(updatedStations[currentIndex + 1])
+        }
+
+        setStations(updatedStations)
         pushNotif({
-          type: 'error',
-          message: errorMsg
+          type: 'success',
+          message: language === 'ar' ? 'تم إنهاء العيادة بنجاح' : 'Clinic session completed successfully'
         })
-        setLoading(false)
-        return
       }
-
-      const currentIdx = stations.findIndex(s => s.id === station.id)
-      const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
-
-      if (hasNextClinic) {
-        setStations(prev => prev.map((s, i) => {
-          if (i === currentIdx) {
-            return { ...s, status: 'completed', exitTime: new Date() }
-          } else if (i === currentIdx + 1) {
-            return { ...s, status: 'ready', isEntered: false }
-          }
-          return s
-        }))
-
-        const nextClinicName = stations[currentIdx + 1]?.nameAr || 'العيادة التالية'
-        pushNotif({
-          type: 'next_clinic',
-          message: language === 'ar' 
-            ? `✅ تم إكمال الفحص. يرجى الدخول إلى ${nextClinicName}`
-            : `✅ Examination completed. Please enter ${nextClinicName}`,
-          clinic: nextClinicName
-        })
-      } else {
-        setStations(prev => prev.map((s, i) => 
-          i === currentIdx ? { ...s, status: 'completed', exitTime: new Date() } : s
-        ))
-      }
-
-      pushNotif({
-        type: 'success',
-        message: language === 'ar' ? '✅ تم الخروج بنجاح' : '✅ Successfully exited'
-      })
+      setLoading(false)
     } catch (e) {
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل الخروج من العيادة' : 'Failed to exit clinic'
-      })
-    } finally {
       setLoading(false)
     }
   }
 
   const getExamName = () => {
-    const exam = examTypes.find(e => e.id === patientData.queueType)
-    if (!exam) return language === 'ar' ? 'فحص طبي' : 'Medical Exam'
-    return language === 'ar' ? exam.nameAr : exam.name
+    const type = patientData.examType || patientData.queueType
+    return language === 'ar' ? (examTypes[type]?.ar || type) : (examTypes[type]?.en || type)
   }
 
-  // Check if all stations are completed
-  const allStationsCompleted = stations.length > 0 && stations.every(s => s.status === 'completed')
+  const dismissDirectAlert = (id) => {
+    setDirectAlerts(prev => prev.filter(a => a.id !== id))
+  }
 
-  // If all completed, show completion screen
-  if (allStationsCompleted) {
+  if (stations.length === 0) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
-        <div className="max-w-2xl mx-auto space-y-6 text-center">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-[#C9A54C] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-[#C9A54C] font-medium animate-pulse">
+            {language === 'ar' ? 'جاري تحميل مسارك الطبي...' : 'Loading your medical route...'}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
-          <h1 className="text-lg font-bold text-white">
-            {'اللجنة الطبية العسكرية'}
-          </h1>
+  const allCompleted = stations.every(s => s.status === 'completed')
 
-          <div className="text-green-400">
-            <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+  if (allCompleted) {
+    return (
+      <div className="min-h-screen px-4 py-8 bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-green-500/20 blur-2xl rounded-full"></div>
+            <div className="relative w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/30">
+              <CheckCircle className="w-12 h-12 text-green-400" />
+            </div>
           </div>
-
-          <Card className="bg-gradient-to-br from-green-900/30 to-blue-900/30 border-green-500/30">
-            <CardContent className="p-8 space-y-6">
-              <h1 className="text-5xl font-bold text-white mb-4">
-                {language === 'ar' ? '✅ تم إنهاء الفحص الطبي' : '✅ Medical Examination Completed'}
-              </h1>
-
-              <div className="space-y-6 text-xl">
-                <p className="text-gray-300 font-medium">
-                  {language === 'ar' 
-                    ? 'تهانينا! لقد أكملت جميع الفحوصات الطبية المطلوبة بنجاح'
-                    : 'Congratulations! You have successfully completed all required medical examinations'}
-                </p>
-
-                <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-8 mt-6">
-                  <h2 className="text-3xl font-bold text-yellow-400 mb-6">
-                    {language === 'ar' ? '📋 الخطوة التالية' : '📋 Next Step'}
-                  </h2>
-                  <p className="text-xl text-white font-bold">
-                    {language === 'ar'
-                      ? 'يرجى التوجه إلى استقبال اللجنة الطبية'
-                      : 'Please proceed to the Medical Committee Reception'}
-                  </p>
-                  <p className="text-gray-300 text-sm mt-2 font-medium">
-                    {language === 'ar'
-                      ? 'الموقع: الطابق الأول - مكتب الاستقبال'
-                      : 'Location: First Floor - Reception Office'}
-                  </p>
-                </div>
-
-                <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-6 mt-6">
-                  <h3 className="text-xl font-bold text-white mb-4">
-                    {language === 'ar' ? 'ملخص الفحوصات' : 'Examination Summary'}
-                  </h3>
-                  <div className="space-y-2 text-left">
-                    <p className="text-gray-300">
-                      <span className="font-semibold">{language === 'ar' ? 'نوع الفحص:' : 'Exam Type:'}</span> {getExamName()}
-                    </p>
-                    <p className="text-gray-300">
-                      <span className="font-semibold">{language === 'ar' ? 'عدد العيادات:' : 'Number of Clinics:'}</span> {stations.length}
-                    </p>
-                    <p className="text-gray-300">
-                      <span className="font-semibold">{language === 'ar' ? 'الحالة:' : 'Status:'}</span> 
-                      <span className="text-green-400 font-bold"> {language === 'ar' ? 'مكتمل ✓' : 'Completed ✓'}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-6 mt-4">
-                  <h3 className="text-lg font-bold text-white mb-3">
-                    {language === 'ar' ? 'العيادات المكتملة:' : 'Completed Clinics:'}
-                  </h3>
-                  <div className="space-y-2">
-                    {stations.map((station, index) => (
-                      <div key={station.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">
-                          {index + 1}. {language === 'ar' ? station.nameAr : station.name}
-                        </span>
-                        <span className="text-green-400">✓</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 justify-center mt-8">
-                <Button 
-                  variant="default" 
-                  size="lg"
-                  onClick={onLogout}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold px-6 py-2 text-base"
-                >
-                  {language === 'ar' ? '🏠 العودة للصفحة الرئيسية' : '🏠 Return to Home'}
-                </Button>
-              </div>
+          <Card className="bg-gray-800/50 border-gray-700 shadow-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <h2 className="text-2xl font-bold text-white mb-3">
+                {language === 'ar' ? 'اكتملت جميع الفحوصات' : 'All Exams Completed'}
+              </h2>
+              <p className="text-gray-400 mb-8 leading-relaxed">
+                {language === 'ar'
+                  ? 'لقد أنهيت جميع محطات الفحص الطبي المقررة لك بنجاح. يمكنك الآن التوجه لمكتب الاستقبال لاستكمال الإجراءات النهائية.'
+                  : 'You have successfully completed all your scheduled medical exam stations. You can now proceed to the reception desk for final procedures.'}
+              </p>
+              <Button
+                variant="outline"
+                onClick={onLogout}
+                className="w-full py-4 text-lg border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white transition-all"
+              >
+                <LogOut className="w-5 h-5 me-2" />
+                {language === 'ar' ? 'تسجيل الخروج' : 'Logout'}
+              </Button>
 
               <p className="text-gray-400 text-sm mt-6">
                 {language === 'ar'
@@ -813,8 +448,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   return (
     <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page">
-      {/* ZFDBanner removed - notifications now handled by NotificationSystem */}
-
       {/* التنبيهات المباشرة من الإدارة */}
       {directAlerts.length > 0 && (
         <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
@@ -856,7 +489,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             className="text-gray-300 hover:text-white hover:bg-gray-800/50"
             onClick={toggleLanguage}
           >
-            <Globe className="icon icon-md me-2" />
+            <Globe className="w-5 h-5 me-2" />
             {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
           </Button>
         </div>
@@ -896,11 +529,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         'bg-gray-600/50'
                       }`}>
                         {station.status === 'ready' ? (
-                          <Unlock className="icon icon-md icon-success" />
+                          <Unlock className="w-5 h-5 text-green-400" />
                         ) : station.status === 'completed' ? (
-                          <CheckCircle className="icon icon-md text-green-400" />
+                          <CheckCircle className="w-5 h-5 text-green-400" />
                         ) : (
-                          <Lock className="icon icon-md icon-muted" />
+                          <Lock className="w-5 h-5 text-gray-500" />
                         )}
                       </div>
                       <div className="min-w-0">
@@ -964,7 +597,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                           className="w-full py-3 text-lg font-bold"
                           data-test="enter-clinic-btn"
                         >
-                          <LogIn className="icon icon-md me-2" />
+                          <LogIn className="w-5 h-5 me-2" />
                           {t('enterClinic', language)}
                         </Button>
                       ) : (
@@ -987,7 +620,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             disabled={true}
                             className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm"
                           >
-                            <Lock className="icon icon-sm me-2" />
+                            <Lock className="w-4 h-4 me-2" />
                             {language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
                           </Button>
                         </div>
@@ -997,29 +630,40 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                   {station.status === 'ready' && station.isEntered && (
                     <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
-                      {/* عرض حقل البن كود فقط إذا كان النظام مفعل ومرئي */}
                       {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <Input
-                            type="text"
-                            placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
-                            value={selectedStation?.id === station.id ? pinInput : ''}
-                            onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
-                            className="bg-gray-600 border-gray-500 text-white"
-                            maxLength={6}
-                            data-test="pin-input"
-                          />
-                          <Button
-                            variant="gradientSecondary"
-                            onClick={() => handleClinicExit(station)}
-                            disabled={loading || !pinInput || !pinInput.trim()}
-                            title={t('exitClinic', language)}
-                            data-test="exit-clinic-btn"
-                            className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg"
-                          >
-                            <LogOut className="icon icon-md me-2" />
-                            {t('exitClinic', language)}
-                          </Button>
+                        <div className="flex flex-col gap-3">
+                          {/* عرض رمز الـ PIN اليومي للعيادة */}
+                          <div className="flex items-center justify-between px-4 py-2 bg-[#C9A54C]/10 border border-[#C9A54C]/30 rounded-xl">
+                            <span className="text-[#C9A54C] text-sm font-bold">
+                              {language === 'ar' ? 'رمز العيادة اليومي:' : 'Daily Clinic PIN:'}
+                            </span>
+                            <span className="text-white text-lg font-black tracking-widest">
+                              {clinicPins[station.id]?.pin_code || '—'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Input
+                              type="text"
+                              placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
+                              value={selectedStation?.id === station.id ? pinInput : ''}
+                              onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
+                              className="bg-gray-600 border-gray-500 text-white flex-1"
+                              maxLength={6}
+                              data-test="pin-input"
+                            />
+                            <Button
+                              variant="gradientSecondary"
+                              onClick={() => handleClinicExit(station)}
+                              disabled={loading || !pinInput || !pinInput.trim()}
+                              title={t('exitClinic', language)}
+                              data-test="exit-clinic-btn"
+                              className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg"
+                            >
+                              <LogOut className="w-5 h-5 me-2" />
+                              {t('exitClinic', language)}
+                            </Button>
+                          </div>
                         </div>
                       ) : !systemSettings.pin_system_enabled ? (
                         /* إذا كان النظام موقف - يمكن الخروج بدون بن كود */
@@ -1030,9 +674,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             disabled={loading}
                             title={t('exitClinic', language)}
                             data-test="exit-clinic-btn"
-                            className="w-full"
+                            className="w-full py-4 text-lg font-bold rounded-2xl shadow-lg"
                           >
-                            <LogOut className="icon icon-md me-2" />
+                            <LogOut className="w-5 h-5 me-2" />
                             {t('exitClinic', language)} - {language === 'ar' ? 'بدون رقم سري' : 'Without PIN'}
                           </Button>
                         </div>
@@ -1046,7 +690,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       )}
                       {station.exitTime && (
                         <div className="text-sm text-gray-400 flex items-center gap-2">
-                          <Clock className="icon icon-sm icon-muted" />
+                          <Clock className="w-4 h-4 text-gray-500" />
                           <span>{language === 'ar' ? 'وقت الخروج:' : 'Exit time:'} {formatTime(new Date(station.exitTime))}</span>
                         </div>
                       )}
@@ -1057,8 +701,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     <div className="mt-3 pt-3 border-t border-gray-600/60">
                       <p className="text-gray-400 text-xs">
                         {language === 'ar'
-                          ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}`
-                          : `You can reach via elevator – press ${station.floorCode}`}
+                          ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode || station.floor}`
+                          : `You can reach via elevator – press ${station.floorCode || station.floor}`}
                       </p>
                     </div>
                   )}
@@ -1078,7 +722,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         <div className="text-center">
           <Button variant="outline" onClick={onLogout} className="border-gray-600 text-gray-300">
-            {t('exitSystem', language)}
+            <LogOut className="w-4 h-4 me-2" />
+            {t('logout', language)}
           </Button>
         </div>
       </div>
