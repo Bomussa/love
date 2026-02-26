@@ -63,7 +63,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             queue_system_enabled: settingsObj.queue_system?.is_active !== false,
             queue_system_visible: settingsObj.queue_system?.is_hidden !== true,
             show_daily_pin: settingsObj.auto_pin_generate?.is_active !== false,
-            dynamic_pathway_enabled: settingsObj.dynamic_pathway?.is_active !== false,
             theme: settingsObj.appearance?.theme || 'default'
           }));
         }
@@ -232,8 +231,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         // ✅ Sticky Path: الترتيب يحدث مرة واحدة فقط عند حساب المسار الجديد
         // إذا كان المسار محفوظاً مسبقاً فيُستخدم كما هو بدون إعادة ترتيب
         let sortedStations = [...examStations];
-        const dynamicEnabled = systemSettings.dynamic_pathway_enabled !== false;
-        if (!routeAlreadySaved && dynamicEnabled) {
+        if (!routeAlreadySaved) {
           try {
             const queueCounts = await Promise.all(
               examStations.map(async (station) => {

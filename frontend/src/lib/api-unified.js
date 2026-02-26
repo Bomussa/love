@@ -1254,25 +1254,6 @@ const api = {
   },
 
   /**
-   * جلب عدد المنتظرين في عيادة معينة اليوم (لترتيب المسار الديناميكي)
-   * تُستخدم مرة واحدة فقط عند إنشاء المسار لكل مراجع
-   */
-  async getQueueCount(clinicId) {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .in('status', ['waiting', 'serving', 'called']);
-      if (error) return 0;
-      return count || 0;
-    } catch (error) {
-      return 0;
-    }
-  },
-  /**
    * جلب إحصائيات لوحة التحكم
    */
   async getDashboardStats() {
