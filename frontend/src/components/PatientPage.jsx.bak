@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle, MapPin, AlertTriangle, Wifi, WifiOff, RefreshCw, Activity, Heart, Eye, Ear, Bone, Brain, Scissors, FlaskConical, Stethoscope, Navigation, Award } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
@@ -15,32 +15,8 @@ import { CountdownTimer } from './CountdownTimer'
 import eventBus from '../core/event-bus'
 import { supabase } from '../lib/supabase-client'
 
-// أيقونات العيادات
-const clinicIcons = {
-  lab: FlaskConical, vitals: Activity, ophthalmology: Eye,
-  internal: Stethoscope, internal_f: Stethoscope, surgery: Scissors,
-  orthopedics: Bone, ent: Ear, psychology: Brain, dental: Heart, default: Stethoscope,
-}
-const clinicColors = {
-  lab:          { bg: 'from-blue-600/25 to-blue-900/20',   border: 'border-blue-500/35',   icon: 'text-blue-400',   badge: 'bg-blue-500/15 text-blue-300' },
-  vitals:       { bg: 'from-green-600/25 to-green-900/20', border: 'border-green-500/35',  icon: 'text-green-400',  badge: 'bg-green-500/15 text-green-300' },
-  ophthalmology:{ bg: 'from-purple-600/25 to-purple-900/20',border:'border-purple-500/35',icon: 'text-purple-400', badge: 'bg-purple-500/15 text-purple-300' },
-  internal:     { bg: 'from-teal-600/25 to-teal-900/20',   border: 'border-teal-500/35',   icon: 'text-teal-400',   badge: 'bg-teal-500/15 text-teal-300' },
-  internal_f:   { bg: 'from-teal-600/25 to-teal-900/20',   border: 'border-teal-500/35',   icon: 'text-teal-400',   badge: 'bg-teal-500/15 text-teal-300' },
-  surgery:      { bg: 'from-red-600/25 to-red-900/20',     border: 'border-red-500/35',    icon: 'text-red-400',    badge: 'bg-red-500/15 text-red-300' },
-  orthopedics:  { bg: 'from-orange-600/25 to-orange-900/20',border:'border-orange-500/35',icon: 'text-orange-400', badge: 'bg-orange-500/15 text-orange-300' },
-  ent:          { bg: 'from-yellow-600/25 to-yellow-900/20',border:'border-yellow-500/35',icon: 'text-yellow-400', badge: 'bg-yellow-500/15 text-yellow-300' },
-  psychology:   { bg: 'from-indigo-600/25 to-indigo-900/20',border:'border-indigo-500/35',icon: 'text-indigo-400', badge: 'bg-indigo-500/15 text-indigo-300' },
-  dental:       { bg: 'from-pink-600/25 to-pink-900/20',   border: 'border-pink-500/35',   icon: 'text-pink-400',   badge: 'bg-pink-500/15 text-pink-300' },
-  default:      { bg: 'from-gray-600/25 to-gray-900/20',   border: 'border-gray-500/35',   icon: 'text-gray-400',   badge: 'bg-gray-500/15 text-gray-300' },
-}
-function getClinicColor(id) { return clinicColors[id] || clinicColors.default }
-function getClinicIcon(id) { return clinicIcons[id] || clinicIcons.default }
-
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
   const [stations, setStations] = useState([])
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [lastSync, setLastSync] = useState(null)
   const [pinInput, setPinInput] = useState('')
   const [selectedStation, setSelectedStation] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -59,15 +35,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     queue_system_enabled: true,
     queue_system_visible: true
   })
-
-  // مراقبة الاتصال
-  useEffect(() => {
-    const handleOnline = () => { setIsOnline(true); setLastSync(new Date()) }
-    const handleOffline = () => setIsOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline) }
-  }, [])
 
   // جلب إعدادات النظام من قاعدة البيانات
   useEffect(() => {
@@ -113,7 +80,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           status: 'ready',
           isEntered: false,
         } : s))
-        setLastSync(new Date())
       }
     } catch (e) {
       console.error('Get ticket for first clinic failed:', e)
@@ -883,101 +849,74 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       />
 
       <div className="w-full max-w-xl mx-auto space-y-4 sm:space-y-5">
-         {/* هيدر محسّن */}
-        <div className="flex items-center justify-between px-1 pt-2">
-          <button onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-white/25 text-xs font-medium transition-all">
-            <Globe className="w-3.5 h-3.5" />
-            {language === 'ar' ? 'EN' : 'عر'}
-          </button>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
-            isOnline ? 'text-green-400 bg-green-500/10 border border-green-500/20' : 'text-red-400 bg-red-500/10 border border-red-500/20'
-          }`}>
-            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-            {isOnline
-              ? (language === 'ar' ? 'متصل' : 'Online')
-              : (language === 'ar' ? 'غير متصل' : 'Offline')}
-          </div>
+        <div className="absolute top-4 left-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+            onClick={toggleLanguage}
+          >
+            <Globe className="icon icon-md me-2" />
+            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
+          </Button>
         </div>
-        <div className="text-center space-y-2 pt-2">
-          <div className="relative inline-block">
-            <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 sm:w-24 sm:h-24 object-contain logo-glow" />
-          </div>
+
+         <div className="text-center space-y-2 pt-8 sm:pt-4">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 sm:w-24 sm:h-24 object-contain" />
           <div className="space-y-0.5">
-            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xs font-bold" style={{color:'#C9A54C'}}>
+            <p className="text-xs text-[#C9A54C] font-semibold">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-500 text-xs">
-              {language === 'ar' ? 'المركز الطبي التخصصي العسكري - العطار' : 'Military Specialized Medical Center – Al-Attar'}
+            <p className="text-gray-400 text-xs">
+              {language === 'ar'
+                ? 'المركز الطبي التخصصي العسكري - العطار'
+                : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
         </div>
 
-        <div className="glass-card rounded-3xl overflow-hidden">
-          <div className="px-4 pt-4 pb-3 text-center border-b border-white/8">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Navigation className="w-5 h-5" style={{color:'#C9A54C'}} />
-              <h2 className="text-white text-lg font-black tracking-tight">{t('yourMedicalRoute', language)}</h2>
-            </div>
-            <p className="text-gray-400 text-xs">{t('exam', language)}: <span className="font-bold" style={{color:'#C9A54C'}}>{getExamName()}</span></p>
-          </div>
-          <div className="space-y-3 p-3">
-            {stations.map((station, index) => {
-              const ClinicIcon = getClinicIcon(station.id)
-              const colors = getClinicColor(station.id)
-              const isReady = station.status === 'ready'
-              const isCompleted = station.status === 'completed'
-              return (
-              <div key={station.id}
-                className={`relative overflow-hidden rounded-2xl border transition-all duration-300 patient-card-active ${
-                  isReady ? `bg-gradient-to-br ${colors.bg} ${colors.border} shadow-lg` :
-                  isCompleted ? 'bg-white/3 border-green-500/20 opacity-70' :
-                  'bg-white/3 border-white/8'
-                }`}>
-                {isReady && <div className="h-0.5 w-full progress-bar-jewel" />}
-                {isCompleted && <div className="h-0.5 w-full bg-green-500/40" />}
-                <div className="p-4 sm:p-5">
+        <Card className="bg-gray-800/50 border-gray-700 shadow-xl">
+          <CardHeader className="text-center pb-3 pt-4 sm:pt-5">
+            <CardTitle className="text-white text-xl sm:text-2xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
+            <p className="text-gray-400 text-sm sm:text-base mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 pb-4 sm:pb-5">
+            {stations.map((station, index) => (
+              <Card key={station.id} className={`border transition-all duration-200 ${station.status === 'ready' ? 'bg-gray-700/60 border-green-500/30 shadow-md' : station.status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-65' : 'bg-gray-700/40 border-gray-600/60'}`}>
+                <CardContent className="p-3.5 sm:p-5">
                   {/* رأس البطاقة */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <div className={`relative flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-lg ${
-                        isReady ? `bg-gradient-to-br ${colors.bg} border ${colors.border}` :
-                        isCompleted ? 'bg-green-500/15 border border-green-500/30' :
-                        'bg-white/5 border border-white/10'
+                      <div className={`flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${
+                        station.status === 'ready' ? 'bg-green-500/20' :
+                        station.status === 'completed' ? 'bg-green-500/15' :
+                        'bg-gray-600/50'
                       }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="w-6 h-6 text-green-400" />
-                        ) : station.status === 'locked' ? (
-                          <Lock className="w-5 h-5 text-gray-500" />
+                        {station.status === 'ready' ? (
+                          <Unlock className="icon icon-md icon-success" />
+                        ) : station.status === 'completed' ? (
+                          <CheckCircle className="icon icon-md text-green-400" />
                         ) : (
-                          <ClinicIcon className={`w-6 h-6 ${colors.icon}`} />
+                          <Lock className="icon icon-md icon-muted" />
                         )}
-                        <div className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
-                          isReady ? 'bg-[#C9A54C] text-[#1a0a12]' :
-                          isCompleted ? 'bg-green-500 text-white' :
-                          'bg-gray-700 text-gray-400'
-                        }`}>{index + 1}</div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className={`font-black text-base leading-tight ${
-                          isReady ? 'text-white' : isCompleted ? 'text-green-300' : 'text-gray-500'
-                        }`}>
+                      <div className="min-w-0">
+                        <h3 className="text-white text-base sm:text-lg font-bold leading-tight">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="text-gray-400 text-xs">{language === 'ar' ? station.floor : station.floorCode}</span>
-                        </div>
+                        <p className="text-gray-400 text-sm mt-0.5">
+                          {t('floor', language)}: <span className="text-gray-200 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span>
+                        </p>
                       </div>
                     </div>
                     <div className="flex-shrink-0">
-                      <span className={`inline-block px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
-                        isReady ? colors.badge :
-                        isCompleted ? 'bg-green-500/15 text-green-400 border border-green-500/25' :
-                        'bg-gray-500/15 text-gray-500'
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
+                        station.status === 'ready' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                        station.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
+                        'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                       }`}>
                         {station.status === 'ready' ? t('ready', language) :
                           station.status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') :
@@ -993,62 +932,47 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-                    <div className="grid grid-cols-2 gap-3 mb-3" data-test="queue-info">
-                      <div className={`py-4 px-3 rounded-2xl border-2 text-center ${
-                        isReady ? 'bg-[#C9A54C]/10 border-[#C9A54C]/40' : 'bg-white/3 border-white/8'
-                      }`}>
-                        <div className={`text-4xl sm:text-5xl font-black leading-none mb-1 queue-number-display ${
-                          isReady && station.ahead === 0 && typeof station.yourNumber === 'number' ? 'queue-number-your-turn' :
-                          isReady ? 'text-[#C9A54C]' : 'text-gray-600'
-                        }`} data-test="your-number">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-center" data-test="queue-info">
+                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-yellow-500/15 rounded-xl sm:rounded-2xl border-2 border-yellow-500/40">
+                        <div className="text-4xl sm:text-5xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">
                           {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
                         </div>
-                        <div className={`text-xs font-bold tracking-wide ${
-                          isReady ? 'text-[#C9A54C]/70' : 'text-gray-600'
-                        }`}>{t('yourNumber', language)}</div>
+                        <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
                       </div>
-                      <div className={`py-4 px-3 rounded-2xl border-2 text-center ${
-                        isReady && station.ahead === 0 ? 'bg-green-500/10 border-green-500/40' :
-                        isReady ? 'bg-white/5 border-white/15' : 'bg-white/3 border-white/8'
-                      }`}>
-                        <div className={`text-4xl sm:text-5xl font-black leading-none mb-1 queue-number-display ${
-                          isReady && station.ahead === 0 ? 'text-green-400' :
-                          isReady ? 'text-white' : 'text-gray-600'
-                        }`} data-test="ahead-count">
+                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-gray-700/50 rounded-xl sm:rounded-2xl border border-gray-500/50">
+                        <div className="text-4xl sm:text-5xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
-                        <div className={`text-xs font-bold tracking-wide ${
-                          isReady && station.ahead === 0 ? 'text-green-400/70' :
-                          isReady ? 'text-gray-400' : 'text-gray-600'
-                        }`}>{t('ahead', language)}</div>
+                        <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
                       </div>
                     </div>
                    )}
 
                   {/* زر الدخول للعيادة */}
                   {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-1">
+                    <div className="mt-4 pt-4 border-t border-gray-600/40">
                       {(station.yourNumber > 0 && (
                         station.ahead === 0 || 
                         station.ahead === null || 
                         station.yourNumber === station.current ||
                         (station.current > 0 && station.yourNumber < station.current)
                       )) ? (
-                        <button
+                        <Button
+                          variant="gradientPrimary"
                           onClick={() => handleEnterClinic(station)}
                           disabled={loading}
+                          className="w-full py-3 text-lg font-bold"
                           data-test="enter-clinic-btn"
-                          className="enter-clinic-btn w-full py-4 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 disabled:opacity-50"
                         >
-                          {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <LogIn className="w-5 h-5" />}
-                          {loading ? (language === 'ar' ? 'جاري الدخول...' : 'Entering...') : t('enterClinic', language)}
-                        </button>
+                          <LogIn className="icon icon-md me-2" />
+                          {t('enterClinic', language)}
+                        </Button>
                       ) : (
                         <div className="space-y-2">
-                          <div className="waiting-indicator flex items-center justify-between px-4 py-3 rounded-2xl">
+                          <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
                             <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-[#C9A54C] animate-pulse" />
-                              <span className="text-[#C9A54C] font-bold text-sm">
+                              <span className="text-lg">⏳</span>
+                              <span className="text-yellow-400 font-semibold text-sm">
                                 {language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}
                               </span>
                             </div>
@@ -1058,64 +982,64 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                                 : `${station.ahead} ahead`}
                             </span>
                           </div>
-                          <button disabled
-                            className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 opacity-30 cursor-not-allowed border border-gray-600 text-gray-400">
-                            <Lock className="w-4 h-4" />
+                          <Button
+                            variant="outline"
+                            disabled={true}
+                            className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm"
+                          >
+                            <Lock className="icon icon-sm me-2" />
                             {language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
                   )}
 
                   {station.status === 'ready' && station.isEntered && (
-                    <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:'rgba(16,185,129,0.1)',border:'1px solid rgba(16,185,129,0.2)'}}>
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        <span className="text-green-400 text-xs font-bold">{language === 'ar' ? 'أنت داخل العيادة الآن' : 'You are inside the clinic'}</span>
-                      </div>
+                    <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
                       {/* عرض حقل البن كود فقط إذا كان النظام مفعل ومرئي */}
                       {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
-                        <div className="space-y-2">
-                          <label className="text-xs text-gray-400 font-medium">
-                            {language === 'ar' ? 'أدخل الرقم السري من الطبيب للخروج' : 'Enter PIN from doctor to exit'}
-                          </label>
-                          <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 items-center">
                           <Input
                             type="text"
-                            inputMode="numeric"
                             placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
                             value={selectedStation?.id === station.id ? pinInput : ''}
                             onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
-                            className="flex-1 pin-input-jewel rounded-xl"
+                            className="bg-gray-600 border-gray-500 text-white"
                             maxLength={6}
                             data-test="pin-input"
                           />
-                          <button
+                          <Button
+                            variant="gradientSecondary"
                             onClick={() => handleClinicExit(station)}
                             disabled={loading || !pinInput || !pinInput.trim()}
+                            title={t('exitClinic', language)}
                             data-test="exit-clinic-btn"
-                            className="exit-clinic-btn px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 disabled:opacity-40"
                           >
-                            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                            <LogOut className="icon icon-md me-2" />
                             {t('exitClinic', language)}
-                          </button>
-                          </div>
+                          </Button>
                         </div>
                       ) : !systemSettings.pin_system_enabled ? (
-                        <button
-                          onClick={() => handleClinicExitWithoutPin(station)}
-                          disabled={loading}
-                          data-test="exit-clinic-btn"
-                          className="exit-clinic-btn w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
-                        >
-                          {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                          {t('exitClinic', language)}
-                        </button>
+                        /* إذا كان النظام موقف - يمكن الخروج بدون بن كود */
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Button
+                            variant="gradientSecondary"
+                            onClick={() => handleClinicExitWithoutPin(station)}
+                            disabled={loading}
+                            title={t('exitClinic', language)}
+                            data-test="exit-clinic-btn"
+                            className="w-full"
+                          >
+                            <LogOut className="icon icon-md me-2" />
+                            {t('exitClinic', language)} - {language === 'ar' ? 'بدون رقم سري' : 'Without PIN'}
+                          </Button>
+                        </div>
                       ) : null}
 
+                      {/* إذا كان النظام مخفي فقط (لكن مفعل) - الخروج يتم تلقائياً بواسطة الطبيب */}
                       {systemSettings.pin_system_enabled && !systemSettings.pin_system_visible && (
-                        <div className="text-center text-sm text-gray-400 p-3 bg-white/5 rounded-xl border border-white/8">
+                        <div className="text-center text-sm text-gray-400 p-3 bg-gray-700/50 rounded">
                           {language === 'ar' ? 'سيتم إنهاء الفحص بواسطة الطبيب' : 'Exam will be completed by the doctor'}
                         </div>
                       )}
@@ -1145,17 +1069,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       </p>
                     </div>
                   )}
-                </div>
-              </div>
-              )
-            })}
-          </div>
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
 
         <div className="text-center">
-          <button onClick={onLogout} className="px-6 py-2.5 rounded-2xl border border-white/15 text-gray-400 hover:text-white hover:border-white/30 text-sm font-medium transition-all duration-200">
+          <Button variant="outline" onClick={onLogout} className="border-gray-600 text-gray-300">
             {t('exitSystem', language)}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
