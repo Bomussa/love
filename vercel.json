@@ -4,6 +4,13 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "www.mmc-mms.com",
+      "destination": "https://mmc-mms.com",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/clinic/(.*)", "destination": "/index.html" },
