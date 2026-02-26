@@ -390,247 +390,236 @@
 }
 
 /* ============================================================
-   💎 JEWEL UI — تحسينات بصرية مذهلة لتطبيق اللجنة الطبية
+   تحسينات جمالية آمنة — حركة وانتقالات فقط (بدون تغيير الهوية)
    ============================================================ */
 
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 20px rgba(201,165,76,0.3), 0 0 40px rgba(138,21,56,0.2); }
-  50%       { box-shadow: 0 0 30px rgba(201,165,76,0.5), 0 0 60px rgba(138,21,56,0.35); }
+@keyframes numberPop {
+  from { transform: scale(0.85); opacity: 0.5; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
 }
 
-@keyframes slideInUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
+/* ظهور ناعم للبطاقات */
+.card-fade-in {
+  animation: fadeSlideIn 0.35s ease-out both;
 }
 
-@keyframes countUp {
-  from { transform: scale(0.8); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
+/* تأثير ظهور الأرقام */
+.number-pop {
+  animation: numberPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-@keyframes borderFlow {
-  0%   { border-color: rgba(201,165,76,0.3); }
-  50%  { border-color: rgba(201,165,76,0.7); }
-  100% { border-color: rgba(201,165,76,0.3); }
+/* تحسين الانتقالات على الأزرار */
+button:not(:disabled) {
+  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  14%       { transform: scale(1.05); }
-  28%       { transform: scale(1); }
-  42%       { transform: scale(1.03); }
-  70%       { transform: scale(1); }
+button:not(:disabled):active {
+  transform: scale(0.97);
 }
 
-/* بطاقة المراجع النشطة */
-.patient-card-active {
-  animation: slideInUp 0.4s ease-out;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* تحسين scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* نبضة ناعمة */
+.soft-pulse {
+  animation: softPulse 2s ease-in-out infinite;
 }
 
-.patient-card-active:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(201,165,76,0.15);
+/* تحسين focus */
+input:focus, textarea:focus {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* رقم الطابور */
-.queue-number-display {
-  font-variant-numeric: tabular-nums;
-  animation: countUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.queue-number-your-turn {
-  animation: heartbeat 1.5s ease-in-out infinite;
-  color: #4ade80 !important;
-  text-shadow: 0 0 30px rgba(74, 222, 128, 0.6) !important;
-}
-
-/* شريط التقدم المتحرك */
-.progress-bar-jewel {
-  background: linear-gradient(90deg, #8A1538 0%, #C9A54C 50%, #8A1538 100%);
-  background-size: 200% auto;
-  animation: shimmer 2s linear infinite;
-}
-
-/* زر الدخول للعيادة */
-.enter-clinic-btn {
-  background: linear-gradient(135deg, #8A1538 0%, #C9A54C 100%) !important;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.enter-clinic-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.enter-clinic-btn:hover::before { left: 100%; }
-.enter-clinic-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(138,21,56,0.5), 0 5px 15px rgba(201,165,76,0.3);
-}
-.enter-clinic-btn:active { transform: translateY(0) scale(0.98); }
-
-/* زر الخروج */
-.exit-clinic-btn {
-  background: linear-gradient(135deg, #C9A54C 0%, #B8943D 100%) !important;
-  color: #1a0a12 !important;
-  font-weight: 900 !important;
-  transition: all 0.2s ease;
-}
-.exit-clinic-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(201,165,76,0.4);
-}
-
-/* مؤشر الانتظار */
-.waiting-indicator {
-  background: rgba(201,165,76,0.08);
-  border: 1px solid rgba(201,165,76,0.25);
-  animation: borderFlow 3s ease-in-out infinite;
-}
-
-/* شاشة الاكتمال */
-.completion-card {
-  background: linear-gradient(135deg, rgba(138,21,56,0.95) 0%, rgba(107,15,42,0.98) 50%, rgba(30,10,20,0.99) 100%);
-  animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.completion-icon { animation: heartbeat 2s ease-in-out infinite; }
-
-/* بطاقات اختيار الفحص */
-.exam-card-btn {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-.exam-card-btn:hover {
-  transform: translateY(-4px) scale(1.02);
-  border-color: rgba(201,165,76,0.5) !important;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 20px rgba(201,165,76,0.15);
-}
-.exam-card-btn:active { transform: translateY(-1px) scale(0.99); }
-
-/* بطاقة تسجيل الدخول */
-.login-card-jewel {
-  background: linear-gradient(135deg, rgba(30,10,20,0.95) 0%, rgba(20,5,15,0.98) 100%);
-  border: 1px solid rgba(201,165,76,0.2);
-  box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 40px rgba(138,21,56,0.15);
-  animation: slideInUp 0.5s ease-out;
-}
-
-.login-btn-jewel {
-  background: linear-gradient(135deg, #8A1538 0%, #C9A54C 100%) !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.05em;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-.login-btn-jewel::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  transition: left 0.5s ease;
-}
-.login-btn-jewel:hover::before { left: 100%; }
-.login-btn-jewel:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(138,21,56,0.5); }
-
-/* رقم العرض الكبير */
-.display-number-jewel {
-  font-size: clamp(6rem, 20vw, 14rem);
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  background: linear-gradient(135deg, #C9A54C 0%, #E8D5A0 50%, #C9A54C 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: countUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* الشعار المتوهج */
-.logo-glow {
-  filter: drop-shadow(0 0 15px rgba(201,165,76,0.4));
-  transition: filter 0.3s ease;
-}
-.logo-glow:hover { filter: drop-shadow(0 0 25px rgba(201,165,76,0.6)); }
-
-/* Glassmorphism */
-.glass-card {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-/* PIN Input */
-.pin-input-jewel {
-  background: rgba(255,255,255,0.08) !important;
-  border: 2px solid rgba(255,255,255,0.15) !important;
-  text-align: center;
-  font-size: 1.5rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.3em;
-  color: #C9A54C !important;
-  transition: all 0.2s ease;
-}
-.pin-input-jewel:focus {
-  border-color: rgba(201,165,76,0.6) !important;
-  box-shadow: 0 0 0 3px rgba(201,165,76,0.15) !important;
-  background: rgba(201,165,76,0.06) !important;
-}
-
-/* Selection */
+/* تحسين selection */
 ::selection {
-  background: rgba(201,165,76,0.3);
-  color: white;
+  background: rgba(201,165,76,0.25);
+  color: inherit;
 }
 
-/* Notification Toast */
-.notif-toast-jewel {
-  animation: slideInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* tap highlight للموبايل */
+* { -webkit-tap-highlight-color: rgba(255,255,255,0.05); }
+
+/* ============================================================
+   تأثيرات تفاعلية أنيقة — مريحة للعين، بدون مبالغة
+   ============================================================ */
+
+/* --- ظهور ناعم للصفحات والبطاقات --- */
+@keyframes ui-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Focus visible */
-button:focus-visible {
-  outline: 2px solid rgba(201,165,76,0.6);
+/* --- ظهور الأرقام بنعومة --- */
+@keyframes ui-number-in {
+  from { opacity: 0.4; transform: scale(0.9); }
+  to   { opacity: 1;   transform: scale(1); }
+}
+
+/* --- وميض خفيف لمؤشرات الانتظار --- */
+@keyframes ui-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+/* --- حركة ناعمة لأيقونة الشعار --- */
+@keyframes ui-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-3px); }
+}
+
+/* تطبيق ظهور ناعم على البطاقات */
+.card-ui-enter {
+  animation: ui-fade-in 0.3s ease-out both;
+}
+
+/* تطبيق على الأرقام عند التغيير */
+.number-ui-enter {
+  animation: ui-number-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* نبضة خفيفة لمؤشر الانتظار */
+.blink-ui {
+  animation: ui-blink 2.2s ease-in-out infinite;
+}
+
+/* حركة ناعمة للشعار */
+.logo-float {
+  animation: ui-float 4s ease-in-out infinite;
+}
+
+/* --- تحسين Hover على البطاقات --- */
+.card-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+/* --- تحسين الأزرار التفاعلية --- */
+.btn-interactive {
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* تأثير موجة عند الضغط */
+.btn-interactive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.12) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.btn-interactive:active::after {
+  opacity: 1;
+}
+
+.btn-interactive:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
+.btn-interactive:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* --- تحسين حقول الإدخال --- */
+.input-interactive {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.input-interactive:focus {
+  box-shadow: 0 0 0 2px rgba(201,165,76,0.18);
+}
+
+/* --- خط تقدم متحرك ناعم --- */
+@keyframes ui-progress {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.progress-animated {
+  background-size: 200% auto;
+  animation: ui-progress 2.5s linear infinite;
+}
+
+/* --- تحسين Scrollbar بشكل أنيق --- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(201,165,76,0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(201,165,76,0.4); }
+
+/* --- تحسين focus للإمكانية --- */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(201,165,76,0.5);
   outline-offset: 2px;
 }
 
-/* Tap highlight */
-* { -webkit-tap-highlight-color: rgba(201,165,76,0.1); }
-
-/* Page entrance */
-[data-test="patient-page"],
-[data-test="exam-selection-page"] {
-  animation: slideInUp 0.4s ease-out;
+/* --- تحسين selection --- */
+::selection {
+  background: rgba(201,165,76,0.2);
+  color: inherit;
 }
 
-/* Mobile */
+/* --- تأخير ظهور تسلسلي للبطاقات --- */
+.card-ui-enter:nth-child(1) { animation-delay: 0ms; }
+.card-ui-enter:nth-child(2) { animation-delay: 60ms; }
+.card-ui-enter:nth-child(3) { animation-delay: 120ms; }
+.card-ui-enter:nth-child(4) { animation-delay: 180ms; }
+.card-ui-enter:nth-child(5) { animation-delay: 240ms; }
+
+/* --- تأثير Ripple خفيف على الأزرار الكبيرة --- */
+@keyframes ui-ripple {
+  from { transform: scale(0); opacity: 0.3; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+
+/* --- تحسين الانتقال بين الحالات --- */
+.status-transition {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- تأثير ظهور ناعم للإشعارات --- */
+@keyframes ui-notify-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.notify-enter {
+  animation: ui-notify-in 0.3s ease-out both;
+}
+
+/* --- تحسين الصور والأيقونات --- */
+img {
+  transition: opacity 0.3s ease;
+}
+
+/* --- تحسين الجداول والقوائم --- */
+tr, li {
+  transition: background-color 0.15s ease;
+}
+
+/* موبايل: تعطيل hover transforms لأداء أفضل */
 @media (max-width: 640px) {
-  .patient-card-active:hover { transform: none; }
-  .exam-card-btn:hover { transform: none; }
+  .card-hover-lift:hover { transform: none; box-shadow: none; }
+  .btn-interactive:not(:disabled):hover { transform: none; box-shadow: none; }
 }
