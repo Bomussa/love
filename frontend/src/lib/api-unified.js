@@ -512,6 +512,23 @@ const api = {
     }
   },
 
+  async getQueueCount(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('unified_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .in('status', ['waiting', 'serving', 'called']);
+      if (error) throw error;
+      return count || 0;
+    } catch (e) {
+      console.warn('[api-unified] getQueueCount error:', e);
+      return 0;
+    }
+  },
+
   async getQueueStatus(clinicId) {
     try {
       const today = new Date();

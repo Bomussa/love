@@ -523,7 +523,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
          <div className="text-center space-y-2 pt-8 sm:pt-4">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 sm:w-24 sm:h-24 object-contain" />
           <div className="space-y-0.5">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-wide">
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wide">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
             <p className="text-xs text-[#C9A54C] font-semibold">
@@ -563,7 +563,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         )}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-white text-xl sm:text-2xl font-black leading-tight tracking-widest" style={{ letterSpacing: language === 'ar' ? '0.05em' : 'normal' }}>
+                        <h3 className="text-white text-2xl sm:text-3xl font-black leading-tight" style={{ letterSpacing: language === 'ar' ? '0.15em' : 'normal', wordSpacing: language === 'ar' ? '0.2em' : 'normal' }}>
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
                         <p className="text-gray-400 text-sm mt-0.5">
@@ -591,20 +591,20 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-<div className="grid grid-cols-2 gap-2 sm:gap-2.5 text-center max-w-[280px] mx-auto" data-test="queue-info">
-	                      <div className="py-2 sm:py-2.5 px-2 bg-yellow-500/15 rounded-lg sm:rounded-xl border-2 border-yellow-500/40">
-	                        <div className="text-xl sm:text-2xl font-black text-yellow-400 mb-0.5 leading-none" data-test="your-number">
-	                          {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
-	                        </div>
-	                        <div className="text-yellow-300/80 text-[10px] sm:text-xs font-bold tracking-wide">{t('yourNumber', language)}</div>
-	                      </div>
-	                      <div className="py-2 sm:py-2.5 px-2 bg-gray-700/50 rounded-lg sm:rounded-xl border border-gray-500/50">
-	                        <div className="text-xl sm:text-2xl font-black text-white mb-0.5 leading-none" data-test="ahead-count">
-	                          {station.ahead || 0}
-	                        </div>
-	                        <div className="text-gray-400 text-[10px] sm:text-xs font-bold tracking-wide">{t('ahead', language)}</div>
-	                      </div>
-	                    </div>
+<div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-center max-w-[240px] mx-auto" data-test="queue-info">
+		                      <div className="py-1.5 sm:py-2 px-1.5 bg-yellow-500/15 rounded-lg sm:rounded-xl border-2 border-yellow-500/40">
+		                        <div className="text-lg sm:text-xl font-black text-yellow-400 mb-0.5 leading-none" data-test="your-number">
+		                          {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
+		                        </div>
+		                        <div className="text-yellow-300/80 text-[9px] sm:text-[10px] font-bold tracking-wide">{t('yourNumber', language)}</div>
+		                      </div>
+		                      <div className="py-1.5 sm:py-2 px-1.5 bg-gray-700/50 rounded-lg sm:rounded-xl border border-gray-500/50">
+		                        <div className="text-lg sm:text-xl font-black text-white mb-0.5 leading-none" data-test="ahead-count">
+		                          {station.ahead || 0}
+		                        </div>
+		                        <div className="text-gray-400 text-[9px] sm:text-[10px] font-bold tracking-wide">{t('ahead', language)}</div>
+		                      </div>
+		                    </div>
                    )}
 
                   {/* زر الدخول للعيادة */}
