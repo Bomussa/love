@@ -163,7 +163,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         if (examStations.length > 0) {
           const firstClinic = examStations[0]
           await handleAutoEnterFirstClinic(firstClinic)
-          
+
+          // ✅ إصلاح: إطلاق حدث بدء المسار
+          eventBus.emit('queue:start_hint', {
+            clinicName: firstClinic.nameAr,
+            floor: firstClinic.floor
+          });
+
           // إشعار الطابق عند البداية
           if (firstClinic.floor) {
             setCurrentNotice({
@@ -280,9 +286,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         clinic: station.nameAr
                       });
                       
-                      // تشغيل صوت عند دورك الآن (0) - استخدام notification engine
+                      // ✅ إصلاح: إطلاق أحداث الإشعارات حسب الموقع
                       if (positionData.display_number === 0) {
+                        // دورك الآن
                         eventBus.emit('queue:your_turn', {
+                          clinicName: station.nameAr,
+                          position: positionData.display_number
+                        });
+                      } else if (positionData.display_number >= 1 && positionData.display_number <= 3) {
+                        // اقترب دورك
+                        eventBus.emit('queue:near_turn', {
                           clinicName: station.nameAr,
                           position: positionData.display_number
                         });
@@ -415,10 +428,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
       }
 
-      // تحديد العيادة التالية
+      // ✅ إصلاح: إطلاق حدث إنهاء الخطوة
       const currentIdx = stations.findIndex(s => s.id === station.id)
       const hasNextClinic = currentIdx >= 0 && currentIdx + 1 < stations.length
-      
+      const nextClinicName = hasNextClinic ? stations[currentIdx + 1]?.nameAr : null;
+
+      // إطلاق حدث إنهاء الفحص
+      eventBus.emit('queue:step_done', {
+        currentClinic: station.nameAr,
+        nextClinic: nextClinicName
+      });
+
       // إذا كانت هناك عيادة تالية، نفتحها فقط (بدون دخول تلقائي)
       if (hasNextClinic) {
         // تحديث العيادات: إكمال الحالية وفتح التالية

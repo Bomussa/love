@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -22,6 +22,15 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [showStatistics, setShowStatistics] = useState(false)
   const [validationError, setValidationError] = useState('')
   const [showUsageGuide, setShowUsageGuide] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const adminUsernameRef = useRef(null)
+
+  // التركيز على حقل username عند فتح وضع الإدارة
+  useEffect(() => {
+    if (isAdminMode && adminUsernameRef.current) {
+      adminUsernameRef.current.focus()
+    }
+  }, [isAdminMode])
 
   // تحويل الأرقام العربية إلى إنجليزية
   const normalizeArabicNumbers = (str) => {
@@ -82,30 +91,43 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
   const handleAdminSubmit = async (e) => {
     e.preventDefault()
+
+    // ✅ منع Double Submit
+    if (isSubmitting) {
+      console.log('=== Submit blocked - already submitting ===')
+      return
+    }
+
     setValidationError('')
-    
+
     // التحقق من صحة بيانات الإدارة
     const validation = validateAdminData({
       username: sanitizeInput(adminUsername),
       password: adminPassword
     })
-    
+
     if (!validation.isValid) {
       setValidationError(validation.errors[0])
       return
     }
 
+    setIsSubmitting(true)
     setLoading(true)
     try {
       // تسجيل دخول الإدارة
       const sanitizedUsername = sanitizeInput(adminUsername)
       logAdminLogin(sanitizedUsername)
-      
+
       // إرسال username:password كرمز واحد
       await onAdminLogin(`${sanitizedUsername}:${adminPassword.trim()}`)
+
+      // ✅ مسح الحقول بعد النجاح
+      setAdminUsername('')
+      setAdminPassword('')
     } catch (error) {
       setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
     } finally {
+      setIsSubmitting(false)
       setLoading(false)
     }
   }
@@ -350,7 +372,9 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                     {language === 'ar' ? 'اسم المستخدم' : 'Username'}
                   </label>
                   <Input
+                    ref={adminUsernameRef}
                     type="text"
+                    autoComplete="username"
                     placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
@@ -365,6 +389,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   </label>
                   <Input
                     type="password"
+                    autoComplete="current-password"
                     placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
@@ -377,9 +402,9 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   type="submit"
                   variant="gradient"
                   className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !adminUsername.trim() || !adminPassword.trim()}
+                  disabled={isSubmitting || loading || !adminUsername.trim() || !adminPassword.trim()}
                 >
-                  {loading
+                  {isSubmitting || loading
                     ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...')
                     : (language === 'ar' ? 'دخول ←' : 'Login →')}
                 </Button>

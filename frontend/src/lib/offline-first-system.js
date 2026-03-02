@@ -515,10 +515,18 @@ class OfflineFirstSystem {
       const queueItems = await this.syncQueue.getAll();
       let syncedCount = 0;
       let failedCount = 0;
+      let retryCount = 0;
 
       for (const item of queueItems) {
+        // ✅ تخطي العمليات التي تجاوزت الحد الأقصى للمحاولات
+        if (item.attempts >= OFS_CONFIG.maxRetries) {
+          console.warn(`⏭️ Skipping item ${item.id} - max retries (${OFS_CONFIG.maxRetries}) exceeded`);
+          continue;
+        }
+
         try {
-          await this.processSyncItem(item);
+          // ✅ محاولة المعالجة مع retry
+          await this.processSyncItemWithRetry(item);
           await this.syncQueue.markCompleted(item.id);
           syncedCount++;
         } catch (error) {
@@ -528,14 +536,38 @@ class OfflineFirstSystem {
         }
       }
 
-      if (syncedCount > 0 || failedCount > 0) {
-        console.log(`✅ Sync complete: ${syncedCount} synced, ${failedCount} failed`);
-        this.notifyListeners({ type: 'sync_complete', synced: syncedCount, failed: failedCount });
+      if (syncedCount > 0 || failedCount > 0 || retryCount > 0) {
+        console.log(`✅ Sync complete: ${syncedCount} synced, ${failedCount} failed, ${retryCount} retried`);
+        this.notifyListeners({ type: 'sync_complete', synced: syncedCount, failed: failedCount, retried: retryCount });
       }
     } catch (error) {
       console.error('❌ Sync error:', error);
     } finally {
       this.syncInProgress = false;
+    }
+  }
+
+  // ✅ دالة جديدة: معالجة العنصر مع retry
+  async processSyncItemWithRetry(item) {
+    const maxAttempts = 3;
+    const baseDelay = 2000; // 2 ثواني
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.processSyncItem(item);
+        return; // نجاح
+      } catch (error) {
+        console.warn(`⚠️ Attempt ${attempt}/${maxAttempts} failed for ${item.id}:`, error.message);
+
+        if (attempt === maxAttempts) {
+          throw error; // فشل نهائي
+        }
+
+        // ✅ Exponential backoff: 2s, 4s, 6s
+        const delay = baseDelay * attempt;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
 
