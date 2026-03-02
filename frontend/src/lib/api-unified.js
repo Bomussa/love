@@ -1881,7 +1881,7 @@ const api = {
    * @param {string} type - نوع الإعدادات (theme, queue, etc.)
    * @returns {Promise<Object>} الإعدادات
    */
-  async getSettings(type) {
+  async getThemeSettings(type) {
     try {
       const { data, error } = await supabase
         .from('settings')
@@ -1905,7 +1905,7 @@ const api = {
         },
       };
     } catch (error) {
-      console.error('[api-unified] getSettings error:', error);
+      console.error('[api-unified] getThemeSettings error:', error);
       // إرجاع قيم افتراضية في حالة الخطأ
       return {
         success: true,

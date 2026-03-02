@@ -258,9 +258,6 @@ function App() {
   // ============= NOTIFICATION SYSTEM =============
   const showNotification = (message, type = 'info') => {
     const notification = document.createElement('div')
-    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-      type === 'success' ? 'bg-green-500 text-white' : type === 'error' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
-    }`
     notification.textContent = message
     document.body.appendChild(notification)
     setTimeout(() => {
@@ -391,87 +388,93 @@ function App() {
         )}
 
         {currentView === 'login' && (
-          <LoginPage
-            onLogin={handleLogin}
-            onAdminLogin={handleAdminLogin}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <LoginPage
+              onLogin={handleLogin}
+              onAdminLogin={handleAdminLogin}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'examSelection' && patientData && (
-          <ExamSelectionPage
-            patientData={patientData}
-            onExamSelect={async (examType) => {
-              try {
-                // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
-                const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
-
-                if (!clinics || clinics.length === 0) {
-                  console.error('[App] No clinics found for:', examType, patientData.gender);
-                  throw new Error('No clinics found');
-                }
-
-                // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
-                let firstClinic = clinics[0].id;
+          <Suspense fallback={<LoadingFallback />}>
+            <ExamSelectionPage
+              patientData={patientData}
+              onExamSelect={async (examType) => {
                 try {
-                  const queueCounts = await Promise.all(
-                    clinics.map(async (clinic) => {
-                      const count = await api.getQueueCount(clinic.id);
-                      return { id: clinic.id, count: count || 0, clinic };
-                    })
-                  );
-                  // ترتيب العيادات حسب الأقل ازدحاماً
-                  queueCounts.sort((a, b) => a.count - b.count);
-                  firstClinic = queueCounts[0].id;
-                  console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
-                } catch (weightError) {
-                  console.warn('[App] Weight calculation failed, using first clinic:', weightError);
+                  // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
+                  const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
+
+                  if (!clinics || clinics.length === 0) {
+                    console.error('[App] No clinics found for:', examType, patientData.gender);
+                    throw new Error('No clinics found');
+                  }
+
+                  // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
+                  let firstClinic = clinics[0].id;
+                  try {
+                    const queueCounts = await Promise.all(
+                      clinics.map(async (clinic) => {
+                        const count = await api.getQueueCount(clinic.id);
+                        return { id: clinic.id, count: count || 0, clinic };
+                      })
+                    );
+                    // ترتيب العيادات حسب الأقل ازدحاماً
+                    queueCounts.sort((a, b) => a.count - b.count);
+                    firstClinic = queueCounts[0].id;
+                    console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
+                  } catch (weightError) {
+                    console.warn('[App] Weight calculation failed, using first clinic:', weightError);
+                  }
+
+                  const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
+
+                  if (queueRes.success) {
+                    const updatedPatientData = {
+                      ...patientData,
+                      queueType: examType,
+                      currentClinic: firstClinic,
+                      queueNumber: queueRes.display_number || queueRes.number,
+                      ahead: queueRes.ahead || 0,
+                      pathway: clinics
+                    };
+
+                    setPatientData(updatedPatientData)
+                    localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
+                    setCurrentView('patient')
+                    showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
+                  } else {
+                    throw new Error(queueRes.error || 'Failed to enter queue')
+                  }
+                } catch (error) {
+                  console.error('[App] Exam select error:', error);
+                  showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
                 }
-
-                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
-
-                if (queueRes.success) {
-                  const updatedPatientData = {
-                    ...patientData,
-                    queueType: examType,
-                    currentClinic: firstClinic,
-                    queueNumber: queueRes.display_number || queueRes.number,
-                    ahead: queueRes.ahead || 0,
-                    pathway: clinics
-                  };
-
-                  setPatientData(updatedPatientData)
-                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
-                  setCurrentView('patient')
-                  showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
-                } else {
-                  throw new Error(queueRes.error || 'Failed to enter queue')
-                }
-              } catch (error) {
-                console.error('[App] Exam select error:', error);
-                showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
-              }
-            }}
-            onBack={() => {
-              localStorage.removeItem('patientData');
-              setPatientData(null);
-              setCurrentView('login');
-            }}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+              }}
+              onBack={() => {
+                localStorage.removeItem('patientData');
+                setPatientData(null);
+                setCurrentView('login');
+              }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'patient' && patientData && (
-          <PatientPage
-            patientData={patientData}
-            onLogout={handleLogout}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <PatientPage
+              patientData={patientData}
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'admin' && isAdmin && (
@@ -490,15 +493,17 @@ function App() {
         )}
 
         {currentView === 'clinic_login' && (
-          <ClinicLoginPage
-            onLogin={(session) => {
-              setClinicSession(session)
-              localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
-              setCurrentView('clinic_dashboard')
-            }}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <ClinicLoginPage
+              onLogin={(session) => {
+                setClinicSession(session)
+                localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
+                setCurrentView('clinic_dashboard')
+              }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'clinic_dashboard' && clinicSession && (
