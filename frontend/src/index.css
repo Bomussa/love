@@ -113,81 +113,12 @@
 }
 
 /* Theme colors */
-.theme-classic {
-  --theme-primary: 270 70% 40%; /* Deep purple */
-  --theme-secondary: 40 90% 50%; /* Vibrant gold */
-  --theme-accent: 38 40% 82%; /* Light Beige */
-  --theme-background: 0 0% 5%; /* Almost black */
-  --theme-surface: 0 0% 10%; /* Dark grey for cards */
-  --theme-text: 210 40% 98%; /* White */
-  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
-  --theme-border: 220 15% 25%; /* Border color */
-  --theme-success: 142 76% 36%; /* Green */
-  --theme-warning: 48 96% 40%; /* Yellow */
-  --theme-error: 0 84% 60%; /* Red */
-  --theme-info: 200 80% 50%; /* Blue */
-}
-
-.theme-mint {
-  --theme-primary: 270 70% 40%; /* Deep purple */
-  --theme-secondary: 40 90% 50%; /* Vibrant gold */
-  --theme-accent: 38 40% 82%; /* Light Beige */
-  --theme-background: 0 0% 5%; /* Almost black */
-  --theme-surface: 0 0% 10%; /* Dark grey for cards */
-  --theme-text: 210 40% 98%; /* White */
-  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
-  --theme-border: 220 15% 25%; /* Border color */
-  --theme-success: 142 76% 36%; /* Green */
-  --theme-warning: 48 96% 40%; /* Yellow */
-  --theme-error: 0 84% 60%; /* Red */
-  --theme-info: 200 80% 50%; /* Blue */
-}
-
-.theme-navy {
-  --theme-primary: 270 70% 40%; /* Deep purple */
-  --theme-secondary: 40 90% 50%; /* Vibrant gold */
-  --theme-accent: 38 40% 82%; /* Light Beige */
-  --theme-background: 0 0% 5%; /* Almost black */
-  --theme-surface: 0 0% 10%; /* Dark grey for cards */
-  --theme-text: 210 40% 98%; /* White */
-  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
-  --theme-border: 220 15% 25%; /* Border color */
-  --theme-success: 142 76% 36%; /* Green */
-  --theme-warning: 48 96% 40%; /* Yellow */
-  --theme-error: 0 84% 60%; /* Red */
-  --theme-info: 200 80% 50%; /* Blue */
-}
-
-.theme-desert {
-  --theme-primary: 270 70% 40%; /* Deep purple */
-  --theme-secondary: 40 90% 50%; /* Vibrant gold */
-  --theme-accent: 38 40% 82%; /* Light Beige */
-  --theme-background: 0 0% 5%; /* Almost black */
-  --theme-surface: 0 0% 10%; /* Dark grey for cards */
-  --theme-text: 210 40% 98%; /* White */
-  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
-  --theme-border: 220 15% 25%; /* Border color */
-  --theme-success: 142 76% 36%; /* Green */
-  --theme-warning: 48 96% 40%; /* Yellow */
-  --theme-error: 0 84% 60%; /* Red */
-  --theme-info: 200 80% 50%; /* Blue */
-}
-
-.theme-rose {
-  --theme-primary: 270 70% 40%; /* Deep purple */
-  --theme-secondary: 40 90% 50%; /* Vibrant gold */
-  --theme-accent: 38 40% 82%; /* Light Beige */
-  --theme-background: 0 0% 5%; /* Almost black */
-  --theme-surface: 0 0% 10%; /* Dark grey for cards */
-  --theme-text: 210 40% 98%; /* White */
-  --theme-text-secondary: 215 20.2% 65.1%; /* Gray */
-  --theme-border: 220 15% 25%; /* Border color */
-  --theme-success: 142 76% 36%; /* Green */
-  --theme-warning: 48 96% 40%; /* Yellow */
-  --theme-error: 0 84% 60%; /* Red */
-  --theme-info: 200 80% 50%; /* Blue */
-}
-
+/* Unified theme variables - all themes use the same colors */
+.theme-classic,
+.theme-mint,
+.theme-navy,
+.theme-desert,
+.theme-rose,
 .theme-night {
   --theme-primary: 270 70% 40%; /* Deep purple */
   --theme-secondary: 40 90% 50%; /* Vibrant gold */
