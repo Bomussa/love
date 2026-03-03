@@ -12,6 +12,8 @@ export default {
   theme: {
     fontFamily: {
       sans: ['Cairo', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      display: ['Cairo', 'sans-serif'],
+      body: ['Cairo', 'sans-serif'],
     },
     container: {
       center: true,
@@ -19,11 +21,6 @@ export default {
       screens: {
         '2xl': '1400px',
       },
-    },
-    fontFamily: {
-      sans: ['Cairo', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-      display: ['Cairo', 'sans-serif'],
-      body: ['Cairo', 'sans-serif'],
     },
     extend: {
       colors: {
