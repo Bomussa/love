@@ -42,17 +42,11 @@ class ZAAEngine {
     this.isProcessing = true;
     
     try {
-      // 1. أتمتة تمرير الدور (Auto-Advance)
-      await this.automateQueueAdvance();
+      // ملاحظة: تم نقل automateQueueAdvance و automateDailyPINS و automateNotifications إلى Backend
+      // الواجهة الأمامية تعتمد الآن على API calls فقط
       
-      // 2. أتمتة المسارات الطبية (Auto-Transition)
+      // 1. أتمتة المسارات الطبية (Auto-Transition)
       await this.automatePathTransitions();
-      
-      // 3. أتمتة الـ PIN اليومي (Daily PIN Sync)
-      await this.automateDailyPINS();
-      
-      // 4. أتمتة الإشعارات (Auto-Notifications)
-      await this.automateNotifications();
 
     } catch (error) {
       console.error('❌ ZAA Engine Cycle Error:', error);
@@ -62,38 +56,12 @@ class ZAAEngine {
   }
 
   /**
-   * ⏱️ أتمتة تمرير الدور بناءً على الوقت
+   * ⏱️ أتمتة تمرير الدور - تم نقلها إلى Backend
+   * DEPRECATED: هذه الدالة تم تعطيلها. استخدم API /api/v1/queue/call-next بدلاً منها
    */
   async automateQueueAdvance() {
-    const { data: activeSessions } = await supabase
-      .from('unified_queue')
-      .select('*, clinics(exam_duration)')
-      .eq('queue_date', this.today)
-      .in('status', ['called', 'serving']);
-
-    if (!activeSessions) return;
-
-    const now = new Date();
-    for (const session of activeSessions) {
-      const startTime = new Date(session.called_at || session.entered_at);
-      const duration = session.clinics?.exam_duration || 5;
-      const elapsed = (now - startTime) / 60000;
-
-      if (elapsed >= duration) {
-        console.log(`⏱️ ZAA: Auto-advancing patient ${session.patient_id} in clinic ${session.clinic_id}`);
-        await supabase
-          .from('unified_queue')
-          .update({ 
-            status: 'completed', 
-            completed_at: new Date().toISOString(),
-            metadata: { ...session.metadata, auto_completed: true, reason: 'timeout' }
-          })
-          .eq('id', session.id);
-        
-        // استدعاء المراجع التالي تلقائياً
-        await this.callNextPatient(session.clinic_id);
-      }
-    }
+    console.warn('⚠️ automateQueueAdvance() is deprecated. Use backend API instead.');
+    return;
   }
 
   /**
@@ -142,61 +110,21 @@ class ZAAEngine {
   }
 
   /**
-   * 🔑 أتمتة الـ PIN اليومي (توليد وتحديث تلقائي)
+   * 🔑 أتمتة الـ PIN اليومي - تم نقلها إلى Backend
+   * DEPRECATED: هذه الدالة تم تعطيلها. استخدم pin-daily-sync.js بدلاً منها
    */
   async automateDailyPINS() {
-    const { data: clinics } = await supabase.from('clinics').select('id');
-    if (!clinics) return;
-
-    for (const clinic of clinics) {
-      const { data: currentPin } = await supabase
-        .from('clinic_pins')
-        .select('*')
-        .eq('clinic_id', clinic.id)
-        .eq('pin_date', this.today)
-        .single();
-
-      if (!currentPin) {
-        const newPin = Math.floor(1000 + Math.random() * 9000).toString();
-        console.log(`🔑 ZAA: Auto-generating PIN ${newPin} for clinic ${clinic.id}`);
-        await supabase.from('clinic_pins').insert([{
-          clinic_id: clinic.id,
-          pin_code: newPin,
-          pin_date: this.today,
-          status: 'active'
-        }]);
-      }
-    }
+    console.warn('⚠️ automateDailyPINS() is deprecated. Use pin-daily-sync.js instead.');
+    return;
   }
 
   /**
-   * 🔔 أتمتة الإشعارات (إرسال تنبيهات الانتقال والاستدعاء)
+   * 🔔 أتمتة الإشعارات - تم نقلها إلى Backend
+   * DEPRECATED: هذه الدالة تم تعطيلها. استخدم notification-engine.js بدلاً منها
    */
   async automateNotifications() {
-    // جلب آخر الحركات غير المبلغ عنها
-    const { data: unnotified } = await supabase
-      .from('unified_queue')
-      .select('*')
-      .eq('queue_date', this.today)
-      .eq('status', 'called')
-      .is('notified_at', null);
-
-    if (!unnotified) return;
-
-    for (const item of unnotified) {
-      console.log(`🔔 ZAA: Sending auto-notification for patient ${item.patient_id}`);
-      // محاكاة إرسال إشعار (يمكن ربطه بـ WhatsApp API أو Push Notifications)
-      await supabase.from('activity_logs').insert([{
-        type: 'notification_sent',
-        patient_id: item.patient_id,
-        message: `يرجى التوجه إلى العيادة رقم ${item.clinic_id}، دورك الآن.`
-      }]);
-
-      await supabase
-        .from('unified_queue')
-        .update({ notified_at: new Date().toISOString() })
-        .eq('id', item.id);
-    }
+    console.warn('⚠️ automateNotifications() is deprecated. Use notification-engine.js instead.');
+    return;
   }
 
   /**

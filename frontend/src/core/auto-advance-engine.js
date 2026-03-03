@@ -16,22 +16,20 @@ class AutoAdvanceEngine {
 
   /**
    * بدء مراقبة الطوابير
+   * DEPRECATED: تم نقل هذه الوظيفة إلى Backend
    */
   start() {
-    if (this.timer) return;
-    console.log('⏱️ Auto-Advance Engine: Active & Monitoring');
-    this.timer = setInterval(() => this.checkQueues(), this.checkInterval);
-    this.checkQueues(); // فحص فوري عند البدء
+    console.warn('⚠️ Auto-Advance Engine is deprecated. Queue advancement is now handled by backend API.');
+    return;
   }
 
   /**
    * إيقاف المراقبة
+   * DEPRECATED: تم نقل هذه الوظيفة إلى Backend
    */
   stop() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    console.warn('⚠️ Auto-Advance Engine stop() is deprecated.');
+    return;
   }
 
   /**

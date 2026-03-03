@@ -99,6 +99,10 @@ class RealtimeNotificationEngine {
     this.subscribers = new Map(); // patientId -> Set<callback>
     this.adminSubscribers = new Set();
 
+    // ✅ إضافة: آلية Deduplication لمنع تكرار الإشعارات
+    this.recentNotifications = new Map(); // patientId -> Set<notificationHash>
+    this.deduplicationWindow = 5000; // 5 ثوانٍ - نافذة عدم التكرار
+
     // ✅ إصلاح: تحميل الإشعارات المحفوظة فوراً عند التهيئة
     this.loadAllNotifications();
 
