@@ -92,7 +92,7 @@
     "@vitejs/plugin-legacy": "^7.2.1",
     "autoprefixer": "^10.4.20",
     "eslint": "9.39.2",
-    "eslint-plugin-import": "2.31.0",
+    "eslint-plugin-import": "2.32.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.4",
     "globals": "15.15.0",
