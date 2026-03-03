@@ -1,4 +1,4 @@
-// Build timestamp: 2026-02-26 - Performance Optimized
+// Build timestamp: 2026-03-03 - Performance Optimized v2
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
