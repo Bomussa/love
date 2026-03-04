@@ -8,11 +8,21 @@ import './responsive-fixes.css'
 import { initSelfHealingSystem } from './lib/self-healing'
 import SelfHealingErrorBoundary from './components/SelfHealingErrorBoundary.jsx'
 
-try {
-  initSelfHealingSystem()
-} catch (e) {
-  // Never block boot; log only
-  console.error('[SelfHealing] initSelfHealingSystem failed:', e)
+// Defer non-critical initialization to improve TTI
+if (typeof window !== 'undefined') {
+  const init = () => {
+    try {
+      initSelfHealingSystem()
+    } catch (e) {
+      console.error('[SelfHealing] initSelfHealingSystem failed:', e)
+    }
+  }
+  
+  if (window.requestIdleCallback) {
+    window.requestIdleCallback(init)
+  } else {
+    setTimeout(init, 2000)
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
