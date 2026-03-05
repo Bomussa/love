@@ -101,3 +101,112 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: |
+  Full QA audit and fix of MMCMMS project (love frontend + love-api backend).
+  Fix build failures, PIN consistency (K1), settings drift (K2), API path canonicality (K3), 
+  hardcoded secrets (K4), and dead code (K5). Project deployed on mmc-mms.com via Vercel.
+
+## backend:
+  - task: "Backend API health endpoint"
+    implemented: true
+    working: true
+    file: "love-backend/api/v1.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "K4 fix - removed hardcoded secrets, health endpoint now reports env status"
+
+  - task: "Backend PIN generation"
+    implemented: true
+    working: true
+    file: "love-backend/api/v1.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "K4 fix - PIN_SECRET no longer has hardcoded default, warns when missing"
+
+  - task: "Backend vercel.json routing"
+    implemented: true
+    working: true
+    file: "love-backend/vercel.json"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "K3 fix - consolidated rewrites, /api/v1 redirect to health"
+
+## frontend:
+  - task: "Frontend build (vite)"
+    implemented: true
+    working: true
+    file: "love-frontend/frontend/src/components/AdminDashboardV2.jsx"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed orphaned duplicate code (await outside async) causing build failure"
+
+  - task: "Admin login (Bomussa/14490)"
+    implemented: true
+    working: true
+    file: "love-frontend/frontend/src/lib/auth-service.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Verified via screenshot - admin dashboard loads successfully after login"
+
+  - task: "PIN Management page"
+    implemented: true
+    working: true
+    file: "love-frontend/frontend/src/components/AdminDashboardV2.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "K1 fix - deterministic daily PIN generation (HMAC-SHA256), page loads correctly"
+
+  - task: "Settings API (no duplicates)"
+    implemented: true
+    working: true
+    file: "love-frontend/frontend/src/lib/api-unified.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "K2 fix - renamed duplicate getSettings to getAllSettings, updated PatientPage caller"
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Admin dashboard navigation"
+    - "PIN management CRUD"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+  - agent: "main"
+    message: "Fixed critical build failure and K1-K4 issues. Build passes. Admin login works. PIN management page loads. Both repos pushed to GitHub."
