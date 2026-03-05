@@ -20,7 +20,7 @@ export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLangua
   };
   
   return (
-    <div className="h-screen max-h-screen flex items-center justify-center p-4 overflow-hidden" data-test="exam-selection-page" style={{overflowX: "hidden"}}>
+    <div className="h-screen max-h-screen flex items-center justify-center p-4 overflow-hidden" data-test="exam-selection-page" style={{overflowY: "auto", overflowX: "hidden"}}>
       <div className="w-full max-w-4xl space-y-8">
         {/* Language Selector */}
         <div className="absolute top-4 left-4">
@@ -49,17 +49,17 @@ export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLangua
         </div>
 
         {/* Logo and Title */}
-        <div className="text-center space-y-4">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-32 h-32 rounded-full shadow-lg border-2 border-[#C9A54C]/30" />
+        <div className="text-center space-y-2">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
 
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-xl font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xl text-[#C9A54C] font-semibold mt-2">
+            <p className="text-sm text-[#C9A54C] font-semibold mt-1">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
-            <p className="text-gray-400 mt-2">
+            <p className="text-gray-400 text-xs mt-1">
               {language === 'ar'
                 ? 'المركز الطبي التخصصي العسكري - العطار'
                 : 'Military Specialized Medical Center – Al-Attar'}
@@ -71,7 +71,7 @@ export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLangua
         <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
           <CardContent className="p-8">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-2">{t('selectExamType', language)}</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">{t('selectExamType', language)}</h2>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

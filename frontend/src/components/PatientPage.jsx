@@ -852,7 +852,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page">
+    <div className="h-screen max-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page" style={{overflowY: "auto", overflowX: "hidden"}}>
       {/* ZFDBanner removed - notifications now handled by NotificationSystem */}
 
       {/* التنبيهات المباشرة من الإدارة */}
@@ -901,13 +901,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </Button>
         </div>
 
-         <div className="text-center space-y-2 pt-8 sm:pt-4">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 sm:w-24 sm:h-24 object-contain" />
+         <div className="text-center space-y-2 pt-4">
+          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <div className="space-y-0.5">
-            <h1 className="text-lg sm:text-xl font-bold text-white">
+            <h1 className="text-xl font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
             </h1>
-            <p className="text-xs text-[#C9A54C] font-semibold">
+            <p className="text-sm text-[#C9A54C] font-semibold">
               {language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}
             </p>
             <p className="text-gray-400 text-xs">
@@ -919,18 +919,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         </div>
 
         <Card className="bg-gray-800/50 border-gray-700 shadow-xl">
-          <CardHeader className="text-center pb-3 pt-4 sm:pt-5">
-            <CardTitle className="text-white text-xl sm:text-2xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
-            <p className="text-gray-400 text-sm sm:text-base mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
+          <CardHeader className="text-center pb-3 pt-4">
+            <CardTitle className="text-white text-xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
+            <p className="text-gray-400 text-sm mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 pb-4 sm:pb-5">
+          <CardContent className="space-y-3 px-3 pb-4">
             {stations.map((station, index) => (
               <Card key={station.id} className={`border transition-all duration-200 ${station.status === 'ready' ? 'bg-gray-700/60 border-green-500/30 shadow-md' : station.status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-65' : 'bg-gray-700/40 border-gray-600/60'}`}>
                 <CardContent className="p-3.5 sm:p-5">
                   {/* رأس البطاقة */}
-                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
                         station.status === 'ready' ? 'bg-green-500/20' :
                         station.status === 'completed' ? 'bg-green-500/15' :
                         'bg-gray-600/50'
@@ -944,7 +944,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         )}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-white text-base sm:text-lg font-bold leading-tight">
+                        <h3 className="text-white text-base font-bold leading-tight">
                           {language === 'ar' ? station.nameAr : station.name}
                         </h3>
                         <p className="text-gray-400 text-sm mt-0.5">
@@ -972,15 +972,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   )}
 
                   {station.status !== 'completed' && (
-                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-center" data-test="queue-info">
-                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-yellow-500/15 rounded-xl sm:rounded-2xl border-2 border-yellow-500/40">
-                        <div className="text-4xl sm:text-5xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">
+                    <div className="grid grid-cols-2 gap-2.5 text-center" data-test="queue-info">
+                      <div className="py-4 px-2 bg-yellow-500/15 rounded-xl border-2 border-yellow-500/40">
+                        <div className="text-4xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">
                           {typeof station.yourNumber === 'number' ? station.yourNumber : '—'}
                         </div>
                         <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
                       </div>
-                      <div className="py-4 sm:py-5 px-2 sm:px-3 bg-gray-700/50 rounded-xl sm:rounded-2xl border border-gray-500/50">
-                        <div className="text-4xl sm:text-5xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">
+                      <div className="py-4 px-2 bg-gray-700/50 rounded-xl border border-gray-500/50">
+                        <div className="text-4xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">
                           {station.ahead || 0}
                         </div>
                         <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
