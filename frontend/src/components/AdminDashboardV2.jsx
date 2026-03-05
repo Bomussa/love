@@ -5010,6 +5010,159 @@ const DatabaseManagement = ({ language, t }) => {
   );
 };
 
+// ============================================================
+// Smart System Panel Component
+// ============================================================
+const SmartSystemPanel = ({ language, t }) => {
+  const [qaRuns, setQaRuns] = useState([]);
+  const [findings, setFindings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data: runs } = await supabase.from('qa_runs').select('*').order('created_at', { ascending: false }).limit(10);
+      const { data: fnd } = await supabase.from('qa_findings').select('*').order('created_at', { ascending: false }).limit(20);
+      setQaRuns(runs || []);
+      setFindings(fnd || []);
+    } catch (e) {
+      console.error('Error loading QA data:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startDeepQA = async () => {
+    setRunning(true);
+    try {
+      const response = await fetch('/api/v1/qa/deep_run');
+      const result = await response.json();
+      if (result.success) {
+        toast.success(t('اكتمل الفحص العميق بنجاح', 'Deep QA completed successfully'));
+        loadData();
+      }
+    } catch (e) {
+      toast.error(t('فشل تشغيل الفحص', 'QA Run failed'));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const executeRepair = async (findingId) => {
+    try {
+      const response = await fetch('/api/v1/repair/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success(t('تم الإصلاح بنجاح', 'Repair successful'));
+        loadData();
+      }
+    } catch (e) {
+      toast.error(t('فشل الإصلاح', 'Repair failed'));
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Zap className="text-indigo-400" /> {t('نظام المراقبة والإصلاح الذاتي', 'Smart QA & Self-Healing')}
+          </h2>
+          <p className="text-slate-400">{t('مراقبة حية، تشخيص أعطال، وإصلاح تلقائي', 'Live monitoring, diagnostics, and auto-repair')}</p>
+        </div>
+        <button 
+          onClick={startDeepQA} 
+          disabled={running}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${running ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}
+        >
+          {running ? <RefreshCw className="animate-spin" /> : <Play />}
+          {t('تشغيل فحص عميق الآن', 'Run Deep QA Now')}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Runs */}
+        <div className="lg:col-span-1 bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <History size={18} className="text-indigo-400" /> {t('آخر عمليات الفحص', 'Recent Runs')}
+          </h3>
+          <div className="space-y-3">
+            {qaRuns.map(run => (
+              <div key={run.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">
+                    {new Date(run.created_at).toLocaleTimeString(language === 'ar' ? 'ar-EG' : 'en-US')}
+                  </div>
+                  <div className="text-xs text-slate-400">{new Date(run.created_at).toLocaleDateString()}</div>
+                </div>
+                <div className={`px-2 py-1 rounded-lg text-xs font-bold ${run.ok ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {run.ok ? t('سليم', 'Healthy') : t('به مشاكل', 'Issues')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Findings & Auto-Repair */}
+        <div className="lg:col-span-2 bg-slate-800/50 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-amber-400" /> {t('المشاكل المكتشفة والإصلاحات', 'Findings & Repairs')}
+          </h3>
+          <div className="space-y-4">
+            {findings.length === 0 && (
+              <div className="text-center py-10 text-slate-500 italic">
+                {t('لا توجد مشاكل حالية، النظام يعمل بكفاءة 100%', 'No issues found, system running at 100%')}
+              </div>
+            )}
+            {findings.map(finding => (
+              <div key={finding.id} className="p-4 bg-white/5 border border-white/5 rounded-xl flex flex-col md:flex-row justify-between gap-4">
+                <div className="flex gap-4">
+                  <div className={`p-3 rounded-xl h-fit ${finding.severity === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${finding.severity === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {finding.severity}
+                      </span>
+                      <span className="text-slate-400 text-xs">{finding.type}</span>
+                    </div>
+                    <p className="text-white font-medium mt-1">{finding.description}</p>
+                    <div className="text-xs text-slate-500 mt-1">{new Date(finding.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {finding.is_resolved ? (
+                    <span className="flex items-center gap-1 text-green-400 text-sm font-bold bg-green-500/10 px-3 py-1.5 rounded-lg">
+                      <CheckCircle size={16} /> {t('تم الإصلاح', 'Resolved')}
+                    </span>
+                  ) : (
+                    <button 
+                      onClick={() => executeRepair(finding.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg text-sm font-bold transition-all"
+                    >
+                      <Zap size={16} /> {t('إصلاح تلقائي', 'Auto Repair')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // المكون الرئيسي
 export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -5163,9 +5316,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
     { id: 'clinics', icon: Activity, label: t('العيادات', 'Clinics') },
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
-    { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') },
-    { id: 'users', icon: UserCog, label: t('إدارة المستخدمين', 'Users') },
-    { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
+    { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') }    { id: 'users', icon: UserCog, label: t('إدارة المستخدمين', 'Users') },
+    { id: 'smart_system', icon: Zap, label: t('النظام الذكي', 'Smart System') },
+  ];  { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
     { id: 'backup', icon: Database, label: t('النسخ والتصدير', 'Backup & Export') },
     { id: 'offline', icon: Wifi, label: t('العمل أوفلاين', 'Offline Mode') },
     { id: 'content', icon: Type, label: t('إدارة المحتوى', 'Content Management') },
@@ -5491,7 +5644,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
-        {activeTab === 'smart' && <SmartDiagnosticsPanel language={language} t={t} />}
+        {activeTab === 'smart_system' && <SmartSystemPanel language={language} t={t} />}
         {activeTab === 'files' && <FilesCenter language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
