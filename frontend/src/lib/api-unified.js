@@ -36,6 +36,52 @@ function getQueueSettings() {
 }
 
 const api = {
+  // --- Admin Login ---
+  /**
+   * تسجيل دخول المدير عبر الـ API أو مباشرة من Supabase
+   * يدعم المستخدمين في جدول admin_users
+   */
+  async adminLogin(username, password) {
+    try {
+      // بحث في جدول admin_users
+      const { data: users, error } = await supabase
+        .from('admin_users')
+        .select('id, username, password_hash, role, is_active, permissions')
+        .ilike('username', username);
+      
+      if (error || !users || users.length === 0) {
+        return { success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+      }
+      
+      const user = users[0];
+      if (!user.is_active) {
+        return { success: false, message: 'الحساب معطل' };
+      }
+      
+      // مطابقة كلمة المرور - مع salt (نفس طريقة UsersManagement)
+      const encoder = new TextEncoder();
+      const data2 = encoder.encode(password + 'mmc-salt-2026');
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data2);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      if (user.password_hash === passwordHash || user.password_hash === password) {
+        return { 
+          success: true, 
+          id: user.id, 
+          username: user.username, 
+          role: user.role || 'ADMIN',
+          permissions: user.permissions || []
+        };
+      }
+      
+      return { success: false, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+    } catch (error) {
+      console.error('[api-unified] adminLogin error:', error);
+      return { success: false, message: 'خطأ في الاتصال' };
+    }
+  },
+
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {

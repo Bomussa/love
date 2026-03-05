@@ -60,7 +60,7 @@ class NetworkStatusMonitor {
   async checkConnectionQuality() {
     try {
       const startTime = performance.now();
-      const response = await fetch('/api/health', {
+      const response = await fetch('/api/v1/health', {
         method: 'HEAD',
         cache: 'no-cache',
       });
