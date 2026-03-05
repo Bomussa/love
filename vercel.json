@@ -4,6 +4,19 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.mmc-mms.com"
+        }
+      ],
+      "destination": "https://mmc-mms.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/clinic/(.*)", "destination": "/index.html" },
@@ -15,7 +28,8 @@
       "source": "/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "X-Automation-Level", "value": "98.5-Resilient" }
+        { "key": "X-Automation-Level", "value": "98.5-Resilient" },
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' https://vercel.com https://*.vercel.com https://*.vercel.app;" }
       ]
     }
   ]
