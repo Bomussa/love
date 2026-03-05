@@ -40,7 +40,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   useEffect(() => {
     const fetchSystemSettings = async () => {
       try {
-        const response = await api.getSettings()
+        const response = await api.getAllSettings()
         if (response && response.settings) {
           setSystemSettings({
             pin_system_enabled: response.settings.pin_system_enabled !== 'false',

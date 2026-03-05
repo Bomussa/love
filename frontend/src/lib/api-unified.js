@@ -1002,8 +1002,9 @@ const api = {
 
   /**
    * جلب جميع الإعدادات من جدول settings
+   * ✅ K2 Fix: Renamed to getAllSettings to resolve duplicate with theme-specific getSettings
    */
-  async getSettings() {
+  async getAllSettings() {
     try {
       const { data, error } = await supabase
         .from('settings')
@@ -1021,7 +1022,7 @@ const api = {
 
       return { success: true, settings };
     } catch (error) {
-      console.error('Get Settings Error:', error);
+      console.error('Get All Settings Error:', error);
       return { success: false, settings: {} };
     }
   },

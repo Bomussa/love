@@ -715,19 +715,33 @@ const PINManagement = ({ language, t }) => {
     }
   };
 
-  const generatePin = () => {
-    // PIN من رقمين فقط (10-99)
-    return Math.floor(10 + Math.random() * 90).toString();
-  };
-
-  const generateUniquePin = (existingPins) => {
-    let pin;
-    let attempts = 0;
-    do {
-      pin = generatePin();
-      attempts++;
-    } while (existingPins.includes(pin) && attempts < 100);
-    return pin;
+  // ✅ K1 Fix: Deterministic daily PIN per clinic (matches backend HMAC-SHA256 algorithm)
+  const generateDailyPIN = async (clinicId) => {
+    const today = new Date().toISOString().split('T')[0];
+    const secret = 'mmc-mms-secret-2026';
+    
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const msgData = encoder.encode(`${clinicId}-${today}`);
+    
+    try {
+      const key = await crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const signature = await crypto.subtle.sign('HMAC', key, msgData);
+      const hashArray = Array.from(new Uint8Array(signature));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return (parseInt(hashHex.substring(0, 8), 16) % 90 + 10).toString();
+    } catch (e) {
+      // Fallback: simple deterministic hash
+      const input = `${clinicId}-${today}-${secret}`;
+      let hash = 0;
+      for (let i = 0; i < input.length; i++) {
+        hash = ((hash << 5) - hash) + input.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return ((Math.abs(hash) % 90) + 10).toString();
+    }
   };
 
   const addPin = async () => {
@@ -737,9 +751,9 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      // ✅ استخدام الأعمدة الصحيحة من جدول pins
+      // ✅ K1 Fix: Use deterministic daily PIN (single source of truth: backend algorithm)
       const existingPins = pins.filter(p => p.clinic_id === newPin.clinic_id).map(p => p.pin);
-      const pinCode = newPin.pin_code || generateUniquePin(existingPins);
+      const pinCode = newPin.pin_code || await generateDailyPIN(newPin.clinic_id);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
       if (existingPins.includes(pinCode)) {
@@ -790,13 +804,18 @@ const PINManagement = ({ language, t }) => {
       const newPins = [];
       for (const clinic of clinics) {
         const existingPins = existingPinsByClinic[clinic.id] || [];
-        const pinCode = generateUniquePin(existingPins);
+        // ✅ K1 Fix: Use deterministic daily PIN per clinic
+        const pinCode = await generateDailyPIN(clinic.id);
+        
+        // Skip if this clinic already has today's PIN
+        if (existingPins.includes(pinCode)) continue;
+        
         newPins.push({
           pin: pinCode,
-          clinic_id: clinic.id,  // ✅ clinic_id بدلاً من clinic_code
+          clinic_id: clinic.id,
           created_at: new Date().toISOString(),
-          valid_until: validUntil.toISOString(),  // ✅ valid_until بدلاً من expires_at
-          used_at: null  // ✅ used_at بدلاً من is_active
+          valid_until: validUntil.toISOString(),
+          used_at: null
         });
       }
       
