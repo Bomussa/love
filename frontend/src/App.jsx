@@ -20,6 +20,9 @@ import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
 import { autoRepairSystem } from './lib/auto-repair-system'
 import { functionTableMonitor } from './lib/function-table-monitor'
 import { elementMonitor } from './lib/element-monitor'
+import { realtimeSyncManager } from './lib/realtime-sync-manager'
+import { performanceOptimizer } from './lib/performance-optimizer'
+import { instantUpdateBroadcaster } from './lib/instant-update-broadcaster'
 
 // Lazy Loading للمكونات الثقيلة
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
