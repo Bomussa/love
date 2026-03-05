@@ -52,6 +52,7 @@ import AdvancedNotificationsManager from './AdvancedNotificationsManager';
 import FeatureControlPanel from './FeatureControlPanel';
 import APIMonitor from './APIMonitor';
 import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
+import QARepairPanel from './QARepairPanel';
 import FilesCenter from './FilesCenter';
 import { supabase } from '../lib/supabase-client';
 
@@ -5318,6 +5319,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
     { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') },
     { id: 'users', icon: UserCog, label: t('إدارة المستخدمين', 'Users') },
+    { id: 'qa_repair', icon: Zap, label: t('الفحص والإصلاح', 'QA & Repair') },
     { id: 'smart_system', icon: Zap, label: t('النظام الذكي', 'Smart System') },
     { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
     { id: 'backup', icon: Database, label: t('النسخ والتصدير', 'Backup & Export') },
@@ -5644,6 +5646,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
+        {activeTab === 'qa_repair' && <QARepairPanel language={language} t={t} />}
         {activeTab === 'smart_system' && <SmartDiagnosticsPanel language={language} t={t} />}
         {activeTab === 'files' && <FilesCenter language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
