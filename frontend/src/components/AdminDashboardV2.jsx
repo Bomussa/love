@@ -3485,6 +3485,32 @@ const UsersManagement = ({ language, t }) => {
 
   const addUser = async () => {
     try {
+      // ✅ Validation
+      if (!newUser.username || newUser.username.length < 3) {
+        alert(t('اسم المستخدم يجب أن يكون 3 أحرف على الأقل', 'Username must be at least 3 characters'));
+        return;
+      }
+      
+      if (!newUser.password || newUser.password.length < 8) {
+        alert(t('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'Password must be at least 8 characters'));
+        return;
+      }
+      
+      // ✅ التحقق من عدم تكرار اسم المستخدم
+      const { data: existingUser } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('username', newUser.username)
+        .maybeSingle();
+      
+      if (existingUser) {
+        alert(t('اسم المستخدم موجود بالفعل', 'Username already exists'));
+        return;
+      }
+      
+      // ✅ تشفير كلمة المرور (simple hash - يفضل استخدام bcrypt في backend)
+      const passwordHash = await hashPassword(newUser.password);
+      
       // السوبر أدمن له جميع الصلاحيات
       const permissions = newUser.role === 'SUPER_ADMIN' 
         ? allPermissions.map(p => p.id) 
@@ -3494,7 +3520,7 @@ const UsersManagement = ({ language, t }) => {
         .from('admin_users')
         .insert([{
           username: newUser.username,
-          password_hash: newUser.password,
+          password_hash: passwordHash,  // ✅ مشفرة الآن
           role: newUser.role,
           is_active: true,
           permissions: permissions,
@@ -3506,11 +3532,25 @@ const UsersManagement = ({ language, t }) => {
         setShowAddModal(false);
         setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
         loadUsers();
-        alert(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+        alert(t('✅ تم إضافة المستخدم بنجاح', 'User added successfully'));
+        await logActivity('user_created', `تم إضافة مستخدم جديد: ${newUser.username}`);
+      } else {
+        alert(t('خطأ في إضافة المستخدم: ' + error.message, 'Error adding user: ' + error.message));
       }
     } catch (e) {
       console.error('Error adding user:', e);
+      alert(t('حدث خطأ في إضافة المستخدم', 'Error adding user'));
     }
+  };
+  
+  // ✅ دالة تشفير بسيطة (يفضل استخدام bcrypt في backend)
+  const hashPassword = async (password) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'mmc-salt-2026');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
   };
 
   const updateUserPermissions = async (userId, permissions) => {
