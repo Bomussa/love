@@ -700,10 +700,11 @@ const PINManagement = ({ language, t }) => {
   const loadPins = async () => {
     try {
       setLoading(true);
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
         .select('*')
-        .order('clinic_code', { ascending: true })
+        .order('clinic_id', { ascending: true })  // ✅ clinic_id بدلاً من clinic_code
         .order('created_at', { ascending: false });
       
       if (!error && data) setPins(data);
@@ -736,7 +737,8 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      // ✅ استخدام الأعمدة الصحيحة من جدول pins
+      const existingPins = pins.filter(p => p.clinic_id === newPin.clinic_id).map(p => p.pin);
       const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
@@ -745,15 +747,16 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
+      // ✅ استخدام البنية الصحيحة لجدول pins
+      const validUntil = new Date();
+      validUntil.setHours(23, 59, 59, 999);
+      
       const { error } = await supabase.from('pins').insert({
         pin: pinCode,
-        clinic_code: newPin.clinic_id,
-        is_active: true,
-        generated_at: new Date().toISOString(),
-        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        clinic_id: newPin.clinic_id,  // ✅ clinic_id بدلاً من clinic_code
         created_at: new Date().toISOString(),
-        max_uses: newPin.max_uses || 100,
-        used_count: 0
+        valid_until: validUntil.toISOString(),  // ✅ valid_until بدلاً من expires_at
+        used_at: null  // ✅ used_at بدلاً من is_active
       });
       
       if (!error) {
@@ -763,10 +766,11 @@ const PINManagement = ({ language, t }) => {
         setShowAddForm(false);
         setNewPin({ pin_code: '', clinic_id: '', max_uses: 100 });
       } else {
-        showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN'));
+        showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN') + ': ' + error.message);
       }
     } catch (e) {
       console.error('Error adding pin:', e);
+      showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN'));
     }
   };
 
@@ -776,9 +780,12 @@ const PINManagement = ({ language, t }) => {
       setGeneratingBulk(true);
       const existingPinsByClinic = {};
       pins.forEach(p => {
-        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
-        existingPinsByClinic[p.clinic_code].push(p.pin);
+        if (!existingPinsByClinic[p.clinic_id]) existingPinsByClinic[p.clinic_id] = [];
+        existingPinsByClinic[p.clinic_id].push(p.pin);
       });
+      
+      const validUntil = new Date();
+      validUntil.setHours(23, 59, 59, 999);
       
       const newPins = [];
       for (const clinic of clinics) {
@@ -786,17 +793,30 @@ const PINManagement = ({ language, t }) => {
         const pinCode = generateUniquePin(existingPins);
         newPins.push({
           pin: pinCode,
-          clinic_code: clinic.id,
-          is_active: true,
-          generated_at: new Date().toISOString(),
-          expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+          clinic_id: clinic.id,  // ✅ clinic_id بدلاً من clinic_code
           created_at: new Date().toISOString(),
-          max_uses: 100,
-          used_count: 0
+          valid_until: validUntil.toISOString(),  // ✅ valid_until بدلاً من expires_at
+          used_at: null  // ✅ used_at بدلاً من is_active
         });
       }
       
       const { error } = await supabase.from('pins').insert(newPins);
+      
+      if (!error) {
+        showSuccessToast(t(`تم توليد ${newPins.length} رقم سري لجميع العيادات`, `Generated ${newPins.length} PINs for all clinics`));
+        await logActivity('bulk_pins_generated', `تم توليد أرقام سرية لـ ${newPins.length} عيادة`);
+        loadPins();
+        setShowBulkGenerate(false);
+      } else {
+        showErrorToast(t('حدث خطأ أثناء التوليد الجماعي', 'Error in bulk generation') + ': ' + error.message);
+      }
+    } catch (e) {
+      console.error('Error generating bulk pins:', e);
+      showErrorToast(t('حدث خطأ أثناء التوليد الجماعي', 'Error in bulk generation'));
+    } finally {
+      setGeneratingBulk(false);
+    }
+  };
       
       if (!error) {
         showSuccessToast(t(`تم توليد ${newPins.length} رقم سري`, `Generated ${newPins.length} PINs`));
