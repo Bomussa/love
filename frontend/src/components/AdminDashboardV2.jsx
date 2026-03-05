@@ -9,7 +9,7 @@ import {
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
   UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
-  UserPlus, Zap
+  UserPlus, Zap, FolderOpen
 } from 'lucide-react';
 
 // دالة عرض شعار النجاح
@@ -51,6 +51,8 @@ import NotificationsManagementV2 from './NotificationsManagementV2';
 import AdvancedNotificationsManager from './AdvancedNotificationsManager';
 import FeatureControlPanel from './FeatureControlPanel';
 import APIMonitor from './APIMonitor';
+import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
+import FilesCenter from './FilesCenter';
 import { supabase } from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
@@ -5171,6 +5173,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
     { id: 'features', icon: Settings, label: t('التحكم بالميزات', 'Feature Control') },
     { id: 'apimonitor', icon: Activity, label: t('مراقبة API', 'API Monitor') },
+    { id: 'smart', icon: Zap, label: t('النظام الذكي', 'Smart System') },
+    { id: 'files', icon: FolderOpen, label: t('مركز الملفات', 'Files Center') },
   ];
 
   return (
@@ -5487,6 +5491,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
+        {activeTab === 'smart' && <SmartDiagnosticsPanel language={language} t={t} />}
+        {activeTab === 'files' && <FilesCenter language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
       <Toaster />

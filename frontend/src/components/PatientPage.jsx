@@ -416,11 +416,52 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       }
     }, 30000);
 
+    // ✅ Real-time subscription for queue status changes (from Admin)
+    const statusChannel = supabase
+      .channel(`queue_status_${patientData.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'unified_queue',
+        filter: `patient_id=eq.${patientData.id}`
+      }, (payload) => {
+        const updatedEntry = payload.new;
+        if (updatedEntry && (updatedEntry.status === 'called' || updatedEntry.status === 'completed' || updatedEntry.status === 'cancelled')) {
+          // Trigger manual update to sync UI
+          updateQueueStatus();
+          
+          // If status is completed or cancelled, we might need to refresh the whole pathway
+          if (updatedEntry.status === 'completed' || updatedEntry.status === 'cancelled') {
+             // We can either reload the page or manually update the stations state
+             // For better UX, we'll manually update the stations state in the next tick
+             setTimeout(() => {
+                setStations(prev => {
+                  const currentIdx = prev.findIndex(s => s.id === updatedEntry.clinic_id);
+                  if (currentIdx === -1) return prev;
+                  
+                  return prev.map((s, i) => {
+                    if (i === currentIdx) {
+                      return { ...s, status: updatedEntry.status, isEntered: false };
+                    }
+                    // ✅ If the current one was completed, the next one (if any) should become ready
+                    if (updatedEntry.status === 'completed' && i === currentIdx + 1 && s.status === 'locked') {
+                      return { ...s, status: 'ready' };
+                    }
+                    return s;
+                  });
+                });
+             }, 500);
+          }
+        }
+      })
+      .subscribe();
+
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
       unsubscribeConnected();
       unsubscribeError();
       clearInterval(heartbeatInterval);
+      supabase.removeChannel(statusChannel);
     };
   }, [patientData?.id, language, stations.length]);
 
