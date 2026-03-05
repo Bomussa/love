@@ -939,11 +939,11 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
+          <div className="text-2xl font-bold text-green-400">{pins.filter(p => !p.used_at && new Date(p.valid_until) >= new Date()).length}</div>
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => new Date(p.valid_until) < new Date()).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
