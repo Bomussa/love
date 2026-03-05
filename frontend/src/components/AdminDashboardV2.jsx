@@ -817,20 +817,6 @@ const PINManagement = ({ language, t }) => {
       setGeneratingBulk(false);
     }
   };
-      
-      if (!error) {
-        showSuccessToast(t(`تم توليد ${newPins.length} رقم سري`, `Generated ${newPins.length} PINs`));
-        await logActivity('pins_bulk_generated', `تم توليد ${newPins.length} رقم سري لجميع العيادات`);
-        loadPins();
-      }
-    } catch (e) {
-      console.error('Error generating bulk pins:', e);
-      showErrorToast(t('حدث خطأ', 'Error occurred'));
-    } finally {
-      setGeneratingBulk(false);
-      setShowBulkGenerate(false);
-    }
-  };
 
   // حذف جميع الأرقام المنتهية الصلاحية
   const deleteExpiredPins = async () => {
