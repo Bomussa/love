@@ -5327,7 +5327,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
     { id: 'features', icon: Settings, label: t('التحكم بالميزات', 'Feature Control') },
     { id: 'apimonitor', icon: Activity, label: t('مراقبة API', 'API Monitor') },
-    { id: 'smart', icon: Zap, label: t('النظام الذكي', 'Smart System') },
     { id: 'files', icon: FolderOpen, label: t('مركز الملفات', 'Files Center') },
   ];
 
@@ -5645,7 +5644,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
-        {activeTab === 'smart_system' && <SmartSystemPanel language={language} t={t} />}
+        {activeTab === 'smart_system' && <SmartDiagnosticsPanel language={language} t={t} />}
         {activeTab === 'files' && <FilesCenter language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
