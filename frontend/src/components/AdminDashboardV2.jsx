@@ -839,30 +839,38 @@ const PINManagement = ({ language, t }) => {
       const { error, count } = await supabase
         .from('pins')
         .delete()
-        .lt('expires_at', now);
+        .lt('valid_until', now);  // ✅ valid_until بدلاً من expires_at
       
       if (!error) {
         showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
         loadPins();
+      } else {
+        showErrorToast(t('خطأ في الحذف', 'Delete error') + ': ' + error.message);
       }
     } catch (e) {
       console.error('Error deleting expired pins:', e);
+      showErrorToast(t('خطأ في الحذف', 'Delete error'));
     }
   };
 
-  const togglePinStatus = async (pinId, currentStatus) => {
+  const togglePinStatus = async (pinId, currentIsUsed) => {
     try {
+      // ✅ استخدام used_at بدلاً من is_active
+      const newValue = currentIsUsed ? null : new Date().toISOString();
       const { error } = await supabase
         .from('pins')
-        .update({ is_active: !currentStatus })
+        .update({ used_at: newValue })
         .eq('id', pinId);
       
       if (!error) {
-        showSuccessToast(t(!currentStatus ? 'تم التفعيل' : 'تم التعطيل', !currentStatus ? 'Activated' : 'Deactivated'));
+        showSuccessToast(t(!currentIsUsed ? 'تم وضع علامة كمستخدم' : 'تم إلغاء الاستخدام', !currentIsUsed ? 'Marked as used' : 'Unmarked'));
         loadPins();
+      } else {
+        showErrorToast(t('خطأ في التحديث', 'Update error') + ': ' + error.message);
       }
     } catch (e) {
       console.error('Error toggling pin:', e);
+      showErrorToast(t('خطأ في التحديث', 'Update error'));
     }
   };
 
@@ -1011,29 +1019,41 @@ const PINManagement = ({ language, t }) => {
             </tr>
           </thead>
           <tbody>
-            {pins.map(pin => (
+            {pins.map(pin => {
+              const isUsed = pin.used_at !== null;  // ✅ حساب الحالة من used_at
+              const isExpired = new Date(pin.valid_until) < new Date();  // ✅ حساب انتهاء الصلاحية
+              const clinicName = clinics.find(c => c.id === pin.clinic_id)?.name_ar || pin.clinic_id;  // ✅ clinic_id
+              
+              return (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
                 <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
-                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
+                <td className="p-4">{clinicName}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    isUsed ? 'bg-gray-500/20 text-gray-400' : 
+                    isExpired ? 'bg-red-500/20 text-red-400' : 
+                    'bg-green-500/20 text-green-400'
                   }`}>
-                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                    {isUsed ? t('مستخدم', 'Used') : 
+                     isExpired ? t('منتهي', 'Expired') : 
+                     t('نشط', 'Active')}
                   </span>
                 </td>
                 <td className="p-4 text-gray-400 text-sm">
                   {new Date(pin.created_at).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                  <br />
+                  <span className="text-xs">{t('ينتهي:', 'Expires:')} {new Date(pin.valid_until).toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}</span>
                 </td>
                 <td className="p-4">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
+                      onClick={() => togglePinStatus(pin.id, isUsed)}
                       className={`p-2 rounded-lg transition-all ${
-                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        isUsed ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
                       }`}
+                      title={isUsed ? t('إلغاء علامة الاستخدام', 'Unmark as used') : t('وضع علامة كمستخدم', 'Mark as used')}
                     >
-                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
+                      {isUsed ? <Play size={16} /> : <Pause size={16} />}
                     </button>
                     <button
                       onClick={() => deletePin(pin.id)}
@@ -1044,7 +1064,7 @@ const PINManagement = ({ language, t }) => {
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
         {pins.length === 0 && (
