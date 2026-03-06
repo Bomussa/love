@@ -131,8 +131,54 @@ async function proxyOnce(req, res, attempt = 0, chosenUpstream = null) {
   const reqId = req.headers['x-request-id'] || genId();
   const upstream = chosenUpstream || await pickUpstream();
   const url = new URL(upstream);
-  const target = new URL(req.url, upstream);
-  target.pathname = sanitizePath(target.pathname);
+
+  // Build target URL in a constrained way to avoid SSRF-style abuse.
+  // 1. Parse only the path/query from the incoming request, using a dummy origin.
+  const incomingUrl = new URL(req.url, 'http://localhost');
+  let incomingPath = sanitizePath(incomingUrl.pathname || '/');
+
+  // 2. Enforce that proxied requests stay under an allowed prefix.
+  //    Adjust ALLOWED_PREFIX to match your intended upstream API surface.
+  const ALLOWED_PREFIX = '/api/';
+  if (!(incomingPath === ALLOWED_PREFIX.slice(0, -1) || incomingPath.startsWith(ALLOWED_PREFIX))) {
+    res.statusCode = 400;
+    res.end('Invalid target path');
+    logLine({
+      ts: new Date().toISOString(),
+      req_id: reqId,
+      method: req.method,
+      path: incomingPath + incomingUrl.search,
+      status: 400,
+      dur_ms: Date.now() - started,
+      upstream,
+      retry: attempt,
+      err: 'blocked_path_prefix',
+    });
+    return;
+  }
+
+  // 3. Block simple traversal indicators to prevent escaping the allowed prefix.
+  if (incomingPath.includes('..') || incomingPath.includes('\\')) {
+    res.statusCode = 400;
+    res.end('Invalid target path');
+    logLine({
+      ts: new Date().toISOString(),
+      req_id: reqId,
+      method: req.method,
+      path: incomingPath + incomingUrl.search,
+      status: 400,
+      dur_ms: Date.now() - started,
+      upstream,
+      retry: attempt,
+      err: 'path_traversal_detected',
+    });
+    return;
+  }
+
+  // 4. Construct the final target URL from the trusted upstream origin plus validated path/query.
+  const target = new URL(upstream);
+  target.pathname = incomingPath;
+  target.search = incomingUrl.search;
 
   const { ok, ip } = await resolveAndCheck(url.hostname);
   if (!ok) {
