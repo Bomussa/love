@@ -18,6 +18,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   // States
   const [qaRuns, setQaRuns] = useState([]);
   const [findings, setFindings] = useState([]);
+  const [kpi, setKpi] = useState({ success_rate: 100, failure_rate: 0 });
   const [repairRuns, setRepairRuns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
@@ -107,15 +108,28 @@ const QARepairPanel = ({ language = 'ar', t }) => {
     setRunning(true);
     try {
       // محاولة تشغيل الفحص مع دعم الترميم الذاتي V3
-      const response = await fetch('/api/v1/qa/deep_run').catch(async () => {
+      const response = await fetch('/api/v1/qa/deep_run', {cache: 'no-store'}).catch(async () => {
         // إذا فشل الاتصال المباشر، جرب المسار البديل عبر سوبابيس
         console.log('🛡️ Smart Response: Attempting fallback QA path...');
-        return await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-v1-status');
+        return await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-v1-status', {cache: 'no-store'});
       });
       
       const result = await response.json();
       
-      if (result.ok || result.success || result.status === 'healthy') {
+      if (response.ok && (result.ok || result.success || result.status === 'healthy')) {
+        const successRate = result.success_rate || 100;
+        const failureRate = result.failure_rate || 0;
+
+        setKpi({ success_rate: successRate, failure_rate: failureRate });
+
+        if (failureRate > 10) {
+          toast.error(t('نسبة الفشل تجاوزت 10%, لن يتم تنفيذ أي إجراء', 'Failure rate exceeds 10%, no action will be taken'));
+          return;
+        }
+
+        if (successRate < 98) {
+          toast.warn(t('نسبة النجاح أقل من 98%, يوصى بالمراجعة', 'Success rate is below 98%, review is recommended'));
+        }
         toast.success(t('✅ اكتمل الفحص بنجاح - تم الترميم بواسطة V3', 'Deep QA completed - Restored by V3'));
         loadData();
       } else {
@@ -146,7 +160,8 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           findingId, 
-          token: 'mmc-mms-repair-secret-2026' 
+          token: 'mmc-mms-repair-secret-2026',
+          stages: ['diagnose', 'resolve', 'verify']
         })
       });
       
