@@ -3,7 +3,7 @@
   "installCommand": "npm install",
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "framework": "vite",
+  "framework": null,
   "redirects": [
     {
       "source": "/:path*",
