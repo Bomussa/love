@@ -1,0 +1,26 @@
+{
+  "name": "mmc-mms-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Medical Committee Integrated Application monorepo (frontend + api proxy).",
+  "workspaces": [
+    "frontend",
+    "api"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "build": "tsc",
+    "preview": "npm run preview --workspace frontend",
+    "lint": "eslint .",
+    "test": "npm run test --workspace frontend",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node --test scripts/smoke.test.ts",
+    "ci:resilient": "./scripts/resilient-ci.sh"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-legacy": "^7.2.1"
+  }
+}
