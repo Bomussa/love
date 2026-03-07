@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Zap, Activity, AlertTriangle, CheckCircle, RefreshCw, Play, Search } from 'lucide-react';
 
-// الرابط الموحد للـ API التلقائي والديناميكي
-const API_URL = 'https://love-api-tau.vercel.app/api/v1/qa/deep_run';
+// استخدام مسار نسبي ليعبر من خلال Vercel Rewrites المحددة في vercel.json
+const API_URL = '/api/v1/qa/deep_run';
 
 const SmartResponseSystem = () => {
   const [status, setStatus] = useState('OPERATIONAL');
@@ -20,7 +20,11 @@ const SmartResponseSystem = () => {
 
   const fetchData = async () => {
     try {
+      // استدعاء الـ API عبر المسار النسبي لضمان التوافق مع Vercel
       const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       if (data.success) {
         setStats({
@@ -36,7 +40,7 @@ const SmartResponseSystem = () => {
       }
     } catch (err) {
       console.error('Failed to fetch real QA data:', err);
-      setError('فشل تحميل البيانات الحقيقية - جاري محاولة الربط التلقائي');
+      setError('فشل اتصال النظام: جاري محاولة الربط التلقائي بقاعدة البيانات...');
     }
   };
 
@@ -60,7 +64,7 @@ const SmartResponseSystem = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000); // تحديث كل 15 ثانية لضمان التلقائية
+    const interval = setInterval(fetchData, 10000); // تحديث كل 10 ثوانٍ لضمان التلقائية
     return () => clearInterval(interval);
   }, []);
 
@@ -82,7 +86,7 @@ const SmartResponseSystem = () => {
               </span>
               <span className="text-gray-500 text-xs flex items-center gap-1">
                 <Activity className="w-3 h-3" />
-                آخر تحديث تلقائي: {lastScan.toLocaleTimeString('ar-SA')}
+                تحديث تلقائي حي: {lastScan.toLocaleTimeString('ar-SA')}
               </span>
             </div>
           </div>
