@@ -36,7 +36,7 @@ class AuthService {
     this.storageKey = 'mmc_admin_session';
     this.sessionTimeout = 60 * 60 * 1000;
     this.authEndpoint = '/api/v1/auth/admin/login';
-    this.verifyEndpoint = '/api/v1/auth/admin/session/verify';
+    this.verifyEndpoint = '/api/v1/admin/session/verify';
     this.verifiedSession = null;
   }
 
@@ -66,7 +66,7 @@ class AuthService {
 
       if (!verified.success) {
         this.logout();
-        return { success: false, error: 'فشل التحقق من الجلسة' };
+        return { success: false, error: this.getVerifyErrorMessage(verified.error) };
       }
 
       const trustedSession = this.applyVerifiedSession(session, verified);
@@ -103,7 +103,8 @@ class AuthService {
       });
 
       if (!response.ok) {
-        return { success: false, error: 'verification_failed' };
+        const payload = await response.json().catch(() => null);
+        return { success: false, error: payload?.code || 'verification_failed' };
       }
 
       const payload = await response.json();
@@ -122,6 +123,19 @@ class AuthService {
       console.error('[AuthService] Session verification error:', error);
       return { success: false, error: 'verification_exception' };
     }
+  }
+
+
+
+  getVerifyErrorMessage(code) {
+    const verifyErrors = {
+      SESSION_EXPIRED: 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى',
+      INVALID_SESSION: 'جلسة غير صالحة، يرجى إعادة تسجيل الدخول',
+      verification_failed: 'فشل التحقق من الجلسة',
+      verification_exception: 'تعذر التحقق من الجلسة بسبب خطأ في الاتصال',
+    };
+
+    return verifyErrors[code] || 'فشل التحقق من الجلسة';
   }
 
   applyVerifiedSession(session, verifiedPayload) {

@@ -320,7 +320,7 @@ function App() {
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
       } else {
-        showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error')
+        showNotification(result.error || (language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials'), 'error')
       }
     } catch (error) {
       console.error('[App] Admin login error:', error);
