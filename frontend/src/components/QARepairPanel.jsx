@@ -12,6 +12,14 @@ import {
 import toast from 'react-hot-toast';
 import { smartResponseV3 } from '../lib/SmartResponseSystemV3';
 
+const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205', 'PGRST204']);
+
+function isMissingTableError(error) {
+  if (!error) return false;
+  const code = error.code || error?.details?.code;
+  return MISSING_TABLE_CODES.has(code);
+}
+
 const QARepairPanel = ({ language = 'ar', t }) => {
   const isRTL = language === 'ar';
   
@@ -66,36 +74,27 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // جلب آخر 20 عملية فحص
-      const { data: runs, error: runsError } = await supabase
-        .from('qa_runs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const [runsResult, findingsResult, repairsResult] = await Promise.all([
+        supabase.from('qa_runs').select('*').order('created_at', { ascending: false }).limit(20),
+        supabase.from('qa_findings').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('repair_runs').select('*').order('created_at', { ascending: false }).limit(30)
+      ]);
 
-      if (runsError) throw runsError;
+      const shouldNotifyMissingTables = [runsResult.error, findingsResult.error, repairsResult.error]
+        .some((error) => isMissingTableError(error));
 
-      // جلب آخر 50 finding
-      const { data: fnd, error: fndError } = await supabase
-        .from('qa_findings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const fatalError = [runsResult.error, findingsResult.error, repairsResult.error]
+        .find((error) => error && !isMissingTableError(error));
 
-      if (fndError) throw fndError;
+      if (fatalError) throw fatalError;
 
-      // جلب عمليات الإصلاح
-      const { data: repairs, error: repairsError } = await supabase
-        .from('repair_runs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30);
+      setQaRuns(runsResult.data || []);
+      setFindings(findingsResult.data || []);
+      setRepairRuns(repairsResult.data || []);
 
-      if (repairsError) throw repairsError;
-
-      setQaRuns(runs || []);
-      setFindings(fnd || []);
-      setRepairRuns(repairs || []);
+      if (shouldNotifyMissingTables) {
+        toast.error(t('بعض جداول QA غير متوفرة حالياً', 'Some QA tables are currently unavailable'));
+      }
     } catch (e) {
       console.error('Error loading QA data:', e);
       toast.error(t('فشل تحميل البيانات', 'Failed to load data'));
