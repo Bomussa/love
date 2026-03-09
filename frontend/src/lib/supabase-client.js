@@ -12,9 +12,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 
-// Supabase configuration - Production values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'; // Project URL: https://rujwuruuosffcxazymit.supabase.co
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODcyNjUsImV4cCI6MjA3Njk2MzI2NX0.HnrSwc7OZTqZRzCwzBH8hqtgtHMBix4yxy0RKvRDX10'; // anonpublic key
+// Supabase configuration - must be provided from environment only
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables.',
+  );
+}
 
 // إعدادات إعادة المحاولة
 const RETRY_CONFIG = {

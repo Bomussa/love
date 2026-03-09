@@ -15,7 +15,7 @@ VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbG...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
 SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-SUPABASE_JWT_SECRET=p+f1/FIaiDzeNbbHH6n4ArBQ874wj97zr5J7wStzf+67/eWuTCx94c1QyONr2rGp2dAuLeqrs3QcOfigMIhJtA==
+SUPABASE_JWT_SECRET=<set-in-supabase-dashboard-only>
 ```
 
 ### ⚠️ Variables to REMOVE

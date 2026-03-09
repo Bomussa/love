@@ -5108,10 +5108,16 @@ const SmartSystemPanel = ({ language, t }) => {
 
   const executeRepair = async (findingId) => {
     try {
+      const repairToken = import.meta.env.VITE_REPAIR_EXECUTION_TOKEN;
+      if (!repairToken) {
+        toast.error(t('متغير VITE_REPAIR_EXECUTION_TOKEN غير مضبوط', 'Missing VITE_REPAIR_EXECUTION_TOKEN'));
+        return;
+      }
+
       const response = await fetch('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
+        body: JSON.stringify({ findingId, token: repairToken })
       });
       const result = await response.json();
       if (result.success) {
