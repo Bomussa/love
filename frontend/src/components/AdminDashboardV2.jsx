@@ -55,6 +55,7 @@ import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
 import QARepairPanel from './QARepairPanel';
 import FilesCenter from './FilesCenter';
 import { supabase } from '../lib/supabase-client';
+import { validateAdminData, sanitizeInput } from '../lib/validation';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
 const logActivity = async (actionType, description, userId = null, metadata = {}) => {
@@ -71,6 +72,14 @@ const logActivity = async (actionType, description, userId = null, metadata = {}
   } catch (e) {
     console.error('Error logging activity:', e);
   }
+};
+
+
+const hashPassword = async (password) => {
+  const normalized = String(password || '').trim();
+  const encoded = new TextEncoder().encode(normalized);
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 };
 
 // مكونات إدارة الطوابير
@@ -3445,16 +3454,28 @@ const UsersManagement = ({ language, t }) => {
 
   const addUser = async () => {
     try {
+      const sanitizedUsername = sanitizeInput(newUser.username || '');
+      const validation = validateAdminData({
+        username: sanitizedUsername,
+        password: newUser.password,
+      });
+
+      if (!validation.isValid) {
+        alert(validation.errors[0]);
+        return;
+      }
+
       // السوبر أدمن له جميع الصلاحيات
       const permissions = newUser.role === 'SUPER_ADMIN' 
         ? allPermissions.map(p => p.id) 
         : newUser.permissions;
+      const passwordHash = await hashPassword(newUser.password);
       
       const { error } = await supabase
         .from('admins')
         .insert([{
-          username: newUser.username,
-          password_hash: newUser.password,
+          username: sanitizedUsername,
+          password_hash: passwordHash,
           role: newUser.role,
           is_active: true,
           permissions: permissions,
