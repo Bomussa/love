@@ -1,7 +1,8 @@
 // Supabase Edge Function: pin-verify
-// Verify PIN and mark as used
+// Verify PIN and mark as used (role-protected clinic/admin endpoints)
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authErrorResponse, requireAuthGuard } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -18,8 +19,34 @@ serve(async (req: Request) => {
   }
 
   try {
+    const path = new URL(req.url).pathname.replace(/\/+$/, '');
+    const isAdminEndpoint = path.endsWith('/admin');
+    const isClinicEndpoint = path.endsWith('/clinic');
+
+    if (!isAdminEndpoint && !isClinicEndpoint) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Use /pin-verify/clinic or /pin-verify/admin' }),
+        { status: 404, headers: { 'content-type': 'application/json', ...corsHeaders } },
+      );
+    }
+
+    const guard = await requireAuthGuard(req, {
+      allowedRoles: isAdminEndpoint ? ['admin'] : ['clinic', 'admin'],
+      corsHeaders,
+    });
+
+    if ('response' in guard) {
+      return guard.response;
+    }
+
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { clinic_id, pin } = await req.json();
+    const body = await req.json();
+    const requestedClinicId = typeof body?.clinic_id === 'string' ? body.clinic_id : null;
+    const pin = typeof body?.pin === 'string' ? body.pin : null;
+
+    const clinic_id = guard.auth.role === 'clinic'
+      ? (guard.auth.clinicId || requestedClinicId)
+      : requestedClinicId;
 
     if (!clinic_id || !pin) {
       return new Response(
@@ -28,9 +55,12 @@ serve(async (req: Request) => {
       );
     }
 
+    if (guard.auth.role === 'clinic' && guard.auth.clinicId && guard.auth.clinicId !== clinic_id) {
+      return authErrorResponse(403, corsHeaders);
+    }
+
     const now = new Date().toISOString();
 
-    // Find valid PIN
     const { data: pinRecord, error: e1 } = await db
       .from('pins')
       .select('*')
@@ -48,7 +78,6 @@ serve(async (req: Request) => {
     let remaining_seconds = 0;
 
     if (valid && pinRecord) {
-      // Mark as used
       await db
         .from('pins')
         .update({ used_at: now })
