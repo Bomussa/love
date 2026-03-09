@@ -157,9 +157,9 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       const response = await fetch('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ 
           findingId, 
-          token: 'mmc-mms-repair-secret-2026',
           stages: ['diagnose', 'resolve', 'verify']
         })
       });
