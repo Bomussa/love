@@ -6,6 +6,11 @@ module.exports = [
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
+      '**/coverage/**',
+      '**/.next/**',
+      '**/frontend/src/assets/**',
+      '**/frontend/public/**',
+      '**/frontend/src/_archived/**',
       '**/*.min.js',
       'frontend/src/lib/supabase-client.js'
     ]
