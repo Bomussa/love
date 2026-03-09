@@ -10,6 +10,26 @@ serve(async (req: Request) => {
   if (optionsResponse) return optionsResponse;
 
   try {
+    const path = new URL(req.url).pathname.replace(/\/+$/, '');
+    const isAdminEndpoint = path.endsWith('/admin');
+    const isClinicEndpoint = path.endsWith('/clinic');
+
+    if (!isAdminEndpoint && !isClinicEndpoint) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Use /pin-verify/clinic or /pin-verify/admin' }),
+        { status: 404, headers: { 'content-type': 'application/json', ...corsHeaders } },
+      );
+    }
+
+    const guard = await requireAuthGuard(req, {
+      allowedRoles: isAdminEndpoint ? ['admin'] : ['clinic', 'admin'],
+      corsHeaders,
+    });
+
+    if ('response' in guard) {
+      return guard.response;
+    }
+
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
     const { clinic_id, pin } = await req.json();
     if (!clinic_id || !pin) return corsErrorResponse('clinic_id and pin required', 400, req);
