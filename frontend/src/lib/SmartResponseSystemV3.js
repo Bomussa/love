@@ -1,3 +1,5 @@
+import { supabase } from './supabase-client';
+
 /**
  * 🛡️ نظام الاستجابة الذكية والترميم الذاتي V3 (Smart Response & Self-Healing V3)
  * ابتكار المهندس التشغيلي: Manus
@@ -63,14 +65,15 @@ class SmartResponseSystemV3 {
   setupNetworkGuard() {
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
+      const startedAt = Date.now();
       try {
         const response = await originalFetch(...args);
         if (!response.ok && response.status >= 500) {
-          return this.handleApiFailure(args, response);
+          return this.handleApiFailure(args, response, Date.now() - startedAt);
         }
         return response;
       } catch (error) {
-        return this.handleApiFailure(args, error);
+        return this.handleApiFailure(args, error, Date.now() - startedAt);
       }
     };
   }
@@ -78,7 +81,7 @@ class SmartResponseSystemV3 {
   /**
    * معالجة فشل API وترميم المسار
    */
-  async handleApiFailure(args, error) {
+  async handleApiFailure(args, error, durationMs = 0) {
     const url = typeof args[0] === 'string' ? args[0] : args[0].url;
     console.warn(`⚠️ Smart Response: API Failure detected at ${url}. Attempting restoration...`);
     
@@ -88,19 +91,42 @@ class SmartResponseSystemV3 {
     if (url.startsWith('/api/v1/qa') || url.startsWith('/api/v1/repair')) {
       const endpoint = url.split('/api/v1/')[1];
       const fallbackUrl = `${this.config.fallbackApi}/${endpoint.replace(/\//g, '-')}`;
+      const reason = error?.status
+        ? `HTTP_${error.status}`
+        : (error?.message || 'UNKNOWN_FAILURE');
       
       console.log(`🔧 Smart Response: Redirecting to fallback path: ${fallbackUrl}`);
+      this.logFailoverEvent(endpoint, reason, durationMs);
       
-      // محاكاة استجابة ناجحة إذا كان الفشل في الاتصال فقط لضمان عدم توقف الواجهة
+      // في qa/deep_run لا نُحاكي نجاحاً أبداً، بل نعيد فشل موحد ليظهر للمستخدم بوضوح
       if (endpoint === 'qa/deep_run') {
-        return new Response(JSON.stringify({ ok: true, message: "Restored by SmartResponse V3", timestamp: new Date() }), {
-          status: 200,
+        return new Response(JSON.stringify({
+          ok: false,
+          source: 'fallback',
+          error_code: reason,
+          endpoint,
+          attempt_duration_ms: durationMs,
+          timestamp: new Date().toISOString()
+        }), {
+          status: 503,
           headers: { 'Content-Type': 'application/json' }
         });
       }
     }
     
     throw error;
+  }
+
+  async logFailoverEvent(endpoint, reason, durationMs) {
+    try {
+      await supabase.from('api_failover_events').insert({
+        endpoint,
+        failure_reason: reason,
+        attempt_duration_ms: Math.max(0, Math.round(durationMs || 0))
+      });
+    } catch (logError) {
+      console.warn('Smart Response: failed to log failover event', logError);
+    }
   }
 
   /**

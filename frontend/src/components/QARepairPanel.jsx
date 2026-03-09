@@ -30,6 +30,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const [repairRuns, setRepairRuns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [qaRunStatus, setQaRunStatus] = useState({ source: 'live_result', ok: true, error_code: null });
   const [selectedRun, setSelectedRun] = useState(null);
   const [expandedFinding, setExpandedFinding] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('all');
@@ -106,19 +107,17 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      // محاولة تشغيل الفحص مع دعم الترميم الذاتي V3
-      const response = await fetch('/api/v1/qa/deep_run', {cache: 'no-store'}).catch(async () => {
-        // إذا فشل الاتصال المباشر، جرب المسار البديل عبر سوبابيس
-        console.log('🛡️ Smart Response: Attempting fallback QA path...');
-        return await fetch('https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-v1-status', {cache: 'no-store'});
-      });
-      
+      const response = await fetch('/api/v1/qa/deep_run', { cache: 'no-store' });
       const result = await response.json();
-      
-      if (response.ok && (result.ok || result.success || result.status === 'healthy')) {
+
+      const isSuccess = response.ok && (result.ok || result.success || result.status === 'healthy');
+      const resultSource = result.source === 'fallback' ? 'fallback_result' : 'live_result';
+
+      if (isSuccess) {
         const successRate = result.success_rate || 100;
         const failureRate = result.failure_rate || 0;
 
+        setQaRunStatus({ source: resultSource, ok: true, error_code: null });
         setKpi({ success_rate: successRate, failure_rate: failureRate });
 
         if (failureRate > 10) {
@@ -129,22 +128,23 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         if (successRate < 98) {
           toast.warn(t('نسبة النجاح أقل من 98%, يوصى بالمراجعة', 'Success rate is below 98%, review is recommended'));
         }
-        toast.success(t('✅ اكتمل الفحص بنجاح - تم الترميم بواسطة V3', 'Deep QA completed - Restored by V3'));
+
+        toast.success(t('✅ اكتمل الفحص بنجاح', 'Deep QA completed successfully'));
         loadData();
       } else {
-        // محاكاة نجاح الفحص إذا كانت البيانات موجودة لضمان استمرارية العمل
-        if (qaRuns.length > 0) {
-          toast.success(t('✅ تم تحديث بيانات الفحص من السجل التاريخي', 'QA data updated from history'));
-          loadData();
-        } else {
-          toast.error(t('فشل تشغيل الفحص - جاري محاولة الإصلاح التلقائي', 'QA Run failed - Auto-repairing...'));
-        }
+        setQaRunStatus({
+          source: resultSource,
+          ok: false,
+          error_code: result.error_code || `HTTP_${response.status || 0}`
+        });
+        setKpi({ success_rate: 0, failure_rate: 100 });
+        toast.error(t('فشل تشغيل الفحص العميق', 'Deep QA run failed'));
       }
     } catch (e) {
       console.error('Deep QA error:', e);
-      // في حالة الخطأ التام، نقوم بتحديث البيانات يدوياً لإظهار آخر حالة ناجحة
-      loadData();
-      toast.success(t('🛡️ نظام V3: تم استعادة آخر حالة فحص ناجحة', 'V3: Restored last successful QA state'));
+      setQaRunStatus({ source: 'fallback_result', ok: false, error_code: e?.message || 'NETWORK_FAILURE' });
+      setKpi({ success_rate: 0, failure_rate: 100 });
+      toast.error(t('فشل الاتصال بخدمة الفحص العميق', 'Failed to reach deep QA endpoint'));
     } finally {
       setRunning(false);
     }
@@ -248,6 +248,22 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         </button>
       </div>
 
+      <div className={`border rounded-xl p-4 ${qaRunStatus.ok ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/40 bg-red-500/10'}`}>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-slate-200">
+            {t('مصدر نتيجة الفحص', 'QA Result Source')}:
+            <strong className="mx-2">
+              {qaRunStatus.source === 'live_result' ? t('نتيجة مباشرة', 'live_result') : t('نتيجة بديلة', 'fallback_result')}
+            </strong>
+          </span>
+          {!qaRunStatus.ok && (
+            <span className="text-xs text-red-300 font-mono">
+              {t('رمز الخطأ', 'error_code')}: {qaRunStatus.error_code || 'UNKNOWN'}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4">
@@ -258,6 +274,9 @@ const QARepairPanel = ({ language = 'ar', t }) => {
           <div className="text-2xl font-bold text-white">{stats.totalRuns}</div>
           <div className="text-xs text-slate-500 mt-1">
             {stats.successfulRuns} {t('ناجحة', 'successful')}
+          </div>
+          <div className={`text-xs mt-1 ${qaRunStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+            {t('نجاح', 'Success')}: {kpi.success_rate}% · {t('فشل', 'Failure')}: {kpi.failure_rate}%
           </div>
         </div>
 
@@ -278,7 +297,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
             <CheckCircle className="text-green-400" size={18} />
           </div>
           <div className="text-2xl font-bold text-white">{stats.resolvedFindings}</div>
-          <div className="text-xs text-green-400 mt-1">
+          <div className={`text-xs mt-1 ${qaRunStatus.ok ? 'text-green-400' : 'text-red-400'}`}>
             {stats.totalFindings > 0 ? Math.round((stats.resolvedFindings / stats.totalFindings) * 100) : 0}% {t('معدل الحل', 'resolution rate')}
           </div>
         </div>
