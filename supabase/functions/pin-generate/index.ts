@@ -2,19 +2,14 @@
 // Generate daily PIN for clinic entry (hardened)
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient, type User } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleOptions, corsJsonResponse, corsErrorResponse } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const ALLOWED_ORIGINS = (Deno.env.get('PIN_GENERATE_ALLOWED_ORIGINS') ?? '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
 const MAX_REQUESTS_PER_MINUTE_PER_CLINIC = Number(Deno.env.get('PIN_RATE_LIMIT_PER_CLINIC_PER_MINUTE') ?? '12');
 const MAX_REQUESTS_PER_MINUTE_PER_ACTOR = Number(Deno.env.get('PIN_RATE_LIMIT_PER_USER_OR_IP_PER_MINUTE') ?? '8');
 
-const JSON_HEADERS = { 'content-type': 'application/json' };
 const GENERIC_ERROR_MESSAGE = 'Unable to process request';
 
 const generatePIN = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -25,23 +20,6 @@ const getEndOfDay = () => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
 };
-
-const getRequestOrigin = (req: Request) => req.headers.get('origin') ?? '';
-
-const buildCorsHeaders = (req: Request) => {
-  const origin = getRequestOrigin(req);
-  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (ALLOWED_ORIGINS[0] ?? 'null');
-
-  return {
-    'access-control-allow-origin': allowOrigin,
-    'access-control-allow-methods': 'POST,OPTIONS',
-    'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
-    'vary': 'origin',
-  };
-};
-
-const response = (req: Request, status: number, body: Record<string, unknown>) =>
-  new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...buildCorsHeaders(req) } });
 
 const getBearerToken = (req: Request) => {
   const auth = req.headers.get('authorization') ?? '';
@@ -134,12 +112,11 @@ const checkRateLimit = async (
 };
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: buildCorsHeaders(req) });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   if (req.method !== 'POST') {
-    return response(req, 405, { success: false, error: GENERIC_ERROR_MESSAGE });
+    return corsErrorResponse(GENERIC_ERROR_MESSAGE, 405);
   }
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -147,12 +124,12 @@ serve(async (req: Request) => {
   try {
     const token = getBearerToken(req);
     if (!token) {
-      return response(req, 401, { success: false, error: GENERIC_ERROR_MESSAGE });
+      return corsErrorResponse(GENERIC_ERROR_MESSAGE, 401);
     }
 
     const { data: userData, error: authError } = await db.auth.getUser(token);
     if (authError || !userData.user) {
-      return response(req, 401, { success: false, error: GENERIC_ERROR_MESSAGE });
+      return corsErrorResponse(GENERIC_ERROR_MESSAGE, 401);
     }
 
     const body = await req.json();
@@ -161,13 +138,13 @@ serve(async (req: Request) => {
 
     if (!clinicId) {
       await audit(db, 'PIN_GENERATE_REJECTED', { reason: 'MISSING_CLINIC_ID' }, userData.user.id);
-      return response(req, 400, { success: false, error: GENERIC_ERROR_MESSAGE });
+      return corsErrorResponse(GENERIC_ERROR_MESSAGE, 400);
     }
 
     const hasPermission = isAdmin(userData.user) || hasClinicClaimPermission(userData.user, clinicId);
     if (!hasPermission) {
       await audit(db, 'PIN_GENERATE_REJECTED', { reason: 'FORBIDDEN', clinic_id: clinicId }, userData.user.id);
-      return response(req, 403, { success: false, error: GENERIC_ERROR_MESSAGE });
+      return corsErrorResponse(GENERIC_ERROR_MESSAGE, 403);
     }
 
     const actorIp = getActorIp(req);
@@ -188,7 +165,7 @@ serve(async (req: Request) => {
         actor_key: actorKey,
       }, userData.user.id);
 
-      return response(req, 429, { success: false, error: GENERIC_ERROR_MESSAGE });
+      return corsErrorResponse(GENERIC_ERROR_MESSAGE, 429);
     }
 
     const today = getTodayDateString();
@@ -220,7 +197,7 @@ serve(async (req: Request) => {
           pin_returned: shouldReturnPin,
         }, userData.user.id);
 
-        return response(req, 200, {
+        return corsJsonResponse({
           success: true,
           data: {
             pin_id: existingPin.id,
@@ -258,7 +235,7 @@ serve(async (req: Request) => {
       pin_returned: shouldReturnPin,
     }, userData.user.id);
 
-    return response(req, 200, {
+    return corsJsonResponse({
       success: true,
       data: {
         pin_id: data.id,
@@ -269,6 +246,6 @@ serve(async (req: Request) => {
       },
     });
   } catch (_err) {
-    return response(req, 500, { success: false, error: GENERIC_ERROR_MESSAGE });
+    return corsErrorResponse(GENERIC_ERROR_MESSAGE, 500);
   }
 });
