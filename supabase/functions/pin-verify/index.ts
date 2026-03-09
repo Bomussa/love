@@ -14,9 +14,27 @@ serve(async (req: Request) => {
     const { clinic_id, pin } = await req.json();
     if (!clinic_id || !pin) return corsErrorResponse('clinic_id and pin required', 400);
 
-    const { data, error } = await db.from('pins').select('*').eq('clinic_id', clinic_id).eq('pin', pin)
-      .gt('valid_until', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const now = new Date().toISOString();
+
+    const { data, error } = await db
+      .from('pins')
+      .select('*')
+      .eq('clinic_id', clinic_id)
+      .eq('pin', pin)
+      .is('used_at', null)
+      .gt('valid_until', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (error) throw error;
+
+    if (data) {
+      const { error: updateError } = await db
+        .from('pins')
+        .update({ used_at: now })
+        .eq('id', data.id);
+      if (updateError) throw updateError;
+    }
 
     const valid = !!data;
     return corsJsonResponse({
