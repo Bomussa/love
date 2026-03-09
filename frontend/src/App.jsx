@@ -94,22 +94,9 @@ function App() {
     } catch (error) { return null }
   })
 
-  // ✅ إصلاح: التحقق من حالة الإدارة بطريقة أفضل
-  const [isAdmin, setIsAdmin] = useState(() => {
-    try {
-      const adminSession = localStorage.getItem('mmc_admin_session');
-      if (adminSession) {
-        const session = JSON.parse(adminSession);
-        const isValid = new Date(session.expiresAt) > new Date();
-        console.log('[App] Admin session check:', { isValid, expiresAt: session.expiresAt });
-        return isValid;
-      }
-    } catch (e) { 
-      console.error('[App] Error checking admin session:', e);
-      return false 
-    }
-    return false
-  })
+  // ✅ إصلاح أمني: لا نثق بـ localStorage وحده لحالة الإدارة
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminSession, setAdminSession] = useState(null)
 
   const [currentView, setCurrentView] = useState('login')
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
@@ -117,31 +104,73 @@ function App() {
 
   // ============= AUTO REPAIR SYSTEM =============
   useEffect(() => {
-    // تفعيل نظام الإصلاح التلقائي
-    autoRepairSystem.startMonitoring();
-    console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
+    const safeInit = (label, fn) => {
+      try {
+        fn();
+      } catch (error) {
+        console.error(`❌ فشل تهيئة ${label}:`, error);
+      }
+    };
 
-    functionTableMonitor.startMonitoring();
+    // تفعيل نظام الإصلاح التلقائي
+    safeInit('نظام الإصلاح التلقائي', () => {
+      autoRepairSystem.startMonitoring();
+      console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
+    });
+
+    safeInit('نظام مراقبة الدوال والجداول', () => {
+      functionTableMonitor.startMonitoring();
+      console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
+    });
 
     // تفعيل نظام مراقبة العناصر التفاعلية
-    elementMonitor.startMonitoring();
+    safeInit('نظام مراقبة العناصر', () => {
+      elementMonitor.startMonitoring();
+      console.log('✅ نظام مراقبة العناصر: تم التفعيل');
+    });
 
     // تفعيل نظام الإصلاح التلقائي المتقدم
-    const advancedRepair = new AdvancedAutoRepair(supabase);
-    advancedRepair.startAutoRepair();
+    safeInit('نظام الإصلاح التلقائي المتقدم', () => {
+      const advancedRepair = new AdvancedAutoRepair(supabase);
+      advancedRepair.startAutoRepair();
+      console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
+    });
+
     // تهيئة نظام المراقبة الذاتية الشامل
-    healthMonitor.init(supabase);
+    safeInit('نظام المراقبة الذاتية', () => {
+      healthMonitor.init(supabase);
+      console.log('✅ نظام المراقبة الذاتية: تم التفعيل');
+    });
 
     // تفعيل نظام التقارير للعناصر التفاعلية
-    const elementReporter = new InteractiveElementReporter();
-    elementReporter.startReporting();
-    console.log('✅ نظام التقارير: تم التفعيل');
-    console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
-    console.log('✅ نظام مراقبة العناصر: تم التفعيل');
-    console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
+    safeInit('نظام التقارير للعناصر التفاعلية', () => {
+      const elementReporter = new InteractiveElementReporter();
+      elementReporter.startReporting();
+      console.log('✅ نظام التقارير: تم التفعيل');
+    });
 
     return () => {
       // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const restoreAdminSession = async () => {
+      const restoredSession = await authService.restoreSession();
+      if (!mounted) return;
+      setIsAdmin(!!restoredSession);
+      setAdminSession(restoredSession || null);
+      if (!restoredSession) {
+        localStorage.removeItem('mmc_admin_session');
+      }
+    };
+
+    restoreAdminSession();
+
+    return () => {
+      mounted = false;
     };
   }, []);
 
@@ -279,6 +308,7 @@ function App() {
         // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);
+        setAdminSession(null);
 
         setPatientData(res.data)
         localStorage.setItem('patientData', JSON.stringify(res.data))
@@ -312,6 +342,7 @@ function App() {
         setPatientData(null);
 
         setIsAdmin(true)
+        setAdminSession(result.session || null)
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
       } else {
@@ -327,6 +358,7 @@ function App() {
   const handleLogout = () => {
     setPatientData(null)
     setIsAdmin(false)
+    setAdminSession(null)
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
@@ -363,14 +395,16 @@ function App() {
         )}
 
         {currentView === 'login' && (
-          <LoginPage
-            onLogin={handleLogin}
-            onAdminLogin={handleAdminLogin}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <LoginPage
+              onLogin={handleLogin}
+              onAdminLogin={handleAdminLogin}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'examSelection' && patientData && (
@@ -454,6 +488,7 @@ function App() {
                 onLogout={handleLogout}
                 language={language}
                 toggleLanguage={toggleLanguage}
+                session={adminSession}
                 currentTheme={currentTheme}
                 onThemeChange={setCurrentTheme}
               />

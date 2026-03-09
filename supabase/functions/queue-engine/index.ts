@@ -4,16 +4,12 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleOptions, corsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 // إنشاء عميل Supabase مع Authorization من الطلب
 function createAuthClient(req: Request) {
@@ -31,9 +27,8 @@ function createServiceClient() {
 
 serve(async (req: Request) => {
   // معالجة CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const supabase = createAuthClient(req);
@@ -60,6 +55,9 @@ serve(async (req: Request) => {
           status: 'ABORTED',
           reason: 'SYSTEM_DISABLED',
           message: 'النظام متوقف مؤقتًا',
+          error: 'SYSTEM_DISABLED',
+          success: false,
+          data: null,
         }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       );
@@ -79,6 +77,9 @@ serve(async (req: Request) => {
             status: 'ABORTED',
             reason: 'CLINIC_DISABLED',
             message: 'العيادة متوقفة مؤقتًا',
+            error: 'CLINIC_DISABLED',
+            success: false,
+            data: null,
           }),
           { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
         );
@@ -165,7 +166,7 @@ serve(async (req: Request) => {
 
       default:
         return new Response(
-          JSON.stringify({ status: 'ERROR', reason: 'INVALID_ACTION' }),
+          JSON.stringify({ success: false, error: 'INVALID_ACTION', data: null, status: 'ERROR', reason: 'INVALID_ACTION' }),
           { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
         );
     }
@@ -193,6 +194,8 @@ serve(async (req: Request) => {
         status: 'ABORTED',
         reason: err.message || 'INTERNAL_ERROR',
         success: false,
+        error: err.message || 'INTERNAL_ERROR',
+        data: null,
       }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
+import { createSensitiveActionGuard, filterClinicsByScope, getForbiddenMessage, resolveAdminAccessScope } from '../lib/admin-access-guard';
 import toast, { Toaster } from 'react-hot-toast';
 import { getContractEndpoint } from '../lib/api-contract';
 import { 
@@ -84,7 +85,7 @@ const hashPassword = async (password) => {
 };
 
 // مكونات إدارة الطوابير
-const QueueManagement = ({ language, t }) => {
+const QueueManagement = ({ language, t, accessScope }) => {
   const [queues, setQueues] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +151,7 @@ const QueueManagement = ({ language, t }) => {
       clearInterval(interval);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [accessScope?.assignedClinic, accessScope?.isClinicScoped]);
 
   const loadClinics = async () => {
     try {
@@ -158,7 +159,7 @@ const QueueManagement = ({ language, t }) => {
         .from('clinics')
         .select('*')
         .order('name_ar');
-      if (!error && data) setClinics(data);
+      if (!error && data) setClinics(filterClinicsByScope(data, accessScope));
     } catch (e) {
       console.error('Error loading clinics:', e);
     }
@@ -177,7 +178,10 @@ const QueueManagement = ({ language, t }) => {
         .order('display_number', { ascending: true });
       
       if (!error && data) {
-        setQueues(data);
+        const scopedQueues = accessScope?.isClinicScoped
+          ? data.filter((row) => row.clinic_id === accessScope.assignedClinic)
+          : data;
+        setQueues(scopedQueues);
       } else {
         console.error('Error loading queues:', error);
       }
@@ -1590,7 +1594,7 @@ ${clinicStatsTable}
 };
 
 // مكون إدارة العيادات
-const ClinicsManagement = ({ language, t }) => {
+const ClinicsManagement = ({ language, t, accessScope, canPerformSensitiveAction }) => {
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingClinic, setEditingClinic] = useState(null);
@@ -1599,10 +1603,11 @@ const ClinicsManagement = ({ language, t }) => {
   const [transferModal, setTransferModal] = useState(null);
   const [transferReason, setTransferReason] = useState('');
   const [targetClinicId, setTargetClinicId] = useState('');
+  const canManageAllClinics = accessScope?.canManageAllClinics !== false;
 
   useEffect(() => {
     loadClinics();
-  }, []);
+  }, [accessScope?.assignedClinic, accessScope?.isClinicScoped]);
 
   const loadClinics = async () => {
     try {
@@ -1612,7 +1617,7 @@ const ClinicsManagement = ({ language, t }) => {
         .select('*')
         .order('name_ar');
       
-      if (!error && data) setClinics(data);
+      if (!error && data) setClinics(filterClinicsByScope(data, accessScope));
     } catch (e) {
       console.error('Error loading clinics:', e);
     } finally {
@@ -1621,6 +1626,7 @@ const ClinicsManagement = ({ language, t }) => {
   };
 
   const toggleClinicStatus = async (clinicId, currentStatus) => {
+    if (!canPerformSensitiveAction({ requiresGlobalScope: true, clinicId })) return;
     try {
       const updates = { is_active: !currentStatus };
       if (!currentStatus) {
@@ -1639,6 +1645,7 @@ const ClinicsManagement = ({ language, t }) => {
   };
 
   const updateClinic = async (clinicId, updates) => {
+    if (!canPerformSensitiveAction({ requiresGlobalScope: true, clinicId })) return;
     try {
       const { error } = await supabase
         .from('clinics')
@@ -1658,6 +1665,7 @@ const ClinicsManagement = ({ language, t }) => {
   };
 
   const addClinic = async () => {
+    if (!canPerformSensitiveAction({ requiresGlobalScope: true })) return;
     if (!newClinic.name_ar || !newClinic.name_en) {
       showErrorToast(t('يرجى إدخال اسم العيادة', 'Please enter clinic name'));
       return;
@@ -1696,6 +1704,7 @@ const ClinicsManagement = ({ language, t }) => {
   };
 
   const deleteClinic = async (clinicId) => {
+    if (!canPerformSensitiveAction({ requiresGlobalScope: true, clinicId })) return;
     if (!window.confirm(t('هل أنت متأكد من حذف هذه العيادة؟', 'Are you sure you want to delete this clinic?'))) return;
     try {
       const { error } = await supabase.from('clinics').delete().eq('id', clinicId);
@@ -1716,13 +1725,15 @@ const ClinicsManagement = ({ language, t }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">{t('إدارة العيادات', 'Clinics Management')}</h3>
         <div className="flex gap-2">
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
-          >
-            <Plus size={18} />
-            {t('إضافة عيادة', 'Add Clinic')}
-          </button>
+          {canManageAllClinics && (
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
+            >
+              <Plus size={18} />
+              {t('إضافة عيادة', 'Add Clinic')}
+            </button>
+          )}
           <button 
             onClick={loadClinics}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
@@ -1855,6 +1866,7 @@ const ClinicsManagement = ({ language, t }) => {
 
 
             <div className="flex gap-2 flex-wrap">
+              {canManageAllClinics && (<>
               <button
                 onClick={() => clinic.is_active ? setTransferModal(clinic) : toggleClinicStatus(clinic.id, clinic.is_active)}
                 className={`flex-1 py-2 rounded-lg font-medium transition-all ${
@@ -1877,12 +1889,13 @@ const ClinicsManagement = ({ language, t }) => {
               >
                 <Trash2 size={18} />
               </button>
+              </>)}
             </div>
           </div>
         ))}
       </div>
 
-      {editingClinic && (
+      {canManageAllClinics && editingClinic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
           <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
             <h4 className="font-bold text-lg mb-4">{t('تعديل العيادة', 'Edit Clinic')}</h4>
@@ -5218,7 +5231,7 @@ const SmartSystemPanel = ({ language, t }) => {
 };
 
 // المكون الرئيسي
-export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
+export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage, session }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -5231,12 +5244,27 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [forbiddenMessage, setForbiddenMessage] = useState('');
+
+  const accessScope = resolveAdminAccessScope({
+    session,
+    canAccessClinicOnly: authService.canAccessClinicOnly()
+  });
+
+  const canPerformSensitiveAction = createSensitiveActionGuard({
+    scope: accessScope,
+    onDenied: () => {
+      const message = getForbiddenMessage(language);
+      setForbiddenMessage(message);
+      showErrorToast(message);
+    }
+  });
 
   useEffect(() => {
     loadAllData();
     const interval = setInterval(loadAllData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [accessScope?.assignedClinic, accessScope?.isClinicScoped]);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -5249,13 +5277,17 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .eq('queue_date', todayDate);
       
       if (!queueError && queueData) {
-        processQueueData(queueData, 'entered_at');
+        const scopedQueueData = accessScope.isClinicScoped
+          ? queueData.filter((row) => row.clinic_id === accessScope.assignedClinic)
+          : queueData;
+        processQueueData(scopedQueueData, 'entered_at');
       }
 
       // جلب بيانات العيادات
-      const { data: clinicsData } = await supabase
+      const { data: clinicsDataRaw } = await supabase
         .from('clinics')
         .select('id, name_ar, name_en');
+      const clinicsData = filterClinicsByScope(clinicsDataRaw || [], accessScope);
 
       // Active PINs
       const { count: pinCount } = await supabase
@@ -5266,8 +5298,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
       if (queueData && clinicsData) {
+        const scopedQueueData = accessScope.isClinicScoped
+          ? queueData.filter((row) => row.clinic_id === accessScope.assignedClinic)
+          : queueData;
         clinicsData.forEach(clinic => {
-          const clinicQueues = queueData.filter(q => q.clinic_id === clinic.id);
+          const clinicQueues = scopedQueueData.filter(q => q.clinic_id === clinic.id);
           const completed = clinicQueues.filter(q => q.status === 'completed');
           // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
               // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
@@ -5547,6 +5582,12 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           </div>
         </header>
 
+        {forbiddenMessage && (
+          <div className="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {forbiddenMessage}
+          </div>
+        )}
+
         {/* Content based on active tab */}
         {activeTab === 'dashboard' && (
           <>
@@ -5681,13 +5722,13 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           </>
         )}
 
-        {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
+        {activeTab === 'queues' && <QueueManagement language={language} t={t} accessScope={accessScope} />}
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}
         {activeTab === 'reports' && <ReportsSection language={language} t={t} />}
-        {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} />}
+        {activeTab === 'clinics' && <ClinicsManagement language={language} t={t} accessScope={accessScope} canPerformSensitiveAction={canPerformSensitiveAction} />}
         {activeTab === 'system' && <SystemStatus language={language} t={t} />}
         {activeTab === 'settings' && <SettingsSection language={language} t={t} />}
         {activeTab === 'users' && <UsersManagement language={language} t={t} />}

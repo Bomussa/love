@@ -1,124 +1,123 @@
-import requests
+import hashlib
 import json
-import sys
+import ssl
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime
 
-# Configuration
 BASE_URL = "https://mmc-mms.com/api/v1"
-HEADERS = {
-    "Content-Type": "application/json"
-}
-
-# Test Data
+SITE_URL = "https://mmc-mms.com"
+WWW_SITE_URL = "https://www.mmc-mms.com"
+HEADERS = {"Content-Type": "application/json"}
 TEST_PATIENT_ID = "TEST_999"
-TEST_CLINIC = "INT" # Internal Medicine
+TEST_CLINIC = "INT"
+
+SSL_CONTEXT = ssl.create_default_context()
+
 
 def log(message, status="INFO"):
     timestamp = datetime.now().strftime("%H:%M:%S")
     print(f"[{timestamp}] [{status}] {message}")
 
+
+def request_json(method, url, payload=None, headers=None, timeout=20):
+    data = None
+    req_headers = dict(HEADERS)
+    if headers:
+        req_headers.update(headers)
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
+        body = resp.read().decode("utf-8")
+        return resp.status, json.loads(body)
+
+
+def request_text(url, timeout=20):
+    req = urllib.request.Request(url, headers={"User-Agent": "codex-audit"}, method="GET")
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
+        body = resp.read().decode("utf-8", errors="ignore")
+        return resp.status, body
+
+
 def run_test(name, func):
     log(f"Starting Test: {name}...", "TEST")
     try:
-        result = func()
-        if result:
-            log(f"Test Passed: {name}", "PASS")
-            return True
-        else:
-            log(f"Test Failed: {name}", "FAIL")
-            return False
-    except Exception as e:
-        log(f"Test Error: {name} - {str(e)}", "ERROR")
+        ok = bool(func())
+        log(f"Test {'Passed' if ok else 'Failed'}: {name}", "PASS" if ok else "FAIL")
+        return ok
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError) as exc:
+        log(f"Test Error: {name} - {exc}", "ERROR")
         return False
 
-# --- Tests ---
 
 def test_health_check():
-    url = f"{BASE_URL}/health"
-    resp = requests.get(url)
-    if resp.status_code == 200 and resp.json().get("success") == True:
-        return True
-    return False
+    status, data = request_json("GET", f"{BASE_URL}/health")
+    return status == 200 and data.get("success") is True
+
 
 def test_pin_status():
-    url = f"{BASE_URL}/pin/status"
-    resp = requests.get(url)
-    data = resp.json()
-    if resp.status_code == 200 and data.get("success") == True:
-        pins = data.get("pins", {})
-        active_count = sum(1 for k, v in pins.items() if v.get("active") == True)
-        log(f"Found {active_count} active PINs", "INFO")
-        return active_count > 0
-    return False
+    status, data = request_json("GET", f"{BASE_URL}/pin/status")
+    if status != 200 or data.get("success") is not True:
+        return False
+    pins = data.get("pins", {})
+    active_count = sum(1 for pin in pins.values() if isinstance(pin, dict) and pin.get("active") is True)
+    log(f"Found {active_count} active PINs", "INFO")
+    return active_count > 0
+
 
 def test_patient_login():
-    url = f"{BASE_URL}/patient/login"
-    payload = {"patientId": TEST_PATIENT_ID, "gender": "male"}
-    resp = requests.post(url, json=payload, headers=HEADERS)
-    data = resp.json()
-    
-    if resp.status_code == 200 and data.get("success") == True:
+    status, data = request_json(
+        "POST",
+        f"{BASE_URL}/patient/login",
+        payload={"patientId": TEST_PATIENT_ID, "gender": "male"},
+    )
+    if status == 200 and data.get("success") is True:
         patient_data = data.get("data", {})
-        log(f"Login successful. Patient DB ID: {patient_data.get('id')}", "INFO")
+        log(f"Login successful. Patient DB ID: {patient_data.get('id') or patient_data.get('patient_id')}", "INFO")
         return patient_data
     return None
 
-def test_queue_flow(patient_data):
-    # 1. Enter Queue
-    enter_url = f"{BASE_URL}/queue/enter"
-    # Note: The API expects specific payload structure. Based on previous analysis.
-    # Assuming simple payload first, if fails will adjust.
-    payload = {
-        "patientId": patient_data.get("patientId") if isinstance(patient_data, dict) else TEST_PATIENT_ID,
-        "clinicId": TEST_CLINIC,
-        "name": "Test Patient"
-    }
-    
-    # Try entering queue
-    # Note: We might need to check if 'queue-enter' is the exact endpoint or if it's handled differently.
-    # Let's try the standard endpoint pattern seen in logs.
-    
-    # Actually, let's check the queue status first to see if we can see the clinic
-    status_url = f"{BASE_URL}/queue/status?clinic={TEST_CLINIC}"
-    resp = requests.get(status_url)
-    if resp.status_code != 200:
-        log("Failed to fetch queue status", "FAIL")
+
+def test_queue_status():
+    status, data = request_json("GET", f"{BASE_URL}/queue/status?clinic={urllib.parse.quote(TEST_CLINIC)}")
+    return status == 200 and data.get("success") is True
+
+
+def test_www_matches_root():
+    status_root, root_body = request_text(SITE_URL)
+    status_www, www_body = request_text(WWW_SITE_URL)
+    if status_root != 200 or status_www != 200:
         return False
-        
-    # Since we don't have the exact 'enter queue' endpoint documentation in the snippet,
-    # we will verify the read operations which are critical for "System Health".
-    # If we can't write (enter queue) without more info, we verify the "Read" capability 100%.
-    
-    # However, the user wants 100% proof.
-    # Let's try to simulate a queue entry via direct DB check if API is obscure, 
-    # BUT the contract says "Prove frontend <-> backend".
-    # Let's rely on the Login + PIN + Health + Queue Status as the primary proof 
-    # because 'enter queue' might require complex session headers or specific flow state.
-    
-    return True
+    root_hash = hashlib.sha256(root_body.encode("utf-8")).hexdigest()
+    www_hash = hashlib.sha256(www_body.encode("utf-8")).hexdigest()
+    log(f"root hash={root_hash[:12]}..., www hash={www_hash[:12]}...", "INFO")
+    return root_hash == www_hash
+
 
 def main():
-    print("==================================================")
+    print("=" * 50)
     print("   MMC SYSTEM VERIFICATION PROTOCOL (100% PROOF)   ")
-    print("==================================================")
-    
-    results = []
-    
-    # 1. System Health
-    results.append(run_test("API Health Check", test_health_check))
-    
-    # 2. PIN System
-    results.append(run_test("PIN System Status", test_pin_status))
-    
-    # 3. Patient Auth
-    patient = run_test("Patient Login Flow", test_patient_login)
-    results.append(patient is not None)
-    
-    # 4. Queue System (Read)
-    if patient:
-        results.append(run_test("Queue Status Read", lambda: test_queue_flow(patient)))
-    
-    print("\n==================================================")
+    print("=" * 50)
+
+    results = [
+        run_test("API Health Check", test_health_check),
+        run_test("PIN System Status", test_pin_status),
+    ]
+    patient = None
+
+    def _patient_login_wrapper():
+        nonlocal patient
+        patient = test_patient_login()
+        return patient is not None
+
+    results.append(run_test("Patient Login Flow", _patient_login_wrapper))
+    results.append(run_test("Queue Status Read", test_queue_status))
+    results.append(run_test("www mirrors root content", test_www_matches_root))
+
+    print("\n" + "=" * 50)
     if all(results):
         print("✅ FINAL RESULT: SYSTEM FUNCTIONAL (100%)")
         print("   - All core endpoints are responsive")
@@ -127,7 +126,8 @@ def main():
         print("   - Business logic (PINs) is active")
     else:
         print("❌ FINAL RESULT: SYSTEM HAS FAILURES")
-    print("==================================================")
+    print("=" * 50)
+
 
 if __name__ == "__main__":
     main()
