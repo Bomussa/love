@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS queues (
     clinic_id TEXT NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
     patient_id TEXT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
     display_number INTEGER NOT NULL,
+    is_priority BOOLEAN NOT NULL DEFAULT false,
+    priority_label TEXT,
     status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'serving', 'completed', 'skipped')),
     entered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     called_at TIMESTAMP WITH TIME ZONE,
