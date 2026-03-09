@@ -52,13 +52,13 @@ class AuthService {
       });
 
       if (!response.ok) {
-        return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+        return { success: false, error: 'Invalid credentials' };
       }
 
       const payload = await response.json();
 
-      if (!payload?.success || !(payload?.sessionToken || payload?.session?.id) || !payload?.role) {
-        return { success: false, error: 'استجابة مصادقة غير صالحة من الخادم' };
+      if (!payload?.success || !payload?.sessionToken || !payload?.role) {
+        return { success: false, error: 'Invalid credentials' };
       }
 
       const session = this.createSessionFromServer(payload, username);
@@ -66,14 +66,14 @@ class AuthService {
 
       if (!verified.success) {
         this.logout();
-        return { success: false, error: 'فشل التحقق من الجلسة' };
+        return { success: false, error: 'Invalid credentials' };
       }
 
       const trustedSession = this.applyVerifiedSession(session, verified);
       return { success: true, session: trustedSession };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
+      return { success: false, error: 'Invalid credentials' };
     }
   }
 

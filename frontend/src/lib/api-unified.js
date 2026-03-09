@@ -1,6 +1,7 @@
 import { supabase } from './supabase-client';
 import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
+import { getContractEndpoint } from './api-contract';
 
 /**
  * Unified API Service - Direct Supabase Implementation
@@ -38,6 +39,24 @@ function getQueueSettings() {
 }
 
 const api = {
+
+  // --- Admin Auth ---
+  async adminLogin(username, password) {
+    try {
+      const { data, error } = await supabase.functions.invoke('login', {
+        body: { username, password },
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Login failed' };
+      }
+
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message || 'Login failed' };
+    }
+  },
+
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
@@ -287,10 +306,10 @@ const api = {
         if (!validPin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
-            const response = await fetch('/api/v1/queue/done', {
+            const response = await fetch(getContractEndpoint('pinVerify'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ clinicId, patientId, pin })
+              body: JSON.stringify({ clinic_id: clinicId, pin })
             });
             const result = await response.json();
             if (result && (result.success || !result.error)) {
