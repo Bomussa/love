@@ -12,7 +12,11 @@
         el.innerHTML = `<strong>${n.title || ''}</strong><div>${n.message || ''}</div>`;
         document.body.appendChild(el);
         setTimeout(() => el.remove(), ttl);
-      } catch { }
+      } catch (error) {
+        void error;
+      }
     });
-  } catch { }
+  } catch (error) {
+    void error;
+  }
 })();

@@ -3086,7 +3086,7 @@ fraction.js@^5.3.4:
   resolved "https://registry.npmjs.org/fraction.js/-/fraction.js-5.3.4.tgz"
   integrity sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==
 
-"frontend@file:/home/ubuntu/love/frontend":
+"frontend@file:/home/ubuntu/mmc-project/frontend":
   version "0.1.0"
   resolved "file:frontend"
   dependencies:

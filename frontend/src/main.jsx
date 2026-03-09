@@ -88,16 +88,5 @@ const ConfigErrorScreen = ({ errorMessage }) => (
   </div>
 )
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    {isSupabaseConfigured ? (
-      <SelfHealingErrorBoundary>
-        <App />
-      </SelfHealingErrorBoundary>
-    ) : (
-      <ConfigErrorScreen errorMessage={supabaseConfigError} />
-    )}
-  </React.StrictMode>,
-)
-// Force rebuild 1760995246
-// Trigger rebuild Sat Jan 17 02:33:28 EST 2026
+// Render app using the bootstrap function
+bootstrap()
