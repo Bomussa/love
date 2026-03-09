@@ -96,6 +96,7 @@ function App() {
 
   // ✅ إصلاح أمني: لا نثق بـ localStorage وحده لحالة الإدارة
   const [isAdmin, setIsAdmin] = useState(false)
+  const [adminSession, setAdminSession] = useState(null)
 
   const [currentView, setCurrentView] = useState('login')
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
@@ -138,6 +139,7 @@ function App() {
       const restoredSession = await authService.restoreSession();
       if (!mounted) return;
       setIsAdmin(!!restoredSession);
+      setAdminSession(restoredSession || null);
       if (!restoredSession) {
         localStorage.removeItem('mmc_admin_session');
       }
@@ -284,6 +286,7 @@ function App() {
         // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);
+        setAdminSession(null);
 
         setPatientData(res.data)
         localStorage.setItem('patientData', JSON.stringify(res.data))
@@ -317,6 +320,7 @@ function App() {
         setPatientData(null);
 
         setIsAdmin(true)
+        setAdminSession(result.session || null)
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
       } else {
@@ -332,6 +336,7 @@ function App() {
   const handleLogout = () => {
     setPatientData(null)
     setIsAdmin(false)
+    setAdminSession(null)
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
@@ -459,6 +464,7 @@ function App() {
                 onLogout={handleLogout}
                 language={language}
                 toggleLanguage={toggleLanguage}
+                session={adminSession}
                 currentTheme={currentTheme}
                 onThemeChange={setCurrentTheme}
               />
