@@ -100,6 +100,36 @@ const QueueManagement = ({ language, t }) => {
   const [newPatientId, setNewPatientId] = useState('');
   const [editPatientLoading, setEditPatientLoading] = useState(false);
 
+  const toNumericDisplayNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const getQueueDisplayText = (queueItem) => {
+    if (queueItem?.is_priority && queueItem?.priority_label) {
+      return queueItem.priority_label;
+    }
+
+    const numericDisplayNumber = toNumericDisplayNumber(queueItem?.display_number);
+    return numericDisplayNumber || queueItem?.queue_number;
+  };
+
+  const getNextDisplayNumberForClinic = async (clinicId) => {
+    const { data: maxQueue, error } = await supabase
+      .from('unified_queue')
+      .select('display_number')
+      .eq('clinic_id', clinicId)
+      .order('display_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    return toNumericDisplayNumber(maxQueue?.display_number) + 1;
+  };
+
   useEffect(() => {
     loadQueues();
     loadClinics();
@@ -162,7 +192,7 @@ const QueueManagement = ({ language, t }) => {
       // ترتيب المنتظرين حسب رقم الدور
       const waitingQueue = queues
         .filter(q => q.clinic_id === clinicId && q.status === 'waiting')
-        .sort((a, b) => (a.display_number || 0) - (b.display_number || 0));
+        .sort((a, b) => toNumericDisplayNumber(a.display_number) - toNumericDisplayNumber(b.display_number));
       
       if (waitingQueue.length === 0) {
         showErrorToast(t('لا يوجد مرضى في الانتظار', 'No patients waiting'));
@@ -225,15 +255,7 @@ const QueueManagement = ({ language, t }) => {
         }
       } else {
         // ترحيل لنهاية الدور برقم جديد
-        const { data: maxQueue } = await supabase
-          .from('unified_queue')
-          .select('display_number')
-          .eq('clinic_id', queue?.clinic_id)
-          .order('display_number', { ascending: false })
-          .limit(1)
-          .single();
-        
-        const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
+        const newDisplayNumber = await getNextDisplayNumberForClinic(queue?.clinic_id);
         
         const { error } = await supabase
           .from('unified_queue')
@@ -299,9 +321,10 @@ const QueueManagement = ({ language, t }) => {
             status: 'called',
             called_at: new Date().toISOString(),
             is_priority: true,
+            priority_label: 'أولوية',
             priority_reason: 'تمرير دور مباشر',
             queue_number: `P-${Date.now().toString().slice(-4)}`,
-            display_number: `أولوية`
+            display_number: await getNextDisplayNumberForClinic(priorityClinicId)
           });
 
         if (insertError) {
@@ -411,12 +434,22 @@ const QueueManagement = ({ language, t }) => {
   };
 
   // تجميع الطوابير حسب العيادة
-  const queuesByClinic = clinics.map(clinic => ({
-    ...clinic,
-    waiting: queues.filter(q => q.clinic_id === clinic.id && q.status === 'waiting'),
-    called: queues.filter(q => q.clinic_id === clinic.id && q.status === 'called'),
-    completed: queues.filter(q => q.clinic_id === clinic.id && q.status === 'completed').length
-  }));
+  const queuesByClinic = clinics.map(clinic => {
+    const waiting = queues
+      .filter(q => q.clinic_id === clinic.id && q.status === 'waiting')
+      .sort((a, b) => toNumericDisplayNumber(a.display_number) - toNumericDisplayNumber(b.display_number));
+
+    const called = queues
+      .filter(q => q.clinic_id === clinic.id && q.status === 'called')
+      .sort((a, b) => toNumericDisplayNumber(a.display_number) - toNumericDisplayNumber(b.display_number));
+
+    return {
+      ...clinic,
+      waiting,
+      called,
+      completed: queues.filter(q => q.clinic_id === clinic.id && q.status === 'completed').length
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -446,7 +479,7 @@ const QueueManagement = ({ language, t }) => {
                 <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-3">
                   <div className="text-xs text-green-400 mb-1">{t('يُستدعى الآن', 'Now Calling')}</div>
                   <div className="text-2xl font-bold text-green-400">
-                    {clinic.called[0]?.display_number || clinic.called[0]?.queue_number}
+                    {getQueueDisplayText(clinic.called[0])}
                   </div>
                 </div>
               )}
@@ -491,7 +524,7 @@ const QueueManagement = ({ language, t }) => {
                     {clinic.waiting.slice(0, 5).map((q, i) => (
                       <div key={q.id} className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold">{q.display_number || q.queue_number}</span>
+                          <span className="font-mono font-bold">{getQueueDisplayText(q)}</span>
                           <span className="text-xs text-gray-500">({q.patient_id})</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -608,7 +641,7 @@ const QueueManagement = ({ language, t }) => {
             <div className="space-y-4">
               <div className="bg-white/5 rounded-xl p-4">
                 <div className="text-sm text-gray-400 mb-1">{t('رقم الدور', 'Queue Number')}</div>
-                <div className="text-2xl font-bold text-[#C9A54C]">{editingPatient.display_number || editingPatient.queue_number}</div>
+                <div className="text-2xl font-bold text-[#C9A54C]">{getQueueDisplayText(editingPatient)}</div>
               </div>
 
               <div>
