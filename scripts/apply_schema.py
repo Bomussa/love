@@ -8,13 +8,28 @@ import sys
 import requests
 import json
 
-# Supabase configuration
+# Supabase configuration loaded from environment
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("❌ Missing required env vars: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
-    sys.exit(1)
+def validate_env():
+    """Validate required environment variables before any API call"""
+    missing = [
+        name
+        for name, value in {
+            "SUPABASE_URL": SUPABASE_URL,
+            "SUPABASE_SERVICE_KEY": SUPABASE_SERVICE_KEY,
+        }.items()
+        if not value
+    ]
+
+    if missing:
+        print("❌ Missing required environment variables: " + ", ".join(missing))
+        print("   Please set them in your shell or .env file before running this script.")
+        return False
+
+    return True
+
 
 def read_schema_file():
     """Read the SQL schema file"""
@@ -112,6 +127,9 @@ def main():
     print("=" * 60)
     print()
     
+    if not validate_env():
+        sys.exit(1)
+
     # Test connection
     if not test_connection():
         print("\n❌ Cannot proceed without connection")

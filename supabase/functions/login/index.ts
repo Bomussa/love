@@ -1,74 +1,73 @@
 /**
- * Supabase Edge Function: /api/v1/login
- *
- * Purpose: Handle user login/authentication
- * Validates credentials and returns auth tokens
+ * Supabase Edge Function: login
+ * Admin authentication using bcrypt hash stored in admins.password_hash
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { compare } from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts';
 import { handleOptions, corsJsonResponse, corsErrorResponse } from '../_shared/cors.ts';
-import { parseJsonBody, validateLoginCredentials } from '../_shared/validate.ts';
+import { parseJsonBody } from '../_shared/validate.ts';
 
-// Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+interface AdminLoginBody {
+  username?: string;
+  password?: string;
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin');
-
-  // Handle CORS preflight
   const optionsResponse = handleOptions(req);
-  if (optionsResponse) {
-    return optionsResponse;
-  }
+  if (optionsResponse) return optionsResponse;
 
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return corsErrorResponse('Method Not Allowed', 405, origin);
   }
 
-  // Parse and validate request body
-  const body = await parseJsonBody(req);
-  if (!body) {
-    return corsErrorResponse('Invalid JSON body', 400, origin);
+  const body = await parseJsonBody<AdminLoginBody>(req);
+  if (!body || typeof body.username !== 'string' || typeof body.password !== 'string') {
+    return corsErrorResponse('Username and password are required', 400, origin);
   }
 
-  const validation = validateLoginCredentials(body);
-  if (!validation.valid) {
-    return corsErrorResponse(validation.error || 'Invalid credentials', 400, origin);
-  }
+  const username = body.username.trim();
+  const password = body.password;
 
-  const { email, password } = validation.credentials!;
+  if (username.length < 3 || password.length < 8) {
+    return corsErrorResponse('Invalid username or password', 401, origin);
+  }
 
   try {
-    // Create Supabase client for auth
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Attempt to sign in with email and password
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: adminUser, error: userError } = await supabase
+      .from('admins')
+      .select('id, username, role, name, is_active, password_hash')
+      .eq('username', username)
+      .maybeSingle();
 
-    if (error) {
-      console.error('Login error:', error);
-
-      // Return appropriate status codes
-      if (error.message.includes('Invalid') || error.message.includes('credentials')) {
-        return corsErrorResponse('Invalid email or password', 401, origin);
-      }
-
-      return corsErrorResponse(error.message, 400, origin);
+    if (userError || !adminUser || !adminUser.is_active || !adminUser.password_hash) {
+      return corsErrorResponse('Invalid username or password', 401, origin);
     }
 
-    // Log successful login attempt (for audit)
-    // Note: Email is not logged to protect user privacy
-    console.log('Login successful:', { timestamp: new Date().toISOString() });
+    const isPasswordValid = await compare(password, adminUser.password_hash);
+    if (!isPasswordValid) {
+      return corsErrorResponse('Invalid username or password', 401, origin);
+    }
+
+    await supabase
+      .from('admins')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', adminUser.id);
+
+    const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60;
+    const accessToken = crypto.randomUUID();
+    const refreshToken = crypto.randomUUID();
 
     // Return success with session data
     return corsJsonResponse({ data: { session: data.session, user: data.user } }, 200, origin);
   } catch (error) {
-    console.error('Unexpected login error:', error);
+    console.error('Unexpected admin login error:', error);
     return corsErrorResponse('Internal server error', 500, origin);
   }
 });
