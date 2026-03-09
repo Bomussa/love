@@ -18,6 +18,7 @@
 - `GET /api/v1/queue/:clinicId`
 - `POST /api/v1/queue/join`
 - `GET /api/v1/queue/status/:clinicId/:patientId`
+- `POST /api/v1/queue/position` (Body: `clinicId`, `patientId` أو `sessionId`)
 - `POST /api/v1/queue/call-next/:clinicId`
 - `POST /api/v1/queue/priority-call`
 - `POST /api/v1/queue/complete-current/:clinicId`
