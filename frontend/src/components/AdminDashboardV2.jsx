@@ -3404,7 +3404,7 @@ const UsersManagement = ({ language, t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('admin_users')
+        .from('admins')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -3451,7 +3451,7 @@ const UsersManagement = ({ language, t }) => {
         : newUser.permissions;
       
       const { error } = await supabase
-        .from('admin_users')
+        .from('admins')
         .insert([{
           username: newUser.username,
           password_hash: newUser.password,
@@ -3476,7 +3476,7 @@ const UsersManagement = ({ language, t }) => {
   const updateUserPermissions = async (userId, permissions) => {
     try {
       await supabase
-        .from('admin_users')
+        .from('admins')
         .update({ permissions })
         .eq('id', userId);
       loadUsers();
@@ -3488,7 +3488,7 @@ const UsersManagement = ({ language, t }) => {
   const updateUserStatus = async (userId, isActive) => {
     try {
       await supabase
-        .from('admin_users')
+        .from('admins')
         .update({ is_active: isActive })
         .eq('id', userId);
       loadUsers();
@@ -3500,7 +3500,7 @@ const UsersManagement = ({ language, t }) => {
   const updateUserRole = async (userId, role) => {
     try {
       await supabase
-        .from('admin_users')
+        .from('admins')
         .update({ role })
         .eq('id', userId);
       loadUsers();
@@ -3513,7 +3513,7 @@ const UsersManagement = ({ language, t }) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
       await supabase
-        .from('admin_users')
+        .from('admins')
         .delete()
         .eq('id', userId);
       loadUsers();
