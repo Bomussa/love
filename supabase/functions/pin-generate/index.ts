@@ -79,7 +79,7 @@ const hasClinicClaimPermission = (user: User, clinicId: string): boolean => {
 
 const isAdmin = (user: User): boolean => {
   const role = String(
-    user.role ?? user.app_metadata?.role ?? user.user_metadata?.role ?? '',
+    user.role ?? user.app_metadata?.role ?? '',
   ).toLowerCase();
 
   return ['admin', 'super_admin', 'service_role'].includes(role);
