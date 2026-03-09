@@ -108,7 +108,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run', { cache: 'no-store' });
+      const response = await fetch(getContractEndpoint('qaDeepRun'), { cache: 'no-store' });
       const result = await response.json();
 
       const isSuccess = response.ok && (result.ok || result.success || result.status === 'healthy');

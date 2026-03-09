@@ -1,6 +1,7 @@
 const FUNCTIONS_BASE = '/functions/v1';
 
 export const API_CONTRACT_ENDPOINTS = Object.freeze({
+  qaDeepRun: '/api/v1/qa/deep_run',
   healthz: `${FUNCTIONS_BASE}/healthz`,
   login: `${FUNCTIONS_BASE}/login`,
   queueEnter: `${FUNCTIONS_BASE}/queue-enter`,
