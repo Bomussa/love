@@ -743,7 +743,7 @@ const PINManagement = ({ language, t }) => {
       const { data, error } = await supabase
         .from('pins')
         .select('*')
-        .order('clinic_code', { ascending: true })
+        .order('clinic_id', { ascending: true })
         .order('created_at', { ascending: false });
       
       if (!error && data) setPins(data);
@@ -776,7 +776,7 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      const existingPins = pins.filter(p => p.clinic_id === newPin.clinic_id).map(p => p.pin);
       const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
@@ -787,13 +787,9 @@ const PINManagement = ({ language, t }) => {
       
       const { error } = await supabase.from('pins').insert({
         pin: pinCode,
-        clinic_code: newPin.clinic_id,
-        is_active: true,
-        generated_at: new Date().toISOString(),
-        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-        created_at: new Date().toISOString(),
-        max_uses: newPin.max_uses || 100,
-        used_count: 0
+        clinic_id: newPin.clinic_id,
+        valid_until: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        created_at: new Date().toISOString()
       });
       
       if (!error) {
@@ -816,8 +812,8 @@ const PINManagement = ({ language, t }) => {
       setGeneratingBulk(true);
       const existingPinsByClinic = {};
       pins.forEach(p => {
-        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
-        existingPinsByClinic[p.clinic_code].push(p.pin);
+        if (!existingPinsByClinic[p.clinic_id]) existingPinsByClinic[p.clinic_id] = [];
+        existingPinsByClinic[p.clinic_id].push(p.pin);
       });
       
       const newPins = [];
@@ -826,13 +822,9 @@ const PINManagement = ({ language, t }) => {
         const pinCode = generateUniquePin(existingPins);
         newPins.push({
           pin: pinCode,
-          clinic_code: clinic.id,
-          is_active: true,
-          generated_at: new Date().toISOString(),
-          expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-          created_at: new Date().toISOString(),
-          max_uses: 100,
-          used_count: 0
+          clinic_id: clinic.id,
+          valid_until: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+          created_at: new Date().toISOString()
         });
       }
       
@@ -859,7 +851,7 @@ const PINManagement = ({ language, t }) => {
       const { error, count } = await supabase
         .from('pins')
         .delete()
-        .lt('expires_at', now);
+        .lt('valid_until', now);
       
       if (!error) {
         showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
@@ -874,7 +866,7 @@ const PINManagement = ({ language, t }) => {
     try {
       const { error } = await supabase
         .from('pins')
-        .update({ is_active: !currentStatus })
+        .update({ used_at: currentStatus ? new Date().toISOString() : null })
         .eq('id', pinId);
       
       if (!error) {
@@ -951,11 +943,11 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
+          <div className="text-2xl font-bold text-green-400">{pins.filter(p => !p.used_at && !isPinExpired(p.valid_until)).length}</div>
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.valid_until)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
@@ -1034,12 +1026,12 @@ const PINManagement = ({ language, t }) => {
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
                 <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
-                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
+                <td className="p-4">{clinics.find(c => c.id === pin.clinic_id)?.name_ar || pin.clinic_id}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    (!pin.used_at && !isPinExpired(pin.valid_until)) ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                    {(!pin.used_at && !isPinExpired(pin.valid_until)) ? t('نشط', 'Active') : t('معطل', 'Inactive')}
                   </span>
                 </td>
                 <td className="p-4 text-gray-400 text-sm">
@@ -1048,12 +1040,12 @@ const PINManagement = ({ language, t }) => {
                 <td className="p-4">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
+                      onClick={() => togglePinStatus(pin.id, !pin.used_at && !isPinExpired(pin.valid_until))}
                       className={`p-2 rounded-lg transition-all ${
-                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        (!pin.used_at && !isPinExpired(pin.valid_until)) ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       }`}
                     >
-                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
+                      {(!pin.used_at && !isPinExpired(pin.valid_until)) ? <Pause size={16} /> : <Play size={16} />}
                     </button>
                     <button
                       onClick={() => deletePin(pin.id)}

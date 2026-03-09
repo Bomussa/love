@@ -418,11 +418,11 @@ const api = {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
         const { data: pinData, error: pinError } = await supabase
           .from('pins')
-          .select('id, clinic_code, is_active, expires_at')
-          .eq('clinic_code', clinicId)
+          .select('id, clinic_id, valid_until, used_at')
+          .eq('clinic_id', clinicId)
           .eq('pin', pin)
-          .eq('is_active', true)
-          .gte('expires_at', new Date().toISOString())
+          .is('used_at', null)
+          .gte('valid_until', new Date().toISOString())
           .maybeSingle();
 
         if (pinError) throw pinError;

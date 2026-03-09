@@ -34,5 +34,13 @@ Authorization: Bearer <JWT_TOKEN>
 - \`GET /api/v1/clinics\` - قائمة العيادات
 - \`POST /api/v1/clinics\` - إضافة عيادة
 
+### PIN
+
+- \`POST /functions/v1/pin-generate\` - توليد PIN للعيادة (\`clinic_id\`).
+- \`POST /functions/v1/pin-verify\` - التحقق من PIN للعيادة (\`clinic_id\`, \`pin\`).
+- \`POST /rpc/verify_clinic_pin\` - تحقق آمن عبر RPC (\`p_clinic_id\`, \`p_pin\`).
+
+> **مهم:** عمود الربط القياسي في جدول \`pins\` هو \`clinic_id\`.
+
 ---
-**آخر تحديث:** 08 نوفمبر 2025
+**آخر تحديث:** 09 مارس 2026
