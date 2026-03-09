@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
 
+const arraysEqual = (a = [], b = []) => (
+  a.length === b.length && a.every((item, index) => item === b[index])
+);
+
 // قائمة الجداول الافتراضية في Supabase
 const DEFAULT_TABLES = [
   'activity_log', 'activity_logs', 'admins', 'api_logs', 'api_status', 'app_settings',
@@ -124,6 +128,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
   const [functionStatus, setFunctionStatus] = useState({});
   const [catalogTables, setCatalogTables] = useState(DEFAULT_TABLES);
   const [catalogFunctions, setCatalogFunctions] = useState(DEFAULT_FUNCTIONS);
+  const catalogRef = useRef({ tables: DEFAULT_TABLES, functions: DEFAULT_FUNCTIONS });
   const [isMonitoring, setIsMonitoring] = useState(true);
   const [lastCheck, setLastCheck] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -249,13 +254,20 @@ const APIMonitor = ({ language = 'ar', t }) => {
       const tables = Array.isArray(data?.tables) && data.tables.length ? data.tables : DEFAULT_TABLES;
       const functions = Array.isArray(data?.functions) && data.functions.length ? data.functions : DEFAULT_FUNCTIONS;
 
-      setCatalogTables(tables);
-      setCatalogFunctions(functions);
+      const previousCatalog = catalogRef.current;
+      if (!arraysEqual(previousCatalog.tables, tables)) {
+        setCatalogTables(tables);
+      }
+      if (!arraysEqual(previousCatalog.functions, functions)) {
+        setCatalogFunctions(functions);
+      }
+
+      catalogRef.current = { tables, functions };
       return { tables, functions };
     } catch {
-      return { tables: catalogTables, functions: catalogFunctions };
+      return catalogRef.current;
     }
-  }, [catalogTables, catalogFunctions]);
+  }, []);
 
   // ✅ نظام الإصلاح التلقائي المحسّن - يصلح سياسات RLS والاتصالات
   const autoHeal = useCallback(async (item, type) => {
