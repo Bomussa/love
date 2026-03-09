@@ -31,7 +31,9 @@ function getQueueSettings() {
     if (saved) {
       return { ...DEFAULT_QUEUE_SETTINGS, ...JSON.parse(saved) };
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Failed to parse queueSystemSettings from localStorage:', e);
+  }
   return { ...DEFAULT_QUEUE_SETTINGS };
 }
 
@@ -93,6 +95,7 @@ const api = {
 
       // في حال فشل RPC، نستخدم الطريقة البديلة
       if (rpcError) {
+        console.warn('[api-unified] enter_unified_queue_safe failed, falling back:', rpcError);
       }
 
       // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة اليوم
@@ -294,6 +297,7 @@ const api = {
               return { success: true, data: result };
             }
           } catch (e) {
+            console.warn('[api-unified] queue/done fallback failed:', e);
           }
           
           return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
@@ -1881,7 +1885,7 @@ const api = {
    * @param {string} type - نوع الإعدادات (theme, queue, etc.)
    * @returns {Promise<Object>} الإعدادات
    */
-  async getSettings(type) {
+  async getSettingsByCategory(type) {
     try {
       const { data, error } = await supabase
         .from('settings')
