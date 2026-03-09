@@ -63,9 +63,10 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run check:api-contract && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "check:api-contract": "node ../scripts/contracts/check-api-contract.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

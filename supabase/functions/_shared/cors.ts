@@ -7,11 +7,13 @@ const STATIC_ALLOWED_ORIGINS = [
   'https://www.staging.mmc-mms.com',
 ] as const;
 
+const PRIMARY_ORIGIN = 'https://mmc-mms.com';
 const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+(?:-[a-z0-9-]+)*\.vercel\.app$/i;
 
 const BASE_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Credentials': 'true',
   'Cache-Control': 'no-cache, no-store, must-revalidate',
   'Content-Type': 'application/json; charset=utf-8',
 };
@@ -28,7 +30,7 @@ const ALLOWED_ORIGINS = new Set<string>([...STATIC_ALLOWED_ORIGINS, ...getEnvAll
 
 export const corsHeaders: Record<string, string> = {
   ...BASE_CORS_HEADERS,
-  'Access-Control-Allow-Origin': 'https://mmc-mms.com',
+  'Access-Control-Allow-Origin': PRIMARY_ORIGIN,
   Vary: 'Origin',
 };
 
@@ -37,6 +39,8 @@ type ResponseEnvelope = {
   error: string | null;
   data: unknown;
 };
+
+type RequestLike = Request | string | null | undefined;
 
 function normalizeEnvelope(body: unknown, defaultSuccess: boolean): ResponseEnvelope {
   if (body && typeof body === 'object') {
@@ -57,8 +61,10 @@ function normalizeEnvelope(body: unknown, defaultSuccess: boolean): ResponseEnve
   };
 }
 
-function extractOrigin(req: Request | null | undefined): string | null {
-  const origin = req?.headers.get('Origin');
+function extractOrigin(req: RequestLike): string | null {
+  if (!req) return null;
+  if (typeof req === 'string') return req.trim() || null;
+  const origin = req.headers.get('Origin');
   return origin && origin.trim() ? origin : null;
 }
 
@@ -67,9 +73,9 @@ export function isAllowedOrigin(origin: string | null): boolean {
   return ALLOWED_ORIGINS.has(origin) || VERCEL_PREVIEW_ORIGIN.test(origin);
 }
 
-export function getCorsHeaders(req?: Request | null, extraHeaders: Record<string, string> = {}): Record<string, string> {
+export function getCorsHeaders(req?: RequestLike, extraHeaders: Record<string, string> = {}): Record<string, string> {
   const origin = extractOrigin(req);
-  const allowOrigin = isAllowedOrigin(origin) ? origin! : 'https://mmc-mms.com';
+  const allowOrigin = origin && isAllowedOrigin(origin) ? origin : PRIMARY_ORIGIN;
 
   return {
     ...BASE_CORS_HEADERS,
@@ -83,12 +89,31 @@ export function isOptions(req: Request) {
   return req.method === 'OPTIONS';
 }
 
+export function ensureAllowedOrigin(req?: RequestLike): Response | null {
+  const origin = extractOrigin(req);
+  if (origin && !isAllowedOrigin(origin)) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Origin not allowed', data: null }, null, 2),
+      { status: 403, headers: getCorsHeaders(null) },
+    );
+  }
+
+  return null;
+}
+
 export function handleOptions(req: Request): Response | null {
   if (!isOptions(req)) return null;
+
+  const denied = ensureAllowedOrigin(req);
+  if (denied) return denied;
+
   return new Response(null, { status: 204, headers: getCorsHeaders(req) });
 }
 
-export function corsJsonResponse(body: unknown, status = 200, req?: Request | null): Response {
+export function corsJsonResponse(body: unknown, status = 200, req?: RequestLike): Response {
+  const denied = ensureAllowedOrigin(req);
+  if (denied) return denied;
+
   const envelope = normalizeEnvelope(body, status < 400);
   return new Response(JSON.stringify(envelope, null, 2), {
     status,
@@ -99,16 +124,16 @@ export function corsJsonResponse(body: unknown, status = 200, req?: Request | nu
 export function corsErrorResponse(
   message: string,
   status = 400,
-  req?: Request | null,
+  req?: RequestLike,
   data: unknown = null,
 ): Response {
   return corsJsonResponse({ success: false, error: message, data }, status, req);
 }
 
-export function ok(body: unknown, _extraHeaders: Record<string, string> = {}, req?: Request | null) {
+export function ok(body: unknown, _extraHeaders: Record<string, string> = {}, req?: RequestLike) {
   return corsJsonResponse({ success: true, error: null, data: body }, 200, req);
 }
 
-export function badRequest(message: string, details?: unknown, req?: Request | null) {
+export function badRequest(message: string, details?: unknown, req?: RequestLike) {
   return corsErrorResponse(message, 400, req, details ?? null);
 }
