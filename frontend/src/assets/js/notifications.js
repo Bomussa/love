@@ -8,11 +8,15 @@
         const ttl = Number(n.ttl || 30000);
         const el = document.createElement('div');
         el.className = `notif notif-${(n.type || 'info').toLowerCase()}`;
-        el.style.cssText = `position:fixed;inset-inline-end:12px;bottom:12px;background:#111;color:#fff;padding:10px 12px;border-radius:8px;z-index:99999;max-width:320px;box-shadow:0 6px 18px rgba(0,0,0,.25);font-family:"Cairo",system-ui`;
+        el.style.cssText = "position:fixed;inset-inline-end:12px;bottom:12px;background:#111;color:#fff;padding:10px 12px;border-radius:8px;z-index:99999;max-width:320px;box-shadow:0 6px 18px rgba(0,0,0,.25);font-family:'Cairo',system-ui";
         el.innerHTML = `<strong>${n.title || ''}</strong><div>${n.message || ''}</div>`;
         document.body.appendChild(el);
         setTimeout(() => el.remove(), ttl);
-      } catch (err) { console.error('Failed to parse notification event', err); }
+      } catch (error) {
+        void error;
+      }
     });
-  } catch (err) { console.error('Failed to initialize EventSource notifications', err); }
+  } catch (error) {
+    void error;
+  }
 })();

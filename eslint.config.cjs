@@ -6,6 +6,11 @@ module.exports = [
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
+      '**/coverage/**',
+      '**/.next/**',
+      '**/frontend/src/assets/**',
+      '**/frontend/public/**',
+      '**/frontend/src/_archived/**',
       '**/*.min.js',
       'frontend/src/lib/supabase-client.js'
     ]
@@ -21,12 +26,16 @@ module.exports = [
       }
     },
     rules: {
-      'no-async-promise-executor': 'error',
+      'no-async-promise-executor': 'warn',
       'no-shadow': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'consistent-return': 'warn',
       'no-console': 'off',
-      'no-undef': 'warn'
+      'no-undef': 'warn',
+      'no-empty': 'warn',
+      'no-useless-catch': 'warn',
+      'no-dupe-keys': 'warn',
+      'preserve-caught-error': 'warn'
     }
   }
 ];

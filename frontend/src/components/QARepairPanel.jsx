@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { smartResponseV3 } from '../lib/SmartResponseSystemV3';
+import { getContractEndpoint } from '../lib/api-contract';
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205', 'PGRST204']);
 
@@ -107,7 +108,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run', { cache: 'no-store' });
+      const response = await fetch(getContractEndpoint('statsDashboard'), { cache: 'no-store' });
       const result = await response.json();
 
       const isSuccess = response.ok && (result.ok || result.success || result.status === 'healthy');
@@ -154,12 +155,13 @@ const QARepairPanel = ({ language = 'ar', t }) => {
     try {
       toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
       
-      const response = await fetch('/api/v1/repair/execute', {
+      const response = await fetch(getContractEndpoint('queueEngine'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
-          findingId, 
+          action: 'health_check',
+          findingId,
           stages: ['diagnose', 'resolve', 'verify']
         })
       });

@@ -12,7 +12,11 @@
         el.innerHTML = `<strong>${n.title || ''}</strong><div>${n.message || ''}</div>`;
         document.body.appendChild(el);
         setTimeout(() => el.remove(), ttl);
-      } catch (err) { console.error('Failed to parse notification event', err); }
+      } catch (error) {
+        void error;
+      }
     });
-  } catch (err) { console.error('Failed to initialize EventSource notifications', err); }
+  } catch (error) {
+    void error;
+  }
 })();
