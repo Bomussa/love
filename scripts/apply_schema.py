@@ -9,8 +9,12 @@ import requests
 import json
 
 # Supabase configuration
-SUPABASE_URL = "https://rujwuruuosffcxazymit.supabase.co"
-SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTM4NzI2NSwiZXhwIjoyMDc2OTYzMjY1fQ.fa7af059cd2c8504e8a247e23b6e0378476bf5d5d7da75c37e3a1227b1f12063"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    print("❌ Missing required env vars: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+    sys.exit(1)
 
 def read_schema_file():
     """Read the SQL schema file"""
