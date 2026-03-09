@@ -23,19 +23,30 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.is_admin_actor()
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
-  SELECT (
+DECLARE
+  has_admin_role boolean := false;
+BEGIN
+  IF to_regclass('public.roles') IS NOT NULL THEN
+    EXECUTE $sql$
+      SELECT EXISTS (
+        SELECT 1
+        FROM public.roles r
+        WHERE r.user_id = auth.uid()
+          AND r.role IN ('admin', 'operator')
+      )
+    $sql$
+    INTO has_admin_role;
+  END IF;
+
+  RETURN (
     auth.role() = 'service_role'
     OR public.current_app_role() IN ('admin', 'super_admin', 'operator')
-    OR EXISTS (
-      SELECT 1
-      FROM public.roles r
-      WHERE r.user_id = auth.uid()
-        AND r.role IN ('admin', 'operator')
-    )
+    OR has_admin_role
   );
+END;
 $$;
 
 -- ----------
