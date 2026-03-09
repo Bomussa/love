@@ -35,8 +35,8 @@ class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
     this.sessionTimeout = 60 * 60 * 1000;
-    this.authEndpoint = '/api/v1/auth/admin/login';
-    this.verifyEndpoint = '/api/v1/auth/admin/session/verify';
+    this.authEndpoint = '/api/v1/admin/login';
+    this.verifyEndpoint = '/api/v1/admin/session/verify';
     this.verifiedSession = null;
   }
 
@@ -57,7 +57,7 @@ class AuthService {
 
       const payload = await response.json();
 
-      if (!payload?.success || !payload?.sessionToken || !payload?.role) {
+      if (!payload?.success || !(payload?.sessionToken || payload?.session?.id) || !payload?.role) {
         return { success: false, error: 'استجابة مصادقة غير صالحة من الخادم' };
       }
 
@@ -79,11 +79,11 @@ class AuthService {
 
   createSessionFromServer(payload, username) {
     return {
-      id: payload.sessionId || `sess_${Date.now()}`,
+      id: payload.sessionId || payload.session?.id || `sess_${Date.now()}`,
       username: payload.username || username,
       role: payload.role,
       permissions: Array.isArray(payload.permissions) ? payload.permissions : [],
-      sessionToken: payload.sessionToken,
+      sessionToken: payload.sessionToken || payload.session?.id,
       loginTime: payload.loginTime || new Date().toISOString(),
       expiresAt: payload.expiresAt || new Date(Date.now() + this.sessionTimeout).toISOString(),
     };
