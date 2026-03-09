@@ -34,4 +34,21 @@ describe('auth-service secure login', () => {
     expect(result.error).toContain('استجابة مصادقة غير صالحة');
     expect(localStorage.setItem).not.toHaveBeenCalled();
   });
+
+  it('does not allow any local admin code when backend is unavailable', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: authService } = await import('../auth-service.js');
+
+    const result = await authService.login('admin123', 'mock-token');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Authentication service unavailable');
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
 });

@@ -73,7 +73,7 @@ class AuthService {
       return { success: true, session: trustedSession };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
+      return { success: false, error: 'Authentication service unavailable' };
     }
   }
 
