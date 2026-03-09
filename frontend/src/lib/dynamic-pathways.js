@@ -28,6 +28,18 @@ async function loadConfigFiles() {
 }
 import { supabase } from './supabase-client';
 import { queueQueries } from './supabase-queries';
+import settings from '../../data/settings.json';
+
+const isDynamicRoutesEnabled = () => settings?.ALLOW_DYNAMIC_ROUTES !== false;
+
+function deduplicateClinicCodes(codes = []) {
+  const seen = new Set();
+  return codes.filter((code) => {
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
 
 // ✅ تحويل رموز العيادات إلى كائنات كاملة - مع دعم قاعدة البيانات
 async function mapClinicCodes(codes, useDatabase = true, localClinicsData = {}) {
@@ -186,11 +198,20 @@ export async function getDynamicMedicalPathway(examType, gender) {
       }
 
       if (dbRoute && dbRoute.clinics && Array.isArray(dbRoute.clinics) && dbRoute.clinics.length > 0) {
+        const uniqueClinicCodes = deduplicateClinicCodes(dbRoute.clinics);
 
         // تحويل رموز العيادات إلى كائنات
-        const clinics = await mapClinicCodes(dbRoute.clinics, true);
+        const clinics = await mapClinicCodes(uniqueClinicCodes, true);
 
         if (clinics.length > 0) {
+          if (!isDynamicRoutesEnabled()) {
+            return clinics.map((clinic, index) => ({
+              ...clinic,
+              order: index + 1,
+              status: index === 0 ? 'ready' : 'locked',
+            }));
+          }
+
           // ✅ جلب الأوزان الحقيقية (عدد المنتظرين في كل عيادة)
           const clinicIds = clinics.map((c) => c.id);
           let weights = {};
@@ -234,6 +255,8 @@ export async function getDynamicMedicalPathway(examType, gender) {
     codes = route;
   }
 
+  codes = deduplicateClinicCodes(codes);
+
   if (codes.length === 0) {
     console.warn('[getDynamicMedicalPathway] لا توجد عيادات في المسار');
     return [];
@@ -245,6 +268,14 @@ export async function getDynamicMedicalPathway(examType, gender) {
   if (clinics.length === 0) {
     console.warn('[getDynamicMedicalPathway] فشل تحويل رموز العيادات');
     return [];
+  }
+
+  if (!isDynamicRoutesEnabled()) {
+    return clinics.map((clinic, index) => ({
+      ...clinic,
+      order: index + 1,
+      status: index === 0 ? 'ready' : 'locked',
+    }));
   }
 
   // ✅ جلب الأوزان الحقيقية

@@ -50,8 +50,9 @@ let toast;
   eventBus.on('queue:your_turn', (data) => {
     if (toast) {
       toast.loading(`الآن دورك في ${data?.clinicName || 'العيادة'}`);
-      if (navigator.vibrate) navigator.vibrate(200);
-      new Audio('/sounds/notify.mp3').play().catch(() => { });
+      if ('vibrate' in navigator) navigator.vibrate(200);
+      const audio = new Audio('/sounds/urgent.mp3');
+      audio.play().catch(() => {});
     }
   });
 
@@ -69,7 +70,7 @@ let toast;
   window.testNotify = () => {
     if (toast) {
       toast.success('🔔 اختبار إشعار ناجح!');
-      if (navigator.vibrate) navigator.vibrate(100);
+      if ('vibrate' in navigator) navigator.vibrate(100);
     }
   };
 })();
@@ -458,6 +459,12 @@ class RealtimeNotificationEngine {
     });
   }
 
+  canPlayAudio() {
+    if (typeof window === 'undefined') return false;
+    const activated = navigator?.userActivation?.hasBeenActive || navigator?.userActivation?.isActive;
+    return Boolean(activated);
+  }
+
   // === التنبيهات (صوت + اهتزاز) ===
 
   /**
@@ -493,13 +500,13 @@ class RealtimeNotificationEngine {
    * تشغيل الصوت
    */
   playSound(priority = 'normal') {
+    if (!this.canPlayAudio()) return;
+
     try {
       const audio = new Audio(priority === 'urgent' ? '/sounds/urgent.mp3' : '/sounds/notify.mp3');
-      audio.play().catch((e) => {
-        // console.warn('Audio play failed:', e)
-      });
+      audio.play().catch(() => {});
     } catch (e) {
-      // console.error('Error playing sound:', e)
+      // no-op
     }
   }
 
