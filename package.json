@@ -17,7 +17,9 @@
     "ci:resilient": "./scripts/resilient-ci.sh",
     "lint:supabase-functions": "deno lint supabase/functions",
     "typecheck:supabase-functions": "deno check supabase/functions/**/*.ts",
-    "check:supabase-functions": "npm run lint:supabase-functions && npm run typecheck:supabase-functions"
+    "check:supabase-functions": "npm run lint:supabase-functions && npm run typecheck:supabase-functions",
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --redact"
   },
   "engines": {
     "node": "20.x"

@@ -49,3 +49,11 @@
 
 ## Health Check
 - `GET /api/v1/health`
+
+
+## PIN
+- `POST /functions/v1/pin-generate` (body: `clinic_id`)
+- `POST /functions/v1/pin-verify` (body: `clinic_id`, `pin`)
+- `POST /rpc/verify_clinic_pin` (params: `p_clinic_id`, `p_pin`)
+
+> ملاحظة: العمود المعياري في جدول `pins` هو `clinic_id` وليس `clinic_code`.
