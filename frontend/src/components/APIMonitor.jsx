@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
 
-// قائمة الجداول في Supabase (73 جدول)
-const ALL_TABLES = [
+// قائمة الجداول الافتراضية في Supabase
+const DEFAULT_TABLES = [
   'activity_log', 'activity_logs', 'admins', 'api_logs', 'api_status', 'app_settings',
   'audit_log', 'audit_logs', 'cache_logs', 'call_engine_state', 'chart_data',
   'clinic_counters', 'clinic_members', 'clinic_pins', 'clinic_queue_reservations',
@@ -26,8 +26,8 @@ const ALL_TABLES = [
   'system_settings', 'unified_queue', 'users'
 ];
 
-// قائمة الدوال في Supabase (74 دالة)
-const ALL_FUNCTIONS = [
+// قائمة الدوال الافتراضية في Supabase
+const DEFAULT_FUNCTIONS = [
   'auto_daily_cleanup', 'broadcast_table_changes', 'calculate_weighted_progress',
   'call_next_patient', 'call_next_patient_v2', 'cancel_queue_reservation',
   'check_idle_patients', 'check_route_completion', 'claim_event', 'cleanup_daily_logs',
@@ -72,12 +72,58 @@ const FUNCTION_CATEGORIES = {
   'other': []
 };
 
+const ERROR_TYPE = {
+  PERMISSION_DENIED: 'permission_denied',
+  NOT_FOUND: 'not_found',
+  TIMEOUT: 'timeout',
+  NETWORK_ERROR: 'network_error',
+  INVALID_ARGS: 'invalid_args',
+  UNKNOWN: 'unknown'
+};
+
+export const classifyError = (error) => {
+  const code = error?.code || '';
+  const message = (error?.message || '').toLowerCase();
+
+  if (code === '42501' || message.includes('permission denied')) return ERROR_TYPE.PERMISSION_DENIED;
+  if (code === '42p01' || code === '42883' || message.includes('does not exist') || message.includes('not found')) return ERROR_TYPE.NOT_FOUND;
+  if (code === '57014' || message.includes('timeout') || message.includes('timed out')) return ERROR_TYPE.TIMEOUT;
+  if (message.includes('network') || message.includes('failed to fetch') || message.includes('fetch failed')) return ERROR_TYPE.NETWORK_ERROR;
+  if (code === 'pgrst202' || message.includes('argument') || message.includes('parameter') || message.includes('invalid input')) return ERROR_TYPE.INVALID_ARGS;
+
+  return ERROR_TYPE.UNKNOWN;
+};
+
+export const statusFromErrorType = (errorType) => (
+  [ERROR_TYPE.PERMISSION_DENIED, ERROR_TYPE.INVALID_ARGS].includes(errorType) ? 'warning' : 'error'
+);
+
+export const computeMonitorStats = ({ tables = {}, functions = {}, totalTables = 0, totalFunctions = 0 }) => {
+  const confirmedTables = Object.values(tables).filter((item) => item?.confirmed);
+  const confirmedFunctions = Object.values(functions).filter((item) => item?.confirmed);
+
+  const activeTables = confirmedTables.filter((item) => item.status === 'active').length;
+  const activeFunctions = confirmedFunctions.filter((item) => item.status === 'active').length;
+  const confirmedCount = confirmedTables.length + confirmedFunctions.length;
+  const uptime = confirmedCount ? (((activeTables + activeFunctions) / confirmedCount) * 100).toFixed(1) : '0.0';
+
+  return {
+    totalTables,
+    totalFunctions,
+    activeTables,
+    activeFunctions,
+    uptime
+  };
+};
+
 const APIMonitor = ({ language = 'ar', t }) => {
   const isRTL = language === 'ar';
   
   // حالات المراقبة
   const [tableStatus, setTableStatus] = useState({});
   const [functionStatus, setFunctionStatus] = useState({});
+  const [catalogTables, setCatalogTables] = useState(DEFAULT_TABLES);
+  const [catalogFunctions, setCatalogFunctions] = useState(DEFAULT_FUNCTIONS);
   const [isMonitoring, setIsMonitoring] = useState(true);
   const [lastCheck, setLastCheck] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -91,9 +137,9 @@ const APIMonitor = ({ language = 'ar', t }) => {
   
   // إحصائيات
   const [stats, setStats] = useState({
-    totalTables: ALL_TABLES.length,
+    totalTables: DEFAULT_TABLES.length,
     activeTables: 0,
-    totalFunctions: ALL_FUNCTIONS.length,
+    totalFunctions: DEFAULT_FUNCTIONS.length,
     activeFunctions: 0,
     uptime: 100,
     lastIncident: null,
@@ -114,13 +160,16 @@ const APIMonitor = ({ language = 'ar', t }) => {
       const responseTime = Date.now() - startTime;
       
       if (error) {
+        const errorType = classifyError(error);
         return {
           name: tableName,
-          status: 'error',
+          status: statusFromErrorType(errorType),
           error: error.message,
+          errorType,
           responseTime,
           lastCheck: new Date().toISOString(),
-          rowCount: 0
+          rowCount: 0,
+          confirmed: true
         };
       }
       
@@ -129,16 +178,20 @@ const APIMonitor = ({ language = 'ar', t }) => {
         status: 'active',
         responseTime,
         lastCheck: new Date().toISOString(),
-        rowCount: count || 0
+        rowCount: count || 0,
+        confirmed: true
       };
     } catch (err) {
+      const errorType = classifyError(err);
       return {
         name: tableName,
-        status: 'error',
+        status: statusFromErrorType(errorType),
         error: err.message,
+        errorType,
         responseTime: 0,
         lastCheck: new Date().toISOString(),
-        rowCount: 0
+        rowCount: 0,
+        confirmed: false
       };
     }
   }, []);
@@ -153,34 +206,56 @@ const APIMonitor = ({ language = 'ar', t }) => {
       
       const responseTime = Date.now() - startTime;
       
-      // إذا كان الخطأ بسبب معاملات مفقودة، فالدالة موجودة
-      if (error && error.message && error.message.includes('argument')) {
+      if (error) {
+        const errorType = classifyError(error);
         return {
           name: funcName,
-          status: 'active',
+          status: statusFromErrorType(errorType),
           responseTime,
           lastCheck: new Date().toISOString(),
-          note: 'requires parameters'
+          error: error.message,
+          errorType,
+          confirmed: true
         };
       }
       
       return {
         name: funcName,
-        status: error ? 'warning' : 'active',
+        status: 'active',
         responseTime,
         lastCheck: new Date().toISOString(),
-        error: error?.message
+        confirmed: true
       };
     } catch (err) {
+      const errorType = classifyError(err);
       return {
         name: funcName,
-        status: 'active', // نفترض أنها موجودة إذا حدث خطأ في الاستدعاء
+        status: statusFromErrorType(errorType),
         responseTime: 0,
         lastCheck: new Date().toISOString(),
-        note: 'exists but requires specific parameters'
+        error: err.message,
+        errorType,
+        confirmed: false
       };
     }
   }, []);
+
+  const fetchCatalog = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v1/health/catalog', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
+
+      const data = await response.json();
+      const tables = Array.isArray(data?.tables) && data.tables.length ? data.tables : DEFAULT_TABLES;
+      const functions = Array.isArray(data?.functions) && data.functions.length ? data.functions : DEFAULT_FUNCTIONS;
+
+      setCatalogTables(tables);
+      setCatalogFunctions(functions);
+      return { tables, functions };
+    } catch {
+      return { tables: catalogTables, functions: catalogFunctions };
+    }
+  }, [catalogTables, catalogFunctions]);
 
   // ✅ نظام الإصلاح التلقائي المحسّن - يصلح سياسات RLS والاتصالات
   const autoHeal = useCallback(async (item, type) => {
@@ -292,59 +367,52 @@ const APIMonitor = ({ language = 'ar', t }) => {
     setIsLoading(true);
     
     try {
+      const { tables, functions } = await fetchCatalog();
+
       // فحص الجداول
       const tableResults = {};
-      let activeTablesCount = 0;
       
-      for (const table of ALL_TABLES) {
+      for (const table of tables) {
         const result = await checkTable(table);
         tableResults[table] = result;
-        
-        if (result.status === 'active') {
-          activeTablesCount++;
-        } else if (result.status === 'error' && autoHealEnabled) {
+
+        if (result.status === 'error' && autoHealEnabled) {
           // محاولة إصلاح تلقائي
           const healed = await autoHeal(result, 'table');
           if (healed) {
             tableResults[table].status = 'active';
-            activeTablesCount++;
+            tableResults[table].confirmed = true;
           }
         }
       }
       
       setTableStatus(tableResults);
       
-      // فحص الدوال (عينة فقط للسرعة)
+      // فحص الدوال
       const functionResults = {};
-      let activeFunctionsCount = 0;
-      
-      // نفترض أن جميع الدوال نشطة ما لم يثبت العكس
-      for (const func of ALL_FUNCTIONS) {
-        functionResults[func] = {
-          name: func,
-          status: 'active',
-          lastCheck: new Date().toISOString()
-        };
-        activeFunctionsCount++;
+      for (const func of functions) {
+        functionResults[func] = await checkFunction(func);
       }
       
       setFunctionStatus(functionResults);
       
-      // تحديث الإحصائيات
-      const uptime = ((activeTablesCount + activeFunctionsCount) / (ALL_TABLES.length + ALL_FUNCTIONS.length)) * 100;
+      const computedStats = computeMonitorStats({
+        tables: tableResults,
+        functions: functionResults,
+        totalTables: tables.length,
+        totalFunctions: functions.length
+      });
       
       setStats(prev => ({
         ...prev,
-        activeTables: activeTablesCount,
-        activeFunctions: activeFunctionsCount,
-        uptime: uptime.toFixed(1)
+        ...computedStats
       }));
       
       setLastCheck(new Date().toISOString());
       
       // إضافة تنبيه إذا كانت هناك مشاكل
-      if (activeTablesCount < ALL_TABLES.length) {
-        addAlert('warning', `${ALL_TABLES.length - activeTablesCount} جدول يحتاج مراجعة`);
+      if (computedStats.activeTables < computedStats.totalTables) {
+        addAlert('warning', `${computedStats.totalTables - computedStats.activeTables} جدول يحتاج مراجعة`);
       }
       
     } catch (err) {
@@ -352,7 +420,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkTable, autoHeal, autoHealEnabled, addAlert]);
+  }, [fetchCatalog, checkTable, autoHeal, autoHealEnabled, addAlert, checkFunction]);
 
   // بدء/إيقاف المراقبة
   const toggleMonitoring = useCallback(() => {
@@ -390,13 +458,13 @@ const APIMonitor = ({ language = 'ar', t }) => {
   };
 
   // تصفية العناصر
-  const filteredTables = ALL_TABLES.filter(table => {
+  const filteredTables = catalogTables.filter(table => {
     const matchesSearch = table.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || tableStatus[table]?.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const filteredFunctions = ALL_FUNCTIONS.filter(func => {
+  const filteredFunctions = catalogFunctions.filter(func => {
     const matchesSearch = func.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || functionStatus[func]?.status === filterStatus;
     return matchesSearch && matchesFilter;
