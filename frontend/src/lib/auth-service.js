@@ -1,201 +1,215 @@
 /**
  * Auth Service - Authentication System
- * Updated with Emergency Access and Robust Error Handling
- * السوبر أدمن: Bomussa / 14490
+ * Secure backend-only authentication and session verification.
  */
 
-import api from './api-unified';
-import { validateAdminCredentials, ADMIN_CREDENTIALS } from '../config/admin-credentials';
-
-// ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
   SUPER_ADMIN: {
     id: 'SUPER_ADMIN',
     name: 'مدير النظام',
-    nameEn: 'System Administrator',
-    permissions: ['*'] // جميع الصلاحيات
+    nameEn: 'System Administrator'
   },
   ADMIN: {
     id: 'ADMIN',
     name: 'مدير',
-    nameEn: 'Administrator',
-    permissions: [
-      'dashboard',
-      'queue_management',
-      'pin_management',
-      'reports',
-      'clinic_configuration',
-      'settings',
-      'user_management',
-      'activity_logs'
-    ]
+    nameEn: 'Administrator'
   },
   DOCTOR: {
     id: 'DOCTOR',
     name: 'طبيب',
-    nameEn: 'Doctor',
-    permissions: [
-      'dashboard',
-      'queue_management',
-      'clinic_only', // ✅ صلاحية خاصة بالعيادات فقط
-      'patient_view'
-    ]
+    nameEn: 'Doctor'
   },
   RECEPTIONIST: {
     id: 'RECEPTIONIST',
     name: 'موظف استقبال',
-    nameEn: 'Receptionist',
-    permissions: [
-      'dashboard',
-      'patient_registration',
-      'queue_view',
-      'reports_view'
-    ]
+    nameEn: 'Receptionist'
   },
   VIEWER: {
     id: 'VIEWER',
     name: 'مشاهد',
-    nameEn: 'Viewer',
-    permissions: [
-      'dashboard_view',
-      'queue_view',
-      'reports_view'
-    ]
+    nameEn: 'Viewer'
   }
 };
 
 class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
-    this.maxAttempts = 5;
-    this.lockoutDuration = 5 * 60 * 1000; // 5 mins
-    this.sessionTimeout = 60 * 60 * 1000; // 60 mins
-    this.failedAttempts = new Map(); // تتبع المحاولات الفاشلة
+    this.sessionTimeout = 60 * 60 * 1000;
+    this.authEndpoint = '/api/v1/auth/admin/login';
+    this.verifyEndpoint = '/api/v1/auth/admin/session/verify';
+    this.verifiedSession = null;
   }
 
   async login(username, password) {
-    console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
+    console.log('[AuthService] Secure login attempt:', { username, passwordLength: password?.length });
 
     try {
-      // ✅ إصلاح: التحقق من السوبر أدمن أولاً وفوراً (بدون انتظار API)
-      // اسم المستخدم غير حساس لحالة الأحرف
-      const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] validateAdminCredentials result:', isValid);
-      console.log('[AuthService] Expected credentials:', { 
-        username: ADMIN_CREDENTIALS.username, 
-        passwordLength: ADMIN_CREDENTIALS.password?.length 
+      const response = await fetch(this.authEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
       });
 
-      if (isValid) {
-        console.log('[AuthService] ✅ Super Admin Login - Instant Access');
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
-      }
-
-      // 2. للمستخدمين الآخرين - تحقق عبر API مع timeout قصير
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني فقط
-
-        const response = await api.adminLogin(username, password);
-        clearTimeout(timeoutId);
-
-        if (response.success) {
-          const session = this.createSession(username, response.role || 'ADMIN');
-          return { success: true, session };
-        }
-        return { success: false, error: response.message || 'Invalid credentials' };
-      } catch (apiError) {
-        console.warn('[AuthService] API timeout or error:', apiError);
+      if (!response.ok) {
         return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
       }
+
+      const payload = await response.json();
+
+      if (!payload?.success || !payload?.sessionToken || !payload?.role) {
+        return { success: false, error: 'استجابة مصادقة غير صالحة من الخادم' };
+      }
+
+      const session = this.createSessionFromServer(payload, username);
+      const verified = await this.verifySessionWithBackend(session.sessionToken);
+
+      if (!verified.success) {
+        this.logout();
+        return { success: false, error: 'فشل التحقق من الجلسة' };
+      }
+
+      const trustedSession = this.applyVerifiedSession(session, verified);
+      return { success: true, session: trustedSession };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      // Fallback للسوبر أدمن في حالة الأخطاء
-      const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] Fallback validation:', isValid);
-      if (isValid) {
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
-      }
       return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
     }
   }
 
-  createSession(username, role) {
-    const session = {
-      id: `sess_${Date.now()}`,
-      username,
-      role,
-      name: username.toUpperCase(),
-      loginTime: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
+  createSessionFromServer(payload, username) {
+    return {
+      id: payload.sessionId || `sess_${Date.now()}`,
+      username: payload.username || username,
+      role: payload.role,
+      permissions: Array.isArray(payload.permissions) ? payload.permissions : [],
+      sessionToken: payload.sessionToken,
+      loginTime: payload.loginTime || new Date().toISOString(),
+      expiresAt: payload.expiresAt || new Date(Date.now() + this.sessionTimeout).toISOString(),
     };
-    this.saveSession(session);
-    return session;
+  }
+
+  async verifySessionWithBackend(sessionToken) {
+    if (!sessionToken) {
+      return { success: false, error: 'missing_token' };
+    }
+
+    try {
+      const response = await fetch(this.verifyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sessionToken })
+      });
+
+      if (!response.ok) {
+        return { success: false, error: 'verification_failed' };
+      }
+
+      const payload = await response.json();
+      if (!payload?.success || !payload?.role || !Array.isArray(payload?.permissions)) {
+        return { success: false, error: 'invalid_verification_payload' };
+      }
+
+      return {
+        success: true,
+        role: payload.role,
+        permissions: payload.permissions,
+        username: payload.username,
+        expiresAt: payload.expiresAt,
+      };
+    } catch (error) {
+      console.error('[AuthService] Session verification error:', error);
+      return { success: false, error: 'verification_exception' };
+    }
+  }
+
+  applyVerifiedSession(session, verifiedPayload) {
+    const trustedSession = {
+      ...session,
+      role: verifiedPayload.role,
+      permissions: verifiedPayload.permissions,
+      username: verifiedPayload.username || session.username,
+      expiresAt: verifiedPayload.expiresAt || session.expiresAt,
+      verifiedAt: new Date().toISOString()
+    };
+
+    this.verifiedSession = trustedSession;
+    this.saveSession(trustedSession);
+    return trustedSession;
+  }
+
+  async restoreSession() {
+    const stored = this.readStoredSession();
+    if (!stored || new Date(stored.expiresAt) < new Date()) {
+      this.logout();
+      return null;
+    }
+
+    const verified = await this.verifySessionWithBackend(stored.sessionToken);
+    if (!verified.success) {
+      this.logout();
+      return null;
+    }
+
+    return this.applyVerifiedSession(stored, verified);
   }
 
   logout() {
+    this.verifiedSession = null;
     localStorage.removeItem(this.storageKey);
   }
 
   getSession() {
+    if (!this.verifiedSession) return null;
+
+    if (new Date(this.verifiedSession.expiresAt) < new Date()) {
+      this.logout();
+      return null;
+    }
+
+    return this.verifiedSession;
+  }
+
+  readStoredSession() {
     try {
       const data = localStorage.getItem(this.storageKey);
-      if (!data) return null;
-      const session = JSON.parse(data);
-      if (new Date(session.expiresAt) < new Date()) {
-        this.logout();
-        return null;
-      }
-      return session;
-    } catch (e) { return null; }
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
   }
 
   saveSession(session) {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
   }
 
-  // ✅ إصلاح: التحقق من الصلاحيات
   hasPermission(permission) {
     const session = this.getSession();
     if (!session) return false;
 
-    const role = USER_ROLES[session.role];
-    if (!role) return false;
-
-    // السوبر أدمن لديه جميع الصلاحيات
-    if (role.permissions.includes('*')) return true;
-
-    return role.permissions.includes(permission);
+    if (session.permissions.includes('*')) return true;
+    return session.permissions.includes(permission);
   }
 
-  // ✅ إصلاح: التحقق من عدة صلاحيات (واحد أو أكثر)
   hasAnyPermission(permissions) {
-    return permissions.some(p => this.hasPermission(p));
+    return permissions.some((p) => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: التحقق من جميع الصلاحيات المطلوبة
   hasAllPermissions(permissions) {
-    return permissions.every(p => this.hasPermission(p));
+    return permissions.every((p) => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: الحصول على صلاحيات المستخدم الحالي
   getCurrentPermissions() {
     const session = this.getSession();
-    if (!session) return [];
-
-    const role = USER_ROLES[session.role];
-    return role ? role.permissions : [];
+    return session?.permissions || [];
   }
 
-  // ✅ إصلاح: التحقق إذا كان المستخدم طبيب (للعرض في العيادات فقط)
   isDoctor() {
     const session = this.getSession();
-    return session && session.role === 'DOCTOR';
+    return session?.role === 'DOCTOR';
   }
 
-  // ✅ إصلاح: التحقق من صلاحية العيادة فقط
   canAccessClinicOnly() {
     return this.hasPermission('clinic_only');
   }

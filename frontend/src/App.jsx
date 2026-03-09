@@ -94,22 +94,8 @@ function App() {
     } catch (error) { return null }
   })
 
-  // ✅ إصلاح: التحقق من حالة الإدارة بطريقة أفضل
-  const [isAdmin, setIsAdmin] = useState(() => {
-    try {
-      const adminSession = localStorage.getItem('mmc_admin_session');
-      if (adminSession) {
-        const session = JSON.parse(adminSession);
-        const isValid = new Date(session.expiresAt) > new Date();
-        console.log('[App] Admin session check:', { isValid, expiresAt: session.expiresAt });
-        return isValid;
-      }
-    } catch (e) { 
-      console.error('[App] Error checking admin session:', e);
-      return false 
-    }
-    return false
-  })
+  // ✅ إصلاح أمني: لا نثق بـ localStorage وحده لحالة الإدارة
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [currentView, setCurrentView] = useState('login')
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
@@ -142,6 +128,25 @@ function App() {
 
     return () => {
       // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const restoreAdminSession = async () => {
+      const restoredSession = await authService.restoreSession();
+      if (!mounted) return;
+      setIsAdmin(!!restoredSession);
+      if (!restoredSession) {
+        localStorage.removeItem('mmc_admin_session');
+      }
+    };
+
+    restoreAdminSession();
+
+    return () => {
+      mounted = false;
     };
   }, []);
 
