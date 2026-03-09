@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function: login
- * Admin authentication using bcrypt hash stored in admin_users.password_hash
+ * Admin authentication using bcrypt hash stored in admins.password_hash
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
     return corsErrorResponse('Username and password are required', 400, origin);
   }
 
-  const username = body.username.trim().toLowerCase();
+  const username = body.username.trim();
   const password = body.password;
 
   if (username.length < 3 || password.length < 8) {
@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: adminUser, error: userError } = await supabase
-      .from('admin_users')
+      .from('admins')
       .select('id, username, role, name, is_active, password_hash')
       .eq('username', username)
       .maybeSingle();
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     }
 
     await supabase
-      .from('admin_users')
+      .from('admins')
       .update({ last_login: new Date().toISOString() })
       .eq('id', adminUser.id);
 

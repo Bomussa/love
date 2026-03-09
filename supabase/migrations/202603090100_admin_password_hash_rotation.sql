@@ -1,30 +1,26 @@
 -- Security hotfix: migrate admin authentication to bcrypt hashes
 -- and rotate leaked plaintext passwords immediately.
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-ALTER TABLE admin_users
+ALTER TABLE admins
   ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
--- Force immediate credential rotation with new strong passwords.
--- NOTE: Communicate these values securely to authorized admins only,
--- then rotate again through an internal secret-management process.
-UPDATE admin_users
-SET password_hash = crypt('B0mussa!2026#R0tate', gen_salt('bf', 12)),
+-- Store precomputed bcrypt hashes only (no plaintext secrets in migrations).
+UPDATE admins
+SET password_hash = '$2b$12$Uk9MoKbs6U8uH1WsEO1roOSQBrEOUyak.kXl2DxSkTKx0NKOwlyca',
     updated_at = NOW()
 WHERE username = 'bomussa';
 
-UPDATE admin_users
-SET password_hash = crypt('Adm1n!2026#R0tate', gen_salt('bf', 12)),
+UPDATE admins
+SET password_hash = '$2b$12$ZMnr6ccEqkF3GEuXqFkhleargGVFIzl1l.kkJzhBKm7Klbn4hYYh6',
     updated_at = NOW()
 WHERE username = 'admin';
 
-UPDATE admin_users
-SET password_hash = crypt('St4ff!2026#R0tate', gen_salt('bf', 12)),
+UPDATE admins
+SET password_hash = '$2b$12$hmzYUy35JhOGrCyvuE.6EubyTiqAB6Z/qF/4B7zPKFf5VRlL5hfQm',
     updated_at = NOW()
 WHERE username = 'staff';
 
 -- Remove legacy plaintext password values.
-UPDATE admin_users
+UPDATE admins
 SET password = 'ROTATED'
 WHERE username IN ('bomussa', 'admin', 'staff');
