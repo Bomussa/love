@@ -54,7 +54,9 @@ function rotateIfNeeded() {
       inp.pipe(gz).pipe(out).on('finish', () => {
         // keep source for a while or delete if desired
       });
-    } catch {}
+    } catch (err) {
+      console.warn('[proxy] log rotate compression skipped:', err.message);
+    }
     currentLogDate = d;
     logStream = fs.createWriteStream(path.join(DIR_LOGS, `${currentLogDate}_requests.ndjson`), { flags: 'a' });
   }
@@ -103,27 +105,30 @@ async function resolveAndCheck(hostname) {
   });
 }
 
-function pickUpstream() {
-  return new Promise(async (resolve) => {
-    const tryHost = async (base) => {
-      try {
-        const u = new URL(base + HEALTH_PATH);
-        const check = await fetch(u, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
-        return check.status === 200;
-      } catch { return false; }
-    };
-    const okPrimary = await tryHost(PRIMARY);
-    if (okPrimary) return resolve(PRIMARY);
-    const okFallback = await tryHost(FALLBACK);
-    if (okFallback) return resolve(FALLBACK);
-    return resolve(PRIMARY); // default to primary if both fail (request may still fail)
-  });
+async function pickUpstream() {
+  const tryHost = async (base) => {
+    try {
+      const u = new URL(base + HEALTH_PATH);
+      const check = await fetch(u, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
+      return check.status === 200;
+    } catch {
+      return false;
+    }
+  };
+
+  const okPrimary = await tryHost(PRIMARY);
+  if (okPrimary) return PRIMARY;
+  const okFallback = await tryHost(FALLBACK);
+  if (okFallback) return FALLBACK;
+  return PRIMARY; // default to primary if both fail (request may still fail)
 }
 
 function logLine(obj) {
   try {
     logStream.write(`${JSON.stringify(obj)}\n`);
-  } catch {}
+  } catch (err) {
+    console.warn('[proxy] failed to write log line:', err.message);
+  }
 }
 
 async function proxyOnce(req, res, attempt = 0, chosenUpstream = null) {
