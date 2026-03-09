@@ -16,7 +16,9 @@ function fetchText(url){
   });
 }
 
-const ORIGIN = process.env.FRONTEND_ORIGIN || process.env.VITE_API_BASE_URL?.replace(//api/(v1|v2).*/,'') || 'https://mmc-mms.com';
+const ORIGIN = process.env.FRONTEND_ORIGIN
+  || process.env.VITE_API_BASE_URL?.replace(/\/api\/(v1|v2).*/, '')
+  || 'https://mmc-mms.com';
 
 (async()=>{
   const front = `${ORIGIN}/.well-known/healthz.json`;
@@ -28,7 +30,7 @@ const ORIGIN = process.env.FRONTEND_ORIGIN || process.env.VITE_API_BASE_URL?.rep
     const r = await fetchText(front);
     console.log('[front]', r.status);
     if(r.status<200||r.status>299){ ok=false; console.log('[front] not 2xx'); }
-    try { const j = JSON.parse(r.body); if(j.ok!==true){ ok=false; console.log('[front] ok!=true'); } } catch{}
+    try { const j = JSON.parse(r.body); if(j.ok!==true){ ok=false; console.log('[front] ok!=true'); } } catch (e) { ok=false; console.log('[front] invalid json'); }
   }catch(e){ ok=false; console.log('[front] error'); }
   // API
   try{

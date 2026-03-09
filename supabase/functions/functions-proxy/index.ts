@@ -2,6 +2,7 @@
 // Router بسيط لمسارات queue/clinics/notifications
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleOptions, corsJsonResponse, corsErrorResponse } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -9,18 +10,17 @@ const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''; // اختيار
 
 type Json = Record<string, unknown>;
 
-function ok(data: Json | unknown[], init: number = 200) {
-  return new Response(JSON.stringify({ ok: true, data }, null, 2), {
-    status: init, headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
+function ok(data: Json | unknown[], init = 200) {
+  return corsJsonResponse({ data }, init);
 }
 function err(message: string, init = 400, extra: Json = {}) {
-  return new Response(JSON.stringify({ ok: false, error: message, ...extra }, null, 2), {
-    status: init, headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
+  return corsErrorResponse(message, init, null, Object.keys(extra).length ? extra : null);
 }
 
 serve(async (req) => {
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
+
   try {
     const u = new URL(req.url);
     const path = (u.searchParams.get('path') || '').replace(/^\/|\/$/g, '');

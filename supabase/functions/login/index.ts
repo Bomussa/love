@@ -64,25 +64,8 @@ Deno.serve(async (req: Request) => {
     const accessToken = crypto.randomUUID();
     const refreshToken = crypto.randomUUID();
 
-    return corsJsonResponse(
-      {
-        success: true,
-        user: {
-          id: adminUser.id,
-          username: adminUser.username,
-          role: adminUser.role,
-          name: adminUser.name,
-        },
-        session: {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_at: expiresAt,
-          token_type: 'bearer',
-        },
-      },
-      200,
-      origin,
-    );
+    // Return success with session data
+    return corsJsonResponse({ data: { session: data.session, user: data.user } }, 200, origin);
   } catch (error) {
     console.error('Unexpected admin login error:', error);
     return corsErrorResponse('Internal server error', 500, origin);

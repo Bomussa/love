@@ -246,7 +246,7 @@ class AdvancedAutoRepair {
       await this.supabase.auth.getSession();
       return true;
     } catch (e) {
-      throw new Error('Failed to reconnect');
+      throw new Error('Failed to reconnect', { cause: e });
     }
   }
 
