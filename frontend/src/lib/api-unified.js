@@ -1007,7 +1007,11 @@ const api = {
   /**
    * جلب جميع الإعدادات من جدول settings
    */
-  async getSettings() {
+  async getSettings(type = null) {
+    if (type) {
+      return this.getSettingsByCategory(type);
+    }
+
     try {
       const { data, error } = await supabase
         .from('settings')
@@ -1920,6 +1924,13 @@ const api = {
         },
       };
     }
+  },
+
+  /**
+   * توافق عكسي مع الاستدعاءات القديمة
+   */
+  async getThemeSettings(type) {
+    return this.getSettingsByCategory(type);
   },
 
   /**
