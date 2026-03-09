@@ -354,41 +354,39 @@ const QueueManagement = ({ language, t }) => {
     try {
       setEditPatientLoading(true);
       const oldPatientId = editingPatient.patient_id;
-      
-      // تحديث الرقم في unified_queue
-      const { error: queueError } = await supabase
-        .from('unified_queue')
-        .update({ patient_id: newPatientId.trim() })
-        .eq('id', editingPatient.id);
+      const trimmedNewId = newPatientId.trim();
+      const today = new Date().toISOString().split('T')[0];
 
-      if (queueError) {
-        console.error('Error updating queue:', queueError);
-        showErrorToast(t('حدث خطأ أثناء التحديث', 'Error updating patient ID'));
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_update_patient_id_atomic', {
+        p_queue_id: editingPatient.id,
+        p_old_id: oldPatientId,
+        p_new_id: trimmedNewId,
+        p_login_date: today
+      });
+
+      if (rpcError) {
+        console.error('Error updating patient ID atomically:', rpcError);
+        showErrorToast(t(`فشل التحديث الذري: ${rpcError.message}`, `Atomic update failed: ${rpcError.message}`));
         return;
       }
 
-      // تحديث جدول device_logins إذا كان موجوداً
-      const today = new Date().toISOString().split('T')[0];
-      await supabase
-        .from('device_logins')
-        .update({ patient_id: newPatientId.trim() })
-        .eq('patient_id', oldPatientId)
-        .eq('login_date', today);
-
-      // تحديث جدول patients إذا كان موجوداً
-      await supabase
-        .from('patients')
-        .update({ patient_id: newPatientId.trim() })
-        .eq('patient_id', oldPatientId);
+      const result = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+      const counts = result?.updated_rows || {};
 
       // تسجيل النشاط
-      await logActivity('patient_id_update', `تم تعديل الرقم العسكري من ${oldPatientId} إلى ${newPatientId}`, null, {
+      await logActivity('patient_id_update', `تم تعديل الرقم العسكري من ${oldPatientId} إلى ${trimmedNewId}`, null, {
         old_patient_id: oldPatientId,
-        new_patient_id: newPatientId,
-        queue_id: editingPatient.id
+        new_patient_id: trimmedNewId,
+        queue_id: editingPatient.id,
+        updated_rows: counts
       });
 
-      showSuccessToast(t(`تم تعديل الرقم بنجاح: ${oldPatientId} → ${newPatientId}`, `ID updated: ${oldPatientId} → ${newPatientId}`));
+      showSuccessToast(
+        t(
+          `تم تعديل الرقم بنجاح: ${result?.old_id || oldPatientId} → ${result?.new_id || trimmedNewId} | الطابور: ${counts.unified_queue || 0}, الأجهزة: ${counts.device_logins || 0}, المرضى: ${counts.patients || 0}`,
+          `ID updated: ${result?.old_id || oldPatientId} → ${result?.new_id || trimmedNewId} | queue: ${counts.unified_queue || 0}, devices: ${counts.device_logins || 0}, patients: ${counts.patients || 0}`
+        )
+      );
       
       // إغلاق النافذة وتحديث البيانات
       setShowEditPatientModal(false);
