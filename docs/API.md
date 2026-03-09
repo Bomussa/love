@@ -2,37 +2,90 @@
 
 ## Base URL
 
-\`\`\`
-Production: https://love-bomussa.vercel.app/api
-Development: http://localhost:3000/api
-\`\`\`
+```txt
+Production: https://mmc-mms.com/api/v1
+Development: http://localhost:3000/api/v1
+```
 
 ## Authentication
 
-\`\`\`http
+```http
+Content-Type: application/json
 Authorization: Bearer <JWT_TOKEN>
-\`\`\`
+```
 
-## Endpoints
+## تنسيق الاستجابة
 
-### Patients
+```json
+{
+  "success": true
+}
+```
 
-- \`GET /api/v1/patients\` - قائمة المرضى
-- \`POST /api/v1/patients\` - إضافة مريض
-- \`GET /api/v1/patients/:id\` - تفاصيل مريض
-- \`PUT /api/v1/patients/:id\` - تحديث مريض
-- \`DELETE /api/v1/patients/:id\` - حذف مريض
+## Endpoints الأساسية المستخدمة حالياً
+
+### Admin Authentication
+
+#### `POST /api/v1/admin/login`
+
+Request:
+
+```json
+{
+  "username": "admin",
+  "password": "secret"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "sessionToken": "sess_xxx",
+  "sessionId": "sess_xxx",
+  "username": "admin",
+  "role": "ADMIN",
+  "permissions": ["admin:read", "queue:manage"],
+  "expiresAt": "2026-03-09T12:00:00.000Z",
+  "session": {
+    "id": "sess_xxx",
+    "username": "admin",
+    "role": "ADMIN",
+    "name": "Admin User",
+    "permissions": ["admin:read", "queue:manage"],
+    "expiresAt": "2026-03-09T12:00:00.000Z"
+  }
+}
+```
+
+#### `POST /api/v1/admin/session/verify`
+
+Request:
+
+```json
+{
+  "sessionToken": "sess_xxx"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "role": "ADMIN",
+  "permissions": ["admin:read", "queue:manage"],
+  "username": "admin",
+  "expiresAt": "2026-03-09T12:00:00.000Z"
+}
+```
 
 ### Queue
 
-- \`GET /api/v1/queue\` - قائمة الطابور
-- \`POST /api/v1/queue\` - إضافة للطابور
-- \`PUT /api/v1/queue/:id\` - تحديث حالة
-
-### Clinics
-
-- \`GET /api/v1/clinics\` - قائمة العيادات
-- \`POST /api/v1/clinics\` - إضافة عيادة
+- `POST /api/v1/queue/enter` - دخول الطابور
+- `GET /api/v1/queue/status?clinicId=<id>` - حالة الطابور
+- `POST /api/v1/queue/call` - استدعاء المريض التالي
 
 ### PIN Status (Supabase Edge Function)
 
@@ -58,6 +111,14 @@ Authorization: Bearer <JWT_TOKEN>
   - الأدوار المسموحة فقط: \`admin\`, \`service_role\`.
   - يتم تسجيل حدث تدقيق (Audit Log) لكل قراءة PIN.
   - الاستجابة تتضمن: \`pin\`, \`pin_id\`, \`valid_until\`, \`expires_in_seconds\`.
+
+### PIN
+
+- \`POST /functions/v1/pin-generate\` - توليد PIN للعيادة (\`clinic_id\`).
+- \`POST /functions/v1/pin-verify\` - التحقق من PIN للعيادة (\`clinic_id\`, \`pin\`).
+- \`POST /rpc/verify_clinic_pin\` - تحقق آمن عبر RPC (\`p_clinic_id\`, \`p_pin\`).
+
+> **مهم:** عمود الربط القياسي في جدول \`pins\` هو \`clinic_id\`.
 
 ---
 **آخر تحديث:** 09 نوفمبر 2025

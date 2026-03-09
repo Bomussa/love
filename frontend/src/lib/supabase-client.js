@@ -13,8 +13,45 @@ import { createClient } from '@supabase/supabase-js';
 import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 import { ensureSupabaseEnv } from './env-guard';
 
-// Supabase configuration - explicit required env validation
-const { supabaseUrl, supabaseAnonKey } = ensureSupabaseEnv();
+// Supabase configuration - explicit validation (no placeholder fallback)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+
+const missingSupabaseEnvVars = [
+  !supabaseUrl ? 'VITE_SUPABASE_URL' : null,
+  !supabaseAnonKey ? 'VITE_SUPABASE_ANON_KEY' : null,
+].filter(Boolean);
+
+export const supabaseConfigError = missingSupabaseEnvVars.length
+  ? `Supabase configuration error: missing required env variable(s): ${missingSupabaseEnvVars.join(', ')}. The app cannot start without a valid Supabase URL and anon key.`
+  : null;
+
+export const isSupabaseConfigured = !supabaseConfigError;
+
+if (supabaseConfigError) {
+  console.error(`[Supabase] ${supabaseConfigError}`);
+}
+
+const createUnavailableSupabaseClient = (errorMessage) => {
+  const throwConfigError = () => {
+    throw new Error(errorMessage);
+  };
+
+  return {
+    from: throwConfigError,
+    rpc: throwConfigError,
+    channel: throwConfigError,
+    removeChannel: throwConfigError,
+    auth: {
+      getSession: async () => {
+        throw new Error(errorMessage);
+      },
+      refreshSession: async () => {
+        throw new Error(errorMessage);
+      },
+    },
+  };
+};
 
 // إعدادات إعادة المحاولة
 const RETRY_CONFIG = {
@@ -24,23 +61,25 @@ const RETRY_CONFIG = {
 };
 
 // Create Supabase client with enhanced configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-  global: {
-    headers: {
-      'x-client-info': 'mmc-mms-frontend',
-    },
-  },
-});
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+      global: {
+        headers: {
+          'x-client-info': 'mmc-mms-frontend',
+        },
+      },
+    })
+  : createUnavailableSupabaseClient(supabaseConfigError);
 
 // متغير لتتبع حالة الاتصال
 let connectionStatus = 'connected';

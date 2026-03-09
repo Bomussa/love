@@ -35,8 +35,8 @@ class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
     this.sessionTimeout = 60 * 60 * 1000;
-    this.authEndpoint = '/api/v1/auth/admin/login';
-    this.verifyEndpoint = '/api/v1/auth/admin/session/verify';
+    this.authEndpoint = '/api/v1/admin/login';
+    this.verifyEndpoint = '/api/v1/admin/session/verify';
     this.verifiedSession = null;
   }
 
@@ -79,11 +79,11 @@ class AuthService {
 
   createSessionFromServer(payload, username) {
     return {
-      id: payload.sessionId || `sess_${Date.now()}`,
+      id: payload.sessionId || payload.session?.id || `sess_${Date.now()}`,
       username: payload.username || username,
       role: payload.role,
       permissions: Array.isArray(payload.permissions) ? payload.permissions : [],
-      sessionToken: payload.sessionToken,
+      sessionToken: payload.sessionToken || payload.session?.id,
       loginTime: payload.loginTime || new Date().toISOString(),
       expiresAt: payload.expiresAt || new Date(Date.now() + this.sessionTimeout).toISOString(),
     };
@@ -103,7 +103,8 @@ class AuthService {
       });
 
       if (!response.ok) {
-        return { success: false, error: 'verification_failed' };
+        const payload = await response.json().catch(() => null);
+        return { success: false, error: payload?.code || 'verification_failed' };
       }
 
       const payload = await response.json();
@@ -122,6 +123,19 @@ class AuthService {
       console.error('[AuthService] Session verification error:', error);
       return { success: false, error: 'verification_exception' };
     }
+  }
+
+
+
+  getVerifyErrorMessage(code) {
+    const verifyErrors = {
+      SESSION_EXPIRED: 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى',
+      INVALID_SESSION: 'جلسة غير صالحة، يرجى إعادة تسجيل الدخول',
+      verification_failed: 'فشل التحقق من الجلسة',
+      verification_exception: 'تعذر التحقق من الجلسة بسبب خطأ في الاتصال',
+    };
+
+    return verifyErrors[code] || 'فشل التحقق من الجلسة';
   }
 
   applyVerifiedSession(session, verifiedPayload) {
