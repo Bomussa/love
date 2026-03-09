@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
+import { getContractEndpoint } from '../lib/api-contract';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
   Settings, FileText, MapPin, Key, RefreshCw, Trash2, 
@@ -5093,7 +5094,7 @@ const SmartSystemPanel = ({ language, t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
+      const response = await fetch(getContractEndpoint('statsDashboard'));
       const result = await response.json();
       if (result.success) {
         toast.success(t('اكتمل الفحص العميق بنجاح', 'Deep QA completed successfully'));
@@ -5108,10 +5109,10 @@ const SmartSystemPanel = ({ language, t }) => {
 
   const executeRepair = async (findingId) => {
     try {
-      const response = await fetch('/api/v1/repair/execute', {
+      const response = await fetch(getContractEndpoint('queueEngine'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
+        body: JSON.stringify({ action: 'health_check', findingId })
       });
       const result = await response.json();
       if (result.success) {

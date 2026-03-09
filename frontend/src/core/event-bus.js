@@ -89,82 +89,9 @@ let reconnectTimer = null;
 const RECONNECT_DELAY = 5000;
 
 function connectToSSE() {
-  // تجنب اتصالات متعددة
-  if (sseConnection) {
-    return;
-  }
-
-  try {
-    const url = `${window.location.origin}/api/v1/events/stream`;
-
-    sseConnection = new EventSource(url);
-
-    sseConnection.onopen = () => {
-      eventBus.emit('sse:connected', { timestamp: new Date().toISOString() });
-    };
-
-    // الأحداث المختلفة من Backend
-    sseConnection.addEventListener('queue_update', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        eventBus.emit('queue:update', data);
-      } catch (err) {
-        // console.error('[EventBus] Error parsing queue_update:', err);
-      }
-    });
-
-    sseConnection.addEventListener('queue_call', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        eventBus.emit('queue:call', data);
-      } catch (err) {
-        // console.error('[EventBus] Error parsing queue_call:', err);
-      }
-    });
-
-    sseConnection.addEventListener('heartbeat', (e) => {
-      eventBus.emit('heartbeat', { timestamp: e.data });
-    });
-
-    sseConnection.addEventListener('notice', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        eventBus.emit('notice', data);
-      } catch (err) {
-        // console.error('[EventBus] Error parsing notice:', err);
-      }
-    });
-
-    sseConnection.addEventListener('stats_update', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        eventBus.emit('stats:update', data);
-      } catch (err) {
-        // console.error('[EventBus] Error parsing stats_update:', err);
-      }
-    });
-
-    sseConnection.onerror = (err) => {
-      // console.error('[EventBus] ❌ SSE Error:', err);
-      eventBus.emit('sse:error', { error: err });
-
-      // إغلاق الاتصال الحالي
-      if (sseConnection) {
-        sseConnection.close();
-        sseConnection = null;
-      }
-
-      // إعادة الاتصال بعد تأخير
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          connectToSSE();
-        }, RECONNECT_DELAY);
-      }
-    };
-  } catch (err) {
-    // console.error('[EventBus] Failed to create SSE connection:', err);
-  }
+  // تم عزل مسار SSE القديم حتى يتم نشر endpoint رسمي في API_CONTRACT.
+  if (sseConnection) return;
+  eventBus.emit('sse:unsupported', { reason: 'No contracted SSE endpoint in API_CONTRACT' });
 }
 
 function disconnectSSE() {

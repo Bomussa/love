@@ -15,7 +15,8 @@
     "test": "npm run test --workspace frontend",
     "typecheck": "tsc --noEmit",
     "test:smoke": "node --test scripts/smoke.test.ts",
-    "ci:resilient": "./scripts/resilient-ci.sh"
+    "ci:resilient": "./scripts/resilient-ci.sh",
+    "check:api-contract": "node scripts/contracts/check-api-contract.mjs"
   },
   "engines": {
     "node": "20.x"

@@ -1,0 +1,25 @@
+{
+  "version": "2026-03-09",
+  "base": "/functions/v1",
+  "endpoints": [
+    "/functions/v1/api-v1-status",
+    "/functions/v1/functions-proxy",
+    "/functions/v1/healthz",
+    "/functions/v1/login",
+    "/functions/v1/pin-generate",
+    "/functions/v1/pin-status",
+    "/functions/v1/pin-verify",
+    "/functions/v1/queue-call",
+    "/functions/v1/queue-engine",
+    "/functions/v1/queue-enter",
+    "/functions/v1/queue-status",
+    "/functions/v1/reports-daily",
+    "/functions/v1/stats-dashboard"
+  ],
+  "legacyBlocked": [
+    "/api/v1/qa/deep_run",
+    "/api/v1/repair/execute",
+    "/api/v1/events/stream",
+    "/api/v1/queue/done"
+  ]
+}
