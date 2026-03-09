@@ -11,11 +11,11 @@
 
 ### ✅ Required Variables
 ```bash
-VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbG...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
-SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-SUPABASE_JWT_SECRET=<set-in-supabase-dashboard-only>
+VITE_SUPABASE_URL=<SUPABASE_URL>
+VITE_SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
+SUPABASE_URL=<SUPABASE_URL>
+SUPABASE_JWT_SECRET=<SUPABASE_JWT_SECRET>
 ```
 
 ### ⚠️ Variables to REMOVE

@@ -18,8 +18,8 @@
     "lint:supabase-functions": "deno lint supabase/functions",
     "typecheck:supabase-functions": "deno check supabase/functions/**/*.ts",
     "check:supabase-functions": "npm run lint:supabase-functions && npm run typecheck:supabase-functions",
-    "prepare": "./scripts/install-git-hooks.sh",
-    "secrets:scan": "./scripts/secret-scan.sh all"
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "secrets:scan": "gitleaks detect --source . --config .gitleaks.toml --redact"
   },
   "engines": {
     "node": "20.x"

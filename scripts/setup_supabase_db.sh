@@ -11,16 +11,16 @@ echo "  MMC-MMS System"
 echo "============================================"
 echo ""
 
-# Supabase connection details (strict env-only)
-SUPABASE_HOST="${SUPABASE_HOST:-}"
-SUPABASE_DB="${SUPABASE_DB:-postgres}"
-SUPABASE_USER="${SUPABASE_USER:-postgres}"
+# Supabase connection details
+SUPABASE_HOST="${SUPABASE_HOST:-<SUPABASE_DB_HOST>}"
+SUPABASE_DB="postgres"
+SUPABASE_USER="postgres"
 SUPABASE_PASSWORD="${SUPABASE_PASSWORD:-}"
-SUPABASE_PORT="${SUPABASE_PORT:-5432}"
+SUPABASE_PORT="5432"
 
-if [ -z "$SUPABASE_HOST" ] || [ -z "$SUPABASE_PASSWORD" ]; then
-  echo "❌ Missing required env vars: SUPABASE_HOST and SUPABASE_PASSWORD"
-  exit 1
+if [ -z "$SUPABASE_PASSWORD" ] || [ "$SUPABASE_HOST" = "<SUPABASE_DB_HOST>" ]; then
+    echo "❌ Missing required env vars: SUPABASE_HOST and SUPABASE_PASSWORD"
+    exit 1
 fi
 
 # Schema file

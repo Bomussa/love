@@ -1,5 +1,5 @@
 // Supabase Edge Function: reports-daily
-// Get daily activity reports
+// Daily activity reports split into clinic/admin endpoints with role guard
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders } from '../_shared/cors.ts';
@@ -12,10 +12,30 @@ serve(async (req: Request) => {
   if (optionsResponse) return optionsResponse;
 
   try {
+    const url = new URL(req.url);
+    const path = url.pathname.replace(/\/+$/, '');
+    const isAdminEndpoint = path.endsWith('/admin');
+    const isClinicEndpoint = path.endsWith('/clinic');
+
+    if (!isAdminEndpoint && !isClinicEndpoint) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Use /reports-daily/clinic or /reports-daily/admin' }),
+        { status: 404, headers: { 'content-type': 'application/json', ...corsHeaders } },
+      );
+    }
+
+    const guard = await requireAuthGuard(req, {
+      allowedRoles: isAdminEndpoint ? ['admin'] : ['clinic', 'admin'],
+      corsHeaders,
+    });
+
+    if ('response' in guard) {
+      return guard.response;
+    }
+
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { searchParams } = new URL(req.url);
-    const date = searchParams.get('date'); // YYYY-MM-DD format
-    const format = searchParams.get('format') || 'json'; // json or print
+    const date = url.searchParams.get('date');
+    const format = url.searchParams.get('format') || 'json';
 
     let query = db.from('vw_daily_activity').select('*');
 
@@ -23,12 +43,33 @@ serve(async (req: Request) => {
       query = query.eq('day', date);
     }
 
+    if (isClinicEndpoint) {
+      const clinicFromQuery = url.searchParams.get('clinic_id');
+      if (guard.auth.role === 'clinic' && !guard.auth.clinicId) {
+        return authErrorResponse(403, corsHeaders);
+      }
+
+      const clinicId = guard.auth.role === 'admin' ? clinicFromQuery : guard.auth.clinicId;
+
+      if (!clinicId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'clinic_id is required for clinic reports' }),
+          { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
+        );
+      }
+
+      if (guard.auth.role === 'clinic' && guard.auth.clinicId && guard.auth.clinicId !== clinicId) {
+        return authErrorResponse(403, corsHeaders);
+      }
+
+      query = query.eq('clinic_id', clinicId);
+    }
+
     const { data, error } = await query.order('day', { ascending: false }).limit(100);
 
     if (error) throw error;
 
     if (format === 'print') {
-      // Simple HTML for printing
       const html = `
         <!DOCTYPE html>
         <html dir="rtl">
@@ -82,6 +123,7 @@ serve(async (req: Request) => {
       data: {
           report_type: 'daily',
           date_filter: date || 'all',
+          endpoint_scope: isAdminEndpoint ? 'admin' : 'clinic',
           records: data || [],
           total_records: data?.length || 0,
         },

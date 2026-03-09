@@ -660,7 +660,11 @@ Response: { "status": "ok", "version": "2.0.0" }
 
 ### POST /api/v1/admin/login
 Body: { "username": "string", "password": "string" }
-Response: { "token": "JWT", "user": { "role": "ADMIN" } }
+Response: { "success": true, "sessionToken": "sess_xxx", "role": "ADMIN", "permissions": ["..."], "username": "admin", "expiresAt": "ISO_DATE" }
+
+### POST /api/v1/admin/session/verify
+Body: { "sessionToken": "sess_xxx" }
+Response: { "success": true, "role": "ADMIN", "permissions": ["..."], "username": "admin", "expiresAt": "ISO_DATE" }
 
 ### GET /api/v1/admin/clinics
 Response: { "data": [ { "id", "name_ar", "name_en", "is_active", ... } ] }
@@ -702,8 +706,8 @@ Response: { "data": { "total_patients": 11, "done": 5, "waiting": 4, "cancelled"
 
 ## متغيرات البيئة المطلوبة في Vercel
 VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-VITE_SUPABASE_ANON_KEY=<from-vercel-env>
-SUPABASE_SERVICE_KEY=<server-side-only>
+VITE_SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
+SUPABASE_SERVICE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
 
 ## خطوات النشر
 1. git push origin main

@@ -8,14 +8,15 @@
  * - لا تأخير غير مقبول
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing env vars: SUPABASE_URL and SUPABASE_ANON_KEY');
-}
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your_supabase_anon_key';
 const TEST_CLINIC_ID = process.env.TEST_CLINIC_ID || 'lab';
 const CONCURRENT_USERS = parseInt(process.env.CONCURRENT_USERS) || 10;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('❌ Missing required env vars: SUPABASE_URL and SUPABASE_ANON_KEY');
+  process.exit(1);
+}
 
 async function callQueueEngine(patientId) {
   const startTime = Date.now();

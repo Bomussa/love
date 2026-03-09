@@ -13,15 +13,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// إعدادات Supabase (strict env-only)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    'Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables.',
-  );
-}
+// إعدادات Supabase
+const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
+const SUPABASE_ANON_KEY = 'your_supabase_anon_key';
 
 // إعدادات إعادة المحاولة المتقدمة
 const RETRY_CONFIG = {

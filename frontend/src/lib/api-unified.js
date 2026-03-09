@@ -1,6 +1,7 @@
 import { supabase } from './supabase-client';
 import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
+import { getContractEndpoint } from './api-contract';
 
 /**
  * Unified API Service - Direct Supabase Implementation
@@ -38,6 +39,24 @@ function getQueueSettings() {
 }
 
 const api = {
+
+  // --- Admin Auth ---
+  async adminLogin(username, password) {
+    try {
+      const { data, error } = await supabase.functions.invoke('login', {
+        body: { username, password },
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Login failed' };
+      }
+
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message || 'Login failed' };
+    }
+  },
+
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
@@ -287,10 +306,10 @@ const api = {
         if (!validPin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
-            const response = await fetch('/api/v1/queue/done', {
+            const response = await fetch(getContractEndpoint('pinVerify'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ clinicId, patientId, pin })
+              body: JSON.stringify({ clinic_id: clinicId, pin })
             });
             const result = await response.json();
             if (result && (result.success || !result.error)) {
@@ -418,11 +437,11 @@ const api = {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
         const { data: pinData, error: pinError } = await supabase
           .from('pins')
-          .select('id, clinic_code, is_active, expires_at')
-          .eq('clinic_code', clinicId)
+          .select('id, clinic_id, valid_until, used_at')
+          .eq('clinic_id', clinicId)
           .eq('pin', pin)
-          .eq('is_active', true)
-          .gte('expires_at', new Date().toISOString())
+          .is('used_at', null)
+          .gte('valid_until', new Date().toISOString())
           .maybeSingle();
 
         if (pinError) throw pinError;
