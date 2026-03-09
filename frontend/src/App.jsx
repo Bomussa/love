@@ -373,14 +373,16 @@ function App() {
         )}
 
         {currentView === 'login' && (
-          <LoginPage
-            onLogin={handleLogin}
-            onAdminLogin={handleAdminLogin}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <LoginPage
+              onLogin={handleLogin}
+              onAdminLogin={handleAdminLogin}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'examSelection' && patientData && (
