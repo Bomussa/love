@@ -2,20 +2,15 @@
 // دخول الطابور مع القفل التنافسي والإضافات الحرجة
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleOptions, corsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -29,7 +24,7 @@ serve(async (req: Request) => {
 
     if (!clinic_id || !patient_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'clinic and user are required' }),
+        JSON.stringify({ success: false, error: 'clinic and user are required', data: null }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       );
     }
@@ -47,6 +42,7 @@ serve(async (req: Request) => {
           success: false,
           status: 'ABORTED',
           error: 'SYSTEM_DISABLED',
+          data: null,
           message: 'النظام متوقف مؤقتًا',
         }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
@@ -66,6 +62,7 @@ serve(async (req: Request) => {
           success: false,
           status: 'ABORTED',
           error: 'CLINIC_DISABLED',
+          data: null,
           message: 'العيادة متوقفة مؤقتًا',
         }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
@@ -115,6 +112,7 @@ serve(async (req: Request) => {
           success: false,
           status: result.status,
           error: result.reason,
+          data: null,
           message: result.reason,
         }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
@@ -143,6 +141,7 @@ serve(async (req: Request) => {
         success: false,
         status: 'ABORTED',
         error: errorMessage,
+        data: null,
       }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     );
