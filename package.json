@@ -15,7 +15,10 @@
     "test": "npm run test --workspace frontend",
     "typecheck": "tsc --noEmit",
     "test:smoke": "node --test scripts/smoke.test.ts",
-    "ci:resilient": "./scripts/resilient-ci.sh"
+    "ci:resilient": "./scripts/resilient-ci.sh",
+    "lint:supabase-functions": "deno lint supabase/functions",
+    "typecheck:supabase-functions": "deno check supabase/functions/**/*.ts",
+    "check:supabase-functions": "npm run lint:supabase-functions && npm run typecheck:supabase-functions"
   },
   "engines": {
     "node": "20.x"

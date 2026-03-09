@@ -66,15 +66,7 @@ Deno.serve(async (req: Request) => {
     console.log('Login successful:', { timestamp: new Date().toISOString() });
 
     // Return success with session data
-    return corsJsonResponse(
-      {
-        success: true,
-        session: data.session,
-        user: data.user,
-      },
-      200,
-      origin,
-    );
+    return corsJsonResponse({ data: { session: data.session, user: data.user } }, 200, origin);
   } catch (error) {
     console.error('Unexpected login error:', error);
     return corsErrorResponse('Internal server error', 500, origin);
