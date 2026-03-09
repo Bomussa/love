@@ -36,6 +36,24 @@ function getQueueSettings() {
 }
 
 const api = {
+
+  // --- Admin Auth ---
+  async adminLogin(username, password) {
+    try {
+      const { data, error } = await supabase.functions.invoke('login', {
+        body: { username, password },
+      });
+
+      if (error) {
+        return { success: false, error: error.message || 'Login failed' };
+      }
+
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message || 'Login failed' };
+    }
+  },
+
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
