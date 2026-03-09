@@ -12,7 +12,7 @@ serve(async (req: Request) => {
   try {
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
     const { clinic_id, pin } = await req.json();
-    if (!clinic_id || !pin) return corsErrorResponse('clinic_id and pin required', 400);
+    if (!clinic_id || !pin) return corsErrorResponse('clinic_id and pin required', 400, req);
 
     const { data, error } = await db.from('pins').select('*').eq('clinic_id', clinic_id).eq('pin', pin)
       .gt('valid_until', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -26,8 +26,8 @@ serve(async (req: Request) => {
         pin_id: data?.id ?? null,
         valid_until: data?.valid_until ?? null,
       },
-    });
+    }, 200, req);
   } catch (err) {
-    return corsErrorResponse(String(err), 400);
+    return corsErrorResponse(String(err), 400, req);
   }
 });

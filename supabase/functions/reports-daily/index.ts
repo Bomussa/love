@@ -2,7 +2,7 @@
 // Get daily activity reports
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { handleOptions, corsJsonResponse, corsErrorResponse, corsHeaders } from '../_shared/cors.ts';
+import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -74,7 +74,7 @@ serve(async (req: Request) => {
         </html>
       `;
       return new Response(html, {
-        headers: { 'content-type': 'text/html; charset=UTF-8', ...corsHeaders },
+        headers: getCorsHeaders(req, { 'Content-Type': 'text/html; charset=UTF-8' }),
       });
     }
 
@@ -85,8 +85,8 @@ serve(async (req: Request) => {
           records: data || [],
           total_records: data?.length || 0,
         },
-    });
+    }, 200, req);
   } catch (err) {
-    return corsErrorResponse(String(err), 400);
+    return corsErrorResponse(String(err), 400, req);
   }
 });
