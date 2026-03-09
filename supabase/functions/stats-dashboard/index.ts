@@ -44,8 +44,8 @@ serve(async (req: Request) => {
           clinics: clinicPerf || [],
           timestamp: new Date().toISOString(),
         },
-    });
+    }, 200, req);
   } catch (err) {
-    return corsErrorResponse(String(err), 400);
+    return corsErrorResponse(String(err), 400, req);
   }
 });
