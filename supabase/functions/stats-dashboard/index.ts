@@ -2,21 +2,14 @@
 // Dashboard statistics split into clinic/admin endpoints with role guard
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { authErrorResponse, requireAuthGuard } from '../_shared/auth.ts';
+import { handleOptions, corsJsonResponse, corsErrorResponse } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'access-control-allow-origin': 'https://mmc-mms.com',
-  'access-control-allow-methods': 'GET,POST,OPTIONS',
-  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const url = new URL(req.url);
@@ -106,22 +99,23 @@ serve(async (req: Request) => {
 
     if (error) throw error;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          scope: 'clinic',
-          clinic_id: clinicId,
-          stats: clinicStats || {},
+    return corsJsonResponse({
+      data: {
+          overview: {
+            in_queue_now: todayStats?.in_queue_now || 0,
+            visits_today: todayStats?.visits_today || 0,
+            completed_today: todayStats?.completed_today || 0,
+            unique_patients_today: todayStats?.unique_patients_today || 0,
+            completion_rate:
+              todayStats?.visits_today > 0
+                ? Math.round((todayStats.completed_today / todayStats.visits_today) * 100)
+                : 0,
+          },
+          clinics: clinicPerf || [],
           timestamp: new Date().toISOString(),
         },
-      }),
-      { headers: { 'content-type': 'application/json', ...corsHeaders } },
-    );
+    }, 200, req);
   } catch (err) {
-    return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
-      { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
-    );
+    return corsErrorResponse(String(err), 400, req);
   }
 });

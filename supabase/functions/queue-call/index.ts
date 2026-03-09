@@ -2,20 +2,15 @@
 // نداء المريض التالي مع القفل التنافسي والإضافات الحرجة
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleOptions, corsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -27,7 +22,7 @@ serve(async (req: Request) => {
 
     if (!clinic_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'clinic_id required' }),
+        JSON.stringify({ success: false, error: 'clinic_id required', data: null }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       );
     }
@@ -45,6 +40,7 @@ serve(async (req: Request) => {
           success: false,
           status: 'ABORTED',
           error: 'SYSTEM_DISABLED',
+          data: null,
         }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       );
@@ -164,7 +160,7 @@ serve(async (req: Request) => {
   } catch (err) {
     console.error('queue-call error:', err);
     return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
+      JSON.stringify({ success: false, error: String(err), data: null }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     );
   }

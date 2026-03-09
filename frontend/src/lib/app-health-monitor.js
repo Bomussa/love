@@ -70,7 +70,9 @@ class AppHealthMonitor {
 
     // إرسال للـ callbacks
     this.alertCallbacks.forEach(cb => {
-      try { cb(issueWithTime); } catch (e) {}
+      try { cb(issueWithTime); } catch (e) {
+        console.warn('[AppHealthMonitor] alert callback failed:', e);
+      }
     });
 
     // محاولة الإصلاح التلقائي
@@ -373,7 +375,9 @@ class AppHealthMonitor {
           if (this.supabaseClient) {
             try {
               await this.supabaseClient.removeAllChannels();
-            } catch (e) {}
+            } catch (e) {
+              console.warn('[AppHealthMonitor] removeAllChannels failed:', e);
+            }
           }
           window.dispatchEvent(new CustomEvent('supabase_reconnect'));
           window.dispatchEvent(new CustomEvent('force_data_refresh'));
@@ -409,11 +413,13 @@ class AppHealthMonitor {
         this.recoveryAttempts.delete(key);
         // إشعار بالإصلاح
         this.alertCallbacks.forEach(cb => {
-          try { cb({ ...issue, resolved: true }); } catch (e) {}
+          try { cb({ ...issue, resolved: true }); } catch (e) {
+            console.warn('[AppHealthMonitor] alert callback failed:', e);
+          }
         });
       }, 5000);
     } catch (e) {
-      // فشل الإصلاح
+      console.warn('[AppHealthMonitor] Recovery execution failed:', e);
     }
   }
 

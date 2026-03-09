@@ -2,21 +2,14 @@
 // Daily activity reports split into clinic/admin endpoints with role guard
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { authErrorResponse, requireAuthGuard } from '../_shared/auth.ts';
+import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const corsHeaders = {
-  'access-control-allow-origin': 'https://mmc-mms.com',
-  'access-control-allow-methods': 'GET,POST,OPTIONS',
-  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const optionsResponse = handleOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const url = new URL(req.url);
@@ -122,27 +115,20 @@ serve(async (req: Request) => {
         </html>
       `;
       return new Response(html, {
-        headers: { 'content-type': 'text/html; charset=UTF-8', ...corsHeaders },
+        headers: getCorsHeaders(req, { 'Content-Type': 'text/html; charset=UTF-8' }),
       });
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
+    return corsJsonResponse({
+      data: {
           report_type: 'daily',
           date_filter: date || 'all',
           endpoint_scope: isAdminEndpoint ? 'admin' : 'clinic',
           records: data || [],
           total_records: data?.length || 0,
         },
-      }),
-      { headers: { 'content-type': 'application/json', ...corsHeaders } },
-    );
+    }, 200, req);
   } catch (err) {
-    return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
-      { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
-    );
+    return corsErrorResponse(String(err), 400, req);
   }
 });
