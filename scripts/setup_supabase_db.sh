@@ -12,11 +12,16 @@ echo "============================================"
 echo ""
 
 # Supabase connection details
-SUPABASE_HOST="db.rujwuruuosffcxazymit.supabase.co"
+SUPABASE_HOST="${SUPABASE_HOST:-<SUPABASE_DB_HOST>}"
 SUPABASE_DB="postgres"
 SUPABASE_USER="postgres"
-SUPABASE_PASSWORD="fa7af059cd2c8504e8a247e23b6e0378476bf5d5d7da75c37e3a1227b1f12063"
+SUPABASE_PASSWORD="${SUPABASE_PASSWORD:-}"
 SUPABASE_PORT="5432"
+
+if [ -z "$SUPABASE_PASSWORD" ] || [ "$SUPABASE_HOST" = "<SUPABASE_DB_HOST>" ]; then
+    echo "❌ Missing required env vars: SUPABASE_HOST and SUPABASE_PASSWORD"
+    exit 1
+fi
 
 # Schema file
 SCHEMA_FILE="/home/ubuntu/love/supabase/migrations/20251105_initial_schema.sql"

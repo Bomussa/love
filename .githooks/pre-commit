@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "❌ gitleaks is required for pre-commit secret scanning."
+  echo "Install: https://github.com/gitleaks/gitleaks#installing"
+  exit 1
+fi
+
+gitleaks protect --staged --config .gitleaks.toml --redact

@@ -19,36 +19,60 @@ describe('auth-service secure login', () => {
     vi.stubGlobal('localStorage', localStorageMock);
   });
 
-  it('rejects login when backend response is not valid', async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ success: true, role: 'SUPER_ADMIN' })
-    }));
-    vi.stubGlobal('fetch', fetchMock);
+  it('succeeds on valid login payload and verified session', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          sessionToken: 'token-1',
+          role: 'SUPER_ADMIN',
+          permissions: ['*'],
+          username: 'admin',
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          role: 'SUPER_ADMIN',
+          permissions: ['*'],
+          username: 'admin',
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        }),
+      });
 
+    vi.stubGlobal('fetch', fetchMock);
     const { default: authService } = await import('../auth-service.js');
 
-    const result = await authService.login('admin', '1234');
+    const result = await authService.login('admin', 'securePassword');
+
+    expect(result.success).toBe(true);
+    expect(result.session?.role).toBe('SUPER_ADMIN');
+    expect(localStorage.setItem).toHaveBeenCalled();
+  });
+
+  it('returns unified error message on invalid credentials', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401 })));
+    const { default: authService } = await import('../auth-service.js');
+
+    const result = await authService.login('admin', 'wrong');
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('استجابة مصادقة غير صالحة');
+    expect(result.error).toBe('Invalid credentials');
     expect(localStorage.setItem).not.toHaveBeenCalled();
   });
 
-  it('does not allow any local admin code when backend is unavailable', async () => {
-    const fetchMock = vi.fn(async () => {
-      throw new TypeError('Failed to fetch');
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
+  it('returns unified error for lockout/brute-force response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429 })));
     const { default: authService } = await import('../auth-service.js');
 
-    const result = await authService.login('admin123', 'mock-token');
+    const attempts = await Promise.all(
+      Array.from({ length: 6 }, () => authService.login('admin', 'wrong')),
+    );
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('Authentication service unavailable');
-    expect(localStorage.setItem).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(attempts.every((attempt) => attempt.error === 'Invalid credentials')).toBe(true);
   });
-
 });
