@@ -110,6 +110,15 @@ ALTER TABLE public.queues
   ADD CONSTRAINT queues_clinic_id_fkey
   FOREIGN KEY (clinic_id) REFERENCES public.clinics(id) ON DELETE RESTRICT;
 
+-- Drop legacy RLS policies before removing legacy columns (e.g. policies referencing user_id)
+DROP POLICY IF EXISTS queues_select_self ON public.queues;
+DROP POLICY IF EXISTS queues_insert_via_func ON public.queues;
+DROP POLICY IF EXISTS queues_update_via_func ON public.queues;
+DROP POLICY IF EXISTS "Allow public read access on queues" ON public.queues;
+DROP POLICY IF EXISTS "Allow authenticated insert on queues" ON public.queues;
+DROP POLICY IF EXISTS "Allow authenticated update on queues" ON public.queues;
+DROP POLICY IF EXISTS "Allow authenticated delete on queues" ON public.queues;
+
 -- Drop legacy columns once mapping is done
 ALTER TABLE public.queues
   DROP COLUMN IF EXISTS user_id,
@@ -272,10 +281,30 @@ $$;
 -- Backward-compatible wrappers for old TEXT signatures
 CREATE OR REPLACE FUNCTION public.generate_pin_safe(p_clinic_id TEXT)
 RETURNS INTEGER
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  SELECT public.generate_pin_safe(p_clinic_id::uuid);
+DECLARE
+  v_clinic_id UUID;
+BEGIN
+  v_clinic_id := CASE
+    WHEN p_clinic_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN p_clinic_id::uuid
+    ELSE NULL
+  END;
+
+  IF v_clinic_id IS NULL THEN
+    SELECT c.id INTO v_clinic_id
+    FROM public.clinics c
+    WHERE c.code = p_clinic_id
+    LIMIT 1;
+  END IF;
+
+  IF v_clinic_id IS NULL THEN
+    RAISE EXCEPTION 'invalid clinic_id: %', p_clinic_id;
+  END IF;
+
+  RETURN public.generate_pin_safe(v_clinic_id);
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.enter_queue_safe(
@@ -285,10 +314,30 @@ CREATE OR REPLACE FUNCTION public.enter_queue_safe(
   p_exam_type TEXT DEFAULT 'general'
 )
 RETURNS JSONB
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  SELECT public.enter_queue_safe(p_clinic_id::uuid, p_patient_id, p_patient_name, p_exam_type);
+DECLARE
+  v_clinic_id UUID;
+BEGIN
+  v_clinic_id := CASE
+    WHEN p_clinic_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN p_clinic_id::uuid
+    ELSE NULL
+  END;
+
+  IF v_clinic_id IS NULL THEN
+    SELECT c.id INTO v_clinic_id
+    FROM public.clinics c
+    WHERE c.code = p_clinic_id
+    LIMIT 1;
+  END IF;
+
+  IF v_clinic_id IS NULL THEN
+    RAISE EXCEPTION 'invalid clinic_id: %', p_clinic_id;
+  END IF;
+
+  RETURN public.enter_queue_safe(v_clinic_id, p_patient_id, p_patient_name, p_exam_type);
+END;
 $$;
 
 REVOKE ALL ON FUNCTION public.generate_pin_safe(UUID) FROM PUBLIC;
