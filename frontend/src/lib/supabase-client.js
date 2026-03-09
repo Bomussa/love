@@ -11,10 +11,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
+import { ensureSupabaseEnv } from './env-guard';
 
-// Supabase configuration - Production values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'; // Project URL: https://rujwuruuosffcxazymit.supabase.co
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your_supabase_anon_key'; // anonpublic key
+// Supabase configuration - explicit required env validation
+const { supabaseUrl, supabaseAnonKey } = ensureSupabaseEnv();
 
 // إعدادات إعادة المحاولة
 const RETRY_CONFIG = {
