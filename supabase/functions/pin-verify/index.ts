@@ -44,9 +44,11 @@ serve(async (req: Request) => {
     const requestedClinicId = typeof body?.clinic_id === 'string' ? body.clinic_id : null;
     const pin = typeof body?.pin === 'string' ? body.pin : null;
 
-    const clinic_id = guard.auth.role === 'clinic'
-      ? (guard.auth.clinicId || requestedClinicId)
-      : requestedClinicId;
+    if (guard.auth.role === 'clinic' && !guard.auth.clinicId) {
+      return authErrorResponse(403, corsHeaders);
+    }
+
+    const clinic_id = guard.auth.role === 'clinic' ? guard.auth.clinicId : requestedClinicId;
 
     if (!clinic_id || !pin) {
       return new Response(

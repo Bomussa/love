@@ -39,9 +39,7 @@ function getRole(payload: Record<string, unknown> | null, user: any): AppRole | 
   const candidates = [
     payload?.role,
     (payload?.app_metadata as Record<string, unknown> | undefined)?.role,
-    (payload?.user_metadata as Record<string, unknown> | undefined)?.role,
     user?.app_metadata?.role,
-    user?.user_metadata?.role,
   ];
 
   for (const candidate of candidates) {
@@ -56,9 +54,7 @@ function getClinicId(payload: Record<string, unknown> | null, user: any): string
   const candidates = [
     payload?.clinic_id,
     (payload?.app_metadata as Record<string, unknown> | undefined)?.clinic_id,
-    (payload?.user_metadata as Record<string, unknown> | undefined)?.clinic_id,
     user?.app_metadata?.clinic_id,
-    user?.user_metadata?.clinic_id,
   ];
 
   for (const candidate of candidates) {

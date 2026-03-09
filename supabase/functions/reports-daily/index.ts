@@ -52,7 +52,11 @@ serve(async (req: Request) => {
 
     if (isClinicEndpoint) {
       const clinicFromQuery = url.searchParams.get('clinic_id');
-      const clinicId = guard.auth.role === 'admin' ? clinicFromQuery : (guard.auth.clinicId || clinicFromQuery);
+      if (guard.auth.role === 'clinic' && !guard.auth.clinicId) {
+        return authErrorResponse(403, corsHeaders);
+      }
+
+      const clinicId = guard.auth.role === 'admin' ? clinicFromQuery : guard.auth.clinicId;
 
       if (!clinicId) {
         return new Response(
