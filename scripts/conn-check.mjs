@@ -30,7 +30,7 @@ const ORIGIN = process.env.FRONTEND_ORIGIN
     const r = await fetchText(front);
     console.log('[front]', r.status);
     if(r.status<200||r.status>299){ ok=false; console.log('[front] not 2xx'); }
-    try { const j = JSON.parse(r.body); if(j.ok!==true){ ok=false; console.log('[front] ok!=true'); } } catch{}
+    try { const j = JSON.parse(r.body); if(j.ok!==true){ ok=false; console.log('[front] ok!=true'); } } catch (e) { ok=false; console.log('[front] invalid json'); }
   }catch(e){ ok=false; console.log('[front] error'); }
   // API
   try{
