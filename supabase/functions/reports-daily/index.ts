@@ -2,7 +2,8 @@
 // Daily activity reports split into clinic/admin endpoints with role guard
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders } from '../_shared/cors.ts';
+import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders, corsHeaders } from '../_shared/cors.ts';
+import { requireAuthGuard, authErrorResponse } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -26,7 +27,7 @@ serve(async (req: Request) => {
 
     const guard = await requireAuthGuard(req, {
       allowedRoles: isAdminEndpoint ? ['admin'] : ['clinic', 'admin'],
-      corsHeaders,
+      corsHeaders: getCorsHeaders(req),
     });
 
     if ('response' in guard) {
@@ -46,7 +47,7 @@ serve(async (req: Request) => {
     if (isClinicEndpoint) {
       const clinicFromQuery = url.searchParams.get('clinic_id');
       if (guard.auth.role === 'clinic' && !guard.auth.clinicId) {
-        return authErrorResponse(403, corsHeaders);
+        return authErrorResponse(403, getCorsHeaders(req));
       }
 
       const clinicId = guard.auth.role === 'admin' ? clinicFromQuery : guard.auth.clinicId;
@@ -54,12 +55,12 @@ serve(async (req: Request) => {
       if (!clinicId) {
         return new Response(
           JSON.stringify({ success: false, error: 'clinic_id is required for clinic reports' }),
-          { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } },
+          { status: 400, headers: getCorsHeaders(req) },
         );
       }
 
       if (guard.auth.role === 'clinic' && guard.auth.clinicId && guard.auth.clinicId !== clinicId) {
-        return authErrorResponse(403, corsHeaders);
+        return authErrorResponse(403, getCorsHeaders(req));
       }
 
       query = query.eq('clinic_id', clinicId);
