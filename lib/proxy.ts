@@ -24,7 +24,7 @@ export async function forward(req: VercelRequest, res: VercelResponse, path: str
     : (typeof req.body === 'string' || Buffer.isBuffer(req.body)) ? req.body : JSON.stringify(req.body);
 
   const upstream = await fetch(target, {
-    method, headers, body, redirect: 'manual',
+    method, headers, body: body as BodyInit, redirect: 'manual',
   });
   res.status(upstream.status);
   upstream.headers.forEach((v, k) => res.setHeader(k, v));
