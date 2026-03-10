@@ -15,14 +15,16 @@ class SupabaseApiClient {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
+      const now = new Date().toISOString();
 
       // 1. Get current active PIN
       const { data: current, error: currentError } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
-        .eq('clinic_code', clinicId)
-        .eq('is_active', true)
-        .order('generated_at', { ascending: false })
+        .select('id, clinic_id, pin, created_at, valid_until, used_at')
+        .eq('clinic_id', clinicId)
+        .is('used_at', null)
+        .gte('valid_until', now)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -32,9 +34,9 @@ class SupabaseApiClient {
       const { data: allToday, error: allTodayError } = await supabase
         .from('pins')
         .select('pin')
-        .eq('clinic_code', clinicId)
-        .gte('generated_at', todayISO)
-        .order('generated_at', { ascending: true });
+        .eq('clinic_id', clinicId)
+        .gte('created_at', todayISO)
+        .order('created_at', { ascending: true });
 
       if (allTodayError) throw allTodayError;
 
@@ -61,24 +63,25 @@ class SupabaseApiClient {
       // توليد PIN جديد من 4 أرقام
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const now = new Date();
-      const expiresAt = new Date(now);
-      expiresAt.setHours(23, 59, 59, 999);
+      const validUntil = new Date(now);
+      validUntil.setHours(23, 59, 59, 999);
 
       // تعطيل جميع الـ PINs السابقة لهذه العيادة
       await supabase
         .from('pins')
-        .update({ is_active: false })
-        .eq('clinic_code', clinicId);
+        .update({ used_at: now.toISOString() })
+        .eq('clinic_id', clinicId)
+        .is('used_at', null);
 
       // إضافة PIN جديد
       const { data, error } = await supabase
         .from('pins')
         .insert([{
-          clinic_code: clinicId,
+          clinic_id: clinicId,
           pin: newPin,
-          is_active: true,
-          generated_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
+          created_at: now.toISOString(),
+          valid_until: validUntil.toISOString(),
+          used_at: null,
         }])
         .select()
         .single();
@@ -99,20 +102,21 @@ class SupabaseApiClient {
 
   async verifyPin(clinicId, pin) {
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, expires_at')
-        .eq('clinic_code', clinicId)
+        .select('id, clinic_id, pin, valid_until, used_at')
+        .eq('clinic_id', clinicId)
         .eq('pin', pin)
-        .eq('is_active', true)
+        .is('used_at', null)
+        .gte('valid_until', now)
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
 
       // التحقق من صلاحية الـ PIN
-      const isValid = data && data.is_active
-                           && (!data.expires_at || new Date(data.expires_at) > new Date());
+      const isValid = !!data;
 
       return {
         success: true,
@@ -127,11 +131,13 @@ class SupabaseApiClient {
 
   async getAllPins() {
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
-        .eq('is_active', true)
-        .order('clinic_code', { ascending: true });
+        .select('id, clinic_id, pin, created_at, valid_until, used_at')
+        .is('used_at', null)
+        .gte('valid_until', now)
+        .order('clinic_id', { ascending: true });
 
       if (error) throw error;
 
@@ -140,10 +146,10 @@ class SupabaseApiClient {
         pins: data.map((p) => ({
           pinId: p.id,
           currentPin: p.pin,
-          clinicCode: p.clinic_code,
-          isActive: p.is_active,
-          generatedAt: p.generated_at,
-          expiresAt: p.expires_at,
+          clinicCode: p.clinic_id,
+          isActive: true,
+          generatedAt: p.created_at,
+          expiresAt: p.valid_until,
         })),
       };
     } catch (error) {

@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const rpcMock = vi.fn();
-const maybeSingleMock = vi.fn();
-
-const queryBuilder = {
-  select: vi.fn(() => queryBuilder),
-  eq: vi.fn(() => queryBuilder),
-  is: vi.fn(() => queryBuilder),
-  gte: vi.fn(() => queryBuilder),
-  maybeSingle: maybeSingleMock,
-};
-
-const fromMock = vi.fn(() => queryBuilder);
+const { rpcMock, fromMock, maybeSingleMock, queryBuilder } = vi.hoisted(() => {
+  const maybeSingleMock = vi.fn();
+  const queryBuilder = {
+    select: vi.fn(() => queryBuilder),
+    eq: vi.fn(() => queryBuilder),
+    is: vi.fn(() => queryBuilder),
+    gte: vi.fn(() => queryBuilder),
+    maybeSingle: maybeSingleMock,
+  };
+  return {
+    rpcMock: vi.fn(),
+    fromMock: vi.fn(() => queryBuilder),
+    maybeSingleMock,
+    queryBuilder,
+  };
+});
 
 vi.mock('../supabase-client', () => ({
   supabase: {

@@ -21,8 +21,8 @@ import {
 } from './data-integrity-system';
 
 // إعدادات Supabase
-const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
-const SUPABASE_ANON_KEY = 'your_supabase_anon_key';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // إنشاء عميل Supabase مخصص للنظام
 const gdsClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

@@ -9,7 +9,7 @@ import os
 import sys
 
 # Database connection string
-DB_URL = "postgres://postgres.utgsoizsnqchiduzffxo:uFv031NrmT4D6wwi@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+DB_URL = "postgres://postgres.rujwuruuosffcxazymit:uFv031NrmT4D6wwi@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
 def setup_database():
     """Execute the schema.sql file to set up the database"""

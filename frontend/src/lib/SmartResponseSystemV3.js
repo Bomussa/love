@@ -22,7 +22,7 @@ class SmartResponseSystemV3 {
       errorPatterns: new Map()
     };
     this.config = {
-      apiBase: "https://love-api-bomussa.vercel.app/api",
+      apiBase: "/api/v1",
       fallbackApi: "https://rujwuruuosffcxazymit.supabase.co/functions/v1",
       checkInterval: 10000,
       maxRetries: 3
