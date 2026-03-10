@@ -9,11 +9,18 @@ import os
 import sys
 
 # Database connection string
-DB_URL = "postgres://postgres.rujwuruuosffcxazymit:uFv031NrmT4D6wwi@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+# Use SUPABASE_DB_URL environment variable
+# format: postgres://postgres.[PROJECT_ID]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+DB_URL = os.environ.get("SUPABASE_DB_URL")
 
 def setup_database():
     """Execute the schema.sql file to set up the database"""
     
+    if not DB_URL:
+        print("❌ Error: SUPABASE_DB_URL environment variable is not set.")
+        print("Please set it before running this script.")
+        return False
+
     print("🚀 Starting database setup...")
     print(f"📡 Connecting to Supabase...")
     
