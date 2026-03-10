@@ -1,92 +1,51 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import { supabaseConfigError, isSupabaseConfigured } from './lib/supabase-client'
 import './index.css'
 import './responsive-fixes.css'
 
-// Self-Healing: initialize once on app start + wrap React tree with Error Boundary
-import { initSelfHealingSystem } from './lib/self-healing'
-import SelfHealingErrorBoundary from './components/SelfHealingErrorBoundary.jsx'
-import { EnvConfigurationError } from './lib/env-guard'
+// Initialize the root element
+const rootElement = document.getElementById('root');
 
-const root = ReactDOM.createRoot(document.getElementById('root'))
+if (!rootElement) {
+  console.error('Failed to find the root element');
+} else {
+  const root = ReactDOM.createRoot(rootElement);
 
-function SetupErrorFallback({ error }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-      <div className="max-w-xl w-full bg-gray-800 text-white rounded-2xl p-6 shadow-2xl border border-red-500/40">
-        <h1 className="text-2xl font-bold mb-3 text-red-400">تعذر تشغيل التطبيق</h1>
-        <p className="text-sm text-gray-200 leading-7 mb-4">
-          يوجد نقص في إعدادات الاتصال الأساسية. تم إيقاف التشغيل لحماية النظام من العمل بإعدادات غير صحيحة.
-        </p>
-        <p className="text-sm text-gray-200 mb-3">يرجى التواصل مع مسؤول النظام والتأكد من ضبط متغيرات البيئة في Vercel:</p>
-        <ul className="list-disc pr-6 text-sm text-gray-300 space-y-1 mb-4">
-          <li>VITE_SUPABASE_URL</li>
-          <li>VITE_SUPABASE_ANON_KEY</li>
-        </ul>
-        <p className="text-xs text-gray-400 break-words">{error?.message}</p>
-      </div>
-    </div>
-  )
-}
+  const renderApp = (Component) => {
+    root.render(
+      <React.StrictMode>
+        <Component />
+      </React.StrictMode>
+    );
+  };
 
-function renderApp(AppComponent) {
-  root.render(
-    <React.StrictMode>
-      <SelfHealingErrorBoundary>
-        <AppComponent />
-      </SelfHealingErrorBoundary>
-    </React.StrictMode>,
-  )
-}
-
-async function bootstrap() {
-  // Defer non-critical initialization to improve TTI
-  if (typeof window !== 'undefined') {
-    const init = () => {
-      try {
-        initSelfHealingSystem()
-      } catch (e) {
-        console.error('[SelfHealing] initSelfHealingSystem failed:', e)
-      }
-    }
-
-    if (window.requestIdleCallback) {
-      window.requestIdleCallback(init)
-    } else {
-      setTimeout(init, 2000)
-    }
-  }
-
+  // Immediate bootstrap for better reliability
   try {
-    const { default: App } = await import('./App.jsx')
-    renderApp(App)
+    renderApp(App);
+    console.log('[Main] Application rendered successfully');
   } catch (error) {
-    console.error('[Bootstrap] Failed to start application:', error)
-
-    if (error instanceof EnvConfigurationError) {
-      renderApp(() => <SetupErrorFallback error={error} />)
-      return
-    }
-
-    throw error
+    console.error('[Main] Critical error during initial render:', error);
+    
+    // Fallback UI in case of total failure
+    root.render(
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        backgroundColor: '#0f172a', 
+        color: 'white',
+        fontFamily: 'Cairo, sans-serif',
+        textAlign: 'center',
+        padding: '20px'
+      }}>
+        <div>
+          <h1 style={{ color: '#f87171' }}>حدث خطأ في تحميل التطبيق</h1>
+          <p>يرجى المحاولة مرة أخرى أو الاتصال بالدعم الفني.</p>
+          <pre style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{error.message}</pre>
+        </div>
+      </div>
+    );
   }
 }
-
-const ConfigErrorScreen = ({ errorMessage }) => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-900 px-6">
-    <div className="max-w-2xl w-full bg-red-950/60 border border-red-500 rounded-2xl p-6 text-red-50">
-      <h1 className="text-2xl font-bold mb-3">تعذّر تشغيل التطبيق</h1>
-      <p className="mb-4 leading-7">
-        إعدادات Supabase غير مكتملة. يرجى إضافة متغيرات البيئة المطلوبة في Vercel قبل إعادة النشر.
-      </p>
-      <div className="bg-black/40 rounded-lg p-4 text-sm overflow-x-auto">
-        <code>{errorMessage}</code>
-      </div>
-    </div>
-  </div>
-)
-
-// Render app using the bootstrap function
-bootstrap()
