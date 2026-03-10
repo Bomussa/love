@@ -2,7 +2,7 @@
 // Daily activity reports split into clinic/admin endpoints with role guard
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders, corsHeaders } from '../_shared/cors.ts';
+import { handleOptions, corsJsonResponse, corsErrorResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { requireAuthGuard, authErrorResponse } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -21,7 +21,7 @@ serve(async (req: Request) => {
     if (!isAdminEndpoint && !isClinicEndpoint) {
       return new Response(
         JSON.stringify({ success: false, error: 'Use /reports-daily/clinic or /reports-daily/admin' }),
-        { status: 404, headers: { 'content-type': 'application/json', ...corsHeaders } },
+        { status: 404, headers: getCorsHeaders(req) },
       );
     }
 

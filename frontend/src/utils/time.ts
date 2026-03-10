@@ -1,4 +1,5 @@
-import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
 
 import CONST from '../../config/constants.json' assert { type: 'json' };
 
@@ -10,7 +11,7 @@ export function nowISO() {
 }
 
 export function localDateKeyAsiaQatar(d = new Date()) {
-  const z = utcToZonedTime(d, tz);
+  const z = toZonedTime(d, tz);
   const [h, m] = pivot.split(':').map(Number);
   const pivotDate = new Date(z);
   pivotDate.setHours(h, m, 0, 0);
@@ -18,7 +19,7 @@ export function localDateKeyAsiaQatar(d = new Date()) {
   if (z.getTime() < pivotDate.getTime()) {
     const y = new Date(z);
     y.setDate(y.getDate() - 1);
-    return format(y, 'yyyy-MM-dd', { timeZone: tz });
+    return format(y, 'yyyy-MM-dd');
   }
-  return format(z, 'yyyy-MM-dd', { timeZone: tz });
+  return format(z, 'yyyy-MM-dd');
 }

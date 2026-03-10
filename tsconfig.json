@@ -11,6 +11,8 @@
     "allowJs": true,
     "noEmit": true,
     "baseUrl": ".",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "paths": {
       "https://deno.land/std*": [
         "node_modules/@types/node"
@@ -20,7 +22,8 @@
       ]
     },
     "types": [
-      "node"
+      "node",
+      "vitest/globals"
     ]
   },
   "exclude": [
@@ -28,6 +31,7 @@
     "dist",
     "frontend/src/lib/supabase-client.js",
     "frontend/src/assets",
-    "frontend/public"
+    "frontend/public",
+    "supabase/functions"
   ]
 }
