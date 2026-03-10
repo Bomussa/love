@@ -58,6 +58,7 @@ import QARepairPanel from './QARepairPanel';
 import FilesCenter from './FilesCenter';
 import { supabase } from '../lib/supabase-client';
 import { validateAdminData, sanitizeInput } from '../lib/validation';
+import * as apiService from '../lib/api-service';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
 const logActivity = async (actionType, description, userId = null, metadata = {}) => {
@@ -3498,7 +3499,7 @@ const UsersManagement = ({ language, t }) => {
       });
 
       if (!validation.isValid) {
-        alert(validation.errors[0]);
+        showErrorToast(validation.errors[0]);
         return;
       }
 
@@ -3506,46 +3507,85 @@ const UsersManagement = ({ language, t }) => {
       const permissions = newUser.role === 'SUPER_ADMIN' 
         ? allPermissions.map(p => p.id) 
         : newUser.permissions;
-      const passwordHash = await hashPassword(newUser.password);
       
-      const { error } = await supabase
-        .from('admins')
-        .insert([{
-          username: sanitizedUsername,
-          password_hash: passwordHash,
-          role: newUser.role,
-          is_active: true,
-          permissions: permissions,
-          assigned_clinic: newUser.assigned_clinic || null,
-          created_at: new Date().toISOString()
-        }]);
+      const result = await apiService.addAdmin({
+        username: sanitizedUsername,
+        password: newUser.password,
+        role: newUser.role,
+        permissions: permissions,
+        is_active: true
+      });
       
-      if (!error) {
+      if (result && result.success) {
         setShowAddModal(false);
         setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
         loadUsers();
-        alert(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+        showSuccessToast(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل إضافة المستخدم', 'Failed to add user'));
       }
     } catch (e) {
       console.error('Error adding user:', e);
+      showErrorToast(e.message || t('حدث خطأ غير متوقع', 'An unexpected error occurred'));
     }
   };
 
   const updateUserPermissions = async (userId, permissions) => {
     try {
-      await supabase
-        .from('admins')
-        .update({ permissions })
-        .eq('id', userId);
-      loadUsers();
+      const result = await apiService.updateAdmin(userId, { permissions });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث الصلاحيات بنجاح', 'Permissions updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الصلاحيات', 'Failed to update permissions'));
+      }
     } catch (e) {
       console.error('Error updating permissions:', e);
+      showErrorToast(e.message || t('خطأ في تحديث الصلاحيات', 'Error updating permissions'));
     }
   };
 
   const updateUserStatus = async (userId, isActive) => {
     try {
-      await supabase
+      const result = await apiService.updateAdmin(userId, { is_active: isActive });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث حالة المستخدم بنجاح', 'User status updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الحالة', 'Failed to update status'));
+      }
+    } catch (e) {
+      console.error('Error updating user:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const updateUserRole = async (userId, role) => {
+    try {
+      const result = await apiService.updateAdmin(userId, { role });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث الدور بنجاح', 'Role updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الدور', 'Failed to update role'));
+      }
+    } catch (e) {
+      console.error('Error updating role:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
+    try {
+      const result = await apiService.deleteAdmin(userId);
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم حذف المستخدم بنجاح', 'User deleted successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل حذف المستخدم', 'Failed to delete user'));
+      }
+    } catch (e) {
         .from('admins')
         .update({ is_active: isActive })
         .eq('id', userId);
@@ -3557,7 +3597,45 @@ const UsersManagement = ({ language, t }) => {
 
   const updateUserRole = async (userId, role) => {
     try {
-      await supabase
+      const result = await apiService.updateAdmin(userId, { is_active: isActive });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث حالة المستخدم بنجاح', 'User status updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الحالة', 'Failed to update status'));
+      }
+    } catch (e) {
+      console.error('Error updating user:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const updateUserRole = async (userId, role) => {
+    try {
+      const result = await apiService.updateAdmin(userId, { role });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث الدور بنجاح', 'Role updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الدور', 'Failed to update role'));
+      }
+    } catch (e) {
+      console.error('Error updating role:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
+    try {
+      const result = await apiService.deleteAdmin(userId);
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم حذف المستخدم بنجاح', 'User deleted successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل حذف المستخدم', 'Failed to delete user'));
+      }
+    } catch (e) {
         .from('admins')
         .update({ role })
         .eq('id', userId);
@@ -3570,7 +3648,45 @@ const UsersManagement = ({ language, t }) => {
   const deleteUser = async (userId) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
-      await supabase
+      const result = await apiService.updateAdmin(userId, { is_active: isActive });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث حالة المستخدم بنجاح', 'User status updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الحالة', 'Failed to update status'));
+      }
+    } catch (e) {
+      console.error('Error updating user:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const updateUserRole = async (userId, role) => {
+    try {
+      const result = await apiService.updateAdmin(userId, { role });
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث الدور بنجاح', 'Role updated successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل تحديث الدور', 'Failed to update role'));
+      }
+    } catch (e) {
+      console.error('Error updating role:', e);
+      showErrorToast(e.message);
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
+    try {
+      const result = await apiService.deleteAdmin(userId);
+      if (result && result.success) {
+        loadUsers();
+        showSuccessToast(t('تم حذف المستخدم بنجاح', 'User deleted successfully'));
+      } else {
+        showErrorToast(result?.error || t('فشل حذف المستخدم', 'Failed to delete user'));
+      }
+    } catch (e) {
         .from('admins')
         .delete()
         .eq('id', userId);
