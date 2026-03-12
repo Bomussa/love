@@ -43,7 +43,7 @@ const api = {
   // --- Admin Auth ---
   async adminLogin(username, password) {
     try {
-      const { data, error } = await supabase.functions.invoke('login', {
+      const { data, error } = await supabase.functions.invoke('admin-login', {
         body: { username, password },
       });
 

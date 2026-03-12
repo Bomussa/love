@@ -2,29 +2,89 @@
 // نداء المريض التالي مع القفل التنافسي والإضافات الحرجة
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { handleOptions, corsHeaders } from '../_shared/cors.ts';
+import { handleOptions, getCorsHeaders, corsErrorResponse } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+function toStringArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter((entry): entry is string => typeof entry === 'string');
+  if (typeof value === 'string') return [value];
+  return [];
+}
 
 serve(async (req: Request) => {
   const optionsResponse = handleOptions(req);
   if (optionsResponse) return optionsResponse;
 
+  if (req.method !== 'POST') {
+    return corsErrorResponse('method_not_allowed', 405, req);
+  }
+
   try {
+    const authHeader = req.headers.get('authorization');
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    let authUser: any = null;
+    let role = 'operator';
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const authClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: authData, error: authError } = await authClient.auth.getUser();
+      if (authError || !authData.user) {
+        return corsErrorResponse('unauthorized', 401, req);
+      }
+
+      authUser = authData.user;
+
+      const { data: userRole, error: roleError } = await db
+        .from('roles')
+        .select('role')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('queue-call role lookup failed', { user_id: authUser.id, message: roleError.message });
+        return corsErrorResponse('internal_error', 500, req);
+      }
+
+      role = userRole?.role ?? 'patient';
+      const allowedRoles = new Set(['admin', 'operator']);
+      if (!allowedRoles.has(role)) {
+        return corsErrorResponse('forbidden', 403, req);
+      }
+    }
+
     const body = await req.json();
 
     const clinic_id = body.clinic_id || body.clinic;
     const operator_pin = body.pin || body.operator_pin;
-    const action = body.action || 'call_next';
 
     if (!clinic_id) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'clinic_id required', data: null }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
-      );
+      return corsErrorResponse('clinic_id_required', 400, req);
+    }
+
+    if (!authUser && !operator_pin) {
+      return corsErrorResponse('operator_pin_required', 400, req);
+    }
+
+    if (authUser && role === 'operator') {
+      const allowedClinicIds = new Set<string>([
+        ...toStringArray(authUser.app_metadata?.clinic_ids),
+        ...toStringArray(authUser.user_metadata?.clinic_ids),
+        ...toStringArray(authUser.app_metadata?.clinic_id),
+        ...toStringArray(authUser.user_metadata?.clinic_id),
+      ]);
+
+      // deny-by-default for operator role when clinic scope is missing or mismatched.
+      if (allowedClinicIds.size === 0 || !allowedClinicIds.has(clinic_id)) {
+        return corsErrorResponse('forbidden', 403, req);
+      }
     }
 
     // التحقق من Kill Switch العام
@@ -42,7 +102,7 @@ serve(async (req: Request) => {
           error: 'SYSTEM_DISABLED',
           data: null,
         }),
-        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        { status: 403, headers: getCorsHeaders(req) },
       );
     }
 
@@ -57,7 +117,7 @@ serve(async (req: Request) => {
       // تسجيل في Audit Log
       await db.from('audit_log').insert({
         action: 'PATIENT_CALLED',
-        payload: { clinic_id, operator_pin, result: safeResult },
+        payload: { clinic_id, user_id: authUser?.id || null, result: safeResult },
       }).catch(() => {});
 
       return new Response(
@@ -70,7 +130,7 @@ serve(async (req: Request) => {
             message: safeResult.message,
           },
         }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        { headers: getCorsHeaders(req) },
       );
     }
 
@@ -110,7 +170,7 @@ serve(async (req: Request) => {
             message: 'لا يوجد مرضى في الانتظار',
           },
         }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        { headers: getCorsHeaders(req) },
       );
     }
 
@@ -139,7 +199,7 @@ serve(async (req: Request) => {
       action: 'PATIENT_CALLED',
       payload: {
         clinic_id,
-        operator_pin,
+        user_id: authUser?.id || null,
         patient_id: nextPatient.patient_id,
         display_number: nextPatient.display_number,
       },
@@ -155,13 +215,13 @@ serve(async (req: Request) => {
           patient_id: updated.patient_id,
         },
       }),
-      { headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      { headers: getCorsHeaders(req) },
     );
   } catch (err) {
     console.error('queue-call error:', err);
     return new Response(
       JSON.stringify({ success: false, error: String(err), data: null }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      { status: 500, headers: getCorsHeaders(req) },
     );
   }
 });

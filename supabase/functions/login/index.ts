@@ -59,13 +59,20 @@ Deno.serve(async (req: Request) => {
       .from('admins')
       .update({ last_login: new Date().toISOString() })
       .eq('id', adminUser.id);
-
-    const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60;
-    const accessToken = crypto.randomUUID();
-    const refreshToken = crypto.randomUUID();
-
-    // Return success with session data
-    return corsJsonResponse({ data: { session: data.session, user: data.user } }, 200, origin);
+    return corsJsonResponse(
+      {
+        data: {
+          user: {
+            id: adminUser.id,
+            username: adminUser.username,
+            role: adminUser.role,
+            name: adminUser.name,
+          },
+        },
+      },
+      200,
+      origin,
+    );
   } catch (error) {
     console.error('Unexpected admin login error:', error);
     return corsErrorResponse('Internal server error', 500, origin);
