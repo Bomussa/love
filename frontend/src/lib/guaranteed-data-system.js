@@ -12,6 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { ensureSupabaseEnv } from './env-guard';
 import { SRM, resilientFetch, registerService } from './service-resilience';
 import {
   OFS, setSupabaseClient, offlineRead, offlineCreate, offlineUpdate, offlineDelete,
@@ -20,23 +21,43 @@ import {
   DIS, validateData, safeSave, safeRead,
 } from './data-integrity-system';
 
-// إعدادات Supabase
-const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
-const SUPABASE_ANON_KEY = 'your_supabase_anon_key';
+function createUnavailableSupabaseClient(errorMessage) {
+  const throwConfigError = () => {
+    throw new Error(errorMessage);
+  };
 
-// إنشاء عميل Supabase مخصص للنظام
-const gdsClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 20,
+  return {
+    from: throwConfigError,
+    rpc: throwConfigError,
+    channel: throwConfigError,
+    removeChannel: throwConfigError,
+  };
+}
+
+let gdsClient;
+let gdsConfigError = null;
+
+try {
+  const { supabaseUrl, supabaseAnonKey } = ensureSupabaseEnv();
+
+  // إنشاء عميل Supabase مخصص للنظام
+  gdsClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
     },
-  },
-});
+    realtime: {
+      params: {
+        eventsPerSecond: 20,
+      },
+    },
+  });
+} catch (error) {
+  gdsConfigError = error instanceof Error ? error.message : 'Supabase configuration error';
+  console.error(`[GDS] ${gdsConfigError}`);
+  gdsClient = createUnavailableSupabaseClient(gdsConfigError);
+}
 
 /**
  * إعدادات الميزات - كل ميزة مستقلة
@@ -131,6 +152,12 @@ class GuaranteedDataSystem {
    */
   async initialize() {
     if (this.isInitialized) return true;
+
+    if (gdsConfigError) {
+      console.error('❌ تعذر تهيئة GDS بسبب إعدادات Supabase:', gdsConfigError);
+      this.connectionState = 'error';
+      return false;
+    }
 
     console.log('🚀 تهيئة نظام ضمان البيانات...');
 

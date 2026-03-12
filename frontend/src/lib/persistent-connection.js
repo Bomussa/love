@@ -12,10 +12,17 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { ensureSupabaseEnv } from './env-guard';
 
-// إعدادات Supabase
-const SUPABASE_URL = 'https://rujwuruuosffcxazymit.supabase.co';
-const SUPABASE_ANON_KEY = 'your_supabase_anon_key';
+let supabaseRuntimeConfig = null;
+let persistentConnectionConfigError = null;
+
+try {
+  supabaseRuntimeConfig = ensureSupabaseEnv();
+} catch (error) {
+  persistentConnectionConfigError = error instanceof Error ? error.message : 'Supabase configuration error';
+  console.error(`[PersistentConnection] ${persistentConnectionConfigError}`);
+}
 
 // إعدادات إعادة المحاولة المتقدمة
 const RETRY_CONFIG = {
@@ -63,23 +70,25 @@ class ServiceConnectionManager {
     this.isMonitoring = false;
 
     // إنشاء عميل Supabase خاص بهذه الخدمة
-    this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
+    this.client = supabaseRuntimeConfig
+      ? createClient(supabaseRuntimeConfig.supabaseUrl, supabaseRuntimeConfig.supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false,
         },
-      },
-      global: {
-        headers: {
-          'x-client-info': `mmc-service-${serviceName}`,
+        realtime: {
+          params: {
+            eventsPerSecond: 10,
+          },
         },
-      },
-    });
+        global: {
+          headers: {
+            'x-client-info': `mmc-service-${serviceName}`,
+          },
+        },
+      })
+      : null;
   }
 
   /**
@@ -137,6 +146,18 @@ class ServiceConnectionManager {
    * تنفيذ استعلام مع إعادة المحاولة التلقائية
    */
   async executeWithRetry(queryFn, options = {}) {
+    if (!this.client) {
+      const configError = new Error(persistentConnectionConfigError || 'Supabase configuration error');
+      this.updateState(ConnectionStates.ERROR, configError);
+      return {
+        data: null,
+        error: configError,
+        _connectionFailed: true,
+        _service: this.serviceName,
+        _retryCount: this.retryCount,
+      };
+    }
+
     const maxRetries = options.maxRetries || RETRY_CONFIG.maxRetries;
     const tableName = options.tableName || 'unknown';
 
@@ -200,6 +221,12 @@ class ServiceConnectionManager {
    * فحص صحة الاتصال
    */
   async healthCheck() {
+    if (!this.client) {
+      const error = new Error(persistentConnectionConfigError || 'Supabase configuration error');
+      this.updateState(ConnectionStates.ERROR, error);
+      return { healthy: false, service: this.serviceName, error: error.message };
+    }
+
     try {
       const { data, error } = await this.client
         .from('clinics')
@@ -452,6 +479,11 @@ export function getServiceClient(serviceName) {
 
 // تهيئة النظام عند بدء التطبيق
 export async function initializePersistentConnection() {
+  if (!supabaseRuntimeConfig) {
+    console.warn('⚠️ تم تخطي تهيئة نظام الاتصال الدائم بسبب نقص إعدادات Supabase');
+    return false;
+  }
+
   return connectionManager.initialize();
 }
 

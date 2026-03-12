@@ -100,8 +100,9 @@ serve(async (req: Request) => {
         ...toStringArray(user.user_metadata?.clinic_id),
       ]);
 
-      if (allowedClinicIds.size > 0 && !allowedClinicIds.has(clinic_id)) {
-        return corsErrorResponse('forbidden', 403, req);
+      // deny-by-default: missing clinic scope must never imply global access.
+      if (allowedClinicIds.size === 0 || !allowedClinicIds.has(clinic_id)) {
+        return corsErrorResponse('forbidden_clinic_scope', 403, req);
       }
     }
 

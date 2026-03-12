@@ -45,11 +45,12 @@ Deno.serve(async (req: Request) => {
 
     return corsJsonResponse(
       {
-        success: true,
-        user: {
-          id: result.user_id,
-          username: result.username,
-          role: result.role,
+        data: {
+          user: {
+            id: result.user_id,
+            username: result.username,
+            role: result.role,
+          },
         },
       },
       200,
