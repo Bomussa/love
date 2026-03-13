@@ -1,6 +1,12 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { handleOptions, corsJsonResponse, corsErrorResponse } from '../_shared/cors.ts';
+import {
+  corsErrorResponse,
+  corsJsonResponse,
+  getCorsHeaders,
+  handleOptions,
+} from '../_shared/cors.ts';
+import { requireAuthGuard } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -15,24 +21,26 @@ serve(async (req: Request) => {
     const isClinicEndpoint = path.endsWith('/clinic');
 
     if (!isAdminEndpoint && !isClinicEndpoint) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Use /pin-verify/clinic or /pin-verify/admin' }),
-        { status: 404, headers: { 'content-type': 'application/json', ...corsHeaders } },
-      );
+      return corsErrorResponse('Use /pin-verify/clinic or /pin-verify/admin', 404, req);
     }
 
     const guard = await requireAuthGuard(req, {
       allowedRoles: isAdminEndpoint ? ['admin'] : ['clinic', 'admin'],
-      corsHeaders,
+      corsHeaders: getCorsHeaders(req),
     });
 
     if ('response' in guard) {
       return guard.response;
     }
 
+    const { auth } = guard;
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
     const { clinic_id, pin } = await req.json();
     if (!clinic_id || !pin) return corsErrorResponse('clinic_id and pin required', 400, req);
+
+    if (auth.role === 'clinic' && auth.clinicId && auth.clinicId !== clinic_id) {
+      return corsErrorResponse('forbidden_clinic_scope', 403, req);
+    }
 
     const now = new Date().toISOString();
 
