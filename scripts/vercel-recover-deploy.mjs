@@ -31,7 +31,16 @@ if (!token || !projectId) {
   process.exit(2);
 }
 
-const query = teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+const executionContext = { projectId, teamId: teamId || null };
+console.log('🔎 Vercel execution context:', executionContext);
+if (!teamId) {
+  console.warn('⚠️ VERCEL_TEAM_ID is not set; requests will use personal scope.');
+}
+
+export function buildApiUrl(path, currentTeamId) {
+  const query = currentTeamId ? `?teamId=${encodeURIComponent(currentTeamId)}` : '';
+  return `https://api.vercel.com${path}${query}`;
+}
 
 const expected = {
   framework: 'vite',
@@ -42,30 +51,41 @@ const expected = {
   nodeVersion: '20.x',
 };
 
-async function api(path, init = {}) {
-  const response = await fetch(`https://api.vercel.com${path}${query}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-  });
-
-  const bodyText = await response.text();
-  let body;
-  try {
-    body = bodyText ? JSON.parse(bodyText) : {};
-  } catch {
-    body = { raw: bodyText };
-  }
-
-  if (!response.ok) {
-    throw new Error(`API ${path} failed (${response.status}): ${bodyText.slice(0, 400)}`);
-  }
-
-  return body;
+function summarizeBody(bodyText) {
+  return (bodyText || '').replace(/\s+/g, ' ').trim().slice(0, 240);
 }
+
+export function createVercelApiClient({ token: apiToken, teamId: apiTeamId }) {
+  return async function api(path, init = {}) {
+    const endpoint = buildApiUrl(path, apiTeamId);
+    const response = await fetch(endpoint, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+        ...(init.headers || {}),
+      },
+    });
+
+    const bodyText = await response.text();
+    let body;
+    try {
+      body = bodyText ? JSON.parse(bodyText) : {};
+    } catch {
+      body = { raw: bodyText };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Vercel API request failed: endpoint=${endpoint}, status=${response.status}, teamId=${apiTeamId || 'none'}, body=${summarizeBody(bodyText)}`,
+      );
+    }
+
+    return body;
+  };
+}
+
+const api = createVercelApiClient({ token, teamId: executionContext.teamId });
 
 function readLocalVercelConfig() {
   const raw = fs.readFileSync('vercel.json', 'utf8');
@@ -217,7 +237,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`❌ ${error.message}`);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
+  });
+}
