@@ -79,6 +79,6 @@
     "globals": "15.15.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.2.1",
-    "terser": "^5.44.1"
+    "terser": "^5.46.0"
   }
 }
