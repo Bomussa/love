@@ -76,7 +76,18 @@ test('vercel config keeps api rewrite and www redirect', () => {
     ? config.rewrites.find((entry) => entry.source === '/api/(.*)')
     : undefined;
   const hasWwwRedirect = Array.isArray(config.redirects)
-    && config.redirects.some((entry) => String(entry.destination || '').includes('https://mmc-mms.com'));
+    && config.redirects.some((entry) => {
+      const destination = String(entry.destination || '').trim();
+      if (!destination) {
+        return false;
+      }
+      try {
+        const url = new URL(destination);
+        return url.protocol === 'https:' && url.hostname === 'mmc-mms.com';
+      } catch {
+        return false;
+      }
+    });
 
   assert.ok(
     apiRewrite,
