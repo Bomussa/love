@@ -83,9 +83,13 @@
                         status: 'logged_in'
                     };
                     
-                    // Store
+                    // Store only غير بيانات التعريف الشخصية لتجنب تخزينها كنص صريح
                     const patients = JSON.parse(localStorage.getItem(this.prefix + 'patients') || '{}');
-                    patients[sessionId] = data;
+                    patients[sessionId] = {
+                        id: sessionId,
+                        loginTime: data.loginTime,
+                        status: data.status
+                    };
                     localStorage.setItem(this.prefix + 'patients', JSON.stringify(patients));
                     
                     return {
