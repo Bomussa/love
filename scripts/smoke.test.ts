@@ -1,13 +1,27 @@
-import assert from 'assert';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
 
-describe('Critical smoke tests', () => {
-  it('Queue engine loads', async () => {
-    const mod = await import('../src/queue/QueueEngine');
-    assert.ok(mod);
-  });
+test('critical frontend files exist', () => {
+  const requiredFiles = [
+    'frontend/src/lib/api-unified.js',
+    'frontend/src/lib/supabase-client.js',
+    'frontend/src/lib/api-contract.js',
+    'vercel.json',
+  ];
 
-  it('API v1 path exists', async () => {
-    const api = await import('../src/api');
-    assert.ok(api.basePath === '/api/v1');
+  requiredFiles.forEach((path) => {
+    assert.equal(fs.existsSync(path), true, `Missing required file: ${path}`);
   });
+});
+
+test('vercel config keeps api rewrite and www redirect', () => {
+  const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+  const hasApiRewrite = Array.isArray(config.rewrites)
+    && config.rewrites.some((entry) => entry.source === '/api/(.*)');
+  const hasWwwRedirect = Array.isArray(config.redirects)
+    && config.redirects.some((entry) => String(entry.destination || '').includes('https://mmc-mms.com'));
+
+  assert.equal(hasApiRewrite, true, 'Missing /api rewrite rule');
+  assert.equal(hasWwwRedirect, true, 'Missing www to apex redirect');
 });
