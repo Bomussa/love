@@ -25,6 +25,6 @@
     "node": "20.x"
   },
   "devDependencies": {
-    "@vitejs/plugin-legacy": "^7.2.1"
+    "@vitejs/plugin-legacy": "^8.0.0"
   }
 }
