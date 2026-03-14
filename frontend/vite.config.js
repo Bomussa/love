@@ -60,7 +60,18 @@ export default defineConfig({
     reportCompressedSize: false,
     rollupOptions: {
       treeshake: {
-        moduleSideEffects: false,
+        // Allow side effects for core modules to prevent TDZ initialization errors
+        moduleSideEffects: (id) => {
+          if (
+            id.includes('supabase-client') ||
+            id.includes('notification-engine') ||
+            id.includes('persistent-connection') ||
+            id.includes('env-guard')
+          ) {
+            return true;
+          }
+          return false;
+        },
         propertyReadSideEffects: false,
       },
       output: {
@@ -73,6 +84,14 @@ export default defineConfig({
             if (id.includes('lucide-react')) return 'vendor-icons';
             if (id.includes('react-router')) return 'vendor-router';
             return 'vendor';
+          }
+          // supabase-client and core modules stay in main chunk to prevent TDZ issues
+          if (
+            id.includes('supabase-client') ||
+            id.includes('persistent-connection') ||
+            id.includes('env-guard')
+          ) {
+            return undefined; // stays in main chunk
           }
           // تقسيم AdminDashboard لتحميله منفصلاً
           if (id.includes('AdminDashboardV2')) return 'admin-dashboard';

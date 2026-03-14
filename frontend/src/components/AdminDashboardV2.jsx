@@ -2904,7 +2904,7 @@ const SettingsSection = ({ language, t }) => {
       }
       
       // جلب إعداد device_restriction من system_settings
-      // const { getSystemSetting } = await import('../lib/supabase-client.js');
+
       const deviceRestriction = await getSystemSetting('device_restriction_enabled', false);
       settingsObj.device_restriction_enabled = deviceRestriction;
       
@@ -3064,7 +3064,7 @@ const SettingsSection = ({ language, t }) => {
               onClick={async () => {
                 const newValue = !settings.device_restriction_enabled;
                 // تحديث في system_settings
-                // const { setSystemSetting } = await import('../lib/supabase-client.js');
+
                 await setSystemSetting('device_restriction_enabled', newValue, 'تفعيل/إيقاف نظام منع الجهاز من استخدام رقم مختلف');
                 setSettings(prev => ({ ...prev, device_restriction_enabled: newValue }));
                 showSuccessToast(newValue ? t('تم تفعيل نظام ربط الجهاز', 'Device restriction enabled') : t('تم إيقاف نظام ربط الجهاز', 'Device restriction disabled'));
