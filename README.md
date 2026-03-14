@@ -50,6 +50,38 @@ curl -I https://www.mmc-mms.com
 - بناء الواجهة يكتمل بنجاح.
 - `www.mmc-mms.com` يعيد التوجيه إلى `mmc-mms.com`.
 
+## فحص الاستعادة: Redirect مقابل Domain Equivalence
+
+سكريبت `scripts/verify-recovery-state.mjs` يدعم نمطين:
+
+- **Redirect Check (الوضع الافتراضي):**
+  - يتحقق أن `www.mmc-mms.com` يعيد التوجيه (3xx) إلى النطاق الأساسي.
+  - مناسب كفحص سريع عندما يهمنا صحة إعدادات الدومين/التوجيه.
+
+- **Strict Domain Equivalence (`STRICT_DOMAIN_EQUIVALENCE=1`):**
+  - ينفّذ `fetch` على `https://mmc-mms.com` و `https://www.mmc-mms.com` مع `redirect: 'follow'`.
+  - يقارن بين:
+    - `final URL host`
+    - `status`
+    - `<title>`
+    - وجود عنصر الجذر (`id="root"`)
+  - إذا منع WAF قراءة المحتوى، يعود تلقائيًا إلى فحص redirect فقط (fallback).
+
+مثال تشغيل:
+
+```bash
+# فحص redirect فقط
+VERCEL_TOKEN=... VERCEL_PROJECT_ID=... node scripts/verify-recovery-state.mjs
+
+# فحص التكافؤ الصارم بين apex و www
+STRICT_DOMAIN_EQUIVALENCE=1 VERCEL_TOKEN=... VERCEL_PROJECT_ID=... node scripts/verify-recovery-state.mjs
+```
+
+مخرجات السكربت تتضمن تقرير JSON نهائي يحتوي على:
+- `redirect_ok`
+- `content_equivalent`
+- `failure_reason` (عند الفشل)
+
 
 ## تنفيذ الاستعادة الآلية (Vercel API)
 
