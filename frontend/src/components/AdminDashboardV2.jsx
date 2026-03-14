@@ -700,9 +700,12 @@ const PINManagement = ({ language, t }) => {
   const loadPins = async () => {
     try {
       setLoading(true);
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
         .select('*')
+        .gte('expires_at', now)
+        .is('used_count', 0)
         .order('clinic_code', { ascending: true })
         .order('created_at', { ascending: false });
       
@@ -5205,10 +5208,12 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .select('id, name_ar, name_en');
 
       // Active PINs
+      const now = new Date().toISOString();
       const { count: pinCount } = await supabase
         .from('pins')
         .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+        .gte('expires_at', now)
+        .is('used_count', 0);
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
