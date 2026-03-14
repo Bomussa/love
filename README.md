@@ -24,6 +24,40 @@ npm run ci:resilient
 curl https://mmc-mms.com/api/api-v1-status
 ```
 
+## التحقق الوزني لحالة الاستعادة (Weighted Recovery Gate)
+
+السكربت `scripts/verify-recovery-state.mjs` ينفذ فحوصات موزونة (weights) على خمس فئات:
+
+- `project_settings` (وزن 20)
+- `domains` (وزن 25)
+- `env_vars` (وزن 25)
+- `api_health` (وزن 20)
+- `content_equivalence` (وزن 10)
+
+المعادلة المستخدمة:
+
+```text
+success_rate = (passed_weight / total_weight) * 100
+failure_rate = 100 - success_rate
+```
+
+بوابة القبول (gate) تنجح فقط إذا تحقق الشرطان معًا:
+
+```text
+success_rate >= MIN_SUCCESS_RATE   (الافتراضي: 98)
+failure_rate <= MAX_FAILURE_RATE   (الافتراضي: 2)
+```
+
+عند عدم تحقق البوابة، يخرج السكربت بـ `exit code = 1` ويطبع تقرير JSON نهائيًا يتضمن كل check مع وزنه وحالته.
+
+مثال تشغيل:
+
+```bash
+VERCEL_TOKEN=... VERCEL_PROJECT_ID=... \
+MIN_SUCCESS_RATE=98 MAX_FAILURE_RATE=2 \
+node scripts/verify-recovery-state.mjs
+```
+
 
 ## إعداد Vercel الصحيح (استعادة النشر)
 
