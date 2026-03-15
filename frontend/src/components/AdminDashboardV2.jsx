@@ -4065,6 +4065,7 @@ const BackupExport = ({ language, t }) => {
 
 // مكون إعدادات العمل أوفلاين
 const OfflineSettings = ({ language, t }) => {
+  const OFFLINE_STORAGE_PREFIXES = ['offline_', 'sync_', 'queue_cache_', 'repair_cache_'];
   const [offlineEnabled, setOfflineEnabled] = useState(false);
   const [syncStatus, setSyncStatus] = useState('synced');
   const [storageUsed, setStorageUsed] = useState(0);
@@ -4108,7 +4109,8 @@ const OfflineSettings = ({ language, t }) => {
 
   const clearOfflineData = () => {
     if (confirm(t('هل أنت متأكد من حذف البيانات المحلية؟', 'Are you sure you want to clear offline data?'))) {
-      localStorage.clear();
+      const keysToDelete = Object.keys(localStorage).filter((key) => OFFLINE_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix)) || key === 'offline_mode');
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
       calculateStorage();
     }
   };
@@ -5181,6 +5183,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [serviceHealth, setServiceHealth] = useState([]);
+  const [serviceAlerts, setServiceAlerts] = useState([]);
 
   useEffect(() => {
     loadAllData();
@@ -5191,6 +5195,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
+      const serviceChecksPromise = checkServiceHealth();
+
       // جلب بيانات الطوابير لليوم الحالي فقط
       const todayDate = new Date().toISOString().split('T')[0];
       const { data: queueData, error: queueError } = await supabase
@@ -5259,10 +5265,25 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         });
       }
 
+      const checks = await serviceChecksPromise;
+      const healthyServices = checks.filter((service) => service.status === 'ok').length;
+      const healthScore = checks.length > 0 ? Math.round((healthyServices / checks.length) * 100) : 0;
+
+      setServiceHealth(checks);
+      setServiceAlerts(
+        checks
+          .filter((service) => service.status !== 'ok')
+          .map((service) => ({
+            id: service.key,
+            message: service.error || t('الخدمة غير متاحة حالياً', 'Service is currently unavailable'),
+            name: service.name
+          }))
+      );
+
       setStats(prev => ({
         ...prev,
         activePins: pinCount || 0,
-        systemHealth: 100,
+        systemHealth: healthScore,
         clinicStats
       }));
       setLastUpdate(new Date());
@@ -5271,6 +5292,65 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkServiceHealth = async () => {
+    const checks = [
+      {
+        key: 'database',
+        name: t('قاعدة البيانات', 'Database'),
+        run: async () => {
+          const { error } = await supabase.from('clinics').select('id', { head: true, count: 'exact' }).limit(1);
+          if (error) throw new Error(error.message);
+        }
+      },
+      {
+        key: 'queue',
+        name: t('خدمة الطوابير', 'Queue Service'),
+        run: async () => {
+          const todayDate = new Date().toISOString().split('T')[0];
+          const { error } = await supabase
+            .from('unified_queue')
+            .select('id', { head: true, count: 'exact' })
+            .eq('queue_date', todayDate)
+            .limit(1);
+          if (error) throw new Error(error.message);
+        }
+      },
+      {
+        key: 'notifications',
+        name: t('خدمة الإشعارات', 'Notification Service'),
+        run: async () => {
+          const { error } = await supabase.from('notifications').select('id', { head: true, count: 'exact' }).limit(1);
+          if (error) throw new Error(error.message);
+        }
+      }
+    ];
+
+    const results = await Promise.all(
+      checks.map(async (service) => {
+        const startedAt = Date.now();
+        try {
+          await service.run();
+          return {
+            key: service.key,
+            name: service.name,
+            status: 'ok',
+            responseTime: Date.now() - startedAt
+          };
+        } catch (error) {
+          return {
+            key: service.key,
+            name: service.name,
+            status: 'error',
+            error: error?.message || 'Unknown error',
+            responseTime: Date.now() - startedAt
+          };
+        }
+      })
+    );
+
+    return results;
   };
 
   const processQueueData = (data, dateField) => {
@@ -5601,16 +5681,15 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                 </div>
                 
                 <div className="space-y-4">
-                  {[
-                    { name: t('قاعدة البيانات', 'Database'), status: 'connected', label: t('متصلة', 'Connected') },
-                    { name: t('خدمة الطوابير', 'Queue Service'), status: 'active', label: t('نشطة', 'Active') },
-                    { name: t('خدمة الإشعارات', 'Notification Service'), status: 'active', label: t('نشطة', 'Active') },
-                  ].map((service, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                  {serviceHealth.map((service) => (
+                    <div key={service.key} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
                       <span className="font-medium">{service.name}</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-sm text-green-500 font-medium">{service.label}</span>
+                        <div className={`w-2 h-2 rounded-full ${service.status === 'ok' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                        <span className={`text-sm font-medium ${service.status === 'ok' ? 'text-green-500' : 'text-red-400'}`}>
+                          {service.status === 'ok' ? t('متصلة', 'Connected') : t('خلل', 'Degraded')}
+                        </span>
+                        <span className="text-xs text-gray-400">{service.responseTime}ms</span>
                       </div>
                     </div>
                   ))}
@@ -5623,11 +5702,21 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                   {t('تنبيهات النظام', 'System Alerts')}
                 </h3>
                 <div className="space-y-4">
-                  <div className="p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-xl">
-                    <p className="text-sm text-yellow-500 leading-relaxed">
-                      {t('النظام يعمل بشكل مثالي. جميع الخدمات مستقرة والاتصال بقاعدة البيانات سريع.', 'System is running perfectly. All services are stable and database connection is fast.')}
-                    </p>
-                  </div>
+                  {serviceAlerts.length === 0 ? (
+                    <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-xl">
+                      <p className="text-sm text-green-400 leading-relaxed">
+                        {t('لا توجد تنبيهات حالياً. كل الخدمات الأساسية تعمل.', 'No active alerts. Core services are operational.')}
+                      </p>
+                    </div>
+                  ) : (
+                    serviceAlerts.map((alert) => (
+                      <div key={alert.id} className="p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-xl">
+                        <p className="text-sm text-yellow-500 leading-relaxed">
+                          {alert.name}: {alert.message}
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

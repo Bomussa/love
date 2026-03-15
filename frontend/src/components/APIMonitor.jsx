@@ -75,6 +75,8 @@ const FUNCTION_CATEGORIES = {
 
 const APIMonitor = ({ language = 'ar', t }) => {
   const isRTL = language === 'ar';
+  const [monitoredTables, setMonitoredTables] = useState(ALL_TABLES);
+  const [monitoredFunctions, setMonitoredFunctions] = useState(ALL_FUNCTIONS);
   
   // حالات المراقبة
   const [tableStatus, setTableStatus] = useState({});
@@ -92,9 +94,9 @@ const APIMonitor = ({ language = 'ar', t }) => {
   
   // إحصائيات
   const [stats, setStats] = useState({
-    totalTables: ALL_TABLES.length,
+    totalTables: 0,
     activeTables: 0,
-    totalFunctions: ALL_FUNCTIONS.length,
+    totalFunctions: 0,
     activeFunctions: 0,
     uptime: 100,
     lastIncident: null,
@@ -103,6 +105,32 @@ const APIMonitor = ({ language = 'ar', t }) => {
   });
 
   const monitoringInterval = useRef(null);
+
+  const parseJsonSetting = (value, fallback) => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const loadMonitorTargets = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('key,value')
+        .in('key', ['api_monitor_tables', 'api_monitor_functions']);
+
+      if (error || !data) return;
+
+      const settingsMap = data.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+      setMonitoredTables(parseJsonSetting(settingsMap.api_monitor_tables, ALL_TABLES));
+      setMonitoredFunctions(parseJsonSetting(settingsMap.api_monitor_functions, ALL_FUNCTIONS));
+    } catch {
+      // keep fallback defaults
+    }
+  }, []);
 
   // فحص جدول واحد
   const checkTable = useCallback(async (tableName) => {
@@ -148,37 +176,59 @@ const APIMonitor = ({ language = 'ar', t }) => {
   const checkFunction = useCallback(async (funcName) => {
     try {
       const startTime = Date.now();
-      
       // محاولة استدعاء الدالة بدون معاملات للتحقق من وجودها
-      const { error } = await supabase.rpc(funcName, {}).catch(() => ({ error: null }));
+      const { error } = await supabase.rpc(funcName, {});
       
       const responseTime = Date.now() - startTime;
-      
-      // إذا كان الخطأ بسبب معاملات مفقودة، فالدالة موجودة
-      if (error && error.message && error.message.includes('argument')) {
+
+      if (!error) {
         return {
           name: funcName,
           status: 'active',
+          responseTime,
+          lastCheck: new Date().toISOString()
+        };
+      }
+
+      const message = error.message || '';
+      const code = error.code || '';
+
+      // إذا كانت الدالة غير موجودة فعلياً نعيدها كخطأ صريح
+      if (message.includes('Could not find the function') || code === 'PGRST202' || code === '42883') {
+        return {
+          name: funcName,
+          status: 'error',
+          responseTime,
+          lastCheck: new Date().toISOString(),
+          error: message || 'function is missing'
+        };
+      }
+      
+      // إذا كان الخطأ بسبب معاملات مفقودة، فالدالة موجودة
+      if (message.includes('argument') || message.includes('parameter') || message.includes('requires') || code === 'PGRST301') {
+        return {
+          name: funcName,
+          status: 'warning',
           responseTime,
           lastCheck: new Date().toISOString(),
           note: 'requires parameters'
         };
       }
-      
+
       return {
         name: funcName,
-        status: error ? 'warning' : 'active',
+        status: 'warning',
         responseTime,
         lastCheck: new Date().toISOString(),
-        error: error?.message
+        error: message
       };
     } catch (err) {
       return {
         name: funcName,
-        status: 'active', // نفترض أنها موجودة إذا حدث خطأ في الاستدعاء
+        status: 'error',
         responseTime: 0,
         lastCheck: new Date().toISOString(),
-        note: 'exists but requires specific parameters'
+        error: err.message || 'function check failed'
       };
     }
   }, []);
@@ -297,7 +347,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
       const tableResults = {};
       let activeTablesCount = 0;
       
-      for (const table of ALL_TABLES) {
+      for (const table of monitoredTables) {
         const result = await checkTable(table);
         tableResults[table] = result;
         
@@ -315,24 +365,30 @@ const APIMonitor = ({ language = 'ar', t }) => {
       
       setTableStatus(tableResults);
       
-      // فحص الدوال (عينة فقط للسرعة)
+      // فحص الدوال الفعلية
       const functionResults = {};
       let activeFunctionsCount = 0;
-      
-      // نفترض أن جميع الدوال نشطة ما لم يثبت العكس
-      for (const func of ALL_FUNCTIONS) {
-        functionResults[func] = {
-          name: func,
-          status: 'active',
-          lastCheck: new Date().toISOString()
-        };
-        activeFunctionsCount++;
+
+      for (const func of monitoredFunctions) {
+        const result = await checkFunction(func);
+        functionResults[func] = result;
+
+        if (result.status === 'active' || result.status === 'warning') {
+          activeFunctionsCount++;
+        } else if (result.status === 'error' && autoHealEnabled) {
+          const healed = await autoHeal(result, 'function');
+          if (healed) {
+            functionResults[func].status = 'active';
+            activeFunctionsCount++;
+          }
+        }
       }
       
       setFunctionStatus(functionResults);
       
       // تحديث الإحصائيات
-      const uptime = ((activeTablesCount + activeFunctionsCount) / (ALL_TABLES.length + ALL_FUNCTIONS.length)) * 100;
+      const totalChecks = monitoredTables.length + monitoredFunctions.length;
+      const uptime = totalChecks > 0 ? ((activeTablesCount + activeFunctionsCount) / totalChecks) * 100 : 0;
       
       setStats(prev => ({
         ...prev,
@@ -344,8 +400,8 @@ const APIMonitor = ({ language = 'ar', t }) => {
       setLastCheck(new Date().toISOString());
       
       // إضافة تنبيه إذا كانت هناك مشاكل
-      if (activeTablesCount < ALL_TABLES.length) {
-        addAlert('warning', `${ALL_TABLES.length - activeTablesCount} جدول يحتاج مراجعة`);
+      if (activeTablesCount < monitoredTables.length) {
+        addAlert('warning', `${monitoredTables.length - activeTablesCount} جدول يحتاج مراجعة`);
       }
       
     } catch (err) {
@@ -353,7 +409,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [checkTable, autoHeal, autoHealEnabled, addAlert]);
+  }, [checkTable, checkFunction, autoHeal, autoHealEnabled, addAlert, monitoredTables, monitoredFunctions]);
 
   // بدء/إيقاف المراقبة
   const toggleMonitoring = useCallback(() => {
@@ -361,6 +417,18 @@ const APIMonitor = ({ language = 'ar', t }) => {
   }, []);
 
   // تشغيل المراقبة الدورية
+  useEffect(() => {
+    loadMonitorTargets();
+  }, [loadMonitorTargets]);
+
+  useEffect(() => {
+    setStats(prev => ({
+      ...prev,
+      totalTables: monitoredTables.length,
+      totalFunctions: monitoredFunctions.length
+    }));
+  }, [monitoredTables, monitoredFunctions]);
+
   useEffect(() => {
     if (isMonitoring) {
       runFullCheck();
@@ -391,13 +459,13 @@ const APIMonitor = ({ language = 'ar', t }) => {
   };
 
   // تصفية العناصر
-  const filteredTables = ALL_TABLES.filter(table => {
+  const filteredTables = monitoredTables.filter(table => {
     const matchesSearch = table.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || tableStatus[table]?.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const filteredFunctions = ALL_FUNCTIONS.filter(func => {
+  const filteredFunctions = monitoredFunctions.filter(func => {
     const matchesSearch = func.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || functionStatus[func]?.status === filterStatus;
     return matchesSearch && matchesFilter;
