@@ -5,15 +5,18 @@
  * مشروع 2027 - نظام اللجنة الطبية العسكرية
  */
 
-// ✅ إصلاح: بيانات الدخول الرئيسية - السوبر أدمن (مضمونة للعمل)
-const HARDCODED_USERNAME = 'Bomussa';
-const HARDCODED_PASSWORD = '14490';
+// ✅ إصلاح تسجيل الدخول: دعم بيانات تشغيل افتراضية مع أولوية للبيئة
+const DEFAULT_ADMIN_USERNAME = 'bomussa';
+const DEFAULT_ADMIN_PASSWORD = '14490';
+
+const ENV_ADMIN_USERNAME = (import.meta?.env?.VITE_ADMIN_USERNAME || '').trim();
+const ENV_ADMIN_PASSWORD = import.meta?.env?.VITE_ADMIN_PASSWORD || '';
 
 export const ADMIN_CREDENTIALS = {
   // بيانات الدخول الرئيسية - السوبر أدمن
   // ✅ إصلاح: استخدام القيم المضمونة أولاً، ثم متغيرات البيئة كاحتياط
-  username: HARDCODED_USERNAME,
-  password: HARDCODED_PASSWORD,
+  username: ENV_ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME,
+  password: ENV_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD,
 
   // بيانات إضافية للتحقق
   roles: ['admin', 'super_admin'],
