@@ -14,7 +14,7 @@ SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 
 def read_schema_file():
     """Read the SQL schema file"""
-    schema_path = "/home/ubuntu/love/supabase/migrations/20251105_initial_schema.sql"
+    schema_path = "/home/ubuntu/love/supabase/migrations/20251105090000_initial_schema.sql"
     
     try:
         with open(schema_path, 'r', encoding='utf-8') as f:

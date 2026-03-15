@@ -85,18 +85,18 @@
 | `queue_history` | `schema.sql` | يلزم مراجعة retention/partitioning |
 | `notifications` | `schema.sql`, migrations | اختلافات محتملة بين تعريفات قديمة/حديثة |
 | `system_settings` | `schema.sql` | يجب التحقق من صلاحيات التعديل |
-| `pins` | `002_add_pins_and_reports.sql` | أمنيًا: TTL + rate limit + hashing |
-| `qa_runs` | `20260314_add_qa_repair_tables.sql` | جدول تشغيل QA |
-| `qa_findings` | `20260314_add_qa_repair_tables.sql` | نتائج QA وتتبّع الثغرات |
-| `repair_runs` | `20260314_add_qa_repair_tables.sql` | تتبّع الإصلاحات |
-| `login_audit` | `20251102_login_audit.sql` | تدقيق أمني للمصادقة |
+| `pins` | `20251110090000_add_pins_and_reports.sql` | أمنيًا: TTL + rate limit + hashing |
+| `qa_runs` | `20260314090000_add_qa_repair_tables.sql` | جدول تشغيل QA |
+| `qa_findings` | `20260314090000_add_qa_repair_tables.sql` | نتائج QA وتتبّع الثغرات |
+| `repair_runs` | `20260314090000_add_qa_repair_tables.sql` | تتبّع الإصلاحات |
+| `login_audit` | `20251102090000_login_audit.sql` | تدقيق أمني للمصادقة |
 | `admin_users` | عدة migrations | مخاطر drift لهيكل جدول المستخدمين |
-| `reports` | `20251105_initial_schema.sql` | تقارير تشغيل |
+| `reports` | `20251105090000_initial_schema.sql` | تقارير تشغيل |
 | `audit_log` | عدة migrations | يوجد تعريفات متعددة يلزم دمجها |
-| `exam_types` | `create_missing_tables.sql`, `create_exam_types.sql` | تكرار تعريفات |
-| `roles` | `critical_additions.sql` | أساس RBAC |
-| `system_config` | `critical_additions.sql` | يحتاج governance واضح |
-| `clinic_counters` | `2025-11-07_queue_core.sql` | مهم لتسلسل النداء |
+| `exam_types` | `20251114090000_create_missing_tables.sql`, `20251113090000_create_exam_types.sql` | تكرار تعريفات |
+| `roles` | `20251116090000_critical_additions.sql` | أساس RBAC |
+| `system_config` | `20251116090000_critical_additions.sql` | يحتاج governance واضح |
+| `clinic_counters` | `20251107090000_queue_core.sql` | مهم لتسلسل النداء |
 
 ---
 

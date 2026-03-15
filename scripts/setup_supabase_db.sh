@@ -19,7 +19,7 @@ SUPABASE_PASSWORD="fa7af059cd2c8504e8a247e23b6e0378476bf5d5d7da75c37e3a1227b1f12
 SUPABASE_PORT="5432"
 
 # Schema file
-SCHEMA_FILE="/home/ubuntu/love/supabase/migrations/20251105_initial_schema.sql"
+SCHEMA_FILE="/home/ubuntu/love/supabase/migrations/20251105090000_initial_schema.sql"
 
 # Check if psql is installed
 if ! command -v psql &> /dev/null; then

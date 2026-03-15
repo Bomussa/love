@@ -1,34 +1,51 @@
--- DB-MIGRATION.sql — C6-FIX: التحقق من وجود RPC get_next_queue_number
--- تاريخ: 2026-02-23
+-- DB-MIGRATION.sql
+-- الهدف: توحيد naming convention للمهاجرات وضمان تسلسل deterministic لأي بيئة جديدة.
+-- الاتفاقية المعتمدة: YYYYMMDDHHMMSS_description.sql
+-- مثال: 20251105090000_initial_schema.sql
 
--- ملاحظة: RPC get_next_queue_number موجودة بالفعل في Supabase
--- (تم التحقق من استخدامها في api/v1.js السطر 673)
--- هذا الملف يوثق البنية المتوقعة للدالة للمرجعية فقط
+-- =====================================================================
+-- 1) Execution Order (Deterministic)
+-- =====================================================================
+-- يجب تطبيق الملفات بالترتيب التصاعدي الحرفي (lexicographical ASC)
+-- لأنه يساوي الترتيب الزمني الكامل في هذه الاتفاقية.
 
--- البنية المتوقعة لـ RPC get_next_queue_number:
--- CREATE OR REPLACE FUNCTION get_next_queue_number(
---   p_patient_id TEXT,
---   p_clinic_id TEXT,
---   p_exam_type TEXT
--- )
--- RETURNS INTEGER
--- LANGUAGE plpgsql
--- AS $$
--- DECLARE
---   v_today DATE := CURRENT_DATE;
---   v_next_number INTEGER;
--- BEGIN
---   -- قفل ذري على مستوى العيادة واليوم
---   SELECT COALESCE(MAX(display_number), 0) + 1
---   INTO v_next_number
---   FROM unified_queue
---   WHERE clinic_id = p_clinic_id
---     AND DATE(entered_at) = v_today
---   FOR UPDATE;
---   
---   RETURN v_next_number;
--- END;
--- $$;
+-- 20251102090000_login_audit.sql
+-- 20251105090000_initial_schema.sql
+-- 20251106090000_create_admin_users.sql
+-- 20251107090000_queue_core.sql
+-- 20251110090000_add_pins_and_reports.sql
+-- 20251113090000_create_exam_types.sql
+-- 20251114090000_create_missing_tables.sql
+-- 20251115090000_phase1b_create_missing_tables.sql
+-- 20251116090000_critical_additions.sql
+-- 20251117090000_enhance_exam_types_security.sql
+-- 20260314090000_add_qa_repair_tables.sql
 
--- إذا لم تكن الدالة موجودة، يمكن إنشاؤها بالكود أعلاه
--- الإصلاح C6 يستخدم هذه الدالة تلقائياً مع fallback آمن
+-- =====================================================================
+-- 2) Dependency Logic
+-- =====================================================================
+-- - initial_schema قبل أي تحسينات/إضافات لأنها تؤسس الجداول الأساسية.
+-- - create_admin_users قبل أي وظائف تعتمد حسابات الإدارة.
+-- - queue_core قبل الإضافات المتعلقة بالطوابير والتقارير.
+-- - add_pins_and_reports بعد توفر clinics/queue الأساسية.
+-- - create_exam_types + create_missing_tables + phase1b للتكملة التدريجية المتوافقة مع IF NOT EXISTS.
+-- - critical_additions و enhance_exam_types_security بعد وجود الجداول المستهدفة.
+-- - add_qa_repair_tables في النهاية كإضافة QA متأخرة زمنياً.
+
+-- =====================================================================
+-- 3) Bootstrap Rule for New Environments
+-- =====================================================================
+-- أي بيئة جديدة يجب أن:
+--   1) تبدأ من قاعدة فارغة.
+--   2) تطبق جميع ملفات supabase/migrations/*.sql بترتيب الاسم ASC فقط.
+--   3) لا يتم تشغيل ملفات schema بديلة خارج هذا المسار أثناء bootstrap.
+-- النتيجة المتوقعة: نفس الـ schema دائماً (deterministic outcome).
+
+-- =====================================================================
+-- 4) CI Enforcement
+-- =====================================================================
+-- تم إضافة فحص CI يرفض:
+-- - أي ملف migration لا يطابق regex:
+--   ^[0-9]{14}_[a-z0-9_]+\.sql$
+-- - أي اسم مكرر.
+-- - أي ترتيب غير تصاعدي.
