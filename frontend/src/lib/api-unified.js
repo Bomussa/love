@@ -414,11 +414,11 @@ const api = {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
         const { data: pinData, error: pinError } = await supabase
           .from('pins')
-          .select('id, clinic_code, is_active, expires_at')
-          .eq('clinic_code', clinicId)
+          .select('id, clinic_id, pin, created_at, valid_until, used_at')
+          .eq('clinic_id', clinicId)
           .eq('pin', pin)
-          .eq('is_active', true)
-          .gte('expires_at', new Date().toISOString())
+          .is('used_at', null)
+          .gt('valid_until', new Date().toISOString())
           .maybeSingle();
 
         if (pinError) throw pinError;
@@ -1560,8 +1560,8 @@ const api = {
         const pinEntry = pins.find(p => p.clinic_id === clinic.id);  // ✅ تصحيح
         return {
           ...clinic,
-          pin_code: pinEntry ? pinEntry.pin : null,
-          pin_expires_at: pinEntry ? pinEntry.valid_until : null,  // ✅ تصحيح
+          pin: pinEntry ? pinEntry.pin : null,
+          valid_until: pinEntry ? pinEntry.valid_until : null,  // ✅ تصحيح
           pin_status: pinEntry ? 'active' : 'none'
         };
       });
