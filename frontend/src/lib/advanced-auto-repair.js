@@ -372,7 +372,7 @@ class AdvancedAutoRepair {
    */
   async checkConnection() {
     try {
-      const { data } = await this.supabase.from('clinics').select('count(*)', { count: 'exact', head: true });
+      const { data } = await this.supabase.from('clinics').select('*', { count: 'exact', head: true });
       return true;
     } catch (error) {
       console.warn('⚠️ مشكلة في الاتصال:', error.message);
@@ -388,7 +388,7 @@ class AdvancedAutoRepair {
 
     for (const table of tables) {
       try {
-        await this.supabase.from(table).select('count(*)', { count: 'exact', head: true });
+        await this.supabase.from(table).select('*', { count: 'exact', head: true });
         console.log(`✅ جدول ${table}: يعمل بشكل صحيح`);
       } catch (error) {
         console.warn(`⚠️ جدول ${table}: مشكلة - ${error.message}`);
@@ -400,18 +400,10 @@ class AdvancedAutoRepair {
    * فحص الدوال
    */
   async checkFunctions() {
-    const functions = ['verify_clinic_pin', 'update_operation_progress', 'start_patient_visit'];
-
-    for (const func of functions) {
-      try {
-        await this.supabase.rpc(func, {});
-        console.log(`✅ دالة ${func}: تعمل بشكل صحيح`);
-      } catch (error) {
-        if (!error.message?.includes('invalid input')) {
-          console.warn(`⚠️ دالة ${func}: مشكلة - ${error.message}`);
-        }
-      }
-    }
+    // لا ننفذ استدعاءات RPC فعلية في فحص الصحة من الواجهة العامة
+    // لأن ذلك يسبب ضوضاء 4xx في الإنتاج بدون فائدة وظيفية للمستخدم
+    console.log('✅ فحص الدوال: تم تخطي استدعاءات RPC في الواجهة العامة');
+    return true;
   }
 
   /**

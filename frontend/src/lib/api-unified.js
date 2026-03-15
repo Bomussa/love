@@ -2096,8 +2096,20 @@ export const supabaseApi = {
   getAllPins: () => api.getActivePins(),
 };
 
-// تفعيل نظام التزامن اليومي لأرقام PIN
+// تفعيل نظام التزامن اليومي لأرقام PIN فقط في جلسة الإدارة
 const pinDailySync = new PINDailySync(supabase);
-pinDailySync.startDailySync();
+if (typeof window !== 'undefined') {
+  try {
+    const rawAdminSession = localStorage.getItem('mmc_admin_session');
+    const adminSession = rawAdminSession ? JSON.parse(rawAdminSession) : null;
+    const isAdminSessionValid = !!(adminSession?.expiresAt && new Date(adminSession.expiresAt) > new Date());
+    if (isAdminSessionValid) {
+      pinDailySync.startDailySync();
+    }
+  } catch (error) {
+    console.warn('[api-unified] skip pin daily sync startup:', error?.message || error);
+  }
+}
+
 export default api;
 export { api };
