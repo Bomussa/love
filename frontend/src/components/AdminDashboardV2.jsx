@@ -2689,7 +2689,6 @@ const SystemStatus = ({ language, t }) => {
     // قائمة الجداول للفحص
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queue', label: t('الطابور (queue)', 'Queue') },
       { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
       { name: 'pins', label: t('الأرقام السرية', 'PINs') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },
