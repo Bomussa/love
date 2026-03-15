@@ -47,7 +47,7 @@ class NetworkStatusMonitor {
    * فحص دوري لجودة الاتصال
    */
   startPeriodicCheck() {
-    setInterval(async () => {
+    this.checkInterval = setInterval(async () => {
       if (this.isOnline) {
         await this.checkConnectionQuality();
       }
@@ -60,10 +60,14 @@ class NetworkStatusMonitor {
   async checkConnectionQuality() {
     try {
       const startTime = performance.now();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
       const response = await fetch('/api/health', {
         method: 'HEAD',
         cache: 'no-cache',
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       this.latency = performance.now() - startTime;
 
       if (response.ok) {
@@ -76,16 +80,26 @@ class NetworkStatusMonitor {
         }
       }
 
+      this.lastCheckTime = Date.now();
       this.notifyListeners('quality-changed', {
         quality: this.connectionQuality,
         latency: this.latency,
       });
     } catch (error) {
+      this.lastCheckTime = Date.now();
       this.connectionQuality = 'poor';
       this.notifyListeners('quality-changed', {
         quality: 'poor',
         error: error.message,
       });
+    }
+  }
+
+
+  cleanup() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
     }
   }
 
