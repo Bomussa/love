@@ -400,20 +400,10 @@ class AdvancedAutoRepair {
    * فحص الدوال
    */
   async checkFunctions() {
-    // فحص خفيف وآمن في بيئات التشغيل: نتحقق فقط من دالة تحقق PIN الآمنة
-    // ونتجنب استدعاء دوال تشغيلية قد تتطلب معاملات خاصة أو تولّد ضوضاء 404
-    const functions = ['verify_clinic_pin_secure'];
-
-    for (const func of functions) {
-      try {
-        await this.supabase.rpc(func, { p_clinic_id: '__healthcheck__', p_pin: '__healthcheck__' });
-      } catch (error) {
-        // expected: invalid input / auth / not found حسب البيئة والصلاحيات
-        if (!error.message?.includes('invalid') && !error.message?.includes('JWT') && !error.message?.includes('permission')) {
-          console.warn(`⚠️ دالة ${func}: مشكلة - ${error.message}`);
-        }
-      }
-    }
+    // لا ننفذ استدعاءات RPC فعلية في فحص الصحة من الواجهة العامة
+    // لأن ذلك يسبب ضوضاء 4xx في الإنتاج بدون فائدة وظيفية للمستخدم
+    console.log('✅ فحص الدوال: تم تخطي استدعاءات RPC في الواجهة العامة');
+    return true;
   }
 
   /**
