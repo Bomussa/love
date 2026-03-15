@@ -1,0 +1,19 @@
+name: Lockfile Policy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - work
+
+jobs:
+  single-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce single lockfile policy
+        run: bash ./scripts/check-single-lockfile.sh
