@@ -17,6 +17,7 @@ const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m
 import getDynamicMedicalPathway from './lib/dynamic-pathways'
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes'
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n'
+import { medicalPathways } from './lib/utils'
 import { autoRepairSystem } from './lib/auto-repair-system'
 import { functionTableMonitor } from './lib/function-table-monitor'
 import { elementMonitor } from './lib/element-monitor'
@@ -379,7 +380,13 @@ function App() {
             onExamSelect={async (examType) => {
               try {
                 // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
-                const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
+                let clinics = await getDynamicMedicalPathway(examType, patientData.gender)
+
+                // fallback محلي مباشر لضمان استمرار رحلة المريض إذا تعذر تحميل المسار الديناميكي
+                if (!clinics || clinics.length === 0) {
+                  const genderKey = patientData.gender === 'female' ? 'female' : 'male'
+                  clinics = medicalPathways?.[examType]?.[genderKey] || []
+                }
 
                 if (!clinics || clinics.length === 0) {
                   console.error('[App] No clinics found for:', examType, patientData.gender);
