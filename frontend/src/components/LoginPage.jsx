@@ -9,7 +9,7 @@ import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
-import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
+import { validateMilitaryId, validateAdminData, sanitizeInput, normalizeDigits } from '../lib/validation'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -23,22 +23,9 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [validationError, setValidationError] = useState('')
   const [showUsageGuide, setShowUsageGuide] = useState(false)
 
-  // تحويل الأرقام العربية إلى إنجليزية
-  const normalizeArabicNumbers = (str) => {
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const englishNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    
-    let result = str;
-    for (let i = 0; i < arabicNumbers.length; i++) {
-      result = result.replace(new RegExp(arabicNumbers[i], 'g'), englishNumbers[i]);
-    }
-    return result;
-  }
-
   // معالج تغيير رقم المراجع
   const handlePatientIdChange = (e) => {
-    const normalized = normalizeArabicNumbers(e.target.value);
-    setPatientId(normalized);
+    setPatientId(normalizeDigits(e.target.value));
   }
 
   const handleSubmit = async (e) => {
@@ -48,13 +35,10 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
     console.log('=== handleSubmit CALLED ===')
     setValidationError('')
     
-    // قراءة القيمة من DOM مباشرة للتأكد من الحصول على القيمة الصحيحة
-    const inputElement = document.querySelector('input[type="text"]')
-    const currentPatientId = inputElement ? inputElement.value : patientId
-    console.log('=== handleSubmit START ===', { patientId, currentPatientId, gender })
-    
-    // التحقق من صحة الرقم العسكري
-    const sanitizedId = sanitizeInput(currentPatientId || patientId)
+    // التحقق من صحة الرقم العسكري من حالة React مباشرة لتجنب أي تضارب مع عناصر إدخال أخرى
+    const normalizedPatientId = normalizeDigits(patientId)
+    const sanitizedId = sanitizeInput(normalizedPatientId)
+    console.log('=== handleSubmit START ===', { patientId: sanitizedId, gender })
     const validation = validateMilitaryId(sanitizedId)
     
     if (!validation.isValid) {
