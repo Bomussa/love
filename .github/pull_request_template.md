@@ -1,12 +1,25 @@
-## Summary
-Add Edge SSE test page + Supabase subscribe harness + local smart proxy (read‑only). No UI/branding changes.
+## One-Screen PR Checklist
 
-## Checklist
-- [ ] /api/v1/health returns 200 ≤ 1000ms through proxy
-- [ ] EventSource opens and receives 'ping' events (test-sse.html)
-- [ ] supabase-js shows STATUS subscribed for public:queue
-- [ ] No writes on production DB were performed
+- [ ] This PR modifies exactly one screen (`TARGET_SCREEN_PATH` documented below)
+- [ ] Secrets were provided via environment variables (no tokens in code/chat)
+- [ ] Build passed
+- [ ] Unit/integration tests passed
+- [ ] Smoke tests passed
+- [ ] Staging deploy completed and verified
+- [ ] UAT on staging completed
+- [ ] Production promotion completed (after staging pass)
+- [ ] Regression parity verified for:
+  - [ ] https://mmc-mms.com
+  - [ ] https://www.mmc-mms.com
+- [ ] Trace log attached (`logs/release-*.log`)
 
-## Notes
-- Edge SSE endpoint expected on /api/v1/queue/sse
-- Logs in logs/YYYY-MM-DD_requests.ndjson (rotated daily to archives/)
+### Scope
+
+- `SCREEN_ID`:
+- `TARGET_SCREEN_PATH`:
+
+### Evidence
+
+- Staging URL:
+- Production URL:
+- Trace log path:
