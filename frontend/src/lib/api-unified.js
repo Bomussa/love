@@ -65,6 +65,25 @@ const api = {
     }
   },
 
+  async adminLogin(username, password) {
+    const response = await fetch('/api/v1/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload?.error?.message || payload?.message || 'Login failed',
+      };
+    }
+
+    return payload?.data || payload;
+  },
+
   // --- Queue ---
   /**
    * دخول الطابور بشكل ذري (Atomic) مع منع التكرار
