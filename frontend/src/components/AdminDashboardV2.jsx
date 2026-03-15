@@ -700,16 +700,17 @@ const PINManagement = ({ language, t }) => {
   const loadPins = async () => {
     try {
       setLoading(true);
-      const now = new Date().toISOString();
+      // جلب جميع أرقام PIN النشطة للعيادات
       const { data, error } = await supabase
         .from('pins')
         .select('*')
-        .gte('expires_at', now)
-        .is('used_count', 0)
-        .order('clinic_code', { ascending: true })
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
       
-      if (!error && data) setPins(data);
+      if (!error && data) {
+        // تصفية الأرقام لعرض أحدث رقم لكل عيادة فقط إذا لزم الأمر، أو عرض الكل
+        setPins(data);
+      }
     } catch (e) {
       console.error('Error loading pins:', e);
     } finally {
