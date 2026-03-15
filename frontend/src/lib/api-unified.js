@@ -1,6 +1,7 @@
 import { supabase } from './supabase-client';
 import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
+import { requestJson } from './resilient-request';
 
 /**
  * Unified API Service - Direct Supabase Implementation
@@ -66,17 +67,16 @@ const api = {
   },
 
   async adminLogin(username, password) {
-    const response = await fetch('/api/v1/admin/login', {
+    const { response, payload } = await requestJson('/api/v1/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
-    });
-
-    const payload = await response.json().catch(() => ({}));
+    }, { timeoutMs: 10000, retries: 2 });
 
     if (!response.ok) {
       return {
         success: false,
+        status: response.status,
         error: payload?.error?.message || payload?.message || 'Login failed',
       };
     }
@@ -294,21 +294,25 @@ const api = {
         const { data: validPin, error: pinError } = await supabase
           .from('pins')
           .select('*')
-          .eq('clinic_id', clinicId)  // ✅ تصحيح: clinic_id بدلاً من clinic_code
+          .eq('clinic_code', clinicId)
           .eq('pin', pin)
-          .is('used_at', null)  // ✅ تصحيح: التحقق من عدم استخدام PIN
-          .gte('valid_until', now)  // ✅ تصحيح: التحقق من صلاحية PIN
+          .eq('is_active', true)
+          .gt('max_uses', 0)
+          .gte('expires_at', now)
           .maybeSingle();
 
-        if (!validPin) {
+        if (pinError) throw pinError;
+
+        const isUsablePin = validPin && Number(validPin.used_count || 0) < Number(validPin.max_uses || 0);
+
+        if (!isUsablePin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
-            const response = await fetch('/api/v1/queue/done', {
+            const { payload: result } = await requestJson('/api/v1/queue/done', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ clinicId, patientId, pin })
-            });
-            const result = await response.json();
+            }, { timeoutMs: 8000, retries: 1 });
             if (result && (result.success || !result.error)) {
               return { success: true, data: result };
             }
@@ -323,7 +327,8 @@ const api = {
           await supabase
             .from('pins')
             .update({
-              used_at: now,  // ✅ تعيين وقت الاستخدام
+              used_count: Number(validPin.used_count || 0) + 1,
+              last_used_at: now,
             })
             .eq('id', validPin.id);
         }
@@ -433,16 +438,16 @@ const api = {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
         const { data: pinData, error: pinError } = await supabase
           .from('pins')
-          .select('id, clinic_id, pin, created_at, valid_until, used_at')
-          .eq('clinic_id', clinicId)
+          .select('id, clinic_code, pin, expires_at, used_count, max_uses, is_active')
+          .eq('clinic_code', clinicId)
           .eq('pin', pin)
-          .is('used_at', null)
-          .gt('valid_until', new Date().toISOString())
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
           .maybeSingle();
 
         if (pinError) throw pinError;
 
-        if (pinData) {
+        if (pinData && Number(pinData.used_count || 0) < Number(pinData.max_uses || 0)) {
           return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
         }
         return { success: true, isValid: false };
@@ -1101,24 +1106,27 @@ const api = {
   async generatePIN(clinicId) {
     try {
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      const validUntil = new Date();
-      validUntil.setHours(23, 59, 59, 999);
+      const expiresAt = new Date();
+      expiresAt.setHours(23, 59, 59, 999);
       const now = new Date();
 
       const { data, error } = await supabase
         .from('pins')
         .insert({
-          clinic_id: clinicId,  // ✅ تصحيح
+          clinic_code: clinicId,
           pin,
-          valid_until: validUntil.toISOString(),  // ✅ تصحيح
+          generated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
           created_at: now.toISOString(),
-          used_at: null,
+          is_active: true,
+          used_count: 0,
+          max_uses: 100,
         })
         .select()
         .single();
 
       if (error) throw error;
-      return { success: true, pin: data.pin, expiresAt: data.valid_until };  // ✅ تصحيح
+      return { success: true, pin: data.pin, expiresAt: data.expires_at };
     } catch (error) {
       console.error('Generate PIN Error:', error);
       return { success: false, error: error.message };
@@ -1214,16 +1222,18 @@ const api = {
       
       const { data, error } = await supabase
         .from('pins')
-        .select('clinic_id, pin, valid_until, used_at')  // ✅ تصحيح
-        .is('used_at', null)  // ✅ تصحيح: بدلاً من is_active
-        .gte('valid_until', now);  // ✅ تصحيح: بدلاً من expires_at
+        .select('clinic_code, pin, expires_at, used_count, max_uses, is_active')
+        .eq('is_active', true)
+        .gte('expires_at', now);
 
       if (error) throw error;
 
       const pinsMap = {};
       if (data) {
         data.forEach((p) => {
-          pinsMap[p.clinic_id] = { pin: p.pin, expiresAt: p.valid_until };  // ✅ تصحيح
+          if (Number(p.used_count || 0) < Number(p.max_uses || 0)) {
+            pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
+          }
         });
       }
 
@@ -1242,9 +1252,9 @@ const api = {
     try {
       const { data, error} = await supabase
         .from('pins')
-        .update({ used_at: new Date().toISOString() })  // ✅ تصحيح
-        .eq('clinic_id', clinicId)  // ✅ تصحيح
-        .is('used_at', null)  // فقط التي لم تُستخدم
+        .update({ is_active: false })
+        .eq('clinic_code', clinicId)
+        .eq('is_active', true)
         .select();
 
       if (error) throw error;
