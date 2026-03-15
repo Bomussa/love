@@ -1,6 +1,6 @@
 /**
  * Concurrency Test - اختبار التزامن
- * محاكاة 5+ مستخدمين يضغطون "أخذ دور" في نفس الثانية
+ * محاكاة مستخدمين يضغطون "أخذ دور" بشكل متزامن
  *
  * التحقق من:
  * - لا تكرار في الأرقام
@@ -8,109 +8,178 @@
  * - لا تأخير غير مقبول
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing required environment variables: SUPABASE_URL and/or SUPABASE_ANON_KEY');
-}
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'REQUIRED_SUPABASE_ANON_KEY';
 const TEST_CLINIC_ID = process.env.TEST_CLINIC_ID || 'lab';
-const CONCURRENT_USERS = parseInt(process.env.CONCURRENT_USERS) || 10;
+const CONCURRENT_USERS = parseInt(process.env.CONCURRENT_USERS || '10', 10);
+const MAX_PARALLEL = parseInt(process.env.MAX_PARALLEL || '40', 10);
+const QUEUE_FUNCTION = process.env.QUEUE_FUNCTION || 'queue-enter';
 
-async function callQueueEngine(patientId) {
+const endpoint = `${SUPABASE_URL}/functions/v1/${QUEUE_FUNCTION}`;
+
+const headers = {
+  'Content-Type': 'application/json',
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+};
+
+function normalizeResponseBody(data) {
+  return {
+    success: Boolean(data?.success),
+    pin: data?.data?.number || data?.data?.position || data?.data?.pin || null,
+    status: data?.status || data?.data?.status || null,
+    error: data?.error || data?.reason || data?.message || null,
+  };
+}
+
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+
+async function callQueueFunction(patientId, attempt = 1) {
   const startTime = Date.now();
 
-  try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/queue-engine`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        action: 'enter_queue',
-        clinic_id: TEST_CLINIC_ID,
-        patient_id: patientId,
-      }),
-    });
+  const payload = JSON.stringify({
+    clinic_id: TEST_CLINIC_ID,
+    patient_id: patientId,
+    patient_name: patientId,
+    exam_type: 'general',
+  });
 
-    const data = await response.json();
-    const endTime = Date.now();
+  try {
+    const { stdout } = await execFileAsync('curl', [
+      '-sS',
+      '-w', '\n%{http_code}',
+      endpoint,
+      '-H', `Content-Type: application/json`,
+      '-H', `apikey: ${SUPABASE_ANON_KEY}`,
+      '-H', `Authorization: Bearer ${SUPABASE_ANON_KEY}`,
+      '--data',
+      payload,
+    ]);
+
+    const lines = stdout.trimEnd().split('\n');
+    const status = Number(lines.pop() || 0);
+    const text = lines.join('\n');
+
+    let json = {};
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      json = { success: false, error: `Non-JSON response: ${text.slice(0, 200)}` };
+    }
+
+    const normalized = normalizeResponseBody(json);
 
     return {
       patientId,
-      success: data.success,
-      pin: data.data?.number || data.data?.pin,
-      status: data.data?.status,
-      duration: endTime - startTime,
-      error: data.error || data.reason,
+      httpStatus: status || 'ERR',
+      success: status >= 200 && status < 300 && normalized.success,
+      pin: normalized.pin,
+      status: normalized.status,
+      error: normalized.error,
+      raw: text,
+      attempt,
+      duration: Date.now() - startTime,
     };
   } catch (err) {
+    if (attempt < 3) {
+      return callQueueFunction(patientId, attempt + 1);
+    }
+
     return {
       patientId,
+      httpStatus: 'ERR',
       success: false,
-      error: err.message,
+      error: err?.stderr || err?.message || 'curl_failed',
+      attempt,
       duration: Date.now() - startTime,
     };
   }
 }
 
-async function runConcurrencyTest() {
-  console.log('='.repeat(60));
-  console.log('🧪 اختبار التزامن (Concurrency Test)');
-  console.log('='.repeat(60));
-  console.log(`📍 العيادة: ${TEST_CLINIC_ID}`);
-  console.log(`👥 عدد المستخدمين المتزامنين: ${CONCURRENT_USERS}`);
-  console.log('='.repeat(60));
+async function runWithLimit(items, limit, worker) {
+  const results = new Array(items.length);
+  let index = 0;
 
-  // إنشاء طلبات متزامنة
+  async function next() {
+    const current = index;
+    index += 1;
+    if (current >= items.length) return;
+    results[current] = await worker(items[current], current);
+    await next();
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => next()));
+  return results;
+}
+
+async function runConcurrencyTest() {
+  console.log('='.repeat(70));
+  console.log('🧪 اختبار التزامن (Concurrency Test)');
+  console.log('='.repeat(70));
+  console.log(`📍 Endpoint: ${endpoint}`);
+  console.log(`📍 العيادة: ${TEST_CLINIC_ID}`);
+  console.log(`👥 إجمالي المستخدمين: ${CONCURRENT_USERS}`);
+  console.log(`⚡ التوازي الفعلي: ${MAX_PARALLEL}`);
+  console.log('='.repeat(70));
+
+  if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'REQUIRED_SUPABASE_ANON_KEY') {
+    throw new Error('SUPABASE_ANON_KEY is required');
+  }
+
   const timestamp = Date.now();
-  const promises = Array.from({ length: CONCURRENT_USERS }, (_, i) => callQueueEngine(`test_patient_${timestamp}_${i}`));
+  const patientIds = Array.from({ length: CONCURRENT_USERS }, (_, i) => `26${String(timestamp + i).slice(-8)}`);
 
   console.log('\n⏳ جاري تنفيذ الطلبات المتزامنة...\n');
 
   const startTime = Date.now();
-  const results = await Promise.all(promises);
+  const results = await runWithLimit(patientIds, MAX_PARALLEL, (pid) => callQueueFunction(pid));
   const totalTime = Date.now() - startTime;
-
-  // تحليل النتائج
-  console.log('📊 النتائج:');
-  console.log('-'.repeat(60));
 
   const successfulResults = results.filter((r) => r.success);
   const failedResults = results.filter((r) => !r.success);
-  const pins = successfulResults.map((r) => r.pin).filter((p) => p !== undefined);
+  const pins = successfulResults.map((r) => r.pin).filter((p) => p !== undefined && p !== null);
   const uniquePins = [...new Set(pins)];
   const duplicatePins = pins.length - uniquePins.length;
 
-  // طباعة كل نتيجة
-  results.forEach((r, i) => {
-    const status = r.success ? '✅' : '❌';
-    const pinInfo = r.pin ? `PIN: ${r.pin}` : `Error: ${r.error}`;
-    console.log(`${status} User ${i + 1}: ${pinInfo} (${r.duration}ms)`);
-  });
+  const byHttpCode = failedResults.reduce((acc, r) => {
+    const key = String(r.httpStatus);
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
 
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('📈 ملخص الاختبار:');
-  console.log('='.repeat(60));
+  console.log('📊 ملخص الاختبار:');
+  console.log('-'.repeat(70));
   console.log(`✅ ناجح: ${successfulResults.length}/${CONCURRENT_USERS}`);
   console.log(`❌ فاشل: ${failedResults.length}/${CONCURRENT_USERS}`);
   console.log(`🔢 أرقام فريدة: ${uniquePins.length}`);
   console.log(`⚠️ أرقام مكررة: ${duplicatePins}`);
   console.log(`⏱️ إجمالي الوقت: ${totalTime}ms`);
-  console.log(`📊 متوسط الوقت: ${Math.round(totalTime / CONCURRENT_USERS)}ms`);
+  console.log(`📊 متوسط الوقت/طلب: ${Math.round(totalTime / CONCURRENT_USERS)}ms`);
 
-  // الحكم النهائي
-  console.log(`\n${'='.repeat(60)}`);
+  if (Object.keys(byHttpCode).length > 0) {
+    console.log(`📉 الفشل حسب HTTP: ${JSON.stringify(byHttpCode)}`);
+  }
+
+  if (failedResults.length > 0) {
+    console.log(`🧾 أول 5 أخطاء: ${JSON.stringify(failedResults.slice(0, 5).map((r) => ({
+      patientId: r.patientId,
+      httpStatus: r.httpStatus,
+      error: r.error,
+      attempt: r.attempt,
+    })), null, 2)}`);
+  }
+
+  console.log(`\n${'='.repeat(70)}`);
   if (duplicatePins === 0 && failedResults.length === 0) {
     console.log('🎉 النتيجة: ✅ نجح الاختبار - لا تكرار ولا فقدان');
   } else if (duplicatePins > 0) {
     console.log('🚨 النتيجة: ❌ فشل الاختبار - يوجد تكرار في الأرقام!');
   } else {
-    console.log('⚠️ النتيجة: جزئي - بعض الطلبات فشلت');
+    console.log('⚠️ النتيجة: ❌ فشل جزئي - توجد طلبات فاشلة');
   }
-  console.log('='.repeat(60));
+  console.log('='.repeat(70));
 
   return {
     total: CONCURRENT_USERS,
@@ -120,15 +189,16 @@ async function runConcurrencyTest() {
     duplicates: duplicatePins,
     totalTime,
     passed: duplicatePins === 0 && failedResults.length === 0,
+    endpoint,
+    byHttpCode,
   };
 }
 
-// تشغيل الاختبار
 runConcurrencyTest()
   .then((result) => {
     process.exit(result.passed ? 0 : 1);
   })
-  .catch((err) => {
-    console.error('❌ خطأ في الاختبار:', err);
+  .catch((error) => {
+    console.error('❌ Fatal error:', error.message);
     process.exit(1);
   });
