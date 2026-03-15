@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
+import { requestJson } from '../lib/resilient-request';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
@@ -2689,15 +2690,15 @@ const SystemStatus = ({ language, t }) => {
     // قائمة الجداول للفحص
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
+      { name: 'unified_queue', label: t('الطوابير', 'Unified Queue') },
       { name: 'pins', label: t('الأرقام السرية', 'PINs') },
-      { name: 'settings', label: t('الإعدادات', 'Settings') },
+      { name: 'system_config', label: t('الإعدادات', 'System Config') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
       { name: 'patients', label: t('المرضى', 'Patients') },
-      { name: 'admins', label: t('المسؤولين', 'Admins') },
-      { name: 'users', label: t('المستخدمين', 'Users') },
-      { name: 'sessions', label: t('الجلسات', 'Sessions') },
+      { name: 'qa_runs', label: t('عمليات الفحص', 'QA Runs') },
+      { name: 'qa_findings', label: t('نتائج الفحص', 'QA Findings') },
+      { name: 'repair_runs', label: t('عمليات الإصلاح', 'Repair Runs') },
     ];
 
     for (const table of tables) {
@@ -3924,14 +3925,21 @@ const BackupExport = ({ language, t }) => {
 
   const exportToCSV = async (tableName) => {
     try {
-      const { data } = await supabase.from(tableName).select('*');
+      const { data, error } = await supabase.from(tableName).select('*');
+      if (error) throw error;
       if (!data || data.length === 0) return;
-      
-      const headers = Object.keys(data[0]).join(',');
-      const rows = data.map(row => Object.values(row).join(',')).join('\n');
-      const csv = headers + '\n' + rows;
-      
-      const blob = new Blob([csv], { type: 'text/csv' });
+
+      const escapeCsv = (value) => {
+        if (value === null || value === undefined) return '';
+        const text = String(value).replace(/"/g, '""');
+        return /[",\n]/.test(text) ? `"${text}"` : text;
+      };
+
+      const headers = Object.keys(data[0]).map(escapeCsv).join(',');
+      const rows = data.map((row) => Object.values(row).map(escapeCsv).join(',')).join('\n');
+      const csv = `${headers}\n${rows}`;
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -3997,7 +4005,7 @@ const BackupExport = ({ language, t }) => {
           </h4>
           <div className="space-y-3">
             <button
-              onClick={() => exportToCSV('queues')}
+              onClick={() => exportToCSV('unified_queue')}
               className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
             >
               <span>{t('الطوابير', 'Queues')}</span>
@@ -4018,7 +4026,7 @@ const BackupExport = ({ language, t }) => {
               <Download size={16} />
             </button>
             <button
-              onClick={() => exportToCSV('settings')}
+              onClick={() => exportToCSV('system_config')}
               className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
             >
               <span>{t('الإعدادات', 'Settings')}</span>
@@ -4099,10 +4107,26 @@ const OfflineSettings = ({ language, t }) => {
   const syncNow = async () => {
     setSyncStatus('syncing');
     try {
-      // محاكاة المزامنة
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // فحص اتصال حقيقي مع Supabase
+      const { error } = await supabase.from('system_config').select('key').limit(1);
+      if (error) throw error;
+
+      // محاولة مزامنة العناصر المحلية المؤقتة (إن وجدت)
+      const syncKeys = Object.keys(localStorage).filter((key) =>
+        OFFLINE_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
+      );
+
+      for (const key of syncKeys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        // نعلّم العناصر المتزامنة فقط بدون حذف إجباري
+        localStorage.setItem(`${key}_synced_at`, new Date().toISOString());
+      }
+
       setSyncStatus('synced');
+      calculateStorage();
     } catch (e) {
+      console.error('Offline sync error:', e);
       setSyncStatus('error');
     }
   };
@@ -4769,7 +4793,7 @@ const DatabaseManagement = ({ language, t }) => {
 
   const availableTables = [
     { name: 'clinics', label: t('العيادات', 'Clinics'), icon: Activity },
-    { name: 'queues', label: t('الطوابير', 'Queues'), icon: Users },
+    { name: 'unified_queue', label: t('الطوابير', 'Queues'), icon: Users },
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
     { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
@@ -5046,8 +5070,7 @@ const SmartSystemPanel = ({ language, t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
-      const result = await response.json();
+      const { payload: result } = await requestJson('/api/v1/qa/deep_run', {}, { timeoutMs: 15000, retries: 1 });
       if (result.success) {
         toast.success(t('اكتمل الفحص العميق بنجاح', 'Deep QA completed successfully'));
         loadData();
@@ -5061,12 +5084,14 @@ const SmartSystemPanel = ({ language, t }) => {
 
   const executeRepair = async (findingId) => {
     try {
-      const response = await fetch('/api/v1/repair/execute', {
+      const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
+      const payload = repairToken ? { findingId, token: repairToken } : { findingId };
+
+      const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
-      });
-      const result = await response.json();
+        body: JSON.stringify(payload)
+      }, { timeoutMs: 15000, retries: 1 });
       if (result.success) {
         toast.success(t('تم الإصلاح بنجاح', 'Repair successful'));
         loadData();

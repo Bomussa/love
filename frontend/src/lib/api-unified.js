@@ -1,6 +1,7 @@
 import { supabase } from './supabase-client';
 import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
+import { requestJson } from './resilient-request';
 
 /**
  * Unified API Service - Direct Supabase Implementation
@@ -66,13 +67,11 @@ const api = {
   },
 
   async adminLogin(username, password) {
-    const response = await fetch('/api/v1/admin/login', {
+    const { response, payload } = await requestJson('/api/v1/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
-    });
-
-    const payload = await response.json().catch(() => ({}));
+    }, { timeoutMs: 10000, retries: 2 });
 
     if (!response.ok) {
       return {
@@ -303,12 +302,11 @@ const api = {
         if (!validPin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
-            const response = await fetch('/api/v1/queue/done', {
+            const { payload: result } = await requestJson('/api/v1/queue/done', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ clinicId, patientId, pin })
-            });
-            const result = await response.json();
+            }, { timeoutMs: 8000, retries: 1 });
             if (result && (result.success || !result.error)) {
               return { success: true, data: result };
             }
