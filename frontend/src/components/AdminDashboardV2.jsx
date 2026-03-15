@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
+import { requestJson } from '../lib/resilient-request';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
@@ -5046,8 +5047,7 @@ const SmartSystemPanel = ({ language, t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
-      const result = await response.json();
+      const { payload: result } = await requestJson('/api/v1/qa/deep_run', {}, { timeoutMs: 15000, retries: 1 });
       if (result.success) {
         toast.success(t('اكتمل الفحص العميق بنجاح', 'Deep QA completed successfully'));
         loadData();
@@ -5061,12 +5061,17 @@ const SmartSystemPanel = ({ language, t }) => {
 
   const executeRepair = async (findingId) => {
     try {
-      const response = await fetch('/api/v1/repair/execute', {
+      const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
+      if (!repairToken) {
+        toast.error(t('رمز الإصلاح غير مُعد في البيئة', 'Repair token is not configured'));
+        return;
+      }
+
+      const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
-      });
-      const result = await response.json();
+        body: JSON.stringify({ findingId, token: repairToken })
+      }, { timeoutMs: 15000, retries: 1 });
       if (result.success) {
         toast.success(t('تم الإصلاح بنجاح', 'Repair successful'));
         loadData();

@@ -10,6 +10,7 @@ import {
   Wrench, FileText, Filter, Download, Calendar, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { requestJson } from '../lib/resilient-request';
 
 const QARepairPanel = ({ language = 'ar', t }) => {
   const isRTL = language === 'ar';
@@ -102,8 +103,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
-      const result = await response.json();
+      const { payload: result } = await requestJson('/api/v1/qa/deep_run', {}, { timeoutMs: 15000, retries: 1 });
       
       if (result.ok !== undefined) {
         if (result.ok) {
@@ -127,16 +127,21 @@ const QARepairPanel = ({ language = 'ar', t }) => {
     try {
       toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
       
-      const response = await fetch('/api/v1/repair/execute', {
+      const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
+      if (!repairToken) {
+        toast.dismiss();
+        toast.error(t('رمز الإصلاح غير مُعد في البيئة', 'Repair token is not configured'));
+        return;
+      }
+
+      const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           findingId, 
-          token: 'mmc-mms-repair-secret-2026' 
+          token: repairToken 
         })
-      });
-      
-      const result = await response.json();
+      }, { timeoutMs: 15000, retries: 1 });
       
       toast.dismiss();
       
