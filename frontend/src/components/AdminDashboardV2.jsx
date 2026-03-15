@@ -54,7 +54,7 @@ import APIMonitor from './APIMonitor';
 import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
 import QARepairPanel from './QARepairPanel';
 import FilesCenter from './FilesCenter';
-import { supabase } from '../lib/supabase-client';
+import { supabase, getSystemSetting, setSystemSetting } from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
 const logActivity = async (actionType, description, userId = null, metadata = {}) => {
@@ -2860,7 +2860,7 @@ const SettingsSection = ({ language, t }) => {
       }
       
       // جلب إعداد device_restriction من system_settings
-      const { getSystemSetting } = await import('../lib/supabase-client.js');
+      // Use static imports to avoid TDZ errors
       const deviceRestriction = await getSystemSetting('device_restriction_enabled', false);
       settingsObj.device_restriction_enabled = deviceRestriction;
       
@@ -3020,7 +3020,7 @@ const SettingsSection = ({ language, t }) => {
               onClick={async () => {
                 const newValue = !settings.device_restriction_enabled;
                 // تحديث في system_settings
-                const { setSystemSetting } = await import('../lib/supabase-client.js');
+                // Use static imports to avoid TDZ errors
                 await setSystemSetting('device_restriction_enabled', newValue, 'تفعيل/إيقاف نظام منع الجهاز من استخدام رقم مختلف');
                 setSettings(prev => ({ ...prev, device_restriction_enabled: newValue }));
                 showSuccessToast(newValue ? t('تم تفعيل نظام ربط الجهاز', 'Device restriction enabled') : t('تم إيقاف نظام ربط الجهاز', 'Device restriction disabled'));

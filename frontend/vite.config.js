@@ -70,7 +70,10 @@ export default defineConfig({
     reportCompressedSize: false,
     rollupOptions: {
       treeshake: {
-        moduleSideEffects: false,
+        moduleSideEffects: (id) => {
+          if (id.includes('supabase-client')) return true;
+          return false;
+        },
         propertyReadSideEffects: false,
       },
       output: {
