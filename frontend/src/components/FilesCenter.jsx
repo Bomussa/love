@@ -431,6 +431,17 @@ const FilesCenter = ({ language = 'ar', t }) => {
         <div
           className="flex flex-col items-center cursor-pointer select-none"
           onClick={() => setOpenMenu(isMenuOpen ? null : file.id)}
+          onDoubleClick={() => handleOpen(file)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleOpen(file);
+            }
+          }}
+          data-testid={`file-card-${file.id}`}
+          aria-label={isAr ? `فتح ${file.fullName}` : `Open ${file.fullName}`}
         >
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200 group-hover:scale-110 group-hover:shadow-xl border border-white/20"
@@ -480,6 +491,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
               <button
                 key={i}
                 onClick={opt.action}
+                data-testid={`file-action-${file.id}-${i}`}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/10 transition-colors"
                 style={{ color: '#e8d5b7' }}
               >
