@@ -1,0 +1,129 @@
+{
+  "timestamp": "2026-03-15T23:02:58.372Z",
+  "domains": [
+    {
+      "endpoint": "https://mmc-mms.com",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/",
+      "ok": true,
+      "bodyLength": 4111,
+      "hasHtml": true,
+      "error": null
+    },
+    {
+      "endpoint": "https://www.mmc-mms.com",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/",
+      "ok": true,
+      "bodyLength": 4111,
+      "hasHtml": true,
+      "error": null
+    },
+    {
+      "endpoint": "https://mmc-mms.com/admin",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/admin",
+      "ok": true,
+      "bodyLength": 4111,
+      "hasHtml": true,
+      "error": null
+    },
+    {
+      "endpoint": "https://www.mmc-mms.com/admin",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/admin",
+      "ok": true,
+      "bodyLength": 4111,
+      "hasHtml": true,
+      "error": null
+    },
+    {
+      "endpoint": "https://mmc-mms.com/api/v1/health",
+      "status": 401,
+      "finalUrl": "https://mmc-mms.com/api/v1/health",
+      "ok": true,
+      "bodyLength": 14540,
+      "hasHtml": true,
+      "error": null
+    }
+  ],
+  "tables": [
+    {
+      "table": "unified_queue",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":\"813a5c10-e669-49fc-b9db-563fadada739\",\"patient_id\":\"88c64640-58a0-4bca-9af2-eb2cbb5f0118\",\"patient_name\":null,\"military_id\":null,\"personal_id\":null,\"cli"
+    },
+    {
+      "table": "clinics",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":\"DNT\",\"name\":\"Dentistry\",\"name_ar\":\"عيادة الأسنان \",\"description\":null,\"pin_code\":\"21\",\"pin_expires_at\":\"2026-03-07T19:31:11.834846+00:00\",\"is_active\":tr"
+    },
+    {
+      "table": "patients",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":\"60f1f27c-1984-4884-bc7d-5c6f2e652ee1\",\"patient_id\":\"111222\",\"gender\":\"male\",\"session_id\":null,\"login_time\":null,\"status\":\"active\",\"created_at\":\"2026-01-"
+    },
+    {
+      "table": "system_config",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"key\":\"system_enabled\",\"value\":true,\"updated_at\":\"2026-01-08T20:18:38.535223+00:00\"}]"
+    },
+    {
+      "table": "pins",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":\"c4313964-a5dd-4fde-a25c-488902c0fa93\",\"clinic_code\":\"BIO\",\"pin\":\"18\",\"generated_at\":\"2026-02-23T04:09:27.283828+00:00\",\"expires_at\":\"2026-03-16T23:59:59"
+    },
+    {
+      "table": "qa_runs",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":\"a40cd8ad-264f-45e1-a5b3-d04f68ad2679\",\"run_type\":\"manual\",\"status\":\"completed\",\"started_at\":\"2026-03-14T08:05:24.119046+00:00\",\"completed_at\":\"2026-03-1"
+    },
+    {
+      "table": "qa_findings",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[]"
+    },
+    {
+      "table": "repair_runs",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[]"
+    },
+    {
+      "table": "smart_errors_log",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":1,\"error_id\":\"test_1772059532\",\"error_type\":\"test\",\"severity\":\"low\",\"message\":\"اختبار النظام\",\"source\":\"TestSuite\",\"stack_trace\":null,\"details\":null,\"is_"
+    },
+    {
+      "table": "smart_fixes_log",
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "preview": "[{\"id\":1,\"fix_id\":\"fix_1772059532\",\"error_id\":null,\"strategy\":\"test_fix\",\"strategy_name\":\"اختبار\",\"success\":true,\"duration_ms\":42,\"applied_at\":\"2026-02-25T22:45"
+    }
+  ],
+  "summary": {
+    "totalChecks": 15,
+    "passedChecks": 15,
+    "failedChecks": 0,
+    "successRate": 100,
+    "canDeploy": true
+  }
+}

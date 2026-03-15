@@ -5,14 +5,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase-client';
 import {
-  Zap, RefreshCw, Play, CheckCircle, XCircle, AlertTriangle,
-  Clock, TrendingUp, Activity, Shield, Eye, ChevronDown, ChevronUp,
-  Wrench, FileText, Filter, Download, Calendar, Search
+  RefreshCw, Play, CheckCircle, XCircle, AlertTriangle,
+  Clock, Activity, Shield, ChevronDown, ChevronUp,
+  Wrench, FileText, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { requestJson } from '../lib/resilient-request';
 
 const QARepairPanel = ({ language = 'ar', t }) => {
-  const isRTL = language === 'ar';
+  const [missingTables, setMissingTables] = useState([]);
   
   // States
   const [qaRuns, setQaRuns] = useState([]);
@@ -20,7 +21,6 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const [repairRuns, setRepairRuns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
-  const [selectedRun, setSelectedRun] = useState(null);
   const [expandedFinding, setExpandedFinding] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -58,39 +58,62 @@ const QARepairPanel = ({ language = 'ar', t }) => {
     };
   }, []);
 
+  const isMissingRelationError = (error) => {
+    const text = String(error?.message || error?.details || '').toLowerCase();
+    return text.includes('does not exist') || text.includes('42p01') || text.includes('relation');
+  };
+
+  const loadTableSafely = async (table, limit = 20) => {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      if (isMissingRelationError(error)) {
+        return { data: [], missing: table, error: null };
+      }
+      return { data: [], missing: null, error };
+    }
+
+    return { data: data || [], missing: null, error: null };
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // جلب آخر 20 عملية فحص
-      const { data: runs, error: runsError } = await supabase
-        .from('qa_runs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const [runsResult, findingsResult, repairsResult] = await Promise.all([
+        loadTableSafely('qa_runs', 20),
+        loadTableSafely('qa_findings', 50),
+        loadTableSafely('repair_runs', 30),
+      ]);
 
-      if (runsError) throw runsError;
+      const missing = [runsResult, findingsResult, repairsResult]
+        .map((item) => item.missing)
+        .filter(Boolean);
 
-      // جلب آخر 50 finding
-      const { data: fnd, error: fndError } = await supabase
-        .from('qa_findings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const fatalError = [runsResult, findingsResult, repairsResult]
+        .map((item) => item.error)
+        .find(Boolean);
 
-      if (fndError) throw fndError;
+      if (fatalError) {
+        throw fatalError;
+      }
 
-      // جلب عمليات الإصلاح
-      const { data: repairs, error: repairsError } = await supabase
-        .from('repair_runs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30);
+      setMissingTables(missing);
+      setQaRuns(runsResult.data);
+      setFindings(findingsResult.data);
+      setRepairRuns(repairsResult.data);
 
-      if (repairsError) throw repairsError;
-
-      setQaRuns(runs || []);
-      setFindings(fnd || []);
-      setRepairRuns(repairs || []);
+      if (missing.length > 0) {
+        toast.error(
+          t(
+            `جداول QA مفقودة: ${missing.join(', ')}`,
+            `Missing QA tables: ${missing.join(', ')}`,
+          ),
+        );
+      }
     } catch (e) {
       console.error('Error loading QA data:', e);
       toast.error(t('فشل تحميل البيانات', 'Failed to load data'));
@@ -102,8 +125,12 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
-      const result = await response.json();
+      if (missingTables.includes('qa_runs')) {
+        toast.error(t('يتعذر تشغيل الفحص العميق: جدول qa_runs غير موجود', 'Deep QA blocked: qa_runs table is missing'));
+        return;
+      }
+
+      const { payload: result } = await requestJson('/api/v1/qa/deep_run', {}, { timeoutMs: 15000, retries: 1 });
       
       if (result.ok !== undefined) {
         if (result.ok) {
@@ -117,7 +144,12 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       }
     } catch (e) {
       console.error('Deep QA error:', e);
-      toast.error(t('خطأ في الاتصال بخدمة الفحص', 'Connection error'));
+      const message = String(e?.message || e || '');
+      if (message.toLowerCase().includes('qa_runs') || message.includes('42P01')) {
+        toast.error(t('فشل الفحص: جدول qa_runs مفقود في قاعدة البيانات', 'Deep QA failed: qa_runs table missing'));
+      } else {
+        toast.error(t('خطأ في الاتصال بخدمة الفحص', 'Connection error'));
+      }
     } finally {
       setRunning(false);
     }
@@ -127,16 +159,16 @@ const QARepairPanel = ({ language = 'ar', t }) => {
     try {
       toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
       
-      const response = await fetch('/api/v1/repair/execute', {
+      const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
+      const payload = repairToken
+        ? { findingId, token: repairToken }
+        : { findingId };
+
+      const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          findingId, 
-          token: 'mmc-mms-repair-secret-2026' 
-        })
-      });
-      
-      const result = await response.json();
+        body: JSON.stringify(payload)
+      }, { timeoutMs: 15000, retries: 1 });
       
       toast.dismiss();
       
@@ -215,6 +247,25 @@ const QARepairPanel = ({ language = 'ar', t }) => {
           {t('تشغيل فحص عميق الآن', 'Run Deep QA Now')}
         </button>
       </div>
+
+      {missingTables.length > 0 && (
+        <div data-testid="qa-missing-tables-warning" className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-amber-400 mt-0.5" size={18} />
+            <div>
+              <div className="text-amber-300 font-semibold">
+                {t('جداول فحص مفقودة في Supabase', 'Missing QA tables in Supabase')}
+              </div>
+              <div className="text-amber-200/90 text-sm mt-1">
+                {t('يرجى تطبيق migrations الخاصة بـ QA/Repair قبل تشغيل الفحص العميق.', 'Please apply QA/Repair migrations before running deep checks.')}
+              </div>
+              <div className="text-amber-100 text-sm mt-2 font-mono">
+                {missingTables.join(', ')}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
