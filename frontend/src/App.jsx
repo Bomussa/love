@@ -117,28 +117,33 @@ function App() {
 
   // ============= AUTO REPAIR SYSTEM =============
   useEffect(() => {
-    // تفعيل نظام الإصلاح التلقائي
+    const enableDeepMonitoring = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEEP_MONITORING === 'true';
+
+    // تفعيل النظام الأساسي فقط لتجنب ضوضاء وفشل RPC غير الضروري في الإنتاج
     autoRepairSystem.startMonitoring();
-    console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
+    console.log('✅ نظام الإصلاح الأساسي: تم التفعيل');
 
-    functionTableMonitor.startMonitoring();
+    if (enableDeepMonitoring) {
+      functionTableMonitor.startMonitoring();
 
-    // تفعيل نظام مراقبة العناصر التفاعلية
-    elementMonitor.startMonitoring();
+      // تفعيل نظام مراقبة العناصر التفاعلية
+      elementMonitor.startMonitoring();
 
-    // تفعيل نظام الإصلاح التلقائي المتقدم
-    const advancedRepair = new AdvancedAutoRepair(supabase);
-    advancedRepair.startAutoRepair();
-    // تهيئة نظام المراقبة الذاتية الشامل
-    healthMonitor.init(supabase);
+      // تفعيل نظام الإصلاح التلقائي المتقدم
+      const advancedRepair = new AdvancedAutoRepair(supabase);
+      advancedRepair.startAutoRepair();
 
-    // تفعيل نظام التقارير للعناصر التفاعلية
-    const elementReporter = new InteractiveElementReporter();
-    elementReporter.startReporting();
-    console.log('✅ نظام التقارير: تم التفعيل');
-    console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
-    console.log('✅ نظام مراقبة العناصر: تم التفعيل');
-    console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
+      // تهيئة نظام المراقبة الذاتية الشامل
+      healthMonitor.init(supabase);
+
+      // تفعيل نظام التقارير للعناصر التفاعلية
+      const elementReporter = new InteractiveElementReporter();
+      elementReporter.startReporting();
+
+      console.log('✅ وضع المراقبة العميقة: مفعل');
+    } else {
+      console.log('ℹ️ وضع المراقبة العميقة: معطل في الإنتاج (يمكن تفعيله عبر VITE_ENABLE_DEEP_MONITORING=true)');
+    }
 
     return () => {
       // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
