@@ -19,11 +19,11 @@ const FILES_DATA = {
     {
       id: 'features',
       name: 'المزايا',
-      fullName: 'دليل المزايا الشامل',
+      fullName: 'دليل التكامل الشامل',
       icon: Layers,
       color: '#8A1538',
       category: 'docs',
-      path: '/docs/FEATURES.md',
+      path: '/docs/INTEGRATION_LOCK.md',
       size: '~45 KB',
       lines: 320,
       desc: 'كل مزايا النظام الظاهرة والباطنة مع الهدف والمسار وموقع الكود'
@@ -59,7 +59,7 @@ const FILES_DATA = {
       icon: Server,
       color: '#7d3c98',
       category: 'docs',
-      path: '/docs/SERVICES.md',
+      path: '/docs/API_V1_ENDPOINTS.md',
       size: '~32 KB',
       lines: 280,
       desc: '21 API endpoint + 5 خدمات lib مع الدوال والأسطر الدقيقة'
@@ -91,7 +91,7 @@ const FILES_DATA = {
     {
       id: 'api',
       name: 'API',
-      fullName: 'وثيقة API الكاملة',
+      fullName: 'وثيقة API الكاملة (v1)',
       icon: Code,
       color: '#1a5276',
       category: 'docs',
@@ -119,7 +119,7 @@ const FILES_DATA = {
       icon: Zap,
       color: '#C9A54C',
       category: 'system',
-      path: '/src/lib/smart-repair-engine.js',
+      path: '/frontend/src/lib/advanced-auto-repair.js',
       size: '~52 KB',
       lines: 726,
       desc: 'Circuit Breaker + Retry + Watchdog + Health Check + Bulkhead'
@@ -131,7 +131,7 @@ const FILES_DATA = {
       icon: HardDrive,
       color: '#2e4053',
       category: 'system',
-      path: '/src/lib/memory-manager.js',
+      path: '/frontend/src/lib/auto-repair-system.js',
       size: '~28 KB',
       lines: 397,
       desc: 'LRU Algorithm + Watchdog — حذف تلقائي عند 90% امتلاء'
@@ -143,7 +143,7 @@ const FILES_DATA = {
       icon: Database,
       color: '#3498db',
       category: 'system',
-      path: '/src/lib/supabase-client.js',
+      path: '/frontend/src/lib/supabase-client.js',
       size: '~35 KB',
       lines: 520,
       desc: 'الاتصال + المراقبة + التسجيل + إدارة الجلسات'
@@ -155,7 +155,7 @@ const FILES_DATA = {
       icon: Lock,
       color: '#8e44ad',
       category: 'system',
-      path: '/src/lib/auth-service.js',
+      path: '/frontend/src/lib/auth-service.js',
       size: '~18 KB',
       lines: 220,
       desc: 'JWT + أدوار المستخدمين + إدارة الجلسات'
@@ -167,7 +167,7 @@ const FILES_DATA = {
       icon: BookOpen,
       color: '#C9A54C',
       category: 'docs',
-      path: '/README.md',
+      path: '/frontend/README.md',
       size: '~15 KB',
       lines: 222,
       desc: 'نظرة عامة على المشروع وطريقة التشغيل'
@@ -210,19 +210,19 @@ const FILES_DATA = {
     }
   ],
   en: [
-    { id: 'features', name: 'Features', fullName: 'Complete Features Guide', icon: Layers, color: '#8A1538', category: 'docs', path: '/docs/FEATURES.md', size: '~45 KB', lines: 320, desc: 'All system features (visible & hidden) with purpose, path, and code location' },
+    { id: 'features', name: 'Features', fullName: 'Complete Integration Guide', icon: Layers, color: '#8A1538', category: 'docs', path: '/docs/INTEGRATION_LOCK.md', size: '~45 KB', lines: 320, desc: 'All system features (visible & hidden) with purpose, path, and code location' },
     { id: 'database', name: 'Database', fullName: 'Database Guide', icon: Database, color: '#1a5276', category: 'docs', path: '/docs/DATABASE.md', size: '~28 KB', lines: 373, desc: '97 Supabase tables — columns, relations, real statistics' },
     { id: 'architecture', name: 'Architecture', fullName: 'System Architecture', icon: GitBranch, color: '#1e8449', category: 'docs', path: '/docs/ARCHITECTURE.md', size: '~38 KB', lines: 568, desc: 'Full architecture, data flow, and routes' },
-    { id: 'services', name: 'Services', fullName: 'Services & API Guide', icon: Server, color: '#7d3c98', category: 'docs', path: '/docs/SERVICES.md', size: '~32 KB', lines: 280, desc: '21 API endpoints + 5 lib services with functions and exact line numbers' },
+    { id: 'services', name: 'Services', fullName: 'Services & API Guide', icon: Server, color: '#7d3c98', category: 'docs', path: '/docs/API_V1_ENDPOINTS.md', size: '~32 KB', lines: 280, desc: '21 API endpoints + 5 lib services with functions and exact line numbers' },
     { id: 'maintenance', name: 'Maintenance', fullName: 'Maintenance & Repair Guide', icon: Wrench, color: '#d35400', category: 'docs', path: '/docs/MAINTENANCE.md', size: '~18 KB', lines: 180, desc: 'Periodic maintenance procedures, repair, and troubleshooting' },
     { id: 'security', name: 'Security', fullName: 'Security & Protection Guide', icon: Shield, color: '#922b21', category: 'docs', path: '/docs/SECURITY.md', size: '~12 KB', lines: 48, desc: 'Security policies, permissions, and data protection' },
     { id: 'api', name: 'API', fullName: 'Complete API Documentation', icon: Code, color: '#1a5276', category: 'docs', path: '/docs/API.md', size: '~22 KB', lines: 200, desc: 'All endpoints with examples, parameters, and responses' },
     { id: 'deployment', name: 'Deployment', fullName: 'Deployment & Setup Guide', icon: Activity, color: '#117a65', category: 'docs', path: '/docs/DEPLOYMENT.md', size: '~8 KB', lines: 34, desc: 'Vercel deployment steps and environment variables' },
-    { id: 'smart_engine', name: 'Repair Engine', fullName: 'Smart Repair Engine', icon: Zap, color: '#C9A54C', category: 'system', path: '/src/lib/smart-repair-engine.js', size: '~52 KB', lines: 726, desc: 'Circuit Breaker + Retry + Watchdog + Health Check + Bulkhead' },
-    { id: 'memory_manager', name: 'Memory Mgr', fullName: 'Memory Management System', icon: HardDrive, color: '#2e4053', category: 'system', path: '/src/lib/memory-manager.js', size: '~28 KB', lines: 397, desc: 'LRU Algorithm + Watchdog — auto-delete at 90% capacity' },
-    { id: 'supabase_client', name: 'Supabase', fullName: 'Supabase Client', icon: Database, color: '#3498db', category: 'system', path: '/src/lib/supabase-client.js', size: '~35 KB', lines: 520, desc: 'Connection + monitoring + logging + session management' },
-    { id: 'auth_service', name: 'Auth', fullName: 'Authentication Service', icon: Lock, color: '#8e44ad', category: 'system', path: '/src/lib/auth-service.js', size: '~18 KB', lines: 220, desc: 'JWT + user roles + session management' },
-    { id: 'readme', name: 'README', fullName: 'Main Project Guide', icon: BookOpen, color: '#C9A54C', category: 'docs', path: '/README.md', size: '~15 KB', lines: 222, desc: 'Project overview and setup instructions' },
+    { id: 'smart_engine', name: 'Repair Engine', fullName: 'Smart Repair Engine', icon: Zap, color: '#C9A54C', category: 'system', path: '/frontend/src/lib/advanced-auto-repair.js', size: '~52 KB', lines: 726, desc: 'Circuit Breaker + Retry + Watchdog + Health Check + Bulkhead' },
+    { id: 'memory_manager', name: 'Memory Mgr', fullName: 'Memory Management System', icon: HardDrive, color: '#2e4053', category: 'system', path: '/frontend/src/lib/auto-repair-system.js', size: '~28 KB', lines: 397, desc: 'LRU Algorithm + Watchdog — auto-delete at 90% capacity' },
+    { id: 'supabase_client', name: 'Supabase', fullName: 'Supabase Client', icon: Database, color: '#3498db', category: 'system', path: '/frontend/src/lib/supabase-client.js', size: '~35 KB', lines: 520, desc: 'Connection + monitoring + logging + session management' },
+    { id: 'auth_service', name: 'Auth', fullName: 'Authentication Service', icon: Lock, color: '#8e44ad', category: 'system', path: '/frontend/src/lib/auth-service.js', size: '~18 KB', lines: 220, desc: 'JWT + user roles + session management' },
+    { id: 'readme', name: 'README', fullName: 'Frontend Project Guide', icon: BookOpen, color: '#C9A54C', category: 'docs', path: '/frontend/README.md', size: '~15 KB', lines: 222, desc: 'Project overview and setup instructions' },
     { id: 'truth_tree', name: 'Truth Tree', fullName: 'Complete Truth Tree', icon: FileSearch, color: '#1e8449', category: 'docs', path: '/docs/TRUTH_TREE_LOVE_API.md', size: '~68 KB', lines: 967, desc: 'Most comprehensive file — all API and system details documented' },
     { id: 'e2e_tests', name: 'Test Results', fullName: 'Comprehensive Test Results', icon: CheckCircle, color: '#1e8449', category: 'tests', path: '/docs/E2E_TEST_RESULTS.md', size: '~10 KB', lines: 120, desc: 'E2E test results on mmc-mms.com' },
     { id: 'integration_lock', name: 'Int. Lock', fullName: 'Integration Lock File', icon: Lock, color: '#922b21', category: 'system', path: '/docs/INTEGRATION_LOCK.md', size: '~5 KB', lines: 60, desc: 'Strict integration rules to prevent conflicts' }
@@ -244,514 +244,8 @@ const CATEGORIES = {
   ]
 };
 
-// ===== محتوى الملفات الكامل (للقراءة داخل الشاشة) =====
-const FILE_CONTENT = {
-  features: `# دليل المزايا الشامل — نظام MMC-MMS
-
-## الهدف من النظام
-نظام إدارة اللجنة الطبية العسكرية (MMC-MMS) هو منظومة رقمية متكاملة تُدير:
-- طوابير المرضى في 18 عيادة
-- الأرقام السرية (PIN) للتحقق من هوية المراجعين
-- المسارات الطبية متعددة العيادات
-- الإشعارات والتنبيهات الفورية
-- سجلات النشاط والتدقيق
-
-## التبويبات الرئيسية (18 تبويب)
-1. لوحة التحكم — Dashboard
-2. إدارة الطوابير — Queues
-3. الأرقام السرية — PIN Codes
-4. الإشعارات — Notifications
-5. المسارات — Routes
-6. توجيه الطوابق — Floor Directions
-7. التقارير — Reports
-8. العيادات — Clinics
-9. حالة النظام — System Status
-10. الإعدادات — Settings
-11. إدارة المستخدمين — Users
-12. سجل النشاطات — Activity Log
-13. النسخ والتصدير — Backup & Export
-14. العمل أوفلاين — Offline Mode
-15. إدارة المحتوى — Content Management
-16. المظهر — Appearance
-17. قاعدة البيانات — Database
-18. التحكم بالميزات — Feature Control
-19. مراقبة API — API Monitor
-20. النظام الذكي — Smart System
-21. مركز الملفات — Files Center
-
-## الميزات الأساسية
-### نظام الطوابير
-- استدعاء المريض: PUT /api/v1/queue/next
-- إكمال الفحص: PUT /api/v1/queue/done
-- ترحيل المريض: POST /api/v1/admin/queues/move-to-end
-- إلغاء المريض: PATCH /api/v1/admin/queues/:id
-- الجدول: unified_queue (11 سجل، 24 عمود)
-
-### نظام PIN
-- إنشاء PIN: POST /api/v1/admin/pins
-- التحقق: POST /api/v1/pin/validate
-- الجدول: pins (18 سجل، 10 أعمدة)
-
-### إدارة العيادات
-- 18 عيادة نشطة
-- الجدول: clinics (21 عمود)
-- أنواع الفحص: general, periodic, pre_employment, fitness, specialized, follow_up, emergency
-
-### الإعدادات (25 مفتاح)
-- center_name, working_hours_end, working_days
-- exam_duration, max_daily_patients, max_postpones
-- queue_system_enabled, pin_system_enabled
-- notifications_enabled, reset_queue_daily
-- prevent_duplicate_patient_daily, prevent_duplicate_device_daily
-
-## الخوارزميات العالمية المُدمجة
-1. Circuit Breaker (Netflix Hystrix)
-2. Retry + Exponential Backoff (AWS Standard)
-3. Watchdog Timer (POSIX)
-4. Health Check (Kubernetes Probes)
-5. Error Boundary (React 16+)
-6. Bulkhead Pattern (Release It! - Nygard)
-7. LRU Memory Management
-
-## إحصاءات المشروع
-- الملفات: 94 ملف
-- الأسطر: 52,000+ سطر
-- المكونات: 28 مكوّن React
-- الجداول: 97 جدول Supabase
-- API Endpoints: 21
-- التبويبات: 21 تبويب إداري`,
-
-  database: `# دليل قاعدة البيانات — Supabase
-## معلومات الاتصال
-- Project URL: https://rujwuruuosffcxazymit.supabase.co
-- Project ID: rujwuruuosffcxazymit
-- Region: eu-central-1
-
-## الجداول الرئيسية (97 جدول إجمالي)
-
-### unified_queue — طابور المرضى
-| العمود | النوع | الوصف |
-|--------|-------|-------|
-| id | int8 | معرف فريد |
-| patient_id | text | رقم المريض |
-| clinic_id | uuid | معرف العيادة |
-| display_number | int4 | رقم العرض |
-| status | text | waiting/called/done/cancelled |
-| queue_date | date | تاريخ الطابور |
-| created_at | timestamptz | وقت الإنشاء |
-السجلات الحالية: 11
-
-### clinics — العيادات
-| العمود | النوع | الوصف |
-|--------|-------|-------|
-| id | uuid | معرف فريد |
-| name_ar | text | الاسم بالعربية |
-| name_en | text | الاسم بالإنجليزية |
-| clinic_code | text | رمز العيادة |
-| floor | int4 | الطابق |
-| room_number | text | رقم الغرفة |
-| is_active | bool | نشط/غير نشط |
-| order_number | int4 | الترتيب |
-| exam_type | text | نوع الفحص |
-السجلات الحالية: 18
-
-### pins — الأرقام السرية
-| العمود | النوع | الوصف |
-|--------|-------|-------|
-| id | uuid | معرف فريد |
-| pin_code | text | الرقم السري |
-| clinic_id | uuid | العيادة المرتبطة |
-| is_active | bool | نشط/غير نشط |
-| max_uses | int4 | الحد الأقصى للاستخدام |
-| use_count | int4 | عدد مرات الاستخدام |
-السجلات الحالية: 18
-
-### settings — الإعدادات
-السجلات الحالية: 23 إعداد
-
-### admins — المديرون
-السجلات الحالية: 2
-
-### activity_logs — سجل النشاطات
-السجلات الحالية: 20
-
-### daily_activity_logs — السجل اليومي
-السجلات الحالية: 89
-
-### device_logins — تسجيلات الأجهزة
-السجلات الحالية: 25
-
-### smart_errors_log — سجل الأخطاء الذكي
-السجلات الحالية: 1
-
-### smart_fixes_log — سجل الإصلاحات
-السجلات الحالية: 1
-
-## RLS Policies
-جميع الجداول محمية بـ Row Level Security
-- الجداول العامة: قراءة مفتوحة
-- الجداول الإدارية: تتطلب JWT صالح`,
-
-  services: `# دليل الخدمات — MMC-MMS
-
-## API Endpoints (21 endpoint)
-Base URL: https://mmc-mms.com/api/v1
-
-### Health
-GET /api/v1/health — فحص صحة الـ API
-
-### Admin — Users
-POST /api/v1/admin/login — تسجيل دخول المدير
-GET /api/v1/admin/users — قائمة المستخدمين
-POST /api/v1/admin/users — إضافة مستخدم
-PATCH /api/v1/admin/users/:id — تعديل مستخدم
-DELETE /api/v1/admin/users/:id — حذف مستخدم
-
-### Admin — Clinics
-GET /api/v1/admin/clinics — قائمة العيادات
-POST /api/v1/admin/clinics — إضافة عيادة
-PATCH /api/v1/admin/clinics/:id — تعديل عيادة
-DELETE /api/v1/admin/clinics/:id — حذف عيادة
-
-### Admin — Queues
-GET /api/v1/admin/queues — قائمة الطابور
-PATCH /api/v1/admin/queues/:id — تعديل حالة
-DELETE /api/v1/admin/queues/:id — حذف من الطابور
-POST /api/v1/admin/queues/move-to-end — ترحيل لآخر الطابور
-
-### Admin — Other
-GET /api/v1/admin/pins — قائمة الأرقام السرية
-POST /api/v1/admin/pins/regenerate — إعادة توليد
-GET /api/v1/admin/reports/stats — إحصائيات التقارير
-GET /api/v1/admin/notifications — قائمة الإشعارات
-POST /api/v1/admin/notifications — إرسال إشعار
-GET /api/v1/admin/activity-log — سجل النشاطات
-POST /api/v1/admin/activity-log — إضافة سجل
-
-### Settings
-GET /api/v1/settings — جلب كل الإعدادات
-PATCH /api/v1/settings — تحديث إعداد
-GET /api/v1/settings/calculate-wait — حساب وقت الانتظار
-
-### Patient & Queue
-POST /api/v1/pin/generate — توليد رقم PIN
-POST /api/v1/pin/validate — التحقق من PIN
-POST /api/v1/patients/login — تسجيل دخول المريض
-POST /api/v1/queue/get-number — الحصول على رقم طابور
-POST /api/v1/queue/enter — دخول الطابور
-GET /api/v1/queue/status — حالة الطابور
-POST /api/v1/queue/next — استدعاء التالي
-POST /api/v1/queue/done — إكمال الفحص
-GET /api/v1/pathway/:id — مسار المريض
-
-## ملفات lib الرئيسية
-
-### supabase-client.js (520 سطر)
-- getConnectionStatus() — حالة الاتصال
-- reconnect() — إعادة الاتصال
-- startConnectionMonitor(30000) — مراقبة كل 30 ثانية
-- generateDeviceFingerprint() — بصمة الجهاز
-- logDailyActivity(type, details) — تسجيل نشاط
-- getSystemSetting(key, default) — جلب إعداد
-
-### auth-service.js (220 سطر)
-- login(username, password) — تسجيل الدخول
-- logout() — تسجيل الخروج
-- getSession() — الجلسة الحالية
-- isAuthenticated() — التحقق من الجلسة
-- USER_ROLES: SUPER_ADMIN, ADMIN, DOCTOR, RECEPTIONIST
-
-### smart-repair-engine.js (726 سطر)
-- Circuit Breaker: CLOSED → OPEN → HALF_OPEN
-- Retry: 3 محاولات + Exponential Backoff
-- Watchdog: كل 60 ثانية
-- Health Check: 10 خدمات كل 30 ثانية
-
-### memory-manager.js (397 سطر)
-- LRU Algorithm
-- عتبة التحذير: 80%
-- عتبة الحذف التلقائي: 90%
-- عتبة الحذف الشامل: 95%`,
-
-  architecture: `# هيكل النظام والمعمارية — MMC-MMS
-
-## نظرة عامة
-نظام ثلاثي الطبقات:
-1. Frontend: React + Vite + TailwindCSS (على Vercel CDN)
-2. Backend API: Node.js Serverless (على Vercel Functions)
-3. Database: Supabase (PostgreSQL + Realtime)
-
-## حركة الطلبات
-المريض/المدير (Browser)
-    │
-    ▼
-mmc-mms.com (Vercel Edge CDN)
-    │
-    ├──► /api/v1/* ──► love-api/api/v1.js (Serverless)
-    │                        │
-    │                        ▼
-    │                  Supabase REST API
-    │                        │
-    │                        ▼
-    │                  PostgreSQL (rujwuruuosffcxazymit)
-    │
-    └──► /* ──► React SPA (dist/)
-                    │
-                    ├── supabase-client.js (اتصال مباشر)
-                    ├── auth-service.js (JWT)
-                    ├── smart-repair-engine.js (إصلاح ذاتي)
-                    └── memory-manager.js (LRU)
-
-## هيكل الملفات
-love/
-├── frontend/
-│   ├── src/
-│   │   ├── components/ (28 مكوّن)
-│   │   │   ├── AdminDashboardV2.jsx (5501 سطر)
-│   │   │   ├── SmartDiagnosticsPanel.jsx (663 سطر)
-│   │   │   ├── FilesCenter.jsx (هذا الملف)
-│   │   │   └── ...
-│   │   ├── lib/ (5 ملفات خدمة)
-│   │   │   ├── supabase-client.js
-│   │   │   ├── auth-service.js
-│   │   │   ├── smart-repair-engine.js
-│   │   │   └── memory-manager.js
-│   │   └── App.jsx
-│   ├── public/
-│   │   └── logo.png
-│   └── vite.config.js
-├── love-api/
-│   └── api/v1.js (21 endpoint)
-├── docs/ (34 ملف توثيق)
-└── README.md
-
-## المسارات (Routes)
-- / — صفحة المريض الرئيسية
-- /admin — لوحة الإدارة
-- /queue — شاشة الطابور
-- /pathway — شاشة المسار
-
-## الاتصالات المباشرة (بدون API)
-Frontend → Supabase مباشرة:
-- قراءة الإعدادات
-- قراءة العيادات
-- Realtime subscriptions
-- تسجيل النشاطات`,
-
-  maintenance: `# دليل الصيانة والإصلاح — MMC-MMS
-
-## الصيانة الدورية
-
-### يومياً
-- مراجعة سجل الأخطاء في النظام الذكي
-- التحقق من حالة Circuit Breakers (يجب أن تكون CLOSED)
-- مراجعة سجل النشاطات للأنشطة غير الطبيعية
-- التحقق من عدد سجلات unified_queue (يجب أن تُعاد يومياً)
-
-### أسبوعياً
-- مراجعة إحصاءات قاعدة البيانات
-- التحقق من حجم الجداول (smart_errors_log, daily_activity_logs)
-- مراجعة سجلات device_logins القديمة
-- اختبار كل API endpoints
-
-### شهرياً
-- نسخة احتياطية كاملة من Supabase
-- مراجعة إعدادات الأمان
-- تحديث الأرقام السرية (pins)
-- مراجعة أداء الـ API
-
-## إصلاح المشكلات الشائعة
-
-### مشكلة: الطابور لا يتحدث تلقائياً
-الحل:
-1. فحص Supabase Realtime في تبويب "حالة النظام"
-2. تشغيل reconnect() من supabase-client.js
-3. إعادة تحميل الصفحة
-
-### مشكلة: رقم PIN لا يعمل
-الحل:
-1. التحقق من is_active = true في جدول pins
-2. التحقق من use_count < max_uses
-3. التحقق من clinic_id صحيح
-
-### مشكلة: لا يمكن الدخول للإدارة
-الحل:
-1. التحقق من بيانات الدخول في src/config/admin-credentials.js
-2. التحقق من جدول admins في Supabase
-3. مسح localStorage والمحاولة مجدداً
-
-### مشكلة: بطء في الاستجابة
-الحل:
-1. فحص حالة Supabase في https://status.supabase.com
-2. فحص Vercel في https://vercel-status.com
-3. مراجعة Circuit Breaker states في النظام الذكي
-
-## مواقع الكود للإصلاح
-| المشكلة | الملف | السطر |
-|---------|-------|-------|
-| الطابور | AdminDashboardV2.jsx | 134-239 |
-| PIN | AdminDashboardV2.jsx | 732-835 |
-| الإعدادات | AdminDashboardV2.jsx | 3049-3250 |
-| الاتصال | supabase-client.js | 148-203 |
-| المصادقة | auth-service.js | 11-50 |
-| الإصلاح الذكي | smart-repair-engine.js | 1-726 |
-| الذاكرة | memory-manager.js | 1-397 |
-
-## بيانات الوصول للصيانة
-- Supabase Dashboard: https://supabase.com/dashboard/project/rujwuruuosffcxazymit
-- Vercel Dashboard: https://vercel.com/bomussa
-- GitHub: https://github.com/Bomussa/love
-- الموقع: https://mmc-mms.com/admin`,
-
-  security: `# دليل الأمان — MMC-MMS
-
-## طبقات الأمان
-
-### 1. Vercel Bot Protection
-- تحدي تلقائي للمتصفحات الآلية
-- Bypass Token للاختبار: qGD96hT6lwJZCoyjAURAEnb3SCaJOW6V
-
-### 2. Supabase RLS (Row Level Security)
-- كل الجداول محمية بـ RLS
-- الجداول الإدارية تتطلب JWT صالح
-- الجداول العامة: قراءة مفتوحة فقط
-
-### 3. JWT Authentication
-- مدة الجلسة: محددة في auth-service.js
-- التخزين: localStorage
-- التحقق: عند كل طلب إداري
-
-### 4. أدوار المستخدمين
-- SUPER_ADMIN: كامل الصلاحيات
-- ADMIN: إدارة النظام
-- DOCTOR: عيادته فقط
-- RECEPTIONIST: الطابور والأرقام
-
-### 5. منع التكرار
-- منع نفس المريض يومياً: prevent_duplicate_patient_daily
-- منع نفس الجهاز يومياً: prevent_duplicate_device_daily
-- بصمة الجهاز: generateDeviceFingerprint() في supabase-client.js السطر 230
-
-### 6. HTTPS إلزامي
-- كل الاتصالات عبر HTTPS
-- Vercel يُطبّق HTTPS تلقائياً`,
-
-  api: `# وثيقة API الكاملة — MMC-MMS
-
-## Base URL
-Production: https://mmc-mms.com/api/v1
-Development: http://localhost:3000/api/v1
-
-## Authentication
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
-
-## Response Format
-{
-  "success": true/false,
-  "data": { ... },
-  "error": "message or null"
-}
-
-## Endpoints
-
-### GET /api/v1/health
-Response: { "status": "ok", "version": "2.0.0" }
-
-### POST /api/v1/admin/login
-Body: { "username": "string", "password": "string" }
-Response: { "token": "JWT", "user": { "role": "ADMIN" } }
-
-### GET /api/v1/admin/clinics
-Response: { "data": [ { "id", "name_ar", "name_en", "is_active", ... } ] }
-
-### POST /api/v1/admin/clinics
-Body: { "name_ar", "name_en", "clinic_code", "floor", "room_number", "is_active", "exam_type" }
-
-### GET /api/v1/admin/queues
-Query: ?date=2026-02-26&clinic_id=uuid
-Response: { "data": [ { "id", "patient_id", "display_number", "status", ... } ] }
-
-### POST /api/v1/queue/next
-Body: { "clinic_id": "uuid" }
-Response: { "data": { "patient": { ... }, "display_number": 5 } }
-
-### POST /api/v1/queue/done
-Body: { "queue_id": "int" }
-Response: { "success": true }
-
-### POST /api/v1/pin/validate
-Body: { "pin_code": "string", "clinic_code": "string" }
-Response: { "valid": true/false, "clinic": { ... } }
-
-### GET /api/v1/settings
-Response: { "data": { "center_name": "...", "queue_system_enabled": "true", ... } }
-
-### PATCH /api/v1/settings
-Body: { "key": "center_name", "value": "اللجنة الطبية" }
-
-### GET /api/v1/admin/reports/stats
-Response: { "data": { "total_patients": 11, "done": 5, "waiting": 4, "cancelled": 2 } }`,
-
-  deployment: `# دليل النشر — MMC-MMS
-
-## المنصات
-- Frontend + API: Vercel
-- Database: Supabase
-- Code: GitHub (Bomussa/love + Bomussa/love-api)
-
-## متغيرات البيئة المطلوبة في Vercel
-VITE_SUPABASE_URL=https://rujwuruuosffcxazymit.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_KEY=your-supabase-service-role-key
-
-## خطوات النشر
-1. git push origin main
-2. Vercel يكتشف التغيير تلقائياً
-3. يُشغّل pnpm build
-4. ينشر dist/ على CDN
-5. ينشر api/v1.js كـ Serverless Function
-
-## الدومين
-- mmc-mms.com → Vercel Project
-- www.mmc-mms.com → Redirect to mmc-mms.com
-
-## Vercel Project IDs
-- Project ID: prj_m4tXQKdhxlC6AptqG4CLfaCkzAkM
-- Org ID: team_aFtFTvzgabqENB5bOxn4SiO7`,
-
-  readme: `# MMC-MMS — نظام إدارة اللجنة الطبية العسكرية
-
-## الهدف
-نظام رقمي متكامل لإدارة اللجنة الطبية العسكرية يشمل:
-- إدارة طوابير المرضى في 18 عيادة
-- نظام الأرقام السرية (PIN) للتحقق
-- المسارات الطبية متعددة العيادات
-- لوحة إدارة شاملة بـ 21 تبويب
-- نظام ذكي للتشخيص والإصلاح التلقائي
-
-## التقنيات
-- Frontend: React 18 + Vite + TailwindCSS
-- Backend: Node.js Serverless (Vercel Functions)
-- Database: Supabase (PostgreSQL + Realtime)
-- Hosting: Vercel
-- Icons: Lucide React
-- Fonts: Cairo (خط كايرو)
-
-## الروابط
-- الموقع: https://mmc-mms.com
-- الإدارة: https://mmc-mms.com/admin
-- GitHub: https://github.com/Bomussa/love
-- Supabase: https://rujwuruuosffcxazymit.supabase.co
-
-## الإحصاءات
-- 94 ملف في المشروع
-- 52,000+ سطر كود
-- 28 مكوّن React
-- 97 جدول Supabase
-- 21 API endpoint
-- 21 تبويب إداري`,
-};
+// ===== محتوى الملفات =====
+// يتم توليده ديناميكياً من بيانات الفهرس داخل buildFileContent.
 
 // ===== المكوّن الرئيسي =====
 const FilesCenter = ({ language = 'ar', t }) => {
@@ -796,10 +290,22 @@ const FilesCenter = ({ language = 'ar', t }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const buildFileContent = (file) => {
+    const localizedPath = isAr ? 'المسار' : 'Path';
+    const localizedCategory = isAr ? 'الفئة' : 'Category';
+    const localizedSize = isAr ? 'الحجم التقريبي' : 'Approx size';
+    const localizedLines = isAr ? 'عدد الأسطر التقريبي' : 'Approx lines';
+    const localizedNoteTitle = isAr ? 'ملاحظة' : 'Note';
+    const localizedNote = isAr
+      ? 'هذه البطاقة تعرض بيانات تعريفية للملف من فهرس مركز الملفات، وقد لا تعكس المحتوى الكامل للملف.'
+      : 'This card shows indexed file metadata and may not represent the full file content.';
+
+    return `# ${file.fullName}\n\n${file.desc}\n\n- ${localizedPath}: ${file.path}\n- ${localizedCategory}: ${file.category}\n- ${localizedSize}: ${file.size}\n- ${localizedLines}: ${file.lines}\n\n## ${localizedNoteTitle}\n${localizedNote}`;
+  };
+
   // ===== خيارات الملف =====
   const handleOpen = (file) => {
-    const content = FILE_CONTENT[file.id] || 
-      `# ${file.fullName}\n\n${file.desc}\n\nالمسار: ${file.path}\nالحجم: ${file.size}\nعدد الأسطر: ${file.lines}`;
+    const content = buildFileContent(file);
     setOpenFile({ ...file, content });
     setEditMode(false);
     setEditContent(content);
@@ -807,7 +313,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   const handleEdit = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}`;
+    const content = buildFileContent(file);
     setOpenFile({ ...file, content });
     setEditMode(true);
     setEditContent(content);
@@ -815,7 +321,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   const handleExport = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}\n\nالمسار: ${file.path}`;
+    const content = buildFileContent(file);
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -830,7 +336,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   const handleExportPDF = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}`;
+    const content = buildFileContent(file);
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -887,7 +393,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   const handleCopy = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n${file.desc}`;
+    const content = buildFileContent(file);
     navigator.clipboard.writeText(content).then(() => {
       setCopiedId(file.id);
       setTimeout(() => setCopiedId(null), 2000);
