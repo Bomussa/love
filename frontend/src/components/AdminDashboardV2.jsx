@@ -5213,7 +5213,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .from('pins')
         .select('*', { count: 'exact', head: true })
         .gte('expires_at', now)
-        .is('used_count', 0);
+        // used_count حقل رقمي؛ يجب استخدام eq وليس is (is مخصص غالباً لـ NULL)
+        .eq('used_count', 0);
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
