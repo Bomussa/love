@@ -353,8 +353,9 @@ class AutoRepairSystem {
 // إنشاء مثيل عام من النظام
 export const autoRepairSystem = new AutoRepairSystem();
 
-// بدء المراقبة عند تحميل الصفحة
-if (typeof window !== 'undefined') {
+// ⚙️ لا نبدأ المراقبة تلقائياً على كل الشاشات لتقليل الضغط على واجهة المراجع.
+// يتم تفعيلها من App فقط عند الحاجة (غالباً شاشة الإدارة).
+if (typeof window !== 'undefined' && window.__MMC_ENABLE_GLOBAL_MONITORING__ === true) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       autoRepairSystem.startMonitoring();

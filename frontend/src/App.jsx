@@ -112,38 +112,53 @@ function App() {
   })
 
   const [currentView, setCurrentView] = useState('login')
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme') || 'medical-professional')
+
+  const resolveThemeStorageKey = (admin, patient, clinic) => {
+    if (admin) return 'selectedTheme:global';
+    if (patient?.id) return `selectedTheme:patient:${patient.id}`;
+    if (clinic?.id || clinic?.clinic_id) return `selectedTheme:clinic:${clinic.id || clinic.clinic_id}`;
+    return 'selectedTheme:public';
+  };
+
+  const readThemeFromStorage = (admin, patient, clinic) => {
+    const key = resolveThemeStorageKey(admin, patient, clinic);
+    const scopedTheme = localStorage.getItem(key);
+    if (scopedTheme) return scopedTheme;
+    const globalTheme = localStorage.getItem('selectedTheme:global');
+    return globalTheme || 'medical-professional';
+  };
+
+  const [currentTheme, setCurrentTheme] = useState(() => readThemeFromStorage(false, null, null))
   const [language, setLanguage] = useState(getCurrentLanguage())
 
-  // ============= AUTO REPAIR SYSTEM =============
+  // ============= AUTO REPAIR SYSTEM (Admin only for performance) =============
   useEffect(() => {
-    // تفعيل نظام الإصلاح التلقائي
+    const shouldEnableHeavyMonitoring = isAdmin || currentView === 'admin';
+    if (!shouldEnableHeavyMonitoring) {
+      return;
+    }
+
     autoRepairSystem.startMonitoring();
-    console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
-
     functionTableMonitor.startMonitoring();
-
-    // تفعيل نظام مراقبة العناصر التفاعلية
     elementMonitor.startMonitoring();
 
-    // تفعيل نظام الإصلاح التلقائي المتقدم
     const advancedRepair = new AdvancedAutoRepair(supabase);
     advancedRepair.startAutoRepair();
-    // تهيئة نظام المراقبة الذاتية الشامل
     healthMonitor.init(supabase);
 
-    // تفعيل نظام التقارير للعناصر التفاعلية
     const elementReporter = new InteractiveElementReporter();
     elementReporter.startReporting();
-    console.log('✅ نظام التقارير: تم التفعيل');
-    console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
-    console.log('✅ نظام مراقبة العناصر: تم التفعيل');
-    console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
+
+    console.log('✅ Admin monitoring enabled');
 
     return () => {
-      // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
+      autoRepairSystem.stopMonitoring();
+      functionTableMonitor.stopMonitoring();
+      elementMonitor.stopMonitoring();
+      advancedRepair.stopAutoRepair();
+      healthMonitor.stop();
     };
-  }, []);
+  }, [isAdmin, currentView]);
 
   // ============= ROUTING LOGIC - ✅ إصلاح شامل =============
   useEffect(() => {
@@ -207,9 +222,19 @@ function App() {
 
   // ============= THEME MANAGEMENT =============
   useEffect(() => {
+    const themeFromContext = readThemeFromStorage(isAdmin, patientData, clinicSession);
+    setCurrentTheme(themeFromContext);
+  }, [isAdmin, patientData?.id, clinicSession?.id, clinicSession?.clinic_id]);
+
+  useEffect(() => {
     applyTheme(currentTheme)
-    localStorage.setItem('selectedTheme', currentTheme)
-  }, [currentTheme])
+    const scopedKey = resolveThemeStorageKey(isAdmin, patientData, clinicSession);
+    localStorage.setItem(scopedKey, currentTheme);
+    if (isAdmin) {
+      // تغييرات الإدارة تعتبر عامة لجميع المستخدمين افتراضياً
+      localStorage.setItem('selectedTheme:global', currentTheme);
+    }
+  }, [currentTheme, isAdmin, patientData?.id, clinicSession?.id, clinicSession?.clinic_id])
 
   const applyTheme = (themeId) => {
     const theme = enhancedMedicalThemes.find(t => t.id === themeId)
