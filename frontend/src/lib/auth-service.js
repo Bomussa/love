@@ -1,11 +1,9 @@
 /**
  * Auth Service - Authentication System
- * Updated with Emergency Access and Robust Error Handling
- * السوبر أدمن: Bomussa / 14490
+ * يعتمد على endpoint موحد من backend مع fallback طارئ مضبوط
  */
 
 import api from './api-unified';
-import { validateAdminCredentials, ADMIN_CREDENTIALS } from '../config/admin-credentials';
 
 // ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
@@ -13,7 +11,7 @@ export const USER_ROLES = {
     id: 'SUPER_ADMIN',
     name: 'مدير النظام',
     nameEn: 'System Administrator',
-    permissions: ['*'] // جميع الصلاحيات
+    permissions: ['*'],
   },
   ADMIN: {
     id: 'ADMIN',
@@ -27,8 +25,8 @@ export const USER_ROLES = {
       'clinic_configuration',
       'settings',
       'user_management',
-      'activity_logs'
-    ]
+      'activity_logs',
+    ],
   },
   DOCTOR: {
     id: 'DOCTOR',
@@ -37,9 +35,9 @@ export const USER_ROLES = {
     permissions: [
       'dashboard',
       'queue_management',
-      'clinic_only', // ✅ صلاحية خاصة بالعيادات فقط
-      'patient_view'
-    ]
+      'clinic_only',
+      'patient_view',
+    ],
   },
   RECEPTIONIST: {
     id: 'RECEPTIONIST',
@@ -49,8 +47,8 @@ export const USER_ROLES = {
       'dashboard',
       'patient_registration',
       'queue_view',
-      'reports_view'
-    ]
+      'reports_view',
+    ],
   },
   VIEWER: {
     id: 'VIEWER',
@@ -59,77 +57,122 @@ export const USER_ROLES = {
     permissions: [
       'dashboard_view',
       'queue_view',
-      'reports_view'
-    ]
-  }
+      'reports_view',
+    ],
+  },
 };
 
-class AuthService {
-  constructor() {
+export class AuthService {
+  constructor({ apiClient = api, env = import.meta?.env ?? {}, now = () => Date.now() } = {}) {
+    this.api = apiClient;
+    this.env = env;
+    this.now = now;
     this.storageKey = 'mmc_admin_session';
     this.maxAttempts = 5;
-    this.lockoutDuration = 5 * 60 * 1000; // 5 mins
-    this.sessionTimeout = 60 * 60 * 1000; // 60 mins
-    this.failedAttempts = new Map(); // تتبع المحاولات الفاشلة
+    this.lockoutDuration = 5 * 60 * 1000;
+    this.sessionTimeout = 60 * 60 * 1000;
+    this.failedAttempts = new Map();
+  }
+
+  normalizeRole(role) {
+    const normalized = String(role || '').toUpperCase();
+    return USER_ROLES[normalized] ? normalized : 'ADMIN';
+  }
+
+  isBreakGlassEnabled() {
+    const mode = String(this.env.MODE || '').toLowerCase();
+    const enabled = String(this.env.VITE_BREAK_GLASS_ENABLED || '').toLowerCase() === 'true';
+    return enabled || mode === 'development';
+  }
+
+  getBreakGlassWindowMs() {
+    const value = Number(this.env.VITE_BREAK_GLASS_MAX_AGE_MS);
+    return Number.isFinite(value) && value > 0 ? value : 10 * 60 * 1000;
+  }
+
+  getBreakGlassCredentials() {
+    return {
+      username: String(this.env.VITE_BREAK_GLASS_USERNAME || '').trim().toLowerCase(),
+      password: String(this.env.VITE_BREAK_GLASS_PASSWORD || ''),
+      role: this.normalizeRole(this.env.VITE_BREAK_GLASS_ROLE || 'SUPER_ADMIN'),
+    };
+  }
+
+  canUseBreakGlass() {
+    const isEnabled = this.isBreakGlassEnabled();
+    const activatedAt = Number(this.env.VITE_BREAK_GLASS_ACTIVATED_AT || 0);
+
+    if (!isEnabled || !Number.isFinite(activatedAt) || activatedAt <= 0) {
+      return false;
+    }
+
+    return this.now() - activatedAt <= this.getBreakGlassWindowMs();
+  }
+
+  tryBreakGlass(username, password) {
+    if (!this.canUseBreakGlass()) {
+      return null;
+    }
+
+    const creds = this.getBreakGlassCredentials();
+    if (!creds.username || !creds.password) {
+      return null;
+    }
+
+    const matches = String(username || '').trim().toLowerCase() === creds.username
+      && String(password || '') === creds.password;
+
+    if (!matches) {
+      return null;
+    }
+
+    const session = this.createSession(username, creds.role);
+    return {
+      success: true,
+      session,
+      isFallback: true,
+      source: 'break_glass',
+      message: 'تم تسجيل الدخول عبر وضع الطوارئ المؤقت',
+    };
   }
 
   async login(username, password) {
     console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
 
     try {
-      // ✅ إصلاح: التحقق من السوبر أدمن أولاً وفوراً (بدون انتظار API)
-      // اسم المستخدم غير حساس لحالة الأحرف
-      const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] validateAdminCredentials result:', isValid);
-      console.log('[AuthService] Expected credentials:', { 
-        username: ADMIN_CREDENTIALS.username, 
-        passwordLength: ADMIN_CREDENTIALS.password?.length 
-      });
-
-      if (isValid) {
-        console.log('[AuthService] ✅ Super Admin Login - Instant Access');
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
+      const response = await this.api.adminLogin(username, password);
+      if (response?.success) {
+        const role = this.normalizeRole(response?.session?.role || response?.role);
+        const session = this.createSession(
+          response?.session?.username || username,
+          role,
+          response?.session,
+        );
+        return { success: true, session, source: 'api' };
       }
 
-      // 2. للمستخدمين الآخرين - تحقق عبر API مع timeout قصير
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني فقط
-
-        const response = await api.adminLogin(username, password);
-        clearTimeout(timeoutId);
-
-        if (response.success) {
-          const session = this.createSession(username, response.role || 'ADMIN');
-          return { success: true, session };
-        }
-        return { success: false, error: response.message || 'Invalid credentials' };
-      } catch (apiError) {
-        console.warn('[AuthService] API timeout or error:', apiError);
-        return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+      return {
+        success: false,
+        error: response?.message || response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة',
+      };
+    } catch (apiError) {
+      console.warn('[AuthService] API unavailable:', apiError?.message || apiError);
+      const fallbackResult = this.tryBreakGlass(username, password);
+      if (fallbackResult) {
+        return fallbackResult;
       }
-    } catch (error) {
-      console.error('[AuthService] Login error:', error);
-      // Fallback للسوبر أدمن في حالة الأخطاء
-      const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] Fallback validation:', isValid);
-      if (isValid) {
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
-      }
-      return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
+      return { success: false, error: 'تعذر الاتصال بالخادم. حاول لاحقًا.' };
     }
   }
 
-  createSession(username, role) {
+  createSession(username, role, overrides = {}) {
     const session = {
-      id: `sess_${Date.now()}`,
+      id: overrides.id || `sess_${this.now()}`,
       username,
       role,
-      name: username.toUpperCase(),
-      loginTime: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
+      name: overrides.name || String(username || '').toUpperCase(),
+      loginTime: overrides.loginTime || new Date(this.now()).toISOString(),
+      expiresAt: overrides.expiresAt || new Date(this.now() + this.sessionTimeout).toISOString(),
     };
     this.saveSession(session);
     return session;
@@ -149,14 +192,15 @@ class AuthService {
         return null;
       }
       return session;
-    } catch (e) { return null; }
+    } catch (e) {
+      return null;
+    }
   }
 
   saveSession(session) {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
   }
 
-  // ✅ إصلاح: التحقق من الصلاحيات
   hasPermission(permission) {
     const session = this.getSession();
     if (!session) return false;
@@ -164,23 +208,19 @@ class AuthService {
     const role = USER_ROLES[session.role];
     if (!role) return false;
 
-    // السوبر أدمن لديه جميع الصلاحيات
     if (role.permissions.includes('*')) return true;
 
     return role.permissions.includes(permission);
   }
 
-  // ✅ إصلاح: التحقق من عدة صلاحيات (واحد أو أكثر)
   hasAnyPermission(permissions) {
-    return permissions.some(p => this.hasPermission(p));
+    return permissions.some((p) => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: التحقق من جميع الصلاحيات المطلوبة
   hasAllPermissions(permissions) {
-    return permissions.every(p => this.hasPermission(p));
+    return permissions.every((p) => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: الحصول على صلاحيات المستخدم الحالي
   getCurrentPermissions() {
     const session = this.getSession();
     if (!session) return [];
@@ -189,13 +229,11 @@ class AuthService {
     return role ? role.permissions : [];
   }
 
-  // ✅ إصلاح: التحقق إذا كان المستخدم طبيب (للعرض في العيادات فقط)
   isDoctor() {
     const session = this.getSession();
     return session && session.role === 'DOCTOR';
   }
 
-  // ✅ إصلاح: التحقق من صلاحية العيادة فقط
   canAccessClinicOnly() {
     return this.hasPermission('clinic_only');
   }
