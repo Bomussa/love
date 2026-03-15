@@ -1,0 +1,15 @@
+title = "love secret scan config"
+
+[allowlist]
+description = "allow placeholders and legacy prebuilt bundles until regeneration"
+paths = [
+  '''dist/.*''',
+  '''frontend/dist/.*'''
+]
+regexes = [
+  '''your-supabase-anon-key''',
+  '''your-supabase-service-role-key''',
+  '''ghp_x{10,}''',
+  '''vercel_x{10,}''',
+  '''sbp_x{10,}'''
+]
