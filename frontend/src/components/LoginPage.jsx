@@ -85,8 +85,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
       const sanitizedUsername = sanitizeInput(adminUsername)
       logAdminLogin(sanitizedUsername)
       
-      // إرسال username:password كرمز واحد
-      await onAdminLogin(`${sanitizedUsername}:${adminPassword.trim()}`)
+      await onAdminLogin({ username: sanitizedUsername, password: adminPassword.trim() })
     } catch (error) {
       setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
     } finally {

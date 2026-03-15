@@ -26,7 +26,7 @@ async function loadConfigFiles() {
   }
   return { routeMap, clinicsData };
 }
-import { supabase } from './supabase-client';
+import { getSystemSetting, supabase } from './supabase-client';
 import { queueQueries } from './supabase-queries';
 
 // ✅ تحويل رموز العيادات إلى كائنات كاملة - مع دعم قاعدة البيانات
@@ -148,6 +148,11 @@ function sortClinicsByWeight(clinics, weights) {
 // يجلب الترتيب من قاعدة البيانات أولاً (routes table) مع حساب الأوزان الصحيح
 // ✅ الترتيب حسب الوزن عند بداية المسار فقط
 export async function getDynamicMedicalPathway(examType, gender) {
+  const allowDynamicRoutes = await getSystemSetting('ALLOW_DYNAMIC_ROUTES', true);
+  if (allowDynamicRoutes === false || allowDynamicRoutes === 'false' || allowDynamicRoutes === 0) {
+    console.warn('[getDynamicMedicalPathway] Dynamic routes disabled by ALLOW_DYNAMIC_ROUTES');
+    return [];
+  }
 
   // ✅ إصلاح: تحميل ملفات الإعداد أولاً
   const { routeMap: rm, clinicsData: cd } = await loadConfigFiles();
@@ -272,6 +277,7 @@ export async function getDynamicMedicalPathway(examType, gender) {
 // تحديث أسماء العيادات من البيانات المحفوظة لضمان عرض الأسماء الصحيحة
 export function enrichStationsWithClinicData(stations) {
   if (!stations || !Array.isArray(stations)) return stations;
+  if (!clinicsData) return stations;
 
   return stations.map((station) => {
     // البحث عن العيادة في clinicsData باستخدام id أو code

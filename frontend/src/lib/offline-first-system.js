@@ -703,4 +703,17 @@ export async function forceSyncNow() {
   return OFS.forceSyncNow();
 }
 
+export async function sendToServer(store, operation, payload = {}) {
+  switch (operation) {
+    case 'create':
+      return OFS.create(store, payload);
+    case 'update':
+      return OFS.update(store, payload.id, payload);
+    case 'delete':
+      return OFS.delete(store, payload.id);
+    default:
+      throw new Error(`Unsupported operation: ${operation}`);
+  }
+}
+
 export default OFS;
