@@ -122,7 +122,7 @@ class PINDailySync {
       const { data, error, count } = await this.supabase
         .from('pins')
         .delete()
-        .lt('expires_at', now);
+        .lt('valid_until', now);
 
       if (error) throw error;
 
@@ -147,10 +147,10 @@ class PINDailySync {
       const { data, error, count } = await this.supabase
         .from('pins')
         .update({
-          expires_at: tomorrow.toISOString()
+          valid_until: tomorrow.toISOString()
         })
-        .eq('is_active', true)
-        .lt('expires_at', new Date().toISOString());
+        .is('used_at', null)
+        .lt('valid_until', new Date().toISOString());
 
       if (error) throw error;
 
@@ -182,26 +182,26 @@ class PINDailySync {
           continue;
         }
 
-        // التحقق من أن clinic_code موجود
-        if (!pin.clinic_code) {
+        // التحقق من أن clinic_id موجود
+        if (!pin.clinic_id) {
           validationIssues++;
           continue;
         }
 
-        // التحقق من أن is_active موجود
-        if (pin.is_active === null || pin.is_active === undefined) {
+        // التحقق من وجود used_at
+        if (pin.used_at === undefined) {
           await this.supabase
             .from('pins')
-            .update({ is_active: true })
+            .update({ used_at: null })
             .eq('id', pin.id);
         }
 
-        // التحقق من أن expires_at في المستقبل
-        if (new Date(pin.expires_at) < new Date()) {
+        // التحقق من أن valid_until في المستقبل
+        if (new Date(pin.valid_until) < new Date()) {
           await this.supabase
             .from('pins')
             .update({
-              expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+              valid_until: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
             })
             .eq('id', pin.id);
         }
@@ -223,7 +223,7 @@ class PINDailySync {
       const { data: pins, error } = await this.supabase
         .from('pins')
         .select('*')
-        .eq('is_active', true);
+        .is('used_at', null);
 
       if (error) throw error;
 
@@ -231,12 +231,8 @@ class PINDailySync {
 
       for (const pin of pins) {
         // إعادة تعيين عداد الاستخدام إذا تجاوز الحد الأقصى
-        if (pin.used_count >= (pin.max_uses || 100)) {
-          await this.supabase
-            .from('pins')
-            .update({ used_count: 0 })
-            .eq('id', pin.id);
-          resetCount++;
+        if (pin.used_at) {
+          continue;
         }
       }
 
@@ -264,12 +260,13 @@ class PINDailySync {
       // الحصول على قائمة العيادات التي لديها أرقام PIN
       const { data: clinicsWithPins, error: pinsError } = await this.supabase
         .from('pins')
-        .select('clinic_code')
-        .eq('is_active', true);
+        .select('clinic_id')
+        .is('used_at', null)
+        .gt('valid_until', new Date().toISOString());
 
       if (pinsError) throw pinsError;
 
-      const clinicsWithPinIds = new Set(clinicsWithPins.map(p => p.clinic_code));
+      const clinicsWithPinIds = new Set(clinicsWithPins.map(p => p.clinic_id));
       const clinicsNeedingPins = clinics.filter(c => !clinicsWithPinIds.has(c.id));
 
       if (clinicsNeedingPins.length === 0) {
@@ -280,13 +277,10 @@ class PINDailySync {
       // توليد أرقام PIN للعيادات المفقودة
       const newPins = clinicsNeedingPins.map(clinic => ({
         pin: this.generateUniquePin(),
-        clinic_code: clinic.id,
-        is_active: true,
-        generated_at: new Date().toISOString(),
-        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        clinic_id: clinic.id,
+        used_at: null,
         created_at: new Date().toISOString(),
-        max_uses: 100,
-        used_count: 0
+        valid_until: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
       }));
 
       const { error: insertError } = await this.supabase
@@ -312,7 +306,7 @@ class PINDailySync {
       const { data: expiredPins, error } = await this.supabase
         .from('pins')
         .select('count(*)')
-        .lt('expires_at', new Date().toISOString());
+        .lt('valid_until', new Date().toISOString());
 
       if (error) throw error;
 

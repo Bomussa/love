@@ -2,6 +2,7 @@
 // Generate daily PIN for clinic entry (Updated 2025-11-18)
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { PIN_CONTRACT_SELECT, type PinContract } from '../_shared/pin-contract.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -45,9 +46,9 @@ serve(async (req: Request) => {
     const endOfDay = getEndOfDay();
 
     // Check if PIN already exists for today
-    const { data: existingPin, error: checkError } = await db
+    const { data: existingPin, error: checkError }: { data: PinContract | null; error: any } = await db
       .from('pins')
-      .select('*')
+      .select(PIN_CONTRACT_SELECT)
       .eq('clinic_id', clinic_id)
       .gte('valid_until', new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -90,7 +91,7 @@ serve(async (req: Request) => {
         valid_until: endOfDay,
         created_at: new Date().toISOString(),
       })
-      .select()
+      .select(PIN_CONTRACT_SELECT)
       .single();
 
     if (error) throw error;

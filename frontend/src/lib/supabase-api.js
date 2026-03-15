@@ -1,9 +1,9 @@
 /**
  * Supabase API Client - Frontend Library
- * Updated: Direct Supabase connection for PIN logic
- * Table: pins (clinic_code, pin, is_active, expires_at)
+ * Canonical pins contract: id, clinic_id, pin, created_at, valid_until, used_at
  */
 import { supabase } from './supabase-client';
+import { PIN_CONTRACT_SELECT, isPinActive } from '../contracts/pin-contract';
 
 class SupabaseApiClient {
   constructor() {
@@ -14,40 +14,41 @@ class SupabaseApiClient {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+      const nowIso = new Date().toISOString();
 
-      // 1. Get current active PIN
       const { data: current, error: currentError } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
-        .eq('clinic_code', clinicId)
-        .eq('is_active', true)
-        .order('generated_at', { ascending: false })
+        .select(PIN_CONTRACT_SELECT)
+        .eq('clinic_id', clinicId)
+        .is('used_at', null)
+        .gt('valid_until', nowIso)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (currentError) throw currentError;
 
-      // 2. Get all PINs issued today for this clinic
       const { data: allToday, error: allTodayError } = await supabase
         .from('pins')
-        .select('pin')
-        .eq('clinic_code', clinicId)
-        .gte('generated_at', todayISO)
-        .order('generated_at', { ascending: true });
+        .select(PIN_CONTRACT_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('created_at', today.toISOString())
+        .order('created_at', { ascending: true });
 
       if (allTodayError) throw allTodayError;
+
+      const validToday = (allToday || []).filter((pin) => isPinActive(pin));
 
       return {
         success: true,
         currentPin: current ? current.pin : null,
         pinId: current ? current.id : null,
-        clinicCode: current ? current.clinic_code : clinicId,
-        isActive: current ? current.is_active : false,
-        generatedAt: current ? current.generated_at : null,
-        expiresAt: current ? current.expires_at : null,
-        totalIssued: allToday ? allToday.length : 0,
-        allPins: allToday ? allToday.map((p) => p.pin) : [],
+        clinicId,
+        isActive: !!current,
+        createdAt: current ? current.created_at : null,
+        validUntil: current ? current.valid_until : null,
+        totalIssued: validToday.length,
+        allPins: validToday.map((p) => p.pin),
         dateKey: today.toLocaleDateString(),
       };
     } catch (error) {
@@ -58,29 +59,21 @@ class SupabaseApiClient {
 
   async issuePin(clinicId) {
     try {
-      // توليد PIN جديد من 4 أرقام
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const now = new Date();
-      const expiresAt = new Date(now);
-      expiresAt.setHours(23, 59, 59, 999);
+      const validUntil = new Date(now);
+      validUntil.setHours(23, 59, 59, 999);
 
-      // تعطيل جميع الـ PINs السابقة لهذه العيادة
       await supabase
         .from('pins')
-        .update({ is_active: false })
-        .eq('clinic_code', clinicId);
+        .update({ used_at: now.toISOString() })
+        .eq('clinic_id', clinicId)
+        .is('used_at', null);
 
-      // إضافة PIN جديد
       const { data, error } = await supabase
         .from('pins')
-        .insert([{
-          clinic_code: clinicId,
-          pin: newPin,
-          is_active: true,
-          generated_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-        }])
-        .select()
+        .insert([{ clinic_id: clinicId, pin: newPin, created_at: now.toISOString(), valid_until: validUntil.toISOString(), used_at: null }])
+        .select(PIN_CONTRACT_SELECT)
         .single();
 
       if (error) throw error;
@@ -99,25 +92,24 @@ class SupabaseApiClient {
 
   async verifyPin(clinicId, pin) {
     try {
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, expires_at')
-        .eq('clinic_code', clinicId)
+        .select(PIN_CONTRACT_SELECT)
+        .eq('clinic_id', clinicId)
         .eq('pin', pin)
-        .eq('is_active', true)
+        .is('used_at', null)
+        .gt('valid_until', nowIso)
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
-
-      // التحقق من صلاحية الـ PIN
-      const isValid = data && data.is_active
-                           && (!data.expires_at || new Date(data.expires_at) > new Date());
+      const valid = isPinActive(data, nowIso);
 
       return {
         success: true,
-        valid: isValid,
-        message: isValid ? 'رمز PIN صحيح' : 'رمز PIN غير صحيح أو منتهي الصلاحية',
+        valid,
+        message: valid ? 'رمز PIN صحيح' : 'رمز PIN غير صحيح أو منتهي الصلاحية',
       };
     } catch (error) {
       console.error('[supabase-api] verifyPin error:', error);
@@ -127,23 +119,25 @@ class SupabaseApiClient {
 
   async getAllPins() {
     try {
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
-        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
-        .eq('is_active', true)
-        .order('clinic_code', { ascending: true });
+        .select(PIN_CONTRACT_SELECT)
+        .is('used_at', null)
+        .gt('valid_until', nowIso)
+        .order('clinic_id', { ascending: true });
 
       if (error) throw error;
 
       return {
         success: true,
-        pins: data.map((p) => ({
+        pins: (data || []).map((p) => ({
           pinId: p.id,
           currentPin: p.pin,
-          clinicCode: p.clinic_code,
-          isActive: p.is_active,
-          generatedAt: p.generated_at,
-          expiresAt: p.expires_at,
+          clinicId: p.clinic_id,
+          isActive: isPinActive(p, nowIso),
+          createdAt: p.created_at,
+          validUntil: p.valid_until,
         })),
       };
     } catch (error) {

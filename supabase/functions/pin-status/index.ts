@@ -2,6 +2,7 @@
 // Get active daily PIN for a clinic (Updated 2025-11-18)
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { PIN_CONTRACT_SELECT, type PinContract } from '../_shared/pin-contract.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -38,9 +39,9 @@ serve(async (req: Request) => {
     const today = getTodayDateString();
 
     // Get today's active PIN
-    const { data: pins, error } = await db
+    const { data: pins, error }: { data: PinContract[] | null; error: any } = await db
       .from('pins')
-      .select('*')
+      .select(PIN_CONTRACT_SELECT)
       .eq('clinic_id', clinic_id)
       .gt('valid_until', now)
       .order('created_at', { ascending: false })

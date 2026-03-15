@@ -20,7 +20,7 @@ const INTEGRITY_CONFIG = {
     queues: ['patient_id', 'clinic_id', 'status'], // مراجع واحد في عيادة واحدة بحالة نشطة
     clinics: ['name'],
     notifications: ['patient_id', 'title', 'sent_at'],
-    pins: ['clinic_id', 'pin_code'],
+    pins: ['clinic_id', 'pin'],
     patient_routes: ['patient_id', 'exam_type'],
   },
 
@@ -29,7 +29,7 @@ const INTEGRITY_CONFIG = {
     queues: ['patient_id', 'clinic_id', 'status'],
     clinics: ['name', 'status'],
     notifications: ['title', 'message', 'type'],
-    pins: ['clinic_id', 'pin_code'],
+    pins: ['clinic_id', 'pin'],
     patient_routes: ['patient_id', 'exam_type'],
   },
 
