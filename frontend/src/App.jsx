@@ -297,7 +297,10 @@ function App() {
   const handleAdminLogin = async (credentials) => {
     try {
       console.log('[App] Admin login attempt');
-      const [username, password] = credentials.split(':')
+      const username = typeof credentials === 'string' ? credentials.split(':')[0] : credentials?.username;
+      const password = typeof credentials === 'string'
+        ? credentials.split(':').slice(1).join(':')
+        : credentials?.password;
 
       if (!username || !password) {
         showNotification(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password', 'error')
