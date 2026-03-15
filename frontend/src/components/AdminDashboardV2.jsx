@@ -673,7 +673,7 @@ const PINManagement = ({ language, t }) => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkGenerate, setShowBulkGenerate] = useState(false);
-  const [newPin, setNewPin] = useState({ pin_code: '', clinic_id: '', max_uses: 100 });
+  const [newPin, setNewPin] = useState({ pin_code: '', clinic_id: '', patient_id: '', max_uses: 100 });
   const [clinics, setClinics] = useState([]);
   const [generatingBulk, setGeneratingBulk] = useState(false);
 
@@ -700,16 +700,21 @@ const PINManagement = ({ language, t }) => {
   const loadPins = async () => {
     try {
       setLoading(true);
-      // جلب جميع أرقام PIN النشطة للعيادات
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pins')
-        .select('*')
-        .eq('is_active', true)
+        .select('id, clinic_id, pin, created_at, valid_until, used_at')
+        .is('used_at', null)
+        .gte('valid_until', now)
         .order('created_at', { ascending: false });
-      
+
       if (!error && data) {
-        // تصفية الأرقام لعرض أحدث رقم لكل عيادة فقط إذا لزم الأمر، أو عرض الكل
-        setPins(data);
+        // عرض أحدث PIN صالح فقط لكل عيادة
+        const latestByClinic = new Map();
+        data.forEach((row) => {
+          if (!latestByClinic.has(row.clinic_id)) latestByClinic.set(row.clinic_id, row);
+        });
+        setPins(Array.from(latestByClinic.values()));
       }
     } catch (e) {
       console.error('Error loading pins:', e);
@@ -740,7 +745,7 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      const existingPins = pins.filter(p => p.clinic_id === newPin.clinic_id).map(p => p.pin);
       const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
@@ -749,15 +754,23 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
+      const now = new Date();
+      const validUntil = new Date(now);
+      validUntil.setHours(23, 59, 59, 999);
+
+      // تعطيل أي PIN نشط سابق لنفس العيادة
+      await supabase
+        .from('pins')
+        .update({ used_at: now.toISOString() })
+        .eq('clinic_id', newPin.clinic_id)
+        .is('used_at', null);
+
       const { error } = await supabase.from('pins').insert({
         pin: pinCode,
-        clinic_code: newPin.clinic_id,
-        is_active: true,
-        generated_at: new Date().toISOString(),
-        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-        created_at: new Date().toISOString(),
-        max_uses: newPin.max_uses || 100,
-        used_count: 0
+        clinic_id: newPin.clinic_id,
+        created_at: now.toISOString(),
+        valid_until: validUntil.toISOString(),
+        used_at: null
       });
       
       if (!error) {
@@ -765,7 +778,7 @@ const PINManagement = ({ language, t }) => {
         await logActivity('pin_created', `تم إنشاء رقم سري ${pinCode} للعيادة ${newPin.clinic_id}`);
         loadPins();
         setShowAddForm(false);
-        setNewPin({ pin_code: '', clinic_id: '', max_uses: 100 });
+        setNewPin({ pin_code: '', clinic_id: '', patient_id: '', max_uses: 100 });
       } else {
         showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN'));
       }
@@ -780,26 +793,31 @@ const PINManagement = ({ language, t }) => {
       setGeneratingBulk(true);
       const existingPinsByClinic = {};
       pins.forEach(p => {
-        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
-        existingPinsByClinic[p.clinic_code].push(p.pin);
+        if (!existingPinsByClinic[p.clinic_id]) existingPinsByClinic[p.clinic_id] = [];
+        existingPinsByClinic[p.clinic_id].push(p.pin);
       });
       
       const newPins = [];
       for (const clinic of clinics) {
         const existingPins = existingPinsByClinic[clinic.id] || [];
         const pinCode = generateUniquePin(existingPins);
+        const now = new Date();
+        const validUntil = new Date(now);
+        validUntil.setHours(23, 59, 59, 999);
         newPins.push({
           pin: pinCode,
-          clinic_code: clinic.id,
-          is_active: true,
-          generated_at: new Date().toISOString(),
-          expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-          created_at: new Date().toISOString(),
-          max_uses: 100,
-          used_count: 0
+          clinic_id: clinic.id,
+          created_at: now.toISOString(),
+          valid_until: validUntil.toISOString(),
+          used_at: null
         });
       }
       
+      await supabase
+        .from('pins')
+        .update({ used_at: new Date().toISOString() })
+        .is('used_at', null);
+
       const { error } = await supabase.from('pins').insert(newPins);
       
       if (!error) {
@@ -820,10 +838,10 @@ const PINManagement = ({ language, t }) => {
   const deleteExpiredPins = async () => {
     try {
       const now = new Date().toISOString();
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from('pins')
         .delete()
-        .lt('expires_at', now);
+        .lt('valid_until', now);
       
       if (!error) {
         showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
@@ -834,17 +852,38 @@ const PINManagement = ({ language, t }) => {
     }
   };
 
-  const togglePinStatus = async (pinId, currentStatus) => {
+  const togglePinStatus = async (pin) => {
     try {
-      const { error } = await supabase
-        .from('pins')
-        .update({ is_active: !currentStatus })
-        .eq('id', pinId);
-      
-      if (!error) {
-        showSuccessToast(t(!currentStatus ? 'تم التفعيل' : 'تم التعطيل', !currentStatus ? 'Activated' : 'Deactivated'));
-        loadPins();
+      const nowIso = new Date().toISOString();
+      const isCurrentlyActive = !pin.used_at && !isPinExpired(pin.valid_until);
+
+      if (isCurrentlyActive) {
+        const { error } = await supabase
+          .from('pins')
+          .update({ used_at: nowIso })
+          .eq('id', pin.id);
+        if (error) throw error;
+      } else {
+        if (isPinExpired(pin.valid_until)) {
+          showErrorToast(t('لا يمكن تفعيل PIN منتهي الصلاحية', 'Cannot activate an expired PIN'));
+          return;
+        }
+
+        await supabase
+          .from('pins')
+          .update({ used_at: nowIso })
+          .eq('clinic_id', pin.clinic_id)
+          .is('used_at', null);
+
+        const { error } = await supabase
+          .from('pins')
+          .update({ used_at: null })
+          .eq('id', pin.id);
+        if (error) throw error;
       }
+      
+      showSuccessToast(t('تم تحديث الحالة', 'Status updated'));
+      loadPins();
     } catch (e) {
       console.error('Error toggling pin:', e);
     }
@@ -863,14 +902,16 @@ const PINManagement = ({ language, t }) => {
     }
   };
 
-  const getClinicName = (clinicCode) => {
-    const clinic = clinics.find(c => c.id === clinicCode);
-    return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicCode;
+  const getClinicName = (clinicId) => {
+    const clinic = clinics.find(c => c.id === clinicId);
+    return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicId;
   };
 
-  const isPinExpired = (expiresAt) => {
-    return new Date(expiresAt) < new Date();
+  const isPinExpired = (validUntil) => {
+    return !validUntil || new Date(validUntil) < new Date();
   };
+
+  const isPinActive = (pin) => !pin.used_at && !isPinExpired(pin.valid_until);
 
   return (
     <div className="space-y-6">
@@ -915,11 +956,11 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
+          <div className="text-2xl font-bold text-green-400">{pins.filter(isPinActive).length}</div>
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.valid_until)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
@@ -998,26 +1039,26 @@ const PINManagement = ({ language, t }) => {
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
                 <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
-                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
+                <td className="p-4">{getClinicName(pin.clinic_id)}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    isPinActive(pin) ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                    {isPinActive(pin) ? t('نشط', 'Active') : t('معطل', 'Inactive')}
                   </span>
                 </td>
                 <td className="p-4 text-gray-400 text-sm">
-                  {new Date(pin.created_at).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                  {new Date(pin.created_at || pin.valid_until).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
                 </td>
                 <td className="p-4">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
+                      onClick={() => togglePinStatus(pin)}
                       className={`p-2 rounded-lg transition-all ${
-                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        isPinActive(pin) ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       }`}
                     >
-                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
+                      {isPinActive(pin) ? <Pause size={16} /> : <Play size={16} />}
                     </button>
                     <button
                       onClick={() => deletePin(pin.id)}
@@ -2689,7 +2730,6 @@ const SystemStatus = ({ language, t }) => {
     // قائمة الجداول للفحص
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queue', label: t('الطابور (queue)', 'Queue') },
       { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
       { name: 'pins', label: t('الأرقام السرية', 'PINs') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },

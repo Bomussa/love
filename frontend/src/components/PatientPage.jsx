@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
@@ -27,6 +27,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [queuePositions, setQueuePositions] = useState({}) // Real-time queue positions
   const [directAlerts, setDirectAlerts] = useState([]) // التنبيهات المباشرة من الإدارة
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
+
+  const stationsRef = useRef(stations)
+
+  useEffect(() => {
+    stationsRef.current = stations
+  }, [stations])
 
   // إعدادات النظام - التحكم في إظهار/إخفاء وتفعيل/إيقاف الميزات
   const [systemSettings, setSystemSettings] = useState({
@@ -286,7 +292,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   // تحديث لحظي لحالة الطابور مع آلية الإصلاح التلقائي
   useEffect(() => {
-    if (!patientData?.id || stations.length === 0) return;
+    if (!patientData?.id) return;
 
     let retryCount = 0;
     let lastResponseTime = Date.now();
@@ -330,7 +336,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const start = Date.now();
       try {
         // ✅ إصلاح: إرسال طلب للعيادة الحالية فقط
-        const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
+        const currentStation = stationsRef.current.find(s => s.status === 'ready' && s.yourNumber !== null);
 
         if (currentStation) {
           const positionData = await api.getQueuePosition(currentStation.id, patientData.id);
@@ -462,7 +468,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       clearInterval(heartbeatInterval);
       supabase.removeChannel(statusChannel);
     };
-  }, [patientData?.id, language, stations.length]);
+  }, [patientData?.id, language]);
 
   // Listen to real-time notifications via eventBus
   useEffect(() => {

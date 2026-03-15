@@ -20,7 +20,7 @@ const ALL_TABLES = [
   'notifications', 'operation_progress', 'operation_queue', 'organization',
   'partial_results', 'pathways', 'patient_queue_numbers', 'patient_routes',
   'patient_sessions', 'patient_visits', 'patients', 'permanent_audit_logs', 'pins',
-  'queue', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending',
+  'queue_audit', 'queue_counters', 'queue_history', 'queue_pending',
   'queue_resettle', 'queues', 'rate_limits', 'reports', 'roles', 'route_steps',
   'routes', 'scheduler_jobs', 'sessions', 'settings', 'stats_daily', 'system_config',
   'system_settings', 'unified_queue', 'users'
