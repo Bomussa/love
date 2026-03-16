@@ -19,7 +19,8 @@
     "release:one-screen": "bash ./scripts/one-screen-release.sh",
     "check:migrations": "bash scripts/ci/check-migration-naming.sh",
     "test:integration:unified": "node scripts/ci/run-unified-integration.mjs",
-    "coverage:unified": "node scripts/ci/build-unified-coverage.mjs"
+    "coverage:unified": "node scripts/ci/build-unified-coverage.mjs",
+    "check:vercel-routes": "node scripts/ci/verify-vercel-health-routes.mjs"
   },
   "engines": {
     "node": "20.x"
