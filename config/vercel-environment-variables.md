@@ -36,6 +36,7 @@
 | المتغير | البيئة | آخر تحديث | الوصف |
 |---------|--------|-----------|-------|
 | `API_ORIGIN` | All Environments | 23h ago | أصل API |
+| `EXPORT_TOKEN` | All Environments | Required | توكن إجباري لتصدير metadata فقط من أسرار البيئة |
 | `DOMIN` | Development | 2d ago | الدومين |
 | `VITE_USE_SUPABASE` | All Environments | 2d ago | تفعيل استخدام Supabase |
 | `VITE_API_BASE_URL` | All Environments | Oct 31 | رابط API الأساسي |
@@ -44,12 +45,12 @@
 
 ## إحصائيات
 
-- **إجمالي المتغيرات:** 17
-- **متغيرات All Environments:** 11
+- **إجمالي المتغيرات:** 18
+- **متغيرات All Environments:** 12
 - **متغيرات Development فقط:** 6
 - **متغيرات Supabase:** 6
 - **متغيرات PostgreSQL:** 7
-- **متغيرات التطبيق:** 4
+- **متغيرات التطبيق:** 5
 
 ---
 
@@ -59,6 +60,7 @@
 2. ✅ المتغيرات موزعة بشكل صحيح بين البيئات
 3. ⚠️ بعض المتغيرات في Development فقط (POSTGRES_PASSWORD, SUPABASE_JWT_SECRET)
 4. ✅ متغيرات Vite مُعدة بشكل صحيح (VITE_ prefix)
+5. 🔒 `EXPORT_TOKEN` **إجباري** في كل البيئات (Development/Preview/Production) ولا يوجد قيمة افتراضية في الكود.
 
 ---
 
