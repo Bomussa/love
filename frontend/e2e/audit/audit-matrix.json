@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "baseUrl": "https://mmc-mms.com",
+  "wwwParityCheck": "https://www.mmc-mms.com",
+  "screens": [
+    { "id": "dashboard", "tabSelector": "[data-testid='admin-tab-dashboard']", "mainActions": [] },
+    { "id": "queues", "tabSelector": "[data-testid='admin-tab-queues']", "mainActions": [
+      { "id": "queues-refresh", "selector": "[data-testid='queues-refresh']", "expectedStates": ["enabled"] },
+      { "id": "queues-call-next", "selector": "[data-testid^='queues-call-next-']", "expectedStates": ["enabled", "disabled"], "conditional": true },
+      { "id": "queues-open-priority", "selector": "[data-testid^='queues-open-priority-']", "expectedStates": ["enabled"], "conditional": true },
+      { "id": "priority-modal-cancel", "selector": "[data-testid='priority-modal-cancel']", "expectedStates": ["enabled"], "popup": true, "conditional": true },
+      { "id": "priority-modal-submit", "selector": "[data-testid='priority-modal-submit']", "expectedStates": ["enabled", "disabled", "loading"], "popup": true, "conditional": true },
+      { "id": "edit-patient-modal-submit", "selector": "[data-testid='edit-patient-modal-submit']", "expectedStates": ["enabled", "disabled", "loading"], "popup": true, "conditional": true }
+    ] },
+    { "id": "pins", "tabSelector": "[data-testid='admin-tab-pins']", "mainActions": [] },
+    { "id": "notifications", "tabSelector": "[data-testid='admin-tab-notifications']", "mainActions": [] },
+    { "id": "routes", "tabSelector": "[data-testid='admin-tab-routes']", "mainActions": [] },
+    { "id": "floor_directions", "tabSelector": "[data-testid='admin-tab-floor_directions']", "mainActions": [] },
+    { "id": "reports", "tabSelector": "[data-testid='admin-tab-reports']", "mainActions": [] },
+    { "id": "clinics", "tabSelector": "[data-testid='admin-tab-clinics']", "mainActions": [] },
+    { "id": "system", "tabSelector": "[data-testid='admin-tab-system']", "mainActions": [] },
+    { "id": "settings", "tabSelector": "[data-testid='admin-tab-settings']", "mainActions": [] },
+    { "id": "users", "tabSelector": "[data-testid='admin-tab-users']", "mainActions": [] },
+    { "id": "activity", "tabSelector": "[data-testid='admin-tab-activity']", "mainActions": [] },
+    { "id": "backup", "tabSelector": "[data-testid='admin-tab-backup']", "mainActions": [] },
+    { "id": "offline", "tabSelector": "[data-testid='admin-tab-offline']", "mainActions": [] },
+    { "id": "content", "tabSelector": "[data-testid='admin-tab-content']", "mainActions": [] },
+    { "id": "appearance", "tabSelector": "[data-testid='admin-tab-appearance']", "mainActions": [] },
+    { "id": "database", "tabSelector": "[data-testid='admin-tab-database']", "mainActions": [] },
+    { "id": "features", "tabSelector": "[data-testid='admin-tab-features']", "mainActions": [] },
+    { "id": "apimonitor", "tabSelector": "[data-testid='admin-tab-apimonitor']", "mainActions": [] },
+    { "id": "files", "tabSelector": "[data-testid='admin-tab-files']", "mainActions": [] }
+  ],
+  "globalActions": [
+    { "id": "admin-go-home", "selector": "[data-testid='admin-go-home']", "expectedStates": ["enabled"] },
+    { "id": "admin-logout", "selector": "[data-testid='admin-logout']", "expectedStates": ["enabled"] }
+  ]
+}

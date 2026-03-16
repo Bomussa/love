@@ -417,6 +417,7 @@ const QueueManagement = ({ language, t }) => {
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">{t('إدارة الطوابير', 'Queue Management')}</h3>
         <button 
+          data-testid="queues-refresh"
           onClick={loadQueues}
           className="p-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
         >
@@ -447,6 +448,7 @@ const QueueManagement = ({ language, t }) => {
 
               <div className="flex gap-2">
                 <button
+                  data-testid={`queues-call-next-${clinic.id}`}
                   onClick={() => callNext(clinic.id)}
                   className="flex-1 py-2 bg-[#C9A54C] text-black rounded-lg font-medium hover:bg-[#B8943D] transition-all flex items-center justify-center gap-2"
                 >
@@ -454,6 +456,7 @@ const QueueManagement = ({ language, t }) => {
                   {t('التالي', 'Next')}
                 </button>
                 <button
+                  data-testid={`queues-open-priority-${clinic.id}`}
                   onClick={() => openPriorityModal(clinic.id)}
                   className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
                   title={t('تمرير دور', 'Priority Call')}
@@ -463,12 +466,14 @@ const QueueManagement = ({ language, t }) => {
                 {clinic.called.length > 0 && (
                   <>
                     <button
+                      data-testid={`queues-complete-${clinic.id}`}
                       onClick={() => completePatient(clinic.called[0].id)}
                       className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all"
                     >
                       <CheckCircle size={20} />
                     </button>
                     <button
+                      data-testid={`queues-skip-${clinic.id}`}
                       onClick={() => skipPatient(clinic.called[0].id)}
                       className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
                     >
@@ -490,6 +495,7 @@ const QueueManagement = ({ language, t }) => {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
+                            data-testid={`queues-edit-patient-${q.id}`}
                             onClick={() => openEditPatientModal(q)}
                             className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-all"
                             title={t('تعديل الرقم', 'Edit ID')}
@@ -515,7 +521,7 @@ const QueueManagement = ({ language, t }) => {
 
       {/* نافذة تمرير الدور */}
       {showPriorityModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div data-testid="priority-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl border border-white/10 p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
@@ -524,6 +530,7 @@ const QueueManagement = ({ language, t }) => {
               </h3>
               <button
                 onClick={() => setShowPriorityModal(false)}
+                data-testid="priority-modal-close"
                 className="p-2 hover:bg-white/10 rounded-lg transition-all"
               >
                 <X size={20} />
@@ -558,12 +565,14 @@ const QueueManagement = ({ language, t }) => {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowPriorityModal(false)}
+                  data-testid="priority-modal-cancel"
                   className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
                 <button
                   onClick={priorityCallPatient}
+                  data-testid="priority-modal-submit"
                   disabled={priorityLoading || !priorityPatientId.trim()}
                   className="flex-1 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -584,7 +593,7 @@ const QueueManagement = ({ language, t }) => {
 
       {/* نافذة تعديل الرقم العسكري */}
       {showEditPatientModal && editingPatient && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div data-testid="edit-patient-modal" className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl border border-white/10 p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
@@ -593,6 +602,7 @@ const QueueManagement = ({ language, t }) => {
               </h3>
               <button
                 onClick={() => setShowEditPatientModal(false)}
+                data-testid="edit-patient-modal-close"
                 className="p-2 hover:bg-white/10 rounded-lg transition-all"
               >
                 <X size={20} />
@@ -641,12 +651,14 @@ const QueueManagement = ({ language, t }) => {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowEditPatientModal(false)}
+                  data-testid="edit-patient-modal-cancel"
                   className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
                 >
                   {t('إلغاء', 'Cancel')}
                 </button>
                 <button
                   onClick={updatePatientId}
+                  data-testid="edit-patient-modal-submit"
                   disabled={editPatientLoading || !newPatientId.trim() || newPatientId === editingPatient.patient_id}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -5428,6 +5440,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        data-testid="admin-mobile-menu-toggle"
         className="lg:hidden fixed top-4 right-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
         aria-label="Toggle Menu"
       >
@@ -5464,6 +5477,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
             <button
               key={item.id}
               type="button"
+              data-testid={`admin-tab-${item.id}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5497,6 +5511,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/5 space-y-1 sm:space-y-2">
           <button 
             type="button"
+            data-testid="admin-go-home"
             onClick={(e) => {
               e.preventDefault();
               window.location.href = '/';
@@ -5517,6 +5532,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           </button>
           <button 
             type="button"
+            data-testid="admin-logout"
             onClick={(e) => {
               e.preventDefault();
               onLogout();

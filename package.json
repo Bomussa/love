@@ -17,7 +17,8 @@
     "test:smoke": "node --test scripts/smoke.test.ts",
     "ci:resilient": "./scripts/resilient-ci.sh",
     "release:one-screen": "bash ./scripts/one-screen-release.sh",
-    "check:migrations": "bash scripts/ci/check-migration-naming.sh"
+    "check:migrations": "bash scripts/ci/check-migration-naming.sh",
+    "audit:admin": "npm run audit:admin --workspace frontend"
   },
   "engines": {
     "node": "20.x"
