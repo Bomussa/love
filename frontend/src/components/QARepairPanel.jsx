@@ -129,7 +129,6 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         toast.error(t('يتعذر تشغيل الفحص العميق: جدول qa_runs غير موجود', 'Deep QA blocked: qa_runs table is missing'));
         return;
       }
-
       const { payload: result } = await requestJson('/api/v1/qa/deep_run', {}, { timeoutMs: 15000, retries: 1 });
       
       if (result.ok !== undefined) {
@@ -160,14 +159,19 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
       
       const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
-      const payload = repairToken
-        ? { findingId, token: repairToken }
-        : { findingId };
+      if (!repairToken) {
+        toast.dismiss();
+        toast.error(t('رمز الإصلاح غير مُعد في البيئة', 'Repair token is not configured'));
+        return;
+      }
 
       const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ 
+          findingId, 
+          token: repairToken 
+        })
       }, { timeoutMs: 15000, retries: 1 });
       
       toast.dismiss();
