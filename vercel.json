@@ -23,6 +23,14 @@
       "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },
     {
+      "source": "/api/health",
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/healthz"
+    },
+    {
+      "source": "/api/v1/status",
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/api-v1-status"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://love-api-bomussa.vercel.app/api/$1"
     },
