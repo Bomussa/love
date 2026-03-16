@@ -1,0 +1,144 @@
+name: Unified Frontend+Backend Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Release target
+        type: choice
+        required: true
+        options: [staging, production]
+        default: staging
+  push:
+    branches: [main]
+
+concurrency:
+  group: unified-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Deploy staging in love-api then love
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger love-api staging deployment
+        env:
+          GH_PAT: ${{ secrets.CROSS_REPO_GH_TOKEN }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_PAT}" \
+            https://api.github.com/repos/Bomussa/love-api/dispatches \
+            -d '{"event_type":"deploy-staging","client_payload":{"source_repo":"love","sha":"'"${GITHUB_SHA}"'"}}'
+
+      - name: Deploy staging on Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx vercel pull --yes --environment=preview --token "$VERCEL_TOKEN"
+          npx vercel deploy --prebuilt --token "$VERCEL_TOKEN" || npx vercel deploy --token "$VERCEL_TOKEN"
+
+  integration-tests:
+    name: Run frontend->backend integration checks
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    outputs:
+      success_rate: ${{ steps.metrics.outputs.success_rate }}
+      p0_failures: ${{ steps.metrics.outputs.p0_failures }}
+      p1_failures: ${{ steps.metrics.outputs.p1_failures }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run unified integration checks with correlation-id
+        env:
+          FRONTEND_BASE_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          FRONTEND_WWW_BASE_URL: ${{ secrets.STAGING_FRONTEND_WWW_URL }}
+          BACKEND_BASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scripts/ci/run-unified-integration.mjs
+
+      - name: Extract metrics
+        id: metrics
+        run: |
+          SUCCESS_RATE=$(node -e "console.log(require('./artifacts/integration-report.json').summary.successRate)")
+          P0=$(node -e "console.log(require('./artifacts/integration-report.json').summary.failedBySeverity.P0 || 0)")
+          P1=$(node -e "console.log(require('./artifacts/integration-report.json').summary.failedBySeverity.P1 || 0)")
+          echo "success_rate=$SUCCESS_RATE" >> "$GITHUB_OUTPUT"
+          echo "p0_failures=$P0" >> "$GITHUB_OUTPUT"
+          echo "p1_failures=$P1" >> "$GITHUB_OUTPUT"
+
+      - name: Build unified coverage artifact (endpoint + table + UI flow)
+        run: node scripts/ci/build-unified-coverage.mjs
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-coverage
+          path: artifacts/unified-coverage-report.*
+
+  pre-prod-checkpoint:
+    name: Create production rollback checkpoints
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.target == 'production' &&
+      fromJSON(needs.integration-tests.outputs.success_rate) > 98 &&
+      fromJSON(needs.integration-tests.outputs.p0_failures) == 0 &&
+      fromJSON(needs.integration-tests.outputs.p1_failures) == 0
+    outputs:
+      deployment_tag: ${{ steps.checkpoint.outputs.deployment_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create DB snapshot and deployment tag
+        id: checkpoint
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: ./scripts/ci/create-rollback-checkpoint.sh
+      - name: Upload DB snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-db-snapshot
+          path: ${{ steps.checkpoint.outputs.snapshot_path }}
+      - name: Push deployment tag checkpoint
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.checkpoint.outputs.deployment_tag }}" "${GITHUB_SHA}"
+          git push origin "${{ steps.checkpoint.outputs.deployment_tag }}"
+
+  deploy-production:
+    name: Promote to production
+    runs-on: ubuntu-latest
+    needs: [integration-tests, pre-prod-checkpoint]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.target == 'production' &&
+      fromJSON(needs.integration-tests.outputs.success_rate) > 98 &&
+      fromJSON(needs.integration-tests.outputs.p0_failures) == 0 &&
+      fromJSON(needs.integration-tests.outputs.p1_failures) == 0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger love-api production deployment
+        env:
+          GH_PAT: ${{ secrets.CROSS_REPO_GH_TOKEN }}
+          ROLLBACK_TAG: ${{ needs.pre-prod-checkpoint.outputs.deployment_tag }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_PAT}" \
+            https://api.github.com/repos/Bomussa/love-api/dispatches \
+            -d '{"event_type":"deploy-production","client_payload":{"source_repo":"love","sha":"'"${GITHUB_SHA}"'","rollback_tag":"'"${ROLLBACK_TAG}"'"}}'
+      - name: Deploy production on Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel deploy --prod --token "$VERCEL_TOKEN"

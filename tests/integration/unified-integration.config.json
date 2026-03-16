@@ -1,0 +1,35 @@
+{
+  "frontendFlows": [
+    {
+      "id": "ui-home-load",
+      "name": "Home page renders",
+      "url": "/",
+      "method": "GET",
+      "severity": "P0"
+    },
+    {
+      "id": "ui-www-domain-parity",
+      "name": "www domain serves the same app shell",
+      "url": "/",
+      "method": "GET",
+      "severity": "P1",
+      "target": "www"
+    }
+  ],
+  "backendEndpoints": [
+    {
+      "id": "api-healthz",
+      "name": "Health endpoint",
+      "path": "/functions/v1/healthz",
+      "method": "GET",
+      "severity": "P0"
+    },
+    {
+      "id": "api-v1-status",
+      "name": "API v1 status",
+      "path": "/functions/v1/api-v1-status",
+      "method": "GET",
+      "severity": "P1"
+    }
+  ]
+}
