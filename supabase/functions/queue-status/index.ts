@@ -31,16 +31,16 @@ serve(async (req: Request) => {
 
     // Get queue list
     const { data: queueList, error: e1 } = await db
-      .from('queue')
-      .select('id,position,status,entered_at,called_at,patient_id')
+      .from('queues')
+      .select('id,display_number,status,entered_at,called_at,patient_id')
       .eq('clinic_id', clinic_id)
-      .in('status', ['waiting', 'called'])
-      .order('position', { ascending: true });
+      .in('status', ['waiting', 'called', 'serving'])
+      .order('display_number', { ascending: true });
 
     if (e1) throw e1;
 
     // Get current serving
-    const serving = queueList?.filter((q) => q.status === 'called')[0];
+    const serving = queueList?.find((q) => q.status === 'serving' || q.status === 'called');
     const waiting = queueList?.filter((q) => q.status === 'waiting');
 
     return new Response(
@@ -50,9 +50,9 @@ serve(async (req: Request) => {
           clinic_id,
           queueLength: waiting?.length || 0,
           totalInQueue: queueList?.length || 0,
-          currentServing: serving?.position || null,
+          currentServing: serving?.display_number || null,
           next3: waiting?.slice(0, 3).map((q) => ({
-            position: q.position,
+            display_number: q.display_number,
             waiting_since: q.entered_at,
           })) || [],
         },

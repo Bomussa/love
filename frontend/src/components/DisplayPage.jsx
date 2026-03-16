@@ -51,7 +51,7 @@ export function DisplayPage({ clinicId, language }) {
           {
             event: '*',
             schema: 'public',
-            table: 'unified_queue',
+            table: 'queues',
             filter: `clinic_id=eq.${clinicId}`,
           },
           (payload) => {
@@ -97,10 +97,10 @@ export function DisplayPage({ clinicId, language }) {
     try {
       // جلب أول مراجع في حالة "called" أو "serving"
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('clinic_id', clinicId)
-        .in('status', ['called', 'serving'])
+        .in('status', ['serving', 'called'])
         .order('called_at', { ascending: true })
         .limit(1)
         .single()
