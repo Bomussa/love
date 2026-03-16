@@ -10,6 +10,12 @@ This playbook enforces a strict release cycle for **exactly one screen per PR**:
 6. Promote to **production** (only after staging smoke/UAT passes)
 7. Regression check (including `mmc-mms.com` vs `www.mmc-mms.com` parity)
 
+## Repository model (explicit)
+
+- `love` = Frontend only (Vercel project for web app).
+- `love-api` = Backend only (Supabase functions + API).
+- Any backend deployment trigger from this repo must target `Bomussa/love-api` instead of a local `api/` workspace.
+
 ## Secure secrets policy
 
 Never place tokens in code, commit messages, or chat logs. Use environment variables only:

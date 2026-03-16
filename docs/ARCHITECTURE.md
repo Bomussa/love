@@ -6,13 +6,15 @@
 
 نظام MMC-MMS مبني على معمارية حديثة تعتمد على:
 - **Frontend:** Vite + React (SPA)
-- **Backend:** Vercel Serverless Functions
+- **Backend:** مستودع مستقل `love-api` (Supabase Edge Functions + API Router)
 - **Database:** Supabase (PostgreSQL)
 - **Infrastructure:** Vercel Edge Network
 
 ---
 
 ## 📐 المعمارية العامة
+
+> **نموذج المستودعات:** هذا المستودع (`love`) خاص بالواجهة الأمامية فقط، بينما الـ Backend موجود في مستودع منفصل (`love-api`).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -142,65 +144,26 @@ Real-time subscriptions for live updates
 
 ## ⚙️ Backend Architecture
 
-### API Structure
+### Repository Model
+
+- **Frontend repo (this repo):** `love`
+- **Backend repo:** `love-api`
+- **Runtime backend platform:** Supabase Edge Functions + Postgres
+
+### Backend Structure (in `love-api`)
 
 ```
-api/
-├── index.js                  # Main API entry
-├── hello.js                  # Health check endpoint
-│
-├── v1/                       # API v1 endpoints
-│   ├── patients/            # Patients endpoints
-│   ├── clinics/             # Clinics endpoints
-│   ├── queue/               # Queue endpoints
-│   ├── auth/                # Authentication endpoints
-│   └── reports/             # Reports endpoints
-│
-├── lib/                      # Shared libraries
-│   ├── supabase.js          # Supabase client
-│   ├── helpers.js           # Helper functions
-│   ├── validators.js        # Input validation
-│   ├── db.js                # Database utilities
-│   └── api.js               # API utilities
-│
-└── _shared/                  # Shared resources
-    ├── utils.js             # Utility functions
-    ├── lock-manager.js      # Distributed locking
-    ├── activity-logger.js   # Activity logging
-    └── db-validator.js      # Database validation
+supabase/functions/
+├── api-router/               # Unified API router
+├── api-v1-status/            # Health + status endpoints
+└── ...                       # Domain endpoints (queue, patients, clinics, ...)
 ```
 
-### Serverless Functions
+### Contract Between Repos
 
-كل endpoint هو Serverless Function مستقلة:
-
-```javascript
-// Example: /api/v1/patients/create.js
-export default async function handler(req, res) {
-  // 1. Validate request
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // 2. Authenticate user
-  const user = await authenticate(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // 3. Validate input
-  const { militaryId, name } = req.body;
-  if (!militaryId || !name) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // 4. Business logic
-  const patient = await createPatient({ militaryId, name });
-
-  // 5. Return response
-  return res.status(201).json({ patient });
-}
-```
+- Frontend in `love` consumes `/api/v1/*` endpoints exposed by `love-api`.
+- API behavior/versioning is owned by backend releases in `love-api`.
+- `love` must not assume local `api/` workspace exists.
 
 ### API Versioning
 
