@@ -1,0 +1,13 @@
+[
+  { "component": "AdminDashboardV2", "testId": "admin-mobile-menu-toggle", "action": "click", "assertions": ["visible", "enabled"] },
+  { "component": "AdminDashboardV2", "testId": "admin-refresh-data-button", "action": "click", "assertions": ["visible", "enabled"] },
+  { "component": "QARepairPanel", "testId": "qa-run-deep-button", "action": "click", "assertions": ["visible", "enabled", "disabled"] },
+  { "component": "QARepairPanel", "testId": "qa-refresh-button", "action": "click", "assertions": ["visible", "enabled"] },
+  { "component": "QARepairPanel", "testId": "qa-loading-state", "action": "none", "assertions": ["visible"] },
+  { "component": "QARepairPanel", "testId": "qa-error-state", "action": "none", "assertions": ["visible"] },
+  { "component": "QARepairPanel", "testId": "qa-empty-state", "action": "none", "assertions": ["visible"] },
+  { "component": "FilesCenter", "testId": "files-search-input", "action": "click", "assertions": ["visible", "enabled"] },
+  { "component": "FilesCenter", "testId": "files-category-all", "action": "click", "assertions": ["visible", "enabled"] },
+  { "component": "FilesCenter", "testId": "files-viewer-modal", "action": "none", "assertions": ["visible"] },
+  { "component": "FilesCenter", "testId": "files-empty-state", "action": "none", "assertions": ["visible"] }
+]

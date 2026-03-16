@@ -1,0 +1,254 @@
+{
+  "generatedAt": "2026-03-15",
+  "scope": "frontend/src/components",
+  "components": [
+    {
+      "name": "AdminDashboardV2",
+      "file": "frontend/src/components/AdminDashboardV2.jsx",
+      "interactions": [
+        {
+          "id": "admin-mobile-menu-toggle",
+          "type": "button",
+          "testId": "admin-mobile-menu-toggle",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "admin-menu-item-dashboard",
+          "type": "button",
+          "states": [
+            "visible",
+            "enabled"
+          ],
+          "testIdPattern": "admin-menu-item-"
+        },
+        {
+          "id": "admin-home-button",
+          "type": "button",
+          "testId": "admin-home-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "admin-logout-button",
+          "type": "button",
+          "testId": "admin-logout-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "admin-toggle-language-button",
+          "type": "button",
+          "testId": "admin-toggle-language-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "admin-refresh-data-button",
+          "type": "button",
+          "testId": "admin-refresh-data-button",
+          "states": [
+            "visible",
+            "enabled",
+            "loading"
+          ]
+        },
+        {
+          "id": "admin-reset-stats-button",
+          "type": "button",
+          "testId": "admin-reset-stats-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "admin-mobile-overlay",
+          "type": "modal-overlay",
+          "testId": "admin-mobile-overlay",
+          "states": [
+            "visible"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "QARepairPanel",
+      "file": "frontend/src/components/QARepairPanel.jsx",
+      "interactions": [
+        {
+          "id": "qa-run-deep-button",
+          "type": "button",
+          "testId": "qa-run-deep-button",
+          "states": [
+            "visible",
+            "enabled",
+            "disabled",
+            "loading"
+          ]
+        },
+        {
+          "id": "qa-refresh-button",
+          "type": "button",
+          "testId": "qa-refresh-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "qa-finding-toggle-dynamic",
+          "type": "button",
+          "testIdPattern": "qa-finding-toggle-*",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "qa-repair-action-dynamic",
+          "type": "button",
+          "testIdPattern": "qa-repair-action-*",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "qa-loading-state",
+          "type": "state",
+          "testId": "qa-loading-state",
+          "states": [
+            "loading"
+          ]
+        },
+        {
+          "id": "qa-error-state",
+          "type": "state",
+          "testId": "qa-error-state",
+          "states": [
+            "error"
+          ]
+        },
+        {
+          "id": "qa-empty-state",
+          "type": "state",
+          "testId": "qa-empty-state",
+          "states": [
+            "empty"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "FilesCenter",
+      "file": "frontend/src/components/FilesCenter.jsx",
+      "interactions": [
+        {
+          "id": "files-search-input",
+          "type": "input",
+          "testId": "files-search-input",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-category-all",
+          "type": "button",
+          "states": [
+            "visible",
+            "enabled"
+          ],
+          "testIdPattern": "files-category-"
+        },
+        {
+          "id": "files-icon-dynamic",
+          "type": "clickable-icon",
+          "testIdPattern": "files-icon-*",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-menu-dynamic",
+          "type": "menu",
+          "testIdPattern": "files-menu-*",
+          "states": [
+            "visible"
+          ]
+        },
+        {
+          "id": "files-viewer-modal",
+          "type": "modal",
+          "testId": "files-viewer-modal",
+          "states": [
+            "visible"
+          ]
+        },
+        {
+          "id": "files-modal-edit-button",
+          "type": "button",
+          "testId": "files-modal-edit-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-modal-save-button",
+          "type": "button",
+          "testId": "files-modal-save-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-modal-export-md-button",
+          "type": "button",
+          "testId": "files-modal-export-md-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-modal-export-pdf-button",
+          "type": "button",
+          "testId": "files-modal-export-pdf-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-modal-close-button",
+          "type": "button",
+          "testId": "files-modal-close-button",
+          "states": [
+            "visible",
+            "enabled"
+          ]
+        },
+        {
+          "id": "files-empty-state",
+          "type": "state",
+          "testId": "files-empty-state",
+          "states": [
+            "empty"
+          ]
+        }
+      ]
+    }
+  ]
+}

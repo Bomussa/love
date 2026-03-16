@@ -430,6 +430,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
         {/* الأيقونة الرئيسية */}
         <div
           className="flex flex-col items-center cursor-pointer select-none"
+          data-testid={`files-icon-${file.id}`}
           onClick={() => setOpenMenu(isMenuOpen ? null : file.id)}
         >
           <div
@@ -451,6 +452,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
         {isMenuOpen && (
           <div
             ref={menuRef}
+            data-testid={`files-menu-${file.id}`}
             className="absolute z-50 rounded-xl shadow-2xl border overflow-hidden min-w-[160px]"
             style={{
               top: '100%',
@@ -479,6 +481,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
             ].map((opt, i) => (
               <button
                 key={i}
+                data-testid={`files-${file.id}-action-${String(opt.label).replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase()}`}
                 onClick={opt.action}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/10 transition-colors"
                 style={{ color: '#e8d5b7' }}
@@ -499,7 +502,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   return (
-    <div className="min-h-screen p-4" style={{ fontFamily: 'Cairo, sans-serif', direction: isAr ? 'rtl' : 'ltr' }}>
+    <div className="min-h-screen p-4" data-testid="files-center-root" data-state={filteredFiles.length === 0 ? 'empty' : openFile ? 'success' : 'ready'} style={{ fontFamily: 'Cairo, sans-serif', direction: isAr ? 'rtl' : 'ltr' }}>
       
       {/* إشعار */}
       {notification && (
@@ -539,6 +542,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
         <div className="flex-1 min-w-[200px] relative">
           <Search size={14} className="absolute top-1/2 -translate-y-1/2 text-gray-400" style={{ [isAr ? 'right' : 'left']: '10px' }} />
           <input
+            data-testid="files-search-input"
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -560,6 +564,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
           {categories.map(cat => (
             <button
               key={cat.id}
+              data-testid={`files-category-${cat.id}`}
               onClick={() => setActiveCategory(cat.id)}
               className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{
@@ -581,7 +586,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
           <FileIcon key={file.id} file={file} />
         ))}
         {filteredFiles.length === 0 && (
-          <div className="col-span-full text-center py-8 text-sm" style={{ color: '#666' }}>
+          <div data-testid="files-empty-state" className="col-span-full text-center py-8 text-sm" style={{ color: '#666' }}>
             {isAr ? 'لا توجد ملفات مطابقة' : 'No matching files'}
           </div>
         )}
@@ -589,7 +594,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
 
       {/* ===== نافذة قراءة/تعديل الملف ===== */}
       {openFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+        <div data-testid="files-viewer-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
           <div
             className="w-full max-w-4xl max-h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl"
             style={{ backgroundColor: '#0d0d1a', border: `2px solid ${openFile.color}44` }}
@@ -605,21 +610,21 @@ const FilesCenter = ({ language = 'ar', t }) => {
               </div>
               <div className="flex items-center gap-2">
                 {!editMode ? (
-                  <button onClick={() => setEditMode(true)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#f39c12' + '22', color: '#f39c12', border: '1px solid #f39c1244' }}>
+                  <button data-testid="files-modal-edit-button" onClick={() => setEditMode(true)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#f39c12' + '22', color: '#f39c12', border: '1px solid #f39c1244' }}>
                     <Edit3 size={12} /> {isAr ? 'تعديل' : 'Edit'}
                   </button>
                 ) : (
-                  <button onClick={handleSaveEdit} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#2ecc71' + '22', color: '#2ecc71', border: '1px solid #2ecc7144' }}>
+                  <button data-testid="files-modal-save-button" onClick={handleSaveEdit} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#2ecc71' + '22', color: '#2ecc71', border: '1px solid #2ecc7144' }}>
                     <CheckCircle size={12} /> {isAr ? 'حفظ' : 'Save'}
                   </button>
                 )}
-                <button onClick={() => handleExport(openFile)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#3498db' + '22', color: '#3498db', border: '1px solid #3498db44' }}>
+                <button data-testid="files-modal-export-md-button" onClick={() => handleExport(openFile)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#3498db' + '22', color: '#3498db', border: '1px solid #3498db44' }}>
                   <Download size={12} /> MD
                 </button>
-                <button onClick={() => handleExportPDF(openFile)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#e74c3c' + '22', color: '#e74c3c', border: '1px solid #e74c3c44' }}>
+                <button data-testid="files-modal-export-pdf-button" onClick={() => handleExportPDF(openFile)} className="px-3 py-1 rounded-lg text-xs flex items-center gap-1" style={{ backgroundColor: '#e74c3c' + '22', color: '#e74c3c', border: '1px solid #e74c3c44' }}>
                   <Printer size={12} /> PDF
                 </button>
-                <button onClick={() => { setOpenFile(null); setEditMode(false); }} className="p-1 rounded-lg" style={{ color: '#888' }}>
+                <button data-testid="files-modal-close-button" onClick={() => { setOpenFile(null); setEditMode(false); }} className="p-1 rounded-lg" style={{ color: '#888' }}>
                   <X size={18} />
                 </button>
               </div>
@@ -629,6 +634,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
             <div className="flex-1 overflow-auto p-5">
               {editMode ? (
                 <textarea
+                  data-testid="files-modal-editor"
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
                   className="w-full h-full min-h-[400px] rounded-xl p-4 text-sm font-mono outline-none resize-none"
@@ -654,6 +660,7 @@ const FilesCenter = ({ language = 'ar', t }) => {
                 {openFile.content.split('\n').filter(l => l.startsWith('## ')).slice(0, 6).map((heading, i) => (
                   <button
                     key={i}
+                    data-testid={`files-modal-jump-${i}`}
                     className="text-xs px-2 py-1 rounded-lg"
                     style={{ backgroundColor: openFile.color + '22', color: openFile.color, fontFamily: 'Cairo, sans-serif' }}
                     onClick={() => {

@@ -1,0 +1,29 @@
+name: interaction-coverage-gate
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/components/**'
+      - 'frontend/e2e/**'
+      - 'frontend/scripts/ci/check-interaction-coverage.mjs'
+      - 'frontend/package.json'
+      - '.github/workflows/interaction-coverage-gate.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/src/components/**'
+      - 'frontend/e2e/**'
+      - 'frontend/scripts/ci/check-interaction-coverage.mjs'
+      - 'frontend/package.json'
+
+jobs:
+  interaction-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:interaction-matrix --workspace frontend

@@ -5424,9 +5424,10 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   ];
 
   return (
-    <div className="min-h-screen min-h-[-webkit-fill-available] bg-[#0b0b0f] text-white font-sans selection:bg-[#C9A54C]/30">
+    <div className="min-h-screen min-h-[-webkit-fill-available] bg-[#0b0b0f] text-white font-sans selection:bg-[#C9A54C]/30" data-testid="admin-dashboard-root" data-state={loading ? 'loading' : activeTab ? 'success' : 'empty'}>
       {/* Mobile Menu Button */}
       <button
+        data-testid="admin-mobile-menu-toggle"
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         className="lg:hidden fixed top-4 right-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
         aria-label="Toggle Menu"
@@ -5464,6 +5465,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
             <button
               key={item.id}
               type="button"
+              data-testid={`admin-menu-item-${item.id}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5497,6 +5499,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         <div className="flex-shrink-0 p-3 sm:p-4 border-t border-white/5 space-y-1 sm:space-y-2">
           <button 
             type="button"
+            data-testid="admin-home-button"
             onClick={(e) => {
               e.preventDefault();
               window.location.href = '/';
@@ -5517,6 +5520,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           </button>
           <button 
             type="button"
+            data-testid="admin-logout-button"
             onClick={(e) => {
               e.preventDefault();
               onLogout();
@@ -5541,6 +5545,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div 
+          data-testid="admin-mobile-overlay"
           className="lg:hidden fixed inset-0 bg-black/50 z-[90]"
           onClick={() => setMobileMenuOpen(false)}
         />
@@ -5562,6 +5567,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
           <div className="flex items-center gap-3 flex-wrap">
             <button 
+              data-testid="admin-toggle-language-button"
               onClick={toggleLanguage}
               className="px-4 py-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/5 rounded-xl hover:bg-[#8A1538] transition-all flex items-center gap-2"
             >
@@ -5569,6 +5575,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
               <span>{language === 'ar' ? 'English' : 'العربية'}</span>
             </button>
             <button 
+              data-testid="admin-refresh-data-button"
               onClick={loadAllData}
               className="p-2 bg-yellow-500 text-black rounded-xl hover:bg-yellow-400 transition-all shadow-lg shadow-yellow-500/20"
               title={t('تحديث البيانات', 'Refresh Data')}
@@ -5576,6 +5583,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
               <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
+              data-testid="admin-reset-stats-button"
               onClick={handleResetStats}
               className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all flex items-center gap-2"
             >

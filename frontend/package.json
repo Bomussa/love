@@ -66,7 +66,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.mjs",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test:interaction-matrix": "node ./scripts/ci/check-interaction-coverage.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

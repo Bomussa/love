@@ -26,6 +26,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -61,6 +62,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       // جلب آخر 20 عملية فحص
       const { data: runs, error: runsError } = await supabase
@@ -94,6 +96,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       setRepairRuns(repairs || []);
     } catch (e) {
       console.error('Error loading QA data:', e);
+      setLoadError(e?.message || 'load_failed');
       toast.error(t('فشل تحميل البيانات', 'Failed to load data'));
     } finally {
       setLoading(false);
@@ -195,7 +198,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   };
 
   return (
-    <div className="space-y-6 p-6 animate-in fade-in duration-500">
+    <div className="space-y-6 p-6 animate-in fade-in duration-500" data-testid="qa-repair-panel" data-state={loading ? 'loading' : loadError ? 'error' : findings.length === 0 ? 'empty' : 'success'}>
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div>
@@ -210,6 +213,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         <button 
           onClick={startDeepQA} 
           disabled={running}
+          data-testid="qa-run-deep-button"
           className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
             running 
               ? 'bg-slate-700 text-slate-400 cursor-not-allowed' 
@@ -220,6 +224,24 @@ const QARepairPanel = ({ language = 'ar', t }) => {
           {t('تشغيل فحص عميق الآن', 'Run Deep QA Now')}
         </button>
       </div>
+
+      {loading && (
+        <div data-testid="qa-loading-state" className="text-sm text-slate-300 bg-slate-800/40 border border-white/10 rounded-xl p-4">
+          {t('جاري تحميل بيانات الفحص...', 'Loading QA data...')}
+        </div>
+      )}
+
+      {loadError && (
+        <div data-testid="qa-error-state" className="text-sm text-red-300 bg-red-900/20 border border-red-500/20 rounded-xl p-4">
+          {t('تعذر تحميل بيانات الفحص.', 'Unable to load QA data.')}
+        </div>
+      )}
+
+      {!loading && !loadError && filteredFindings.length === 0 && (
+        <div data-testid="qa-empty-state" className="text-sm text-slate-300 bg-slate-800/40 border border-white/10 rounded-xl p-4">
+          {t('لا توجد نتائج مطابقة حالياً.', 'No matching findings right now.')}
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -308,6 +330,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
 
           <button
             onClick={loadData}
+            data-testid="qa-refresh-button"
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center gap-2"
           >
             <RefreshCw size={16} />
@@ -397,6 +420,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setExpandedFinding(isExpanded ? null : finding.id)}
+                        data-testid={`qa-finding-toggle-${finding.id}`}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                       >
                         {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
@@ -405,6 +429,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
                       {!finding.is_resolved && (
                         <button
                           onClick={() => executeRepair(finding.id)}
+                          data-testid={`qa-repair-action-${finding.id}`}
                           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
                         >
                           <Wrench size={14} />
