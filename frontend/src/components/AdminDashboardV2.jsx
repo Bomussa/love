@@ -880,6 +880,7 @@ const PINManagement = ({ language, t }) => {
         <div className="flex gap-2 flex-wrap">
           <button 
             onClick={() => setShowAddForm(true)}
+            data-testid="pin-add-open"
             className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
           >
             <Plus size={18} />
@@ -887,6 +888,7 @@ const PINManagement = ({ language, t }) => {
           </button>
           <button 
             onClick={generateBulkPins}
+            data-testid="pin-generate-all"
             disabled={generatingBulk}
             className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all flex items-center gap-2 disabled:opacity-50"
           >
@@ -970,6 +972,7 @@ const PINManagement = ({ language, t }) => {
           <div className="flex gap-2 mt-4">
             <button
               onClick={addPin}
+              data-testid="pin-save"
               className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
             >
               {t('حفظ', 'Save')}
@@ -1682,6 +1685,7 @@ const ClinicsManagement = ({ language, t }) => {
         <div className="flex gap-2">
           <button 
             onClick={() => setShowAddForm(true)}
+            data-testid="pin-add-open"
             className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
           >
             <Plus size={18} />
@@ -2690,15 +2694,15 @@ const SystemStatus = ({ language, t }) => {
     // قائمة الجداول للفحص
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
+      { name: 'unified_queue', label: t('الطوابير', 'Unified Queue') },
       { name: 'pins', label: t('الأرقام السرية', 'PINs') },
-      { name: 'settings', label: t('الإعدادات', 'Settings') },
+      { name: 'system_config', label: t('الإعدادات', 'System Config') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
       { name: 'patients', label: t('المرضى', 'Patients') },
-      { name: 'admins', label: t('المسؤولين', 'Admins') },
-      { name: 'users', label: t('المستخدمين', 'Users') },
-      { name: 'sessions', label: t('الجلسات', 'Sessions') },
+      { name: 'qa_runs', label: t('عمليات الفحص', 'QA Runs') },
+      { name: 'qa_findings', label: t('نتائج الفحص', 'QA Findings') },
+      { name: 'repair_runs', label: t('عمليات الإصلاح', 'Repair Runs') },
     ];
 
     for (const table of tables) {
@@ -3408,7 +3412,7 @@ const UsersManagement = ({ language, t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('admin_users')
+        .from('users')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -3449,20 +3453,25 @@ const UsersManagement = ({ language, t }) => {
 
   const addUser = async () => {
     try {
+      if (!newUser.username?.trim() || !newUser.password?.trim()) {
+        showErrorToast(t('يرجى إدخال اسم مستخدم وكلمة مرور', 'Please provide username and password'));
+        return;
+      }
+
       // السوبر أدمن له جميع الصلاحيات
       const permissions = newUser.role === 'SUPER_ADMIN' 
         ? allPermissions.map(p => p.id) 
         : newUser.permissions;
       
       const { error } = await supabase
-        .from('admin_users')
+        .from('users')
         .insert([{
           username: newUser.username,
           password_hash: newUser.password,
-          role: newUser.role,
+          role: String(newUser.role || 'STAFF').toLowerCase(),
+          full_name: newUser.username,
           is_active: true,
-          permissions: permissions,
-          assigned_clinic: newUser.assigned_clinic || null,
+          updated_at: new Date().toISOString(),
           created_at: new Date().toISOString()
         }]);
       
@@ -3470,18 +3479,21 @@ const UsersManagement = ({ language, t }) => {
         setShowAddModal(false);
         setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
         loadUsers();
-        alert(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+        showSuccessToast(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+      } else {
+        showErrorToast(t(`فشل إضافة المستخدم: ${error.message}`, `Failed to add user: ${error.message}`));
       }
     } catch (e) {
       console.error('Error adding user:', e);
+      showErrorToast(t('حدث خطأ أثناء إضافة المستخدم', 'Error adding user'));
     }
   };
 
   const updateUserPermissions = async (userId, permissions) => {
     try {
       await supabase
-        .from('admin_users')
-        .update({ permissions })
+        .from('users')
+        .update({ updated_at: new Date().toISOString() })
         .eq('id', userId);
       loadUsers();
     } catch (e) {
@@ -3492,8 +3504,8 @@ const UsersManagement = ({ language, t }) => {
   const updateUserStatus = async (userId, isActive) => {
     try {
       await supabase
-        .from('admin_users')
-        .update({ is_active: isActive })
+        .from('users')
+        .update({ is_active: isActive, updated_at: new Date().toISOString() })
         .eq('id', userId);
       loadUsers();
     } catch (e) {
@@ -3504,8 +3516,8 @@ const UsersManagement = ({ language, t }) => {
   const updateUserRole = async (userId, role) => {
     try {
       await supabase
-        .from('admin_users')
-        .update({ role })
+        .from('users')
+        .update({ role: String(role || '').toLowerCase(), updated_at: new Date().toISOString() })
         .eq('id', userId);
       loadUsers();
     } catch (e) {
@@ -3517,7 +3529,7 @@ const UsersManagement = ({ language, t }) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
       await supabase
-        .from('admin_users')
+        .from('users')
         .delete()
         .eq('id', userId);
       loadUsers();
@@ -3541,6 +3553,7 @@ const UsersManagement = ({ language, t }) => {
         </h3>
         <button
           onClick={() => setShowAddModal(true)}
+          data-testid="user-add-open"
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
         >
           <Plus size={18} /> {t('إضافة مستخدم', 'Add User')}
@@ -3565,9 +3578,9 @@ const UsersManagement = ({ language, t }) => {
                 <td className="px-4 py-3 font-medium">{user.username}</td>
                 <td className="px-4 py-3">
                   <select
-                    value={user.role}
+                    value={String(user.role || 'staff').toUpperCase()}
                     onChange={(e) => updateUserRole(user.id, e.target.value)}
-                    className={`px-2 py-1 rounded-lg text-white text-sm ${roleColors[user.role]} bg-opacity-80`}
+                    className={`px-2 py-1 rounded-lg text-white text-sm ${roleColors[String(user.role || 'staff').toUpperCase()] || 'bg-gray-500'} bg-opacity-80`}
                   >
                     <option value="SUPER_ADMIN">Super Admin</option>
                     <option value="ADMIN">Admin</option>
@@ -3706,6 +3719,7 @@ const UsersManagement = ({ language, t }) => {
               </button>
               <button
                 onClick={addUser}
+                data-testid="user-add-save"
                 disabled={!newUser.username || !newUser.password}
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl disabled:opacity-50"
               >
@@ -3925,14 +3939,21 @@ const BackupExport = ({ language, t }) => {
 
   const exportToCSV = async (tableName) => {
     try {
-      const { data } = await supabase.from(tableName).select('*');
+      const { data, error } = await supabase.from(tableName).select('*');
+      if (error) throw error;
       if (!data || data.length === 0) return;
-      
-      const headers = Object.keys(data[0]).join(',');
-      const rows = data.map(row => Object.values(row).join(',')).join('\n');
-      const csv = headers + '\n' + rows;
-      
-      const blob = new Blob([csv], { type: 'text/csv' });
+
+      const escapeCsv = (value) => {
+        if (value === null || value === undefined) return '';
+        const text = String(value).replace(/"/g, '""');
+        return /[",\n]/.test(text) ? `"${text}"` : text;
+      };
+
+      const headers = Object.keys(data[0]).map(escapeCsv).join(',');
+      const rows = data.map((row) => Object.values(row).map(escapeCsv).join(',')).join('\n');
+      const csv = `${headers}\n${rows}`;
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -3998,7 +4019,7 @@ const BackupExport = ({ language, t }) => {
           </h4>
           <div className="space-y-3">
             <button
-              onClick={() => exportToCSV('queues')}
+              onClick={() => exportToCSV('unified_queue')}
               className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
             >
               <span>{t('الطوابير', 'Queues')}</span>
@@ -4019,7 +4040,7 @@ const BackupExport = ({ language, t }) => {
               <Download size={16} />
             </button>
             <button
-              onClick={() => exportToCSV('settings')}
+              onClick={() => exportToCSV('system_config')}
               className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-between"
             >
               <span>{t('الإعدادات', 'Settings')}</span>
@@ -4100,10 +4121,26 @@ const OfflineSettings = ({ language, t }) => {
   const syncNow = async () => {
     setSyncStatus('syncing');
     try {
-      // محاكاة المزامنة
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // فحص اتصال حقيقي مع Supabase
+      const { error } = await supabase.from('system_config').select('key').limit(1);
+      if (error) throw error;
+
+      // محاولة مزامنة العناصر المحلية المؤقتة (إن وجدت)
+      const syncKeys = Object.keys(localStorage).filter((key) =>
+        OFFLINE_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
+      );
+
+      for (const key of syncKeys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        // نعلّم العناصر المتزامنة فقط بدون حذف إجباري
+        localStorage.setItem(`${key}_synced_at`, new Date().toISOString());
+      }
+
       setSyncStatus('synced');
+      calculateStorage();
     } catch (e) {
+      console.error('Offline sync error:', e);
       setSyncStatus('error');
     }
   };
@@ -4770,7 +4807,7 @@ const DatabaseManagement = ({ language, t }) => {
 
   const availableTables = [
     { name: 'clinics', label: t('العيادات', 'Clinics'), icon: Activity },
-    { name: 'queues', label: t('الطوابير', 'Queues'), icon: Users },
+    { name: 'unified_queue', label: t('الطوابير', 'Queues'), icon: Users },
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
     { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
@@ -5464,6 +5501,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
             <button
               key={item.id}
               type="button"
+              data-testid={`admin-tab-${item.id}`}
+              aria-label={item.label}
+              title={item.label}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

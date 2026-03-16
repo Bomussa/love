@@ -1,0 +1,365 @@
+{
+  "generatedAt": "2026-03-15T23:54:18.549Z",
+  "origin": "https://mmc-mms.com",
+  "metadata": {
+    "scannerVersion": "2.0.0",
+    "apiDocPath": "docs/API.md",
+    "filesScannedCount": 79,
+    "filesScanned": [
+      "frontend/src/components/APIMonitor.jsx",
+      "frontend/src/components/AdminDashboardV2.jsx",
+      "frontend/src/components/AdminPINMonitor.jsx",
+      "frontend/src/components/AdminQueueMonitor.jsx",
+      "frontend/src/components/AdvancedNotificationsManager.jsx",
+      "frontend/src/components/Button.jsx",
+      "frontend/src/components/Card.jsx",
+      "frontend/src/components/ClinicDashboard.jsx",
+      "frontend/src/components/ClinicLoginPage.jsx",
+      "frontend/src/components/CountdownTimer.jsx",
+      "frontend/src/components/DisplayPage-Enhanced.jsx",
+      "frontend/src/components/DisplayPage.jsx",
+      "frontend/src/components/ErrorBoundaryEnhanced.jsx",
+      "frontend/src/components/ExamSelectionPage.jsx",
+      "frontend/src/components/FeatureControlPanel.jsx",
+      "frontend/src/components/FilesCenter.jsx",
+      "frontend/src/components/Header.jsx",
+      "frontend/src/components/HealthAlertBanner.jsx",
+      "frontend/src/components/Input.jsx",
+      "frontend/src/components/LiveStatisticsPanel.jsx",
+      "frontend/src/components/LoginPage.jsx",
+      "frontend/src/components/NotificationSystem.jsx",
+      "frontend/src/components/NotificationsManagementV2.jsx",
+      "frontend/src/components/OperationalNotificationsManager.jsx",
+      "frontend/src/components/PatientPage.jsx",
+      "frontend/src/components/QARepairPanel.jsx",
+      "frontend/src/components/QRScanner.jsx",
+      "frontend/src/components/QrScanPage.jsx",
+      "frontend/src/components/SelfHealingErrorBoundary.jsx",
+      "frontend/src/components/SmartDiagnosticsPanel.jsx",
+      "frontend/src/components/Toast.jsx",
+      "frontend/src/components/ZFDTicketDisplay.jsx",
+      "frontend/src/lib/accessibility.js",
+      "frontend/src/lib/activityLogger.js",
+      "frontend/src/lib/advanced-auto-repair.js",
+      "frontend/src/lib/api-unified.js",
+      "frontend/src/lib/app-health-monitor.js",
+      "frontend/src/lib/auth-service.js",
+      "frontend/src/lib/auth-service.test.js",
+      "frontend/src/lib/auto-repair-system.js",
+      "frontend/src/lib/cache-manager.js",
+      "frontend/src/lib/data-integrity-system.js",
+      "frontend/src/lib/dynamic-pathways.js",
+      "frontend/src/lib/element-monitor.js",
+      "frontend/src/lib/enhanced-themes.js",
+      "frontend/src/lib/eta.js",
+      "frontend/src/lib/function-table-monitor.js",
+      "frontend/src/lib/guaranteed-data-system.js",
+      "frontend/src/lib/i18n.js",
+      "frontend/src/lib/instant-update-broadcaster.js",
+      "frontend/src/lib/interactive-element-reporter.js",
+      "frontend/src/lib/network-status-monitor.js",
+      "frontend/src/lib/offline-first-system.js",
+      "frontend/src/lib/performance-monitor.js",
+      "frontend/src/lib/performance-optimizer.js",
+      "frontend/src/lib/persistent-connection.js",
+      "frontend/src/lib/pin-daily-sync.js",
+      "frontend/src/lib/queueManager.js",
+      "frontend/src/lib/queueSettings.js",
+      "frontend/src/lib/realtime-sync-manager.js",
+      "frontend/src/lib/request-deduplicator.js",
+      "frontend/src/lib/resilient-request.js",
+      "frontend/src/lib/retry-strategy.js",
+      "frontend/src/lib/routingManager.js",
+      "frontend/src/lib/self-healing/HealthMonitor.js",
+      "frontend/src/lib/self-healing/RecoveryPlaybooks.js",
+      "frontend/src/lib/self-healing/RepairLog.js",
+      "frontend/src/lib/self-healing/SafeModeManager.js",
+      "frontend/src/lib/self-healing/constants.js",
+      "frontend/src/lib/self-healing/index.js",
+      "frontend/src/lib/service-resilience.js",
+      "frontend/src/lib/settings.js",
+      "frontend/src/lib/statistics-engine.js",
+      "frontend/src/lib/supabase-api.js",
+      "frontend/src/lib/supabase-client.js",
+      "frontend/src/lib/supabase-queries.js",
+      "frontend/src/lib/utils.js",
+      "frontend/src/lib/validation.js",
+      "frontend/src/lib/validation.test.js"
+    ],
+    "interactiveFilesCount": 29,
+    "interactiveFiles": [
+      "frontend/src/components/APIMonitor.jsx",
+      "frontend/src/components/AdminDashboardV2.jsx",
+      "frontend/src/components/AdminPINMonitor.jsx",
+      "frontend/src/components/AdminQueueMonitor.jsx",
+      "frontend/src/components/AdvancedNotificationsManager.jsx",
+      "frontend/src/components/Button.jsx",
+      "frontend/src/components/ClinicDashboard.jsx",
+      "frontend/src/components/DisplayPage-Enhanced.jsx",
+      "frontend/src/components/DisplayPage.jsx",
+      "frontend/src/components/ErrorBoundaryEnhanced.jsx",
+      "frontend/src/components/ExamSelectionPage.jsx",
+      "frontend/src/components/FeatureControlPanel.jsx",
+      "frontend/src/components/FilesCenter.jsx",
+      "frontend/src/components/Header.jsx",
+      "frontend/src/components/HealthAlertBanner.jsx",
+      "frontend/src/components/LiveStatisticsPanel.jsx",
+      "frontend/src/components/LoginPage.jsx",
+      "frontend/src/components/NotificationSystem.jsx",
+      "frontend/src/components/NotificationsManagementV2.jsx",
+      "frontend/src/components/OperationalNotificationsManager.jsx",
+      "frontend/src/components/PatientPage.jsx",
+      "frontend/src/components/QARepairPanel.jsx",
+      "frontend/src/components/QRScanner.jsx",
+      "frontend/src/components/QrScanPage.jsx",
+      "frontend/src/components/SelfHealingErrorBoundary.jsx",
+      "frontend/src/components/SmartDiagnosticsPanel.jsx",
+      "frontend/src/components/Toast.jsx",
+      "frontend/src/components/ZFDTicketDisplay.jsx",
+      "frontend/src/lib/interactive-element-reporter.js"
+    ],
+    "featureCatalog": [
+      {
+        "feature": "Resilient HTTP layer",
+        "codes": [
+          "requestJson",
+          "resilientRequest"
+        ],
+        "locations": [
+          "frontend/src/lib/resilient-request.js",
+          "frontend/src/lib/api-unified.js"
+        ]
+      },
+      {
+        "feature": "Smart QA/Repair workflows",
+        "codes": [
+          "startDeepQA",
+          "executeRepair"
+        ],
+        "locations": [
+          "frontend/src/components/QARepairPanel.jsx",
+          "frontend/src/components/AdminDashboardV2.jsx"
+        ]
+      },
+      {
+        "feature": "Audit tooling",
+        "codes": [
+          "live-audit",
+          "full-surface-audit"
+        ],
+        "locations": [
+          "scripts/live-audit.mjs",
+          "scripts/full-surface-audit.mjs"
+        ]
+      },
+      {
+        "feature": "Auth break-glass safeguards",
+        "codes": [
+          "AuthService.login",
+          "tryBreakGlass"
+        ],
+        "locations": [
+          "frontend/src/lib/auth-service.js"
+        ]
+      }
+    ]
+  },
+  "fixedChecks": [
+    {
+      "url": "https://mmc-mms.com",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/",
+      "ok": true,
+      "bodyLength": 4111,
+      "error": null
+    },
+    {
+      "url": "https://mmc-mms.com/admin",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/admin",
+      "ok": true,
+      "bodyLength": 4111,
+      "error": null
+    },
+    {
+      "url": "https://www.mmc-mms.com",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/",
+      "ok": true,
+      "bodyLength": 4111,
+      "error": null
+    },
+    {
+      "url": "https://www.mmc-mms.com/admin",
+      "status": 200,
+      "finalUrl": "https://mmc-mms.com/admin",
+      "ok": true,
+      "bodyLength": 4111,
+      "error": null
+    }
+  ],
+  "apiEndpoints": [
+    {
+      "declaredMethod": "GET",
+      "probeMethod": "GET",
+      "path": "/api/v1/patients",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "POST",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/patients",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "GET",
+      "probeMethod": "GET",
+      "path": "/api/v1/patients/:id",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "PUT",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/patients/:id",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "DELETE",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/patients/:id",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "GET",
+      "probeMethod": "GET",
+      "path": "/api/v1/queue",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "POST",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/queue",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "PUT",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/queue/:id",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "GET",
+      "probeMethod": "GET",
+      "path": "/api/v1/clinics",
+      "status": 401,
+      "ok": true,
+      "error": null
+    },
+    {
+      "declaredMethod": "POST",
+      "probeMethod": "OPTIONS",
+      "path": "/api/v1/clinics",
+      "status": 401,
+      "ok": true,
+      "error": null
+    }
+  ],
+  "tables": [
+    {
+      "table": "unified_queue",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "clinics",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "patients",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "system_config",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "pins",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "qa_runs",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "qa_findings",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "repair_runs",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "smart_errors_log",
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    {
+      "table": "smart_fixes_log",
+      "status": 200,
+      "ok": true,
+      "error": null
+    }
+  ],
+  "repairSummary": {
+    "autoFixesApplied": [
+      {
+        "fix": "Normalized endpoint extraction from docs/API.md (escaped markdown support)",
+        "impact": "Endpoint coverage is now parsed and included in the audit output",
+        "status": "applied"
+      }
+    ],
+    "remainingErrors": [],
+    "notes": [
+      "Non-GET endpoints are probed safely via OPTIONS reachability checks."
+    ]
+  },
+  "summary": {
+    "totalChecks": 24,
+    "passedChecks": 24,
+    "failedChecks": 0,
+    "successRate": 100,
+    "canDeploy": true
+  }
+}
