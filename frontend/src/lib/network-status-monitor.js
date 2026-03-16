@@ -62,8 +62,8 @@ class NetworkStatusMonitor {
       const startTime = performance.now();
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch('/api/health', {
-        method: 'HEAD',
+      const response = await fetch('/functions/v1/healthz', {
+        method: 'GET',
         cache: 'no-cache',
         signal: controller.signal,
       });

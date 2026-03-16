@@ -26,7 +26,7 @@ const OUTPUT_FILE = process.env.OUTPUT_FILE || '';
 const STRICT_FAILURE_RATE = Number(process.env.STRICT_FAILURE_RATE || 10);
 
 const DEFAULT_ENDPOINTS = [
-  { id: 'health', method: 'GET', path: '/functions/v1/health', accept: ['application/json'] },
+  { id: 'healthz', method: 'GET', path: '/functions/v1/healthz', accept: ['application/json'] },
   { id: 'api-v1-status', method: 'GET', path: '/functions/v1/api-v1-status', accept: ['application/json'] },
   { id: 'events-stream', method: 'GET', path: '/functions/v1/events-stream', accept: ['text/event-stream', 'application/json'] },
   {
@@ -49,6 +49,15 @@ function loadEndpoints() {
 }
 
 const ENDPOINTS = loadEndpoints();
+
+const REQUIRED_HEALTH_PATH = '/functions/v1/healthz';
+
+function ensureRequiredHealthEndpoint(endpoints) {
+  const hasHealth = endpoints.some((endpoint) => endpoint?.path === REQUIRED_HEALTH_PATH && (endpoint?.method || 'GET') === 'GET');
+  if (!hasHealth) {
+    throw new Error(`Missing required health probe endpoint in smoke config: GET ${REQUIRED_HEALTH_PATH}`);
+  }
+}
 
 function sha256(content) {
   return createHash('sha256').update(content).digest('hex');
@@ -163,6 +172,7 @@ async function runHomepageParity() {
 }
 
 async function main() {
+  ensureRequiredHealthEndpoint(ENDPOINTS);
   const report = {
     generatedAt: new Date().toISOString(),
     config: {

@@ -955,7 +955,7 @@
 
 ## Essential Files
 
-/home/ubuntu/love-api/api/health.js
+/home/ubuntu/love-api/functions/v1/healthz.js
 /home/ubuntu/love-api/api/lib/helpers.js
 /home/ubuntu/love-api/api/lib/storage.js
 /home/ubuntu/love-api/api/maintenance.js
