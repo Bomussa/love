@@ -19,6 +19,26 @@
   ],
   "rewrites": [
     {
+      "source": "/functions/v1/healthz",
+      "has": [
+        {
+          "type": "host",
+          "value": "mmc-mms.com"
+        }
+      ],
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/healthz"
+    },
+    {
+      "source": "/functions/v1/healthz",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.mmc-mms.com"
+        }
+      ],
+      "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/healthz"
+    },
+    {
       "source": "/functions/v1/(.*)",
       "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },

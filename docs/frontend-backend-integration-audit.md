@@ -12,7 +12,7 @@
 | `/api/v1/qa/deep_run` | GET | فحص عميق للنظام | `frontend/src/components/QARepairPanel.jsx`, `frontend/src/components/AdminDashboardV2.jsx` |
 | `/api/v1/repair/execute` | POST | تنفيذ إصلاح تلقائي finding | `frontend/src/components/QARepairPanel.jsx`, `frontend/src/components/AdminDashboardV2.jsx` |
 | `/api/v1/events/stream` | SSE | بث أحداث آنية | `frontend/src/core/event-bus.js` |
-| `/api/health` | HEAD | فحص صحة الاتصال وجودة الشبكة | `frontend/src/lib/network-status-monitor.js` |
+| `/functions/v1/healthz` | GET | فحص صحة الاتصال وجودة الشبكة | `frontend/src/lib/network-status-monitor.js` |
 
 ## Supabase RPC functions used by frontend
 | RPC name | Purpose | Source |
