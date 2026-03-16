@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { requestJson } from '../lib/resilient-request';
 
 const QARepairPanel = ({ language = 'ar', t }) => {
+  const isRTL = language === 'ar';
   const [missingTables, setMissingTables] = useState([]);
   
   // States
@@ -159,19 +160,14 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
       
       const repairToken = import.meta.env.VITE_REPAIR_EXEC_TOKEN;
-      if (!repairToken) {
-        toast.dismiss();
-        toast.error(t('رمز الإصلاح غير مُعد في البيئة', 'Repair token is not configured'));
-        return;
-      }
+      const payload = repairToken
+        ? { findingId, token: repairToken }
+        : { findingId };
 
       const { payload: result } = await requestJson('/api/v1/repair/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          findingId, 
-          token: repairToken 
-        })
+        body: JSON.stringify(payload)
       }, { timeoutMs: 15000, retries: 1 });
       
       toast.dismiss();
