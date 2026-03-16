@@ -17,7 +17,8 @@
     "test:smoke": "node --test scripts/smoke.test.ts",
     "ci:resilient": "./scripts/resilient-ci.sh",
     "release:one-screen": "bash ./scripts/one-screen-release.sh",
-    "check:migrations": "bash scripts/ci/check-migration-naming.sh"
+    "check:migrations": "bash scripts/ci/check-migration-naming.sh",
+    "audit:live": "node scripts/live-audit.mjs"
   },
   "engines": {
     "node": "20.x"

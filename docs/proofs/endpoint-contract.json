@@ -1,0 +1,189 @@
+{
+  "generatedAt": "2026-03-15T23:11:46.903Z",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/v1/patients",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/patients",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/patients/:id",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/patients/:id",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/patients/:id",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/queue",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/queue",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/queue/:id",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/clinics",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/clinics",
+      "source": "docs",
+      "sources": [
+        "docs"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/api-v1-status",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/functions-proxy",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/healthz",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/functions/v1/login",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/pin-generate",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/pin-status",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/pin-verify",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/queue-call",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/queue-engine",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/queue-enter",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/queue-status",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/reports-daily",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/functions/v1/stats-dashboard",
+      "source": "love-local-backend",
+      "sources": [
+        "love-local-backend"
+      ]
+    }
+  ]
+}
