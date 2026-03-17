@@ -386,7 +386,7 @@ const api = {
         })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
-        .in('status', ['waiting', 'serving', 'called'])
+        .in('status', ['waiting', 'called', 'serving', 'in_service', 'in_progress'])
         .select();
 
       if (error) throw error;

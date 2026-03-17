@@ -205,9 +205,37 @@ const NotificationsManagementV2 = ({ language, t }) => {
 
   const sendNotification = async (id) => {
     try {
-      await supabase.from('notifications').update({ 
-        sent_at: new Date().toISOString()
+      const notif = notifications.find((item) => item.id === id);
+      const sentAt = new Date().toISOString();
+
+      await supabase.from('notifications').update({
+        sent_at: sentAt
       }).eq('id', id);
+
+      if (notif?.patient_id) {
+        const durationSeconds = Number(notif.display_duration || 30);
+        const expiresAt = new Date(Date.now() + (durationSeconds * 1000));
+        const alertType = notif.type === 'call' ? 'urgent' : (notif.type === 'alert' ? 'warning' : 'info');
+
+        const { error: directAlertError } = await supabase.from('direct_alerts').insert({
+          patient_id: String(notif.patient_id),
+          message: String(notif.message || ''),
+          message_en: String(notif.message_en || notif.message || ''),
+          alert_type: alertType,
+          sound_enabled: notif.type === 'call',
+          is_active: true,
+          expires_at: expiresAt.toISOString(),
+          created_at: sentAt,
+        });
+
+        if (directAlertError) {
+          console.error('Error creating direct alert:', directAlertError);
+          alert(t('تم إرسال الإشعار لكن فشل التنبيه المباشر', 'Notification sent, but direct alert failed'));
+          loadNotifications();
+          return;
+        }
+      }
+
       loadNotifications();
       alert(t('تم إرسال الإشعار', 'Notification sent'));
     } catch (e) {
