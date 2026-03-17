@@ -23,7 +23,7 @@
     "check:vercel-routes": "node scripts/ci/verify-vercel-health-routes.mjs"
   },
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "devDependencies": {
     "@vitejs/plugin-legacy": "^7.2.1"

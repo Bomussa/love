@@ -517,7 +517,7 @@ export async function getAllSystemSettings() {
     const { data, error } = await supabase
       .from('system_settings')
       .select('*')
-      .order('key');
+      .order('id');
 
     if (error) throw error;
 
@@ -525,9 +525,9 @@ export async function getAllSystemSettings() {
     const settings = {};
     data?.forEach((item) => {
       try {
-        settings[item.key] = JSON.parse(item.value);
+        settings[item.id] = JSON.parse(item.value);
       } catch {
-        settings[item.key] = item.value;
+        settings[item.id] = item.value;
       }
     });
 
