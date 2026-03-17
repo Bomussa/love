@@ -9,9 +9,9 @@
 
 ### 1) Backup & Export
 - JSON export uses real tables:
-  - `unified_queue`, `clinics`, `patients`.
+  - `queues` (canonical) with compatibility coverage for `unified_queue`, plus `clinics`, `patients`.
 - CSV export uses real tables:
-  - `unified_queue`, `clinics`, `patients`, `system_config`.
+  - `queues` (canonical) with compatibility coverage for `unified_queue`, plus `clinics`, `patients`, `system_config`.
 - CSV escaping fixed (quotes/newlines/commas) to avoid corrupt files.
 
 ### 2) Offline Mode
@@ -23,7 +23,7 @@
 - Existing appearance save/load path remains intact via Supabase-backed settings flow.
 
 ### 4) Database
-- Queue table binding aligned to real schema (`unified_queue` instead of `queues`) in management/export flows.
+- Queue contract aligned to canonical schema (`queues` physical table, `unified_queue` compatibility view) in management/export flows.
 
 ### 5) API Monitor
 - Live table checks and counters verified against real Supabase responses.
@@ -34,11 +34,11 @@
 ## Real-data validation executed
 
 ### Supabase read checks (anon key)
-- `clinics`, `patients`, `unified_queue`, `system_config`, `pins`, `qa_runs`, `qa_findings`, `repair_runs` returned HTTP 200.
+- `clinics`, `patients`, `queues` (plus `unified_queue` compatibility), `system_config`, `pins`, `qa_runs`, `qa_findings`, `repair_runs` returned HTTP 200.
 
 ### Supabase write checks (service role)
 - Inserted a test patient record then deleted it (rollback confirmed).
-- Performed no-op PATCH on `unified_queue` row (status unchanged) to verify update pipeline.
+- Performed no-op PATCH on canonical `queues` row (status unchanged) while preserving `unified_queue` compatibility contract.
 
 ### Website checks
 - Both domains return HTTP 200.

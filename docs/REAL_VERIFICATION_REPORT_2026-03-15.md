@@ -10,13 +10,13 @@
    - `https://www.mmc-mms.com`
    - `https://www.mmc-mms.com/admin`
 2. **Supabase read checks** على جداول النظام الحرجة:
-   - `unified_queue`, `clinics`, `patients`, `system_config`, `pins`
+   - `queues` (canonical), `unified_queue` (compat view), `clinics`, `patients`, `system_config`, `pins`
    - `qa_runs`, `qa_findings`, `repair_runs`
    - `smart_errors_log`, `smart_fixes_log`
 3. **Supabase write+rollback checks** (بيانات حقيقية ثم rollback):
    - `users` insert ثم delete
    - `pins` insert ثم delete
-   - `unified_queue` no-op PATCH
+   - `queues` (canonical path) no-op PATCH (with `unified_queue` compatibility retained)
 4. **Admin live login proof** عبر Playwright (دخول لوحة الإدارة والتقاط شاشة).
 
 ## النتائج الرقمية (من نفس الجولة)
