@@ -120,4 +120,152 @@ describe('AuthService login', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('لا يقبل بيانات break-glass الافتراضية غير المصرح بها', async () => {
+    const { AuthService } = await import('./auth-service');
+    const now = Date.now();
+    const service = new AuthService({
+      apiClient: {
+        adminLogin: async () => {
+          throw new Error('network down');
+        },
+      },
+      env: {
+        MODE: 'development',
+        VITE_BREAK_GLASS_ENABLED: 'true',
+        VITE_BREAK_GLASS_ACTIVATED_AT: String(now),
+      },
+      now: () => now,
+    });
+
+    const result = await service.login('admin', 'admin1234');
+
+    expect(result.success).toBe(false);
+  });
+
+  it('لا يفعل break-glass في التطوير بدون علم التفعيل الصريح', async () => {
+    const { AuthService } = await import('./auth-service');
+    const now = Date.now();
+    const service = new AuthService({
+      apiClient: {
+        adminLogin: async () => {
+          throw new Error('network down');
+        },
+      },
+      env: {
+        MODE: 'development',
+        VITE_BREAK_GLASS_USERNAME: 'Emergency',
+        VITE_BREAK_GLASS_PASSWORD: 'safe-pass',
+      },
+      now: () => now,
+    });
+
+    const result = await service.login('emergency', 'safe-pass');
+
+    expect(result.success).toBe(false);
+  });
+
+  it('يسمح بـ break-glass في التطوير عند التفعيل الصريح مع بيانات صحيحة', async () => {
+    const { AuthService } = await import('./auth-service');
+    const now = Date.now();
+    const service = new AuthService({
+      apiClient: {
+        adminLogin: async () => {
+          throw new Error('network down');
+        },
+      },
+      env: {
+        MODE: 'development',
+        VITE_BREAK_GLASS_ENABLED: 'true',
+        VITE_BREAK_GLASS_USERNAME: 'Emergency',
+        VITE_BREAK_GLASS_PASSWORD: 'safe-pass',
+        VITE_BREAK_GLASS_ROLE: 'SUPER_ADMIN',
+      },
+      now: () => now,
+    });
+
+    const result = await service.login('emergency', 'safe-pass');
+
+    expect(result.success).toBe(true);
+    expect(result.isFallback).toBe(true);
+    expect(result.session.role).toBe('SUPER_ADMIN');
+  });
+
+  it('يرفض break-glass إذا كان وقت التفعيل في المستقبل (إنتاج)', async () => {
+    const { AuthService } = await import('./auth-service');
+    const now = Date.now();
+    const service = new AuthService({
+      apiClient: {
+        adminLogin: async () => ({ success: false, status: 503 }),
+      },
+      env: {
+        MODE: 'production',
+        VITE_BREAK_GLASS_ENABLED: 'true',
+        VITE_BREAK_GLASS_ACTIVATED_AT: String(now + 60000),
+        VITE_BREAK_GLASS_MAX_AGE_MS: '600000',
+        VITE_BREAK_GLASS_USERNAME: 'Emergency',
+        VITE_BREAK_GLASS_PASSWORD: 'safe-pass',
+      },
+      now: () => now,
+    });
+
+    const result = await service.login('emergency', 'safe-pass');
+
+    expect(result.success).toBe(false);
+  });
+
+  it('ينظف اسم المستخدم قبل الإرسال للـ API وإنشاء الجلسة', async () => {
+    const { AuthService } = await import('./auth-service');
+    let capturedUsername = null;
+
+    const service = new AuthService({
+      apiClient: {
+        adminLogin: async (username) => {
+          capturedUsername = username;
+          return { success: true, role: 'ADMIN' };
+        },
+      },
+    });
+
+    const result = await service.login('  admin-user  ', 'secret');
+
+    expect(result.success).toBe(true);
+    expect(capturedUsername).toBe('admin-user');
+    expect(result.session.username).toBe('admin-user');
+  });
+
+  it('يرفض القيم الفارغة دون استدعاء API', async () => {
+    const { AuthService } = await import('./auth-service');
+    const adminLogin = vi.fn();
+
+    const service = new AuthService({
+      apiClient: { adminLogin },
+    });
+
+    const result = await service.login('   ', '');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('غير صحيحة');
+    expect(adminLogin).not.toHaveBeenCalled();
+  });
+
+  it('لا يرمي أخطاء عند غياب localStorage', async () => {
+    const { AuthService } = await import('./auth-service');
+    const originalStorage = global.localStorage;
+
+    // @ts-ignore - محاكاة بيئة SSR/اختبار بدون localStorage
+    delete global.localStorage;
+
+    const service = new AuthService({
+      apiClient: { adminLogin: async () => ({ success: true, role: 'ADMIN' }) },
+    });
+
+    const result = await service.login('admin', 'secret');
+
+    expect(result.success).toBe(true);
+    expect(() => service.getSession()).not.toThrow();
+    expect(service.getSession()).toBe(null);
+
+    global.localStorage = originalStorage;
+  });
 });
