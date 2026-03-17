@@ -1252,18 +1252,33 @@ const api = {
   async getActivePins() {
     try {
       const now = new Date().toISOString();
-      
-      const { data, error } = await supabase
+      const pinsMap = {};
+
+      // Canonical schema first
+      const canonical = await supabase
+        .from('pins')
+        .select('clinic_id, pin, valid_until, used_at')
+        .is('used_at', null)
+        .gte('valid_until', now);
+
+      if (!canonical.error && Array.isArray(canonical.data) && canonical.data.length > 0) {
+        canonical.data.forEach((p) => {
+          pinsMap[p.clinic_id] = { pin: p.pin, expiresAt: p.valid_until };
+        });
+        return { success: true, pins: pinsMap };
+      }
+
+      // Legacy fallback
+      const legacy = await supabase
         .from('pins')
         .select('clinic_code, pin, expires_at, used_count, max_uses, is_active')
         .eq('is_active', true)
         .gte('expires_at', now);
 
-      if (error) throw error;
+      if (legacy.error) throw legacy.error;
 
-      const pinsMap = {};
-      if (data) {
-        data.forEach((p) => {
+      if (legacy.data) {
+        legacy.data.forEach((p) => {
           if (Number(p.used_count || 0) < Number(p.max_uses || 0)) {
             pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
           }
@@ -1283,7 +1298,22 @@ const api = {
    */
   async deactivatePIN(clinicId) {
     try {
-      const { data, error} = await supabase
+      const now = new Date().toISOString();
+
+      // Canonical schema
+      const canonical = await supabase
+        .from('pins')
+        .update({ used_at: now })
+        .eq('clinic_id', clinicId)
+        .is('used_at', null)
+        .select();
+
+      if (!canonical.error && canonical.data?.length) {
+        return { success: true, data: canonical.data };
+      }
+
+      // Legacy fallback
+      const { data, error } = await supabase
         .from('pins')
         .update({ is_active: false })
         .eq('clinic_code', clinicId)
