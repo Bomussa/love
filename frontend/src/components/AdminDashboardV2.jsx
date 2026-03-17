@@ -91,8 +91,17 @@ const QueueManagement = ({ language, t }) => {
   const [editingPatient, setEditingPatient] = useState(null);
   const [newPatientId, setNewPatientId] = useState('');
   const [editPatientLoading, setEditPatientLoading] = useState(false);
+  const [queueTable, setQueueTable] = useState('queues');
+
+  const resolveQueueTable = async () => {
+    const { error } = await supabase.from('unified_queue').select('id').limit(1);
+    const tableName = error ? 'queues' : 'unified_queue';
+    setQueueTable(tableName);
+    return tableName;
+  };
 
   useEffect(() => {
+    resolveQueueTable();
     loadQueues();
     loadClinics();
     
@@ -130,9 +139,10 @@ const QueueManagement = ({ language, t }) => {
       setLoading(true);
       // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
       const today = new Date().toISOString().split('T')[0];
+      const activeQueueTable = await resolveQueueTable();
       
       const { data, error } = await supabase
-        .from('queues')
+        .from(activeQueueTable)
         .select('*')
         .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
         .order('display_number', { ascending: true });
@@ -163,7 +173,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       const { error } = await supabase
-        .from('queues')
+        .from(queueTable)
         .update({ status: 'serving', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -184,7 +194,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('queues')
+        .from(queueTable)
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', queueId);
       
@@ -207,7 +217,7 @@ const QueueManagement = ({ language, t }) => {
       const maxPostpones = 3;
       if (postponeCount >= maxPostpones) {
         const { error } = await supabase
-          .from('queues')
+          .from(queueTable)
           .update({ status: 'cancelled', postpone_count: postponeCount })
           .eq('id', queueId);
         
@@ -218,7 +228,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // ترحيل لنهاية الدور برقم جديد
         const { data: maxQueue } = await supabase
-          .from('queues')
+          .from(queueTable)
           .select('display_number')
           .eq('clinic_id', queue?.clinic_id)
           .order('display_number', { ascending: false })
@@ -228,7 +238,7 @@ const QueueManagement = ({ language, t }) => {
         const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
         
         const { error } = await supabase
-          .from('queues')
+          .from(queueTable)
           .update({ 
             status: 'waiting', 
             display_number: newDisplayNumber,
@@ -260,7 +270,7 @@ const QueueManagement = ({ language, t }) => {
       
       // البحث عن المراجع في قائمة الانتظار
       const { data: patientQueue, error: searchError } = await supabase
-        .from('queues')
+        .from(queueTable)
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
@@ -282,7 +292,7 @@ const QueueManagement = ({ language, t }) => {
 
         // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى"
         const { error: insertError } = await supabase
-          .from('queues')
+          .from(queueTable)
           .insert({
             clinic_id: priorityClinicId,
             patient_id: patient.id,
@@ -306,7 +316,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
         await supabase
-          .from('queues')
+          .from(queueTable)
           .update({ 
             status: 'serving', 
             called_at: new Date().toISOString(),
@@ -358,7 +368,7 @@ const QueueManagement = ({ language, t }) => {
       
       // تحديث الرقم في unified_queue
       const { error: queueError } = await supabase
-        .from('queues')
+        .from(queueTable)
         .update({ patient_id: newPatientId.trim() })
         .eq('id', editingPatient.id);
 
@@ -698,19 +708,39 @@ const PINManagement = ({ language, t }) => {
     if (data) setClinics(data);
   };
 
+  const normalizePin = (pinRow) => ({
+    ...pinRow,
+    clinic_ref: pinRow.clinic_id || pinRow.clinic_code,
+    expires_ref: pinRow.valid_until || pinRow.expires_at,
+    active_ref: (Object.prototype.hasOwnProperty.call(pinRow, 'used_at') ? !pinRow.used_at : pinRow.is_active),
+  });
+
   const loadPins = async () => {
     try {
       setLoading(true);
-      // جلب جميع أرقام PIN النشطة للعيادات
-      const { data, error } = await supabase
+      const nowIso = new Date().toISOString();
+
+      const canonical = await supabase
+        .from('pins')
+        .select('id, clinic_id, pin, valid_until, used_at, created_at')
+        .is('used_at', null)
+        .gte('valid_until', nowIso)
+        .order('created_at', { ascending: false });
+
+      if (!canonical.error && canonical.data) {
+        setPins(canonical.data.map(normalizePin));
+        return;
+      }
+
+      const legacy = await supabase
         .from('pins')
         .select('*')
         .eq('is_active', true)
+        .gte('expires_at', nowIso)
         .order('created_at', { ascending: false });
-      
-      if (!error && data) {
-        // تصفية الأرقام لعرض أحدث رقم لكل عيادة فقط إذا لزم الأمر، أو عرض الكل
-        setPins(data);
+
+      if (!legacy.error && legacy.data) {
+        setPins(legacy.data.map(normalizePin));
       }
     } catch (e) {
       console.error('Error loading pins:', e);
@@ -741,7 +771,7 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      const existingPins = pins.filter(p => p.clinic_ref === newPin.clinic_id).map(p => p.pin);
       const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
@@ -750,16 +780,27 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const { error } = await supabase.from('pins').insert({
+      const expiresAtIso = new Date(new Date().setHours(23, 59, 59, 999)).toISOString();
+      let { error } = await supabase.from('pins').insert({
         pin: pinCode,
-        clinic_code: newPin.clinic_id,
-        is_active: true,
-        generated_at: new Date().toISOString(),
-        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        clinic_id: newPin.clinic_id,
+        valid_until: expiresAtIso,
+        used_at: null,
         created_at: new Date().toISOString(),
-        max_uses: newPin.max_uses || 100,
-        used_count: 0
       });
+
+      if (error) {
+        ({ error } = await supabase.from('pins').insert({
+          pin: pinCode,
+          clinic_code: newPin.clinic_id,
+          is_active: true,
+          generated_at: new Date().toISOString(),
+          expires_at: expiresAtIso,
+          created_at: new Date().toISOString(),
+          max_uses: newPin.max_uses || 100,
+          used_count: 0
+        }));
+      }
       
       if (!error) {
         showSuccessToast(t(`تم إنشاء الرقم السري: ${pinCode}`, `PIN created: ${pinCode}`));
@@ -781,8 +822,8 @@ const PINManagement = ({ language, t }) => {
       setGeneratingBulk(true);
       const existingPinsByClinic = {};
       pins.forEach(p => {
-        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
-        existingPinsByClinic[p.clinic_code].push(p.pin);
+        if (!existingPinsByClinic[p.clinic_ref]) existingPinsByClinic[p.clinic_ref] = [];
+        existingPinsByClinic[p.clinic_ref].push(p.pin);
       });
       
       const newPins = [];
@@ -791,17 +832,28 @@ const PINManagement = ({ language, t }) => {
         const pinCode = generateUniquePin(existingPins);
         newPins.push({
           pin: pinCode,
-          clinic_code: clinic.id,
-          is_active: true,
-          generated_at: new Date().toISOString(),
-          expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+          clinic_id: clinic.id,
+          valid_until: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+          used_at: null,
           created_at: new Date().toISOString(),
-          max_uses: 100,
-          used_count: 0
         });
       }
       
-      const { error } = await supabase.from('pins').insert(newPins);
+      let { error } = await supabase.from('pins').insert(newPins);
+
+      if (error) {
+        const legacyPins = newPins.map((p) => ({
+          pin: p.pin,
+          clinic_code: p.clinic_id,
+          is_active: true,
+          generated_at: p.created_at,
+          expires_at: p.valid_until,
+          created_at: p.created_at,
+          max_uses: 100,
+          used_count: 0,
+        }));
+        ({ error } = await supabase.from('pins').insert(legacyPins));
+      }
       
       if (!error) {
         showSuccessToast(t(`تم توليد ${newPins.length} رقم سري`, `Generated ${newPins.length} PINs`));
@@ -821,10 +873,18 @@ const PINManagement = ({ language, t }) => {
   const deleteExpiredPins = async () => {
     try {
       const now = new Date().toISOString();
-      const { error, count } = await supabase
+      let { error } = await supabase
         .from('pins')
-        .delete()
-        .lt('expires_at', now);
+        .update({ used_at: now })
+        .lt('valid_until', now)
+        .is('used_at', null);
+
+      if (error) {
+        ({ error } = await supabase
+          .from('pins')
+          .delete()
+          .lt('expires_at', now));
+      }
       
       if (!error) {
         showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
@@ -837,10 +897,18 @@ const PINManagement = ({ language, t }) => {
 
   const togglePinStatus = async (pinId, currentStatus) => {
     try {
-      const { error } = await supabase
+      const nowIso = new Date().toISOString();
+      let { error } = await supabase
         .from('pins')
-        .update({ is_active: !currentStatus })
+        .update({ used_at: currentStatus ? nowIso : null })
         .eq('id', pinId);
+
+      if (error) {
+        ({ error } = await supabase
+          .from('pins')
+          .update({ is_active: !currentStatus })
+          .eq('id', pinId));
+      }
       
       if (!error) {
         showSuccessToast(t(!currentStatus ? 'تم التفعيل' : 'تم التعطيل', !currentStatus ? 'Activated' : 'Deactivated'));
@@ -918,11 +986,11 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
+          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.active_ref).length}</div>
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_ref)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
@@ -1002,12 +1070,12 @@ const PINManagement = ({ language, t }) => {
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
                 <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
-                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
+                <td className="p-4">{clinics.find(c => c.id === pin.clinic_ref)?.name_ar || pin.clinic_ref}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    pin.active_ref ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                    {pin.active_ref ? t('نشط', 'Active') : t('معطل', 'Inactive')}
                   </span>
                 </td>
                 <td className="p-4 text-gray-400 text-sm">
@@ -1016,12 +1084,12 @@ const PINManagement = ({ language, t }) => {
                 <td className="p-4">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
+                      onClick={() => togglePinStatus(pin.id, pin.active_ref)}
                       className={`p-2 rounded-lg transition-all ${
-                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        pin.active_ref ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       }`}
                     >
-                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
+                      {pin.active_ref ? <Pause size={16} /> : <Play size={16} />}
                     </button>
                     <button
                       onClick={() => deletePin(pin.id)}

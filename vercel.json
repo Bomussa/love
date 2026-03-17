@@ -23,12 +23,24 @@
       "destination": "https://rujwuruuosffcxazymit.supabase.co/functions/v1/$1"
     },
     {
+      "source": "/api/backend/health",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/health"
+    },
+    {
+      "source": "/api/backend/status",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/status"
+    },
+    {
+      "source": "/api/v1/health",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/health"
+    },
+    {
       "source": "/api/health",
       "destination": "/.well-known/healthz.json"
     },
     {
       "source": "/api/v1/status",
-      "destination": "/.well-known/healthz.json"
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/status"
     },
     {
       "source": "/api/(.*)",
