@@ -79,6 +79,17 @@ export class AuthService {
     return USER_ROLES[normalized] ? normalized : 'ADMIN';
   }
 
+  normalizeUsername(username) {
+    return String(username || '').trim();
+  }
+
+  getStorage() {
+    if (typeof localStorage === 'undefined' || !localStorage) {
+      return null;
+    }
+    return localStorage;
+  }
+
   isLocalRuntime() {
     if (typeof window === 'undefined') return false;
     const host = String(window.location.hostname || '').toLowerCase();
@@ -86,9 +97,11 @@ export class AuthService {
   }
 
   isBreakGlassEnabled() {
-    const mode = String(this.env.MODE || '').toLowerCase();
     const enabled = String(this.env.VITE_BREAK_GLASS_ENABLED || '').toLowerCase() === 'true';
-    return enabled || mode === 'development' || this.isLocalRuntime();
+    // Security hardening:
+    // Break-glass must always be explicitly enabled, even in development/local.
+    // This prevents accidental emergency-login activation due to runtime only.
+    return enabled;
   }
 
   getBreakGlassWindowMs() {
@@ -97,14 +110,14 @@ export class AuthService {
   }
 
   getBreakGlassCredentials() {
-    const mode = String(this.env.MODE || '').toLowerCase();
-    const useLocalFallback = mode === 'development' || this.isLocalRuntime();
-    const fallbackUsername = useLocalFallback ? 'admin' : '';
-    const fallbackPassword = useLocalFallback ? 'admin1234' : '';
+    // Security hardening: never allow implicit/default credentials.
+    // Break-glass access must always be explicitly configured via env vars.
+    const configuredUsername = String(this.env.VITE_BREAK_GLASS_USERNAME || '').trim().toLowerCase();
+    const configuredPassword = String(this.env.VITE_BREAK_GLASS_PASSWORD || '');
 
     return {
-      username: String(this.env.VITE_BREAK_GLASS_USERNAME || fallbackUsername).trim().toLowerCase(),
-      password: String(this.env.VITE_BREAK_GLASS_PASSWORD || fallbackPassword),
+      username: configuredUsername,
+      password: configuredPassword,
       role: this.normalizeRole(this.env.VITE_BREAK_GLASS_ROLE || 'SUPER_ADMIN'),
     };
   }
@@ -128,7 +141,13 @@ export class AuthService {
       return false;
     }
 
-    return this.now() - activatedAt <= this.getBreakGlassWindowMs();
+    const elapsedMs = this.now() - activatedAt;
+    if (elapsedMs < 0) {
+      // Reject future activation timestamps to prevent unintended bypasses.
+      return false;
+    }
+
+    return elapsedMs <= this.getBreakGlassWindowMs();
   }
 
   tryBreakGlass(username, password) {
@@ -141,14 +160,15 @@ export class AuthService {
       return null;
     }
 
-    const matches = String(username || '').trim().toLowerCase() === creds.username
+    const normalizedUsername = this.normalizeUsername(username);
+    const matches = normalizedUsername.toLowerCase() === creds.username
       && String(password || '') === creds.password;
 
     if (!matches) {
       return null;
     }
 
-    const session = this.createSession(username, creds.role);
+    const session = this.createSession(normalizedUsername, creds.role);
     return {
       success: true,
       session,
@@ -159,12 +179,22 @@ export class AuthService {
   }
 
   async login(username, password) {
+    const normalizedUsername = this.normalizeUsername(username);
+    const normalizedPassword = String(password || '');
+
+    if (!normalizedUsername || !normalizedPassword) {
+      return {
+        success: false,
+        error: 'اسم المستخدم أو كلمة المرور غير صحيحة',
+      };
+    }
+
     try {
-      const response = await this.api.adminLogin(username, password);
+      const response = await this.api.adminLogin(normalizedUsername, normalizedPassword);
       if (response?.success) {
         const role = this.normalizeRole(response?.session?.role || response?.role);
         const session = this.createSession(
-          response?.session?.username || username,
+          response?.session?.username || normalizedUsername,
           role,
           response?.session,
         );
@@ -175,7 +205,7 @@ export class AuthService {
       const shouldUseFallback = status === 0 || status >= 500;
 
       if (shouldUseFallback) {
-        const fallbackResult = this.tryBreakGlass(username, password);
+        const fallbackResult = this.tryBreakGlass(normalizedUsername, normalizedPassword);
         if (fallbackResult) {
           return fallbackResult;
         }
@@ -187,7 +217,7 @@ export class AuthService {
       };
     } catch (apiError) {
       console.warn('[AuthService] API unavailable:', apiError?.message || apiError);
-      const fallbackResult = this.tryBreakGlass(username, password);
+      const fallbackResult = this.tryBreakGlass(normalizedUsername, normalizedPassword);
       if (fallbackResult) {
         return fallbackResult;
       }
@@ -196,11 +226,12 @@ export class AuthService {
   }
 
   createSession(username, role, overrides = {}) {
+    const normalizedUsername = this.normalizeUsername(overrides.username || username);
     const session = {
       id: overrides.id || `sess_${this.now()}`,
-      username,
+      username: normalizedUsername,
       role,
-      name: overrides.name || String(username || '').toUpperCase(),
+      name: overrides.name || String(normalizedUsername || '').toUpperCase(),
       loginTime: overrides.loginTime || new Date(this.now()).toISOString(),
       expiresAt: overrides.expiresAt || new Date(this.now() + this.sessionTimeout).toISOString(),
     };
@@ -209,12 +240,15 @@ export class AuthService {
   }
 
   logout() {
-    localStorage.removeItem(this.storageKey);
+    const storage = this.getStorage();
+    storage?.removeItem(this.storageKey);
   }
 
   getSession() {
     try {
-      const data = localStorage.getItem(this.storageKey);
+      const storage = this.getStorage();
+      if (!storage) return null;
+      const data = storage.getItem(this.storageKey);
       if (!data) return null;
       const session = JSON.parse(data);
       if (new Date(session.expiresAt) < new Date()) {
@@ -228,7 +262,8 @@ export class AuthService {
   }
 
   saveSession(session) {
-    localStorage.setItem(this.storageKey, JSON.stringify(session));
+    const storage = this.getStorage();
+    storage?.setItem(this.storageKey, JSON.stringify(session));
   }
 
   hasPermission(permission) {
