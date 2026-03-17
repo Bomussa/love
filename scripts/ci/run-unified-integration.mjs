@@ -1,14 +1,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const configPath = path.resolve('tests/integration/unified-integration.config.json');
 const reportPath = path.resolve('artifacts/integration-report.json');
 
 const frontendBase = (process.env.FRONTEND_BASE_URL || 'https://mmc-mms.com').replace(/\/$/, '');
 const frontendWWWBase = (process.env.FRONTEND_WWW_BASE_URL || 'https://www.mmc-mms.com').replace(/\/$/, '');
-const backendBase = (process.env.BACKEND_BASE_URL || 'https://rujwuruuosffcxazymit.supabase.co').replace(/\/$/, '');
+const backendBase = (process.env.BACKEND_BASE_URL || frontendBase).replace(/\/$/, '');
 const anonToken = process.env.SUPABASE_ANON_KEY || '';
+const execFileAsync = promisify(execFile);
 
 const now = new Date().toISOString();
 
@@ -18,15 +21,51 @@ const correlationId = () => `corr-${Date.now()}-${crypto.randomUUID()}`;
 
 const safeText = async (res) => {
   try {
-    return (await res.text()).slice(0, 1000);
+    return await res.text();
   } catch {
     return '';
   }
 };
 
+const toSnippet = (text) => text.slice(0, 1000);
+
+const resolveBase = (item, type) => {
+  if (item.base === 'frontend-www') {
+    return frontendWWWBase;
+  }
+  if (item.base === 'frontend') {
+    return frontendBase;
+  }
+  if (type === 'frontend') {
+    return item.target === 'www' ? frontendWWWBase : frontendBase;
+  }
+  return backendBase;
+};
+
+async function fetchWithCurl(url, headers = {}) {
+  const args = ['-sS', '-L', '-m', '30'];
+  for (const [key, value] of Object.entries(headers)) {
+    if (value) {
+      args.push('-H', `${key}: ${value}`);
+    }
+  }
+  args.push('-w', '\n__MMC_STATUS__:%{http_code}', url);
+
+  const { stdout } = await execFileAsync('curl', args, { maxBuffer: 10 * 1024 * 1024 });
+  const marker = '\n__MMC_STATUS__:';
+  const idx = stdout.lastIndexOf(marker);
+  if (idx < 0) {
+    throw new Error('curl response did not include status marker');
+  }
+
+  const body = stdout.slice(0, idx);
+  const status = Number(stdout.slice(idx + marker.length).trim());
+  return { status, body };
+}
+
 async function runCheck(item, type) {
   const id = correlationId();
-  const base = type === 'frontend' ? (item.target === 'www' ? frontendWWWBase : frontendBase) : backendBase;
+  const base = resolveBase(item, type);
   const url = `${base}${type === 'frontend' ? item.url : item.path}`;
 
   const headers = {
@@ -41,9 +80,22 @@ async function runCheck(item, type) {
 
   const started = Date.now();
   try {
-    const res = await fetch(url, { method: item.method || 'GET', headers });
-    const body = await safeText(res);
-    const ok = res.status >= 200 && res.status < 400;
+    let status;
+    let body;
+    let transport = 'fetch';
+
+    try {
+      const res = await fetch(url, { method: item.method || 'GET', headers });
+      status = res.status;
+      body = await safeText(res);
+    } catch {
+      const curlRes = await fetchWithCurl(url, headers);
+      status = curlRes.status;
+      body = curlRes.body;
+      transport = 'curl-fallback';
+    }
+
+    const ok = status >= 200 && status < 400;
 
     return {
       id: item.id,
@@ -51,11 +103,13 @@ async function runCheck(item, type) {
       type,
       severity: item.severity || 'P2',
       url,
-      status: res.status,
+      status,
       ok,
       latencyMs: Date.now() - started,
       correlationId: id,
-      responseSnippet: body
+      responseSnippet: toSnippet(body),
+      bodyHash: crypto.createHash('sha256').update(body).digest('hex'),
+      transport
     };
   } catch (error) {
     return {
@@ -86,6 +140,16 @@ async function main() {
   }
 
   const total = checks.length;
+
+  const homeCheck = checks.find((item) => item.id === 'ui-home-load');
+  const wwwCheck = checks.find((item) => item.id === 'ui-www-domain-parity');
+  if (homeCheck?.ok && wwwCheck?.ok && homeCheck.bodyHash !== wwwCheck.bodyHash) {
+    wwwCheck.ok = false;
+    wwwCheck.status = 409;
+    wwwCheck.responseSnippet = 'www shell hash does not match apex shell hash';
+    wwwCheck.parityWithApex = false;
+  }
+
   const passed = checks.filter((c) => c.ok).length;
   const failed = total - passed;
   const failedBySeverity = checks

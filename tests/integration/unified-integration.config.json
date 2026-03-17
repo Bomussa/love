@@ -18,16 +18,16 @@
   ],
   "backendEndpoints": [
     {
-      "id": "api-healthz",
-      "name": "Health endpoint",
-      "path": "/functions/v1/healthz",
+      "id": "api-auth-settings",
+      "name": "Supabase auth settings endpoint",
+      "path": "/auth/v1/settings",
       "method": "GET",
       "severity": "P0"
     },
     {
-      "id": "api-v1-status",
-      "name": "API v1 status",
-      "path": "/functions/v1/api-v1-status",
+      "id": "api-rest-root",
+      "name": "Supabase REST root endpoint",
+      "path": "/rest/v1/",
       "method": "GET",
       "severity": "P1"
     }
