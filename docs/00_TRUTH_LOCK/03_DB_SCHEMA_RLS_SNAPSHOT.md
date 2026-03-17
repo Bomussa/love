@@ -9,7 +9,8 @@ Key tables:
 | Table | Purpose |
 |-------|---------|
 | admins | Admin accounts |
-| unified_queue | Main queue entries |
+| queues | Canonical physical queue table (source of truth) |
+| unified_queue | Compatibility view mapped to `queues` |
 | notifications | Manual + operational notifications |
 | operational_notifications | Operational notification templates (NEW) |
 | direct_alerts | Direct Alert to patient by phone (NEW) |
@@ -26,7 +27,8 @@ Key tables:
 |-------|-----|--------|
 | admins | ✅ | `admins_admins_only` → `is_admin()` |
 | notifications | ✅ | Multiple policies |
-| unified_queue | ✅ | Multiple policies |
+| queues | ✅ | Multiple policies |
+| unified_queue (view) | n/a | Compatibility-only (inherits from `queues`) |
 | clinics | ✅ | Public select + admin write |
 | audit_logs | ✅ | Admin select + public insert |
 | activity_logs | ✅ | `activity_logs_all` → true |
@@ -45,11 +47,19 @@ Key tables:
 ## Active Triggers
 | Trigger | Table | Event | Function |
 |---------|-------|-------|----------|
-| queue_audit_trg | unified_queue | INSERT/UPDATE/DELETE | queue_audit_trigger() |
-| queue_broadcast_trigger | unified_queue | INSERT/UPDATE/DELETE | clinic_queue_broadcast_trigger() |
+| queue_audit_trg | queues | INSERT/UPDATE/DELETE | queue_audit_trigger() |
+| queue_broadcast_trigger | queues | INSERT/UPDATE/DELETE | clinic_queue_broadcast_trigger() |
 | notifications_broadcast_trigger | notifications | INSERT | broadcast_table_changes() |
 | update_admins_updated_at | admins | UPDATE | update_updated_at_column() |
 | check_route_completion | route_steps | UPDATE | check_route_completion() |
 
 ## notifications Table Columns
 id, patient_id, clinic_id, type, title, message, is_read, sent_at, read_at, metadata, user_id, actor_id, payload, read, created_at, display_position, display_duration, font_size, font_color, background_color, border_color, scheduled_at, is_active
+
+
+## Queue canonical contract lock
+- Canonical physical relation: `public.queues`.
+- `public.unified_queue` and `public.queue` are compatibility views only.
+- Official statuses for new code: `waiting`, `called`, `serving`, `completed`, `skipped`, `cancelled`, `postponed`.
+- Backward aliases accepted for compatibility: `in_service`→`serving`, `done`→`completed`.
+- Reference: `docs/QUEUE_CANONICAL_CONTRACT.md`.

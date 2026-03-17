@@ -38,8 +38,8 @@
 
 ## Real backend verification (Supabase)
 - تم تنفيذ فحص مباشر HTTP 200 للجداول المرتبطة بالشاشات الإدارية:
-  - `unified_queue`, `clinics`, `patients`, `system_config`, `notifications`, `routes`, `qa_runs`, `qa_findings`, `repair_runs`, `pins`.
-- تم تنفيذ تحقق write/read فوري على `unified_queue` (PATCH no-op) للتأكد أن الإجراء الإداري ينعكس لحظيًا على مصدر الحقيقة.
+  - `queues` (canonical physical table) + `unified_queue` (compatibility view), `clinics`, `patients`, `system_config`, `notifications`, `routes`, `qa_runs`, `qa_findings`, `repair_runs`, `pins`.
+- تم تنفيذ تحقق write/read فوري على `queues` (PATCH no-op) مع الحفاظ على توافق `unified_queue` لضمان انعكاس الإجراء الإداري لحظيًا على مصدر الحقيقة.
 
 ## Domain parity check
 - `https://mmc-mms.com`: 200 + محتوى التطبيق الكامل.

@@ -48,11 +48,11 @@
 
 ## Realtime/back-end sync evidence
 - Supabase read checks for operational tables returned 200:
-  - `unified_queue`, `clinics`, `patients`, `system_config`, `notifications`, `routes`, `qa_runs`, `qa_findings`, `repair_runs`, `pins`.
+  - `queues` (canonical physical table) + `unified_queue` (compatibility view), `clinics`, `patients`, `system_config`, `notifications`, `routes`, `qa_runs`, `qa_findings`, `repair_runs`, `pins`.
 - Immediate write/read validation:
   - `users` insert/delete rollback ✅
   - `pins` insert/delete rollback ✅
-  - `unified_queue` no-op patch/read consistency ✅
+  - `queues` no-op patch/read consistency ✅ (`unified_queue` compatibility preserved)
 
 ## Domain parity gate
 - `mmc-mms.com` = 200 (full app HTML)

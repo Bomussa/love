@@ -7,7 +7,7 @@
   - `/admin` on both domains
   - `https://mmc-mms.com/api/v1/health`
 - Supabase table probes (REST `limit=1`) for:
-  - `unified_queue`, `clinics`, `patients`, `system_config`, `pins`
+  - `queues` (canonical physical table), `unified_queue` (compatibility view), `clinics`, `patients`, `system_config`, `pins`
   - `qa_runs`, `qa_findings`, `repair_runs`
   - `smart_errors_log`, `smart_fixes_log`
 
