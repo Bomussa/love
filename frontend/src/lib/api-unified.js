@@ -199,7 +199,6 @@ const api = {
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
-          patient_name: patientName,
           exam_type: examType,
           display_number: nextNumber,
           status: 'waiting',

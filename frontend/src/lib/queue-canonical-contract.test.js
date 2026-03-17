@@ -24,9 +24,11 @@ describe('queue canonical contract', () => {
     const display = read('src/components/DisplayPage.jsx');
     const displayEnhanced = read('src/components/DisplayPage-Enhanced.jsx');
     const admin = read('src/components/AdminDashboardV2.jsx');
+    const patient = read('src/components/PatientPage.jsx');
 
     expect(display).toContain("table: 'queues'");
     expect(displayEnhanced).toContain("table: 'queues'");
     expect(admin).toContain("table: 'queues'");
+    expect(patient).toContain("table: 'queues'");
   });
 });
