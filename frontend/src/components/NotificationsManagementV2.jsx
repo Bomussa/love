@@ -208,9 +208,15 @@ const NotificationsManagementV2 = ({ language, t }) => {
       const notif = notifications.find((item) => item.id === id);
       const sentAt = new Date().toISOString();
 
-      await supabase.from('notifications').update({
+      const { error: sendError } = await supabase.from('notifications').update({
         sent_at: sentAt
       }).eq('id', id);
+
+      if (sendError) {
+        console.error('Error sending notification:', sendError);
+        alert(t('تعذر إرسال الإشعار', 'Failed to send notification'));
+        return;
+      }
 
       if (notif?.patient_id) {
         const durationSeconds = Number(notif.display_duration || 30);

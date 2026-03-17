@@ -139,9 +139,10 @@ const QueueManagement = ({ language, t }) => {
       setLoading(true);
       // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
       const today = new Date().toISOString().split('T')[0];
+      const activeQueueTable = await resolveQueueTable();
       
       const { data, error } = await supabase
-        .from(queueTable)
+        .from(activeQueueTable)
         .select('*')
         .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
         .order('display_number', { ascending: true });
