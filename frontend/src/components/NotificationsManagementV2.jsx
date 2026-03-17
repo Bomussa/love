@@ -205,9 +205,56 @@ const NotificationsManagementV2 = ({ language, t }) => {
 
   const sendNotification = async (id) => {
     try {
-      await supabase.from('notifications').update({ 
-        sent_at: new Date().toISOString()
-      }).eq('id', id);
+      const currentNotification = notifications.find((item) => item.id === id);
+
+      let notificationRecord = currentNotification;
+      if (!notificationRecord) {
+        const { data, error: notificationFetchError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (notificationFetchError) throw notificationFetchError;
+        notificationRecord = data;
+      }
+
+      const { error: notificationUpdateError } = await supabase
+        .from('notifications')
+        .update({
+          sent_at: new Date().toISOString()
+        })
+        .eq('id', notificationRecord.id);
+
+      if (notificationUpdateError) throw notificationUpdateError;
+
+      if (notificationRecord.patient_id) {
+        const directAlertTypeMap = {
+          call: 'urgent',
+          alert: 'warning'
+        };
+
+        const { error: directAlertInsertError } = await supabase
+          .from('direct_alerts')
+          .insert({
+            patient_id: notificationRecord.patient_id,
+            message: notificationRecord.message,
+            message_en: notificationRecord.message_en || notificationRecord.message,
+            alert_type: directAlertTypeMap[notificationRecord.type] || 'info',
+            sound_enabled: true,
+            is_active: true,
+            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString()
+          });
+
+        if (directAlertInsertError) {
+          console.error('Error inserting direct_alerts record:', directAlertInsertError);
+          alert(t('تم إرسال الإشعار لكن فشل إنشاء التنبيه المباشر', 'Notification sent but direct alert creation failed'));
+          loadNotifications();
+          return;
+        }
+      }
+
       loadNotifications();
       alert(t('تم إرسال الإشعار', 'Notification sent'));
     } catch (e) {
