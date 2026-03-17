@@ -149,10 +149,7 @@ function sortClinicsByWeight(clinics, weights) {
 // ✅ الترتيب حسب الوزن عند بداية المسار فقط
 export async function getDynamicMedicalPathway(examType, gender) {
   const allowDynamicRoutes = await getSystemSetting('ALLOW_DYNAMIC_ROUTES', true);
-  if (allowDynamicRoutes === false || allowDynamicRoutes === 'false' || allowDynamicRoutes === 0) {
-    console.warn('[getDynamicMedicalPathway] Dynamic routes disabled by ALLOW_DYNAMIC_ROUTES');
-    return [];
-  }
+  const dynamicRoutesEnabled = !(allowDynamicRoutes === false || allowDynamicRoutes === 'false' || allowDynamicRoutes === 0);
 
   // ✅ إصلاح: تحميل ملفات الإعداد أولاً
   const { routeMap: rm, clinicsData: cd } = await loadConfigFiles();
@@ -175,8 +172,14 @@ export async function getDynamicMedicalPathway(examType, gender) {
   const arabicExamType = examTypeMap[examType] || examType;
 
   // ✅ محاولة جلب المسار من قاعدة البيانات أولاً
+  if (!dynamicRoutesEnabled) {
+    console.warn('[getDynamicMedicalPathway] Dynamic routes disabled by ALLOW_DYNAMIC_ROUTES, using local route map fallback');
+  }
+
   try {
-    if (!supabase) {
+    if (!dynamicRoutesEnabled) {
+      // Skip database routing when dynamic routes are disabled, but keep local fallback active.
+    } else if (!supabase) {
       console.warn('[getDynamicMedicalPathway] Supabase غير متاح');
     } else {
       const { data: dbRoute, error } = await supabase

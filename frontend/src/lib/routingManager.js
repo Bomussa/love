@@ -106,10 +106,12 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
     });
 
     const selectedClinic = scoredClinics[0];
-    
+
+    console.log('[routingManager] Selected clinic for next step', {
+      clinicId: selectedClinic.id,
       loadRatio: selectedClinic.loadRatio.toFixed(2),
       distributedToday: selectedClinic.distributedToday,
-      score: selectedClinic.score.toFixed(3)
+      score: selectedClinic.score.toFixed(3),
     });
 
     return selectedClinic.id;
