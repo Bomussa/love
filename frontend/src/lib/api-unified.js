@@ -619,6 +619,25 @@ const api = {
     }
   },
 
+
+  async getQueueCount(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('queues')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .eq('status', 'waiting');
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('Get Queue Count Error:', error);
+      return 0;
+    }
+  },
+
   // --- Pathway ---
   async getRoute(patientId) {
     try {
@@ -1972,7 +1991,7 @@ const api = {
    * @param {string} type - نوع الإعدادات (theme, queue, etc.)
    * @returns {Promise<Object>} الإعدادات
    */
-  async getSettings(type) {
+  async getSettingsByCategory(type) {
     try {
       const { data, error } = await supabase
         .from('settings')
@@ -2007,6 +2026,10 @@ const api = {
         },
       };
     }
+  },
+
+  getSettingsByType(type) {
+    return this.getSettingsByCategory(type);
   },
 
   /**
