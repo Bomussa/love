@@ -8,8 +8,17 @@ import psycopg2
 import os
 import sys
 
-# Database connection string
-DB_URL = "postgres://postgres.utgsoizsnqchiduzffxo:uFv031NrmT4D6wwi@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+
+def get_database_url():
+    """Load database connection string from environment variables."""
+
+    db_url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
+    if db_url:
+        return db_url
+
+    raise RuntimeError(
+        "Missing database URL. Set SUPABASE_DB_URL (preferred) or DATABASE_URL before running this script."
+    )
 
 def setup_database():
     """Execute the schema.sql file to set up the database"""
@@ -18,8 +27,10 @@ def setup_database():
     print(f"📡 Connecting to Supabase...")
     
     try:
+        db_url = get_database_url()
+
         # Connect to database
-        conn = psycopg2.connect(DB_URL)
+        conn = psycopg2.connect(db_url)
         conn.autocommit = True
         cursor = conn.cursor()
         
