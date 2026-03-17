@@ -11,9 +11,31 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "https://deno.land/std*": ["node_modules/@types/node"],
-      "https://esm.sh/*": ["node_modules/*"]
+      "https://deno.land/std*": [
+        "node_modules/@types/node"
+      ],
+      "https://esm.sh/*": [
+        "node_modules/*"
+      ]
     }
   },
-  "exclude": ["node_modules", "dist", "frontend/src/lib/supabase-client.js"]
+  "exclude": [
+    "archive/**",
+    "dist",
+    "frontend/dist",
+    "frontend/src/**/*.backup",
+    "frontend/src/assets/**",
+    "frontend/src/lib/supabase-client.js",
+    "node_modules",
+    "scripts/**/*.ts",
+    "scripts/conn-check.mjs"
+  ],
+  "include": [
+    "lib/**/*.js",
+    "functions/**/*.js",
+    "scripts/**/*.mjs",
+    "frontend/src/**/*.js",
+    "frontend/src/**/*.jsx",
+    "frontend/src/**/*.d.ts"
+  ]
 }

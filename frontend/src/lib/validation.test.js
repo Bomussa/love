@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDigits, validateMilitaryId, sanitizeInput } from './validation';
+import { normalizeDigits, validateMilitaryId, sanitizeInput, validatePin } from './validation';
 
 describe('normalizeDigits', () => {
   it('converts Arabic and Persian digits to English digits', () => {
@@ -15,5 +15,14 @@ describe('military id validation flow', () => {
     const sanitized = sanitizeInput(normalized);
 
     expect(validateMilitaryId(sanitized)).toEqual({ isValid: true });
+  });
+});
+
+
+describe('pin validation flow', () => {
+  it('accepts 2-digit pin and rejects non-2-digit values', () => {
+    expect(validatePin('12')).toEqual({ isValid: true });
+    expect(validatePin('1')).toEqual({ isValid: false, error: 'رقم PIN يجب أن يكون رقمين' });
+    expect(validatePin('123')).toEqual({ isValid: false, error: 'رقم PIN يجب أن يكون رقمين' });
   });
 });

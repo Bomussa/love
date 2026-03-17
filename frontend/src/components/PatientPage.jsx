@@ -422,7 +422,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       .on('postgres_changes', {
         event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
         schema: 'public',
-        table: 'unified_queue',
+        table: 'queues',
         filter: `patient_id=eq.${patientData.id}`
       }, (payload) => {
         const updatedEntry = payload.new;

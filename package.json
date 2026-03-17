@@ -14,7 +14,7 @@
     "lint": "npm run check:workspaces && npm run lint --workspace frontend",
     "test": "npm run check:workspaces && npm run test --workspace frontend",
     "typecheck": "npm run check:workspaces && tsc --noEmit",
-    "test:smoke": "node --test scripts/smoke.test.ts",
+    "test:smoke": "node --test scripts/smoke.test.mjs",
     "ci:resilient": "./scripts/resilient-ci.sh",
     "release:one-screen": "bash ./scripts/one-screen-release.sh",
     "check:migrations": "bash scripts/ci/check-migration-naming.sh",
@@ -27,5 +27,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-legacy": "^7.2.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.2",
+    "@vercel/node": "^5.3.25"
   }
 }

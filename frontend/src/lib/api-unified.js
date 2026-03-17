@@ -36,6 +36,58 @@ function getQueueSettings() {
   return { ...DEFAULT_QUEUE_SETTINGS };
 }
 
+
+function resolveApiV1Base() {
+  const raw = String(import.meta?.env?.VITE_API_BASE_URL || '').trim();
+  if (!raw) return '/api/v1';
+  const normalized = raw.replace(/\/+$/, '');
+  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
+}
+
+
+function isPinRecordUsable(pinRecord) {
+  if (!pinRecord) return false;
+
+  // Canonical schema: clinic_id, valid_until, used_at
+  if (Object.prototype.hasOwnProperty.call(pinRecord, 'valid_until')) {
+    const notUsed = !pinRecord.used_at;
+    const notExpired = pinRecord.valid_until ? new Date(pinRecord.valid_until) >= new Date() : true;
+    return notUsed && notExpired;
+  }
+
+  // Legacy schema: clinic_code, expires_at, is_active, max_uses, used_count
+  const active = pinRecord.is_active !== false;
+  const underLimit = Number(pinRecord.used_count || 0) < Number(pinRecord.max_uses || 1);
+  const notExpired = pinRecord.expires_at ? new Date(pinRecord.expires_at) >= new Date() : true;
+  return active && underLimit && notExpired;
+}
+
+async function findValidPinRecord(clinicId, pin) {
+  const canonical = await supabase
+    .from('pins')
+    .select('id, clinic_id, pin, valid_until, used_at')
+    .eq('clinic_id', clinicId)
+    .eq('pin', pin)
+    .maybeSingle();
+
+  if (!canonical.error && isPinRecordUsable(canonical.data)) {
+    return canonical.data;
+  }
+
+  const legacy = await supabase
+    .from('pins')
+    .select('id, clinic_code, pin, expires_at, used_count, max_uses, is_active')
+    .eq('clinic_code', clinicId)
+    .eq('pin', pin)
+    .maybeSingle();
+
+  if (!legacy.error && isPinRecordUsable(legacy.data)) {
+    return legacy.data;
+  }
+
+  return null;
+}
+
 const api = {
   // --- Patients ---
   async patientLogin(patientId, gender) {
@@ -67,7 +119,7 @@ const api = {
   },
 
   async adminLogin(username, password) {
-    const { response, payload } = await requestJson('/api/v1/admin/login', {
+    const { response, payload } = await requestJson(`${resolveApiV1Base()}/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -147,7 +199,6 @@ const api = {
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
-          patient_name: patientName,
           exam_type: examType,
           display_number: nextNumber,
           status: 'waiting',
@@ -289,26 +340,12 @@ const api = {
         }
 
         // 1. ✅ محاولة التحقق من جدول pins (باستخدام الأعمدة الصحيحة)
-        const now = new Date().toISOString();
+        const validPin = await findValidPinRecord(clinicId, pin);
 
-        const { data: validPin, error: pinError } = await supabase
-          .from('pins')
-          .select('*')
-          .eq('clinic_code', clinicId)
-          .eq('pin', pin)
-          .eq('is_active', true)
-          .gt('max_uses', 0)
-          .gte('expires_at', now)
-          .maybeSingle();
-
-        if (pinError) throw pinError;
-
-        const isUsablePin = validPin && Number(validPin.used_count || 0) < Number(validPin.max_uses || 0);
-
-        if (!isUsablePin) {
+        if (!validPin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
-            const { payload: result } = await requestJson('/api/v1/queue/done', {
+            const { payload: result } = await requestJson(`${resolveApiV1Base()}/queue/done`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ clinicId, patientId, pin })
@@ -322,14 +359,19 @@ const api = {
           return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
         }
 
-        // ✅ تحديث حالة PIN بعد الاستخدام
+        // ✅ تحديث حالة PIN بعد الاستخدام (متوافق مع canonical + legacy)
         if (validPin) {
-          await supabase
-            .from('pins')
-            .update({
+          const now = new Date().toISOString();
+          const pinUpdate = Object.prototype.hasOwnProperty.call(validPin, 'valid_until')
+            ? { used_at: now }
+            : {
               used_count: Number(validPin.used_count || 0) + 1,
               last_used_at: now,
-            })
+            };
+
+          await supabase
+            .from('pins')
+            .update(pinUpdate)
             .eq('id', validPin.id);
         }
       }
@@ -435,19 +477,9 @@ const api = {
       });
 
       if (error) {
-        // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
-        const { data: pinData, error: pinError } = await supabase
-          .from('pins')
-          .select('id, clinic_code, pin, expires_at, used_count, max_uses, is_active')
-          .eq('clinic_code', clinicId)
-          .eq('pin', pin)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle();
-
-        if (pinError) throw pinError;
-
-        if (pinData && Number(pinData.used_count || 0) < Number(pinData.max_uses || 0)) {
+        // في حال فشل RPC، نستخدم تحققاً متوافقاً مع المخططين (canonical + legacy)
+        const pinData = await findValidPinRecord(clinicId, pin);
+        if (pinData) {
           return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
         }
         return { success: true, isValid: false };
@@ -1219,18 +1251,33 @@ const api = {
   async getActivePins() {
     try {
       const now = new Date().toISOString();
-      
-      const { data, error } = await supabase
+      const pinsMap = {};
+
+      // Canonical schema first
+      const canonical = await supabase
+        .from('pins')
+        .select('clinic_id, pin, valid_until, used_at')
+        .is('used_at', null)
+        .gte('valid_until', now);
+
+      if (!canonical.error && Array.isArray(canonical.data) && canonical.data.length > 0) {
+        canonical.data.forEach((p) => {
+          pinsMap[p.clinic_id] = { pin: p.pin, expiresAt: p.valid_until };
+        });
+        return { success: true, pins: pinsMap };
+      }
+
+      // Legacy fallback
+      const legacy = await supabase
         .from('pins')
         .select('clinic_code, pin, expires_at, used_count, max_uses, is_active')
         .eq('is_active', true)
         .gte('expires_at', now);
 
-      if (error) throw error;
+      if (legacy.error) throw legacy.error;
 
-      const pinsMap = {};
-      if (data) {
-        data.forEach((p) => {
+      if (legacy.data) {
+        legacy.data.forEach((p) => {
           if (Number(p.used_count || 0) < Number(p.max_uses || 0)) {
             pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
           }
@@ -1250,7 +1297,22 @@ const api = {
    */
   async deactivatePIN(clinicId) {
     try {
-      const { data, error} = await supabase
+      const now = new Date().toISOString();
+
+      // Canonical schema
+      const canonical = await supabase
+        .from('pins')
+        .update({ used_at: now })
+        .eq('clinic_id', clinicId)
+        .is('used_at', null)
+        .select();
+
+      if (!canonical.error && canonical.data?.length) {
+        return { success: true, data: canonical.data };
+      }
+
+      // Legacy fallback
+      const { data, error } = await supabase
         .from('pins')
         .update({ is_active: false })
         .eq('clinic_code', clinicId)
@@ -1486,8 +1548,8 @@ const api = {
    */
   async issuePin(clinicId) {
     try {
-      // توليد PIN جديد من 4 أرقام
-      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      // توليد PIN جديد من رقمين فقط (10-99)
+      const newPin = Math.floor(10 + Math.random() * 90).toString();
       const now = new Date();
       const validUntil = new Date(now);
       validUntil.setHours(23, 59, 59, 999);  // ✅ صالح حتى نهاية اليوم
