@@ -24,6 +24,7 @@ import { elementMonitor } from './lib/element-monitor'
 import { realtimeSyncManager } from './lib/realtime-sync-manager'
 import { performanceOptimizer } from './lib/performance-optimizer'
 import { instantUpdateBroadcaster } from './lib/instant-update-broadcaster'
+import { loadAndValidateSession, sanitizeAdminSession, sanitizeClinicSession } from './lib/session-utils'
 
 // Lazy Loading للمكونات الثقيلة
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
@@ -82,10 +83,8 @@ class AdminErrorBoundary extends React.Component {
 function App() {
   // ============= STATE MANAGEMENT =============
   const [clinicSession, setClinicSession] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mmc_clinic_session')
-      return stored ? JSON.parse(stored) : null
-    } catch(e) { return null }
+    if (typeof localStorage === 'undefined') return null
+    return loadAndValidateSession(localStorage, 'mmc_clinic_session', sanitizeClinicSession)
   })
 
   const [patientData, setPatientData] = useState(() => {
@@ -97,19 +96,9 @@ function App() {
 
   // ✅ إصلاح: التحقق من حالة الإدارة بطريقة أفضل
   const [isAdmin, setIsAdmin] = useState(() => {
-    try {
-      const adminSession = localStorage.getItem('mmc_admin_session');
-      if (adminSession) {
-        const session = JSON.parse(adminSession);
-        const isValid = new Date(session.expiresAt) > new Date();
-        console.log('[App] Admin session check:', { isValid, expiresAt: session.expiresAt });
-        return isValid;
-      }
-    } catch (e) { 
-      console.error('[App] Error checking admin session:', e);
-      return false 
-    }
-    return false
+    if (typeof localStorage === 'undefined') return false
+    const validSession = loadAndValidateSession(localStorage, 'mmc_admin_session', sanitizeAdminSession)
+    return !!validSession
   })
 
   const [currentView, setCurrentView] = useState('login')
@@ -334,6 +323,8 @@ function App() {
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
+    localStorage.removeItem('mmc_clinic_session')
+    setClinicSession(null)
     window.history.pushState({}, '', '/')
   }
 
@@ -474,8 +465,13 @@ function App() {
         {currentView === 'clinic_login' && (
           <ClinicLoginPage
             onLogin={(session) => {
-              setClinicSession(session)
-              localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
+              const validSession = sanitizeClinicSession(session)
+              if (!validSession) {
+                showNotification(language === 'ar' ? 'انتهت صلاحية الجلسة' : 'Session expired', 'error')
+                return
+              }
+              setClinicSession(validSession)
+              localStorage.setItem('mmc_clinic_session', JSON.stringify(validSession))
               setCurrentView('clinic_dashboard')
             }}
             language={language}
@@ -487,6 +483,8 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <ClinicDashboard
               session={clinicSession}
+              clinicId={clinicSession.clinicId}
+              pin={clinicSession.pin}
               onLogout={() => {
                 setClinicSession(null)
                 localStorage.removeItem('mmc_clinic_session')

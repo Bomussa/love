@@ -8,7 +8,8 @@ import api from '../lib/api-unified'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
 // AdminPINMonitor removed - not used in this component
 
-export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
+export function ClinicDashboard({ clinicId, pin, session, onLogout, language }) {
+  const effectiveClinicId = clinicId || session?.clinicId || null
   const [currentTicket, setCurrentTicket] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -16,11 +17,16 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
   // Initial load
   useEffect(() => {
     refreshStatus()
-  }, [clinicId])
+  }, [effectiveClinicId])
 
   const refreshStatus = async () => {
     try {
-      const status = await api.getQueueStatus(clinicId)
+      if (!effectiveClinicId) {
+        setError(language === 'ar' ? 'بيانات العيادة غير متوفرة' : 'Clinic session is unavailable')
+        return
+      }
+
+      const status = await api.getQueueStatus(effectiveClinicId)
       if (status.success) {
         // Find the currently serving ticket
         const serving = status.queue.find(q => q.status === 'called' || q.status === 'in_service')
@@ -35,7 +41,8 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     setLoading(true)
     setError(null)
     try {
-      const result = await api.callNextPatient(clinicId, pin)
+      if (!effectiveClinicId) return
+      const result = await api.callNextPatient(effectiveClinicId, pin)
       if (result.success) {
         refreshStatus()
         // Play sound?
@@ -53,7 +60,8 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     if (!currentTicket) return
     setLoading(true)
     try {
-      const result = await api.queueDone(clinicId, currentTicket.patient_id, pin)
+      if (!effectiveClinicId) return
+      const result = await api.queueDone(effectiveClinicId, currentTicket.patient_id, pin)
       if (result.success) {
         setCurrentTicket(null)
         refreshStatus()
@@ -70,7 +78,8 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     setLoading(true)
     try {
       // تحديث حالة المراجع إلى "no_show" والانتقال للتالي
-      const result = await api.updateQueueStatus(clinicId, currentTicket.patient_id, 'no_show')
+      if (!effectiveClinicId) return
+      const result = await api.updateQueueStatus(effectiveClinicId, currentTicket.patient_id, 'no_show')
       if (result.success) {
         setCurrentTicket(null)
         refreshStatus()
@@ -92,14 +101,14 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="w-10 h-10 object-contain" />
           <div>
             <h1 className="text-2xl font-bold">{t('Clinic Dashboard')}</h1>
-            <p className="text-gray-400">{t('Clinic')}: {clinicId}</p>
+            <p className="text-gray-400">{t('Clinic')}: {effectiveClinicId || '--'}</p>
           </div>
         </div>
         <div className="flex gap-4 items-center">
             {/* PIN Monitor (Compact) */}
             <div className="bg-gray-700 px-3 py-1 rounded">
                 <span className="text-xs text-gray-400">PIN:</span>
-                <span className="ml-2 font-mono font-bold text-yellow-400">{pin}</span>
+                <span className="ml-2 font-mono font-bold text-yellow-400">{pin || '--'}</span>
             </div>
             
           <Button variant="outline" onClick={onLogout} className="flex gap-2 text-red-400 border-red-900/50 hover:bg-red-900/20">
@@ -191,7 +200,11 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <AdminQueueMonitor clinicId={clinicId} autoRefresh={true} />
+              {effectiveClinicId ? (
+                <AdminQueueMonitor clinicId={effectiveClinicId} autoRefresh={true} />
+              ) : (
+                <div className="text-sm text-red-300">{language === 'ar' ? 'تعذر تحميل معرف العيادة' : 'Clinic ID is missing'}</div>
+              )}
             </CardContent>
           </Card>
         </div>
