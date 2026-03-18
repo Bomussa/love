@@ -320,59 +320,92 @@ const api = {
 
   async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
     try {
-      // ✅ التحقق من البن كود
+      const normalizedClinicId = String(clinicId || '').trim();
+      const normalizedPatientId = normalizePatientId(patientId);
+      const normalizedPin = String(pin || '').trim();
+
+      if (!normalizedClinicId || !normalizedPatientId) {
+        return { success: false, error: 'بيانات إنهاء الدور غير مكتملة' };
+      }
+
+      if (!skipPinCheck && !normalizedPin) {
+        return { success: false, error: 'يرجى إدخال رقم PIN' };
+      }
+
       if (!skipPinCheck) {
-        if (!pin) {
-          return { success: false, error: 'يرجى إدخال رقم PIN' };
-        }
-
-        // 1. ✅ محاولة التحقق من جدول pins (باستخدام الأعمدة الصحيحة)
-        const validPin = await findValidPinRecord(clinicId, pin);
-
-        if (!validPin) {
-          // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
-          try {
-            const { payload: result } = await requestJson(`${resolveApiV1Base()}/queue/done`, {
+        try {
+          const { response, payload } = await requestJson(
+            `${resolveApiV1Base()}/queue/done`,
+            {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ clinicId, patientId, pin })
-            }, { timeoutMs: 8000, retries: 1 });
-            if (result && (result.success || !result.error)) {
-              return { success: true, data: result };
-            }
-          } catch (e) {
-          }
-          
-          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
-        }
+              body: JSON.stringify({
+                clinicId: normalizedClinicId,
+                patientId: normalizedPatientId,
+                pin: normalizedPin,
+              }),
+            },
+            { timeoutMs: 8000, retries: 1 },
+          );
 
-        // ✅ تحديث حالة PIN بعد الاستخدام (متوافق مع canonical + legacy)
-        if (validPin) {
-          const now = new Date().toISOString();
-          const pinUpdate = Object.prototype.hasOwnProperty.call(validPin, 'valid_until')
-            ? { used_at: now }
-            : {
-              used_count: Number(validPin.used_count || 0) + 1,
-              last_used_at: now,
+          if (response.ok && (payload?.success || payload?.data || !payload?.error)) {
+            return {
+              success: true,
+              data: payload?.data ?? payload,
             };
+          }
 
-          await supabase
-            .from('pins')
-            .update(pinUpdate)
-            .eq('id', validPin.id);
+          if ([400, 401, 404].includes(response.status)) {
+            const apiError =
+              payload?.error?.message ||
+              payload?.error ||
+              payload?.message ||
+              null;
+
+            if (response.status === 401) {
+              return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
+            }
+
+            return {
+              success: false,
+              error: apiError || 'تعذر إنهاء الدور الحالي',
+            };
+          }
+        } catch (canonicalError) {
+          console.warn('[api-unified] queueDone canonical fallback:', canonicalError?.message || canonicalError);
         }
       }
 
-      // إكمال الفحص في الطابور عبر Supabase مباشرة لضمان السرعة
+      if (!skipPinCheck) {
+        const validPin = await findValidPinRecord(normalizedClinicId, normalizedPin);
+
+        if (!validPin) {
+          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
+        }
+
+        const now = new Date().toISOString();
+        const pinUpdate = Object.prototype.hasOwnProperty.call(validPin, 'valid_until')
+          ? { used_at: now }
+          : {
+            used_count: Number(validPin.used_count || 0) + 1,
+            last_used_at: now,
+          };
+
+        await supabase
+          .from('pins')
+          .update(pinUpdate)
+          .eq('id', validPin.id);
+      }
+
       const { data, error } = await supabase
         .from('queues')
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          completed_by_pin: pin,
+          completed_by_pin: normalizedPin || null,
         })
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
+        .eq('clinic_id', normalizedClinicId)
+        .eq('patient_id', normalizedPatientId)
         .in('status', ['waiting', 'called', 'serving', 'in_service', 'in_progress'])
         .select();
 
