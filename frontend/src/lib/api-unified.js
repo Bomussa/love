@@ -36,6 +36,26 @@ function getQueueSettings() {
   return { ...DEFAULT_QUEUE_SETTINGS };
 }
 
+function normalizePatientId(patientId) {
+  return String(patientId || '').trim();
+}
+
+function normalizeGender(gender) {
+  const value = String(gender || '').trim().toLowerCase();
+  if (value === 'male' || value === 'm' || value === 'ذكر') return 'male';
+  if (value === 'female' || value === 'f' || value === 'أنثى') return 'female';
+  return 'male';
+}
+
+function generateTwoDigitPin() {
+  const random = new Uint32Array(1);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(random);
+    return String((random[0] % 90) + 10);
+  }
+  return String(Math.floor(10 + Math.random() * 90));
+}
+
 
 function resolveApiV1Base() {
   const raw = String(import.meta?.env?.VITE_API_BASE_URL || '').trim();
@@ -92,17 +112,23 @@ const api = {
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
+      const normalizedPatientId = normalizePatientId(patientId);
+      if (!normalizedPatientId) {
+        return { success: false, error: 'PATIENT_ID_REQUIRED' };
+      }
+      const normalizedGender = normalizeGender(gender);
+
       const { data, error } = await supabase
         .from('patients')
         .select('*')
-        .eq('patient_id', patientId)
+        .eq('patient_id', normalizedPatientId)
         .single();
 
       if (error && error.code === 'PGRST116') {
         // Patient doesn't exist, create new
         const { data: newUser, error: createError } = await supabase
           .from('patients')
-          .insert([{ patient_id: patientId, gender: gender || 'male', status: 'active' }])
+          .insert([{ patient_id: normalizedPatientId, gender: normalizedGender, status: 'active' }])
           .select()
           .single();
 
@@ -143,10 +169,15 @@ const api = {
    */
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
     try {
+      const normalizedPatientId = normalizePatientId(patientId);
+      if (!normalizedPatientId) {
+        return { success: false, error: 'PATIENT_ID_REQUIRED' };
+      }
+
       // محاولة استخدام الدالة الذرية من قاعدة البيانات
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_unified_queue_safe', {
         p_clinic_id: clinicId,
-        p_patient_id: patientId,
+        p_patient_id: normalizedPatientId,
         p_patient_name: patientName,
         p_exam_type: examType,
       });
@@ -162,54 +193,10 @@ const api = {
         };
       }
 
-      // في حال فشل RPC، نستخدم الطريقة البديلة
       if (rpcError) {
+        throw rpcError;
       }
-
-      // ✅ التحقق أولاً إذا كان المراجع موجود مسبقاً في نفس العيادة اليوم
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingEntry, error: existingError } = await supabase
-        .from('queues')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .in('status', ['waiting', 'serving'])
-        .order('entered_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingEntry) {
-        return { success: true, ...existingEntry, alreadyExists: true };
-      }
-
-      // الحصول على رقم الدور التالي
-      const { data: lastEntry } = await supabase
-        .from('queues')
-        .select('display_number')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .order('display_number', { ascending: false })
-        .limit(1);
-
-      const nextNumber = (lastEntry && lastEntry.length > 0 ? lastEntry[0].display_number : 0) + 1;
-
-      const { data, error } = await supabase
-        .from('queues')
-        .insert([{
-          clinic_id: clinicId,
-          patient_id: patientId,
-          exam_type: examType,
-          display_number: nextNumber,
-          status: 'waiting',
-          queue_date: today,
-          entered_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, ...data };
+      return { success: false, error: 'QUEUE_ENTER_RPC_EMPTY_RESULT' };
     } catch (error) {
       console.error('Enter Queue Error:', error);
       return { success: false, error: error.message };
@@ -1157,7 +1144,7 @@ const api = {
   async generatePIN(clinicId) {
     try {
       // توليد PIN جديد من رقمين فقط (10-99) - موحد مع الواجهة الخلفية
-      const pin = Math.floor(10 + Math.random() * 90).toString();
+      const pin = generateTwoDigitPin();
       const expiresAt = new Date();
       expiresAt.setHours(23, 59, 59, 999);
       const now = new Date();
@@ -1566,7 +1553,7 @@ const api = {
   async issuePin(clinicId) {
     try {
       // توليد PIN جديد من رقمين فقط (10-99)
-      const newPin = Math.floor(10 + Math.random() * 90).toString();
+      const newPin = generateTwoDigitPin();
       const now = new Date();
       const validUntil = new Date(now);
       validUntil.setHours(23, 59, 59, 999);  // ✅ صالح حتى نهاية اليوم
