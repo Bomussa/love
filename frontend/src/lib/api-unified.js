@@ -1156,7 +1156,8 @@ const api = {
    */
   async generatePIN(clinicId) {
     try {
-      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      // توليد PIN جديد من رقمين فقط (10-99) - موحد مع الواجهة الخلفية
+      const pin = Math.floor(10 + Math.random() * 90).toString();
       const expiresAt = new Date();
       expiresAt.setHours(23, 59, 59, 999);
       const now = new Date();
@@ -1164,20 +1165,17 @@ const api = {
       const { data, error } = await supabase
         .from('pins')
         .insert({
-          clinic_code: clinicId,
+          clinic_id: clinicId,
           pin,
-          generated_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
           created_at: now.toISOString(),
-          is_active: true,
-          used_count: 0,
-          max_uses: 100,
+          valid_until: expiresAt.toISOString(),
+          used_at: null,
         })
         .select()
         .single();
 
       if (error) throw error;
-      return { success: true, pin: data.pin, expiresAt: data.expires_at };
+      return { success: true, pin: data.pin, expiresAt: data.valid_until };
     } catch (error) {
       console.error('Generate PIN Error:', error);
       return { success: false, error: error.message };

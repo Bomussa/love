@@ -31,16 +31,12 @@
       "destination": "/.well-known/healthz.json"
     },
     {
-      "source": "/api/backend/health",
-      "destination": "https://love-api-bomussa.vercel.app/api/v1/health"
-    },
-    {
-      "source": "/api/backend/status",
-      "destination": "https://love-api-bomussa.vercel.app/api/v1/status"
+      "source": "/api/v1/(.*)",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/$1"
     },
     {
       "source": "/api/(.*)",
-      "destination": "https://love-api-bomussa.vercel.app/api/$1"
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/$1"
     },
     {
       "source": "/admin",
@@ -84,10 +80,6 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
         {
           "key": "Access-Control-Allow-Methods",
           "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS"

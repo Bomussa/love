@@ -59,7 +59,8 @@ class SupabaseApiClient {
 
   async issuePin(clinicId) {
     try {
-      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      // توليد PIN من رقمين فقط (10-99) - موحد مع باقي النظام
+      const newPin = Math.floor(10 + Math.random() * 90).toString();
       const now = new Date();
       const validUntil = new Date(now);
       validUntil.setHours(23, 59, 59, 999);
