@@ -118,6 +118,19 @@ const api = {
       }
       const normalizedGender = normalizeGender(gender);
 
+      // ✅ إصلاح: استخدام الـ API الموحد بدلاً من الاتصال المباشر بسبسبيس لضمان الاتساق
+      const { response, payload } = await requestJson(`${resolveApiV1Base()}/patient/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personalId: normalizedPatientId, gender: normalizedGender }),
+      }, { timeoutMs: 10000, retries: 2 });
+
+      if (response.ok && payload?.success) {
+        return { success: true, data: payload.data?.patient || payload.data };
+      }
+
+      // Fallback: إذا فشل الـ API، نحاول الاتصال المباشر بسبسبيس كخيار احتياطي
+      console.warn('[API] Patient login API failed, falling back to direct Supabase call');
       const { data, error } = await supabase
         .from('patients')
         .select('*')
@@ -125,7 +138,6 @@ const api = {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Patient doesn't exist, create new
         const { data: newUser, error: createError } = await supabase
           .from('patients')
           .insert([{ patient_id: normalizedPatientId, gender: normalizedGender, status: 'active' }])
