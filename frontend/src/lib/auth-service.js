@@ -4,6 +4,73 @@
  */
 
 import api from './api-unified';
+import { requestJson } from './resilient-request';
+
+function resolveApiV1Base() {
+  const raw = String(import.meta?.env?.VITE_API_BASE_URL || '').trim();
+  if (!raw) return '/api/v1';
+  const normalized = raw.replace(/\/+$/, '');
+  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
+}
+
+function applyCanonicalCallNextPatch() {
+  if (!api || typeof api.callNextPatient !== 'function' || api.__callNextCanonicalPatched) {
+    return;
+  }
+
+  const originalCallNextPatient = api.callNextPatient.bind(api);
+
+  api.callNextPatient = async (clinicId, pin) => {
+    const normalizedClinicId = String(clinicId || '').trim();
+    const normalizedPin = String(pin || '').trim();
+
+    if (!normalizedClinicId) {
+      return { success: false, error: 'بيانات استدعاء الدور غير مكتملة' };
+    }
+
+    try {
+      const { response, payload } = await requestJson(
+        `${resolveApiV1Base()}/queue/call`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinicId: normalizedClinicId,
+            pin: normalizedPin,
+          }),
+        },
+        { timeoutMs: 8000, retries: 1 },
+      );
+
+      if (response.ok && (payload?.success || payload?.data || !payload?.error)) {
+        return {
+          success: true,
+          data: payload?.data ?? payload,
+        };
+      }
+
+      if ([400, 401, 404].includes(response.status)) {
+        return {
+          success: false,
+          error:
+            payload?.error?.message
+            || payload?.error?.message
+            || payload?.error
+            || payload?.message
+            || 'تعذر استدعاء المراجع التالي',
+        };
+      }
+    } catch (canonicalError) {
+      console.warn('[AuthService] callNextPatient canonical fallback:', canonicalError?.message || canonicalError);
+    }
+
+    return originalCallNextPatient(normalizedClinicId, normalizedPin);
+  };
+
+  api.__callNextCanonicalPatched = true;
+}
+
+applyCanonicalCallNextPatch();
 
 // ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
