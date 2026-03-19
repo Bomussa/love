@@ -1,4 +1,5 @@
 const CLINIC_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+const ADMIN_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 function asDate(value) {
   if (!value) return null;
@@ -73,9 +74,43 @@ export function loadAndValidateSession(storage, key, sanitize, nowMs = Date.now(
 
 export function sanitizeAdminSession(rawSession, nowMs = Date.now()) {
   if (!rawSession || typeof rawSession !== 'object') return null;
+
   const expiresAtDate = asDate(rawSession.expiresAt);
-  if (!expiresAtDate || expiresAtDate.getTime() <= nowMs) {
+  const loginTimeDate = asDate(rawSession.loginTime);
+
+  if (expiresAtDate && expiresAtDate.getTime() <= nowMs) {
     return null;
   }
-  return rawSession;
+
+  if (!expiresAtDate) {
+    if (!loginTimeDate || nowMs - loginTimeDate.getTime() > ADMIN_SESSION_MAX_AGE_MS) {
+      return null;
+    }
+  }
+
+  const username = String(rawSession.username || '').trim();
+  const role = String(rawSession.role || '').trim().toUpperCase();
+
+  if (!username || !role) {
+    return null;
+  }
+
+  const normalized = {
+    ...rawSession,
+    username,
+    role,
+    expiresAt: expiresAtDate
+      ? expiresAtDate.toISOString()
+      : new Date(nowMs + ADMIN_SESSION_MAX_AGE_MS).toISOString(),
+  };
+
+  if (loginTimeDate) {
+    normalized.loginTime = loginTimeDate.toISOString();
+  }
+
+  if (rawSession.name != null) {
+    normalized.name = String(rawSession.name).trim() || username;
+  }
+
+  return normalized;
 }
