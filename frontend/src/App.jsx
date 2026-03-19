@@ -3,6 +3,7 @@ import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
 import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+import './lib/admin-runtime-patches';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
