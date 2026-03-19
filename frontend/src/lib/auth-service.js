@@ -83,6 +83,25 @@ export class AuthService {
     return String(username || '').trim();
   }
 
+  getNormalizedApiErrorText(response) {
+    return String(response?.message || response?.error || '').trim().toLowerCase();
+  }
+
+  isProtectedHtmlFailure(response) {
+    const status = Number(response?.status || 0);
+    const errorText = this.getNormalizedApiErrorText(response);
+
+    if (![401, 403, 502, 503].includes(status)) {
+      return false;
+    }
+
+    return errorText.includes('html')
+      || errorText.includes('json')
+      || errorText.includes('صفحة')
+      || errorText.includes('غير json')
+      || errorText.includes('استجابة غير');
+  }
+
   getStorage() {
     if (typeof localStorage === 'undefined' || !localStorage) {
       return null;
@@ -202,13 +221,21 @@ export class AuthService {
       }
 
       const status = Number(response?.status || 0);
-      const shouldUseFallback = status === 0 || status >= 500;
+      const protectedHtmlFailure = this.isProtectedHtmlFailure(response);
+      const shouldUseFallback = status === 0 || status >= 500 || protectedHtmlFailure;
 
       if (shouldUseFallback) {
         const fallbackResult = this.tryBreakGlass(normalizedUsername, normalizedPassword);
         if (fallbackResult) {
           return fallbackResult;
         }
+      }
+
+      if (protectedHtmlFailure) {
+        return {
+          success: false,
+          error: 'تعذر الوصول إلى خدمة تسجيل الدخول الإدارية حالياً. الخادم أعاد صفحة حماية أو استجابة غير متوقعة.',
+        };
       }
 
       return {
