@@ -235,10 +235,6 @@ function App() {
   // ============= LOGIN HANDLERS =============
   const handleLogin = async ({ patientId, gender }) => {
     try {
-      // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
-      // Use static imports to avoid TDZ errors
-
-      // التحقق من تفعيل نظام منع الجهاز
       const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
 
       if (deviceRestrictionEnabled) {
@@ -257,17 +253,13 @@ function App() {
       const res = await api.patientLogin(patientId, gender)
 
       if (res.success) {
-        // تسجيل الجهاز في قاعدة البيانات
         await registerDeviceLogin(patientId);
-
-        // تسجيل النشاط اليومي
         await logDailyActivity('patient_login', {
           patientId,
           gender,
           location: 'شاشة التسجيل',
           performedBy: patientId
         });
-        // Clear admin session when patient logs in to prevent conflicts
         localStorage.removeItem('mmc_admin_session');
         setIsAdmin(false);
 
@@ -301,7 +293,6 @@ function App() {
       console.log('[App] Auth result:', result);
 
       if (result.success) {
-        // Clear patient data when admin logs in
         localStorage.removeItem('patientData');
         setPatientData(null);
 
@@ -309,7 +300,8 @@ function App() {
         setCurrentView('admin')
         showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
       } else {
-        showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error')
+        const loginError = result?.error || (language === 'ar' ? 'تعذر تسجيل الدخول حالياً' : 'Unable to sign in right now');
+        showNotification(loginError, 'error')
       }
     } catch (error) {
       console.error('[App] Admin login error:', error);
@@ -317,7 +309,6 @@ function App() {
     }
   }
 
-  // ============= LOGOUT HANDLER =============
   const handleLogout = () => {
     setPatientData(null)
     setIsAdmin(false)
@@ -329,17 +320,14 @@ function App() {
     window.history.pushState({}, '', '/')
   }
 
-  // ============= LANGUAGE TOGGLE =============
   const toggleLanguage = () => {
     const newLang = language === 'ar' ? 'en' : 'ar'
     setLanguage(newLang)
     setCurrentLanguage(newLang)
   }
 
-  // ============= RENDER =============
   const theme = enhancedMedicalThemes.find(t => t.id === currentTheme)
 
-  // Apply theme background to body for full coverage
   React.useEffect(() => {
     if (theme?.gradients?.background) {
       document.body.style.background = theme.gradients.background;
@@ -374,10 +362,8 @@ function App() {
             patientData={patientData}
             onExamSelect={async (examType) => {
               try {
-                // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
                 let clinics = await getDynamicMedicalPathway(examType, patientData.gender)
 
-                // fallback محلي مباشر لضمان استمرار رحلة المريض إذا تعذر تحميل المسار الديناميكي
                 if (!clinics || clinics.length === 0) {
                   const genderKey = patientData.gender === 'female' ? 'female' : 'male'
                   clinics = medicalPathways?.[examType]?.[genderKey] || []
@@ -388,7 +374,6 @@ function App() {
                   throw new Error('No clinics found');
                 }
 
-                // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
                 let firstClinic = clinics[0].id;
                 try {
                   const queueCounts = await Promise.all(
@@ -397,7 +382,6 @@ function App() {
                       return { id: clinic.id, count: count || 0, clinic };
                     })
                   );
-                  // ترتيب العيادات حسب الأقل ازدحاماً
                   queueCounts.sort((a, b) => a.count - b.count);
                   firstClinic = queueCounts[0].id;
                   console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
