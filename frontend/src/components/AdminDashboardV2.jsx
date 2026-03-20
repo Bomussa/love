@@ -5346,18 +5346,29 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       }
 
       // جلب بيانات العيادات
-      const { data: clinicsData } = await supabase
+      const { data: clinicsData, error: clinicsError } = await supabase
         .from('clinics')
         .select('id, name_ar, name_en');
+      
+      if (clinicsError) {
+        console.error('Error loading clinics:', clinicsError);
+      }
 
-      // Active PINs
+      // Active PINs - دعم النموذج الجديد والقديم
       const now = new Date().toISOString();
-      const { count: pinCount } = await supabase
+      const { count: pinCount1 } = await supabase
+        .from('pins')
+        .select('*', { count: 'exact', head: true })
+        .gte('valid_until', now)
+        .is('used_at', null);
+      
+      const { count: pinCount2 } = await supabase
         .from('pins')
         .select('*', { count: 'exact', head: true })
         .gte('expires_at', now)
-        // used_count حقل رقمي؛ يجب استخدام eq وليس is (is مخصص غالباً لـ NULL)
-        .eq('used_count', 0);
+        .eq('is_active', true);
+      
+      const pinCount = (pinCount1 || 0) + (pinCount2 || 0);
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
@@ -5366,8 +5377,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
           const clinicQueues = queueData.filter(q => q.clinic_id === clinic.id);
           const completed = clinicQueues.filter(q => q.status === 'completed');
           // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
-              // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
-              const waiting = clinicQueues.filter(q => ['waiting', 'called', 'serving'].includes(q.status));
+          const waiting = clinicQueues.filter(q => ['waiting', 'called', 'serving'].includes(q.status));
           
           // حساب متوسط مدة الانتظار (من entered_at إلى called_at)
           let avgWaitTime = 0;
@@ -5419,6 +5429,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
       setStats(prev => ({
         ...prev,
+        totalPatients: (queueData || []).length,
+        waiting: (queueData || []).filter(q => q.status === 'waiting').length,
+        completed: (queueData || []).filter(q => q.status === 'completed').length,
         activePins: pinCount || 0,
         systemHealth: healthScore,
         clinicStats
@@ -5426,6 +5439,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error loading admin data:', error);
+      // عرض رسالة خطأ للمستخدم
+      alert(t('خطأ في تحميل البيانات', 'Error loading data'));
     } finally {
       setLoading(false);
     }
