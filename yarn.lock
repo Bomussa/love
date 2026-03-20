@@ -2658,13 +2658,6 @@
   dependencies:
     tslib "2.8.1"
 
-"@supabase/node-fetch@^2.6.14":
-  version "2.6.15"
-  resolved "https://registry.yarnpkg.com/@supabase/node-fetch/-/node-fetch-2.6.15.tgz#731271430e276983191930816303c44159e7226c"
-  integrity sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==
-  dependencies:
-    whatwg-url "^5.0.0"
-
 "@supabase/postgrest-js@2.95.3":
   version "2.95.3"
   resolved "https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.95.3.tgz"
@@ -2679,12 +2672,12 @@
   dependencies:
     tslib "2.8.1"
 
-"@supabase/postgrest-js@^1.21.4":
-  version "1.21.4"
-  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-1.21.4.tgz#c9f5fc674c16705fa0562c8f571069a4df1b3015"
-  integrity sha512-TxZCIjxk6/dP9abAi89VQbWWMBbybpGWyvmIzTd79OeravM13OjR/YEYeyUOPcM1C3QyvXkvPZhUfItvmhY1IQ==
+"@supabase/postgrest-js@^2.99.3":
+  version "2.99.3"
+  resolved "https://registry.yarnpkg.com/@supabase/postgrest-js/-/postgrest-js-2.99.3.tgz#2871cce576ffc01d11832eac1db3ca55c89e1d9c"
+  integrity sha512-8HxEf+zNycj7Z8+ONhhlu+7J7Ha+L6weyCtdEeK2mN5OWJbh6n4LPU4iuJ5UlCvvNnbSXMoutY7piITEEAgl2g==
   dependencies:
-    "@supabase/node-fetch" "^2.6.14"
+    tslib "2.8.1"
 
 "@supabase/realtime-js@2.95.3":
   version "2.95.3"
