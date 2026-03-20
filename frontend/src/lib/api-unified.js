@@ -157,21 +157,38 @@ const api = {
   },
 
   async adminLogin(username, password) {
-    const { response, payload } = await requestJson(`${resolveApiV1Base()}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    }, { timeoutMs: 10000, retries: 2 });
+    try {
+      const { response, payload } = await requestJson(`${resolveApiV1Base()}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      }, { timeoutMs: 10000, retries: 2 });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        console.error('[API] Admin login failed:', { status: response.status, payload });
+        return {
+          success: false,
+          status: response.status,
+          error: payload?.error?.message || payload?.message || payload?.error || 'Login failed',
+        };
+      }
+
+      const result = payload?.data || payload;
+      if (result?.success === false) {
+        return {
+          success: false,
+          error: result?.error || result?.message || 'Login failed',
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[API] Admin login error:', error);
       return {
         success: false,
-        status: response.status,
-        error: payload?.error?.message || payload?.message || 'Login failed',
+        error: error?.message || 'Connection error',
       };
     }
-
-    return payload?.data || payload;
   },
 
   // --- Queue ---
