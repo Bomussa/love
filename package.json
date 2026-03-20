@@ -26,7 +26,7 @@
     "node": "22.x"
   },
   "devDependencies": {
-    "@vitejs/plugin-legacy": "^7.2.1"
+    "@vitejs/plugin-legacy": "^8.0.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.2",
