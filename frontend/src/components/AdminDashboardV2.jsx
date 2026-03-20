@@ -119,7 +119,11 @@ const QueueManagement = ({ language, t }) => {
         .from('clinics')
         .select('*')
         .order('name_ar');
-      if (!error && data) setClinics(data);
+      if (error) {
+        console.error('Error loading clinics:', error);
+        return;
+      }
+      if (data) setClinics(data);
     } catch (e) {
       console.error('Error loading clinics:', e);
     }
@@ -128,22 +132,25 @@ const QueueManagement = ({ language, t }) => {
   const loadQueues = async () => {
     try {
       setLoading(true);
-      // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
       const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('queues')
         .select('*')
-        .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
+        .eq('queue_date', today)
         .order('display_number', { ascending: true });
       
-      if (!error && data) {
-        setQueues(data);
-      } else {
+      if (error) {
         console.error('Error loading queues:', error);
+        setQueues([]);
+        return;
+      }
+      if (data) {
+        setQueues(data);
       }
     } catch (e) {
       console.error('Error loading queues:', e);
+      setQueues([]);
     } finally {
       setLoading(false);
     }
@@ -742,15 +749,17 @@ const PINManagement = ({ language, t }) => {
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (!legacyError && legacyData) {
+      if (legacyError) {
+        console.error('Error loading pins:', legacyError);
+        setPins([]);
+        return;
+      }
+      if (legacyData) {
         setPins(legacyData);
-      } else if (canonicalError) {
-        console.error('Error loading pins (canonical):', canonicalError);
-      } else if (legacyError) {
-        console.error('Error loading pins (legacy):', legacyError);
       }
     } catch (e) {
       console.error('Error loading pins:', e);
+      setPins([]);
     } finally {
       setLoading(false);
     }
