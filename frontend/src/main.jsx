@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './lib/patient-flow-bootstrap.js'
+import './lib/canonical-patient-runtime-patch.js'
 import './index.css'
 import './responsive-fixes.css'
 
