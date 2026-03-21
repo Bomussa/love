@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "redirects": [
@@ -29,6 +29,14 @@
     {
       "source": "/api/v1/status",
       "destination": "/.well-known/healthz.json"
+    },
+    {
+      "source": "/api/backend/health",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/health"
+    },
+    {
+      "source": "/api/backend/status",
+      "destination": "https://love-api-bomussa.vercel.app/api/v1/status"
     },
     {
       "source": "/api/v1/(.*)",
