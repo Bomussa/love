@@ -245,7 +245,7 @@ function App() {
   const handleLogin = async ({ patientId, gender }) => {
     try {
       // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
-      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import { apiClient } from "./lib/api/client";
+      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import("./lib/api/client");
 
       // التحقق من تفعيل نظام منع الجهاز
       const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
