@@ -5,7 +5,7 @@
  * No Edge Functions needed for simple CRUD operations
  */
 
-import { supabase } from './supabase-client';
+import { apiClient } from "./lib/api/client";
 
 /**
  * Queue Operations

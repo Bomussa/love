@@ -15,7 +15,7 @@ import {
   Play, Pause, Save, Clock, MapPin, Type, Palette, Image,
   User, Search, Filter, X, Check, AlertCircle, Settings
 } from 'lucide-react';
-import { supabase } from '../lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 
 // الخطوط المتاحة
 const AVAILABLE_FONTS = [

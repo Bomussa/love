@@ -2,7 +2,7 @@ import InteractiveElementReporter from './lib/interactive-element-reporter';
 import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
-import { supabase } from './lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -245,7 +245,7 @@ function App() {
   const handleLogin = async ({ patientId, gender }) => {
     try {
       // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
-      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import('./lib/supabase-client.js');
+      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import { apiClient } from "./lib/api/client";
 
       // التحقق من تفعيل نظام منع الجهاز
       const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);

@@ -1,4 +1,4 @@
-import { supabase } from './supabase-client';
+import { apiClient } from "./lib/api/client";
 import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
 

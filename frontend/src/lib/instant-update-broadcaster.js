@@ -8,7 +8,7 @@
  * ✅ معالجة شاملة لجميع العمليات
  */
 
-import { supabase } from './supabase-client'
+import { apiClient } from "./lib/api/client";
 
 class InstantUpdateBroadcaster {
   constructor() {
