@@ -98,6 +98,33 @@ const api = {
       console.error('Get Settings Error:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // --- PIN Management ---
+  async getCurrentPin(clinicId) {
+    try {
+      const data = await apiClient.get('pinStatus', { clinicId });
+      return {
+        success: true,
+        currentPin: data.pin,
+        totalIssued: data.has_active_pin ? 1 : 0,
+        dateKey: data.checked_at?.split('T')[0],
+        allPins: data.pin ? [data.pin] : []
+      };
+    } catch (error) {
+      console.error('Get Current PIN Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async issuePin(clinicId) {
+    try {
+      const data = await apiClient.post('pinGenerate', { clinic_id: clinicId });
+      return { success: true, data };
+    } catch (error) {
+      console.error('Issue PIN Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 

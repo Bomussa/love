@@ -6,7 +6,9 @@ export const API_CONTRACTS = {
   patientLogin: { path: '/api/v1/patient/login', method: 'POST' },
   pinVerify: { path: '/api/v1/pin/verify', method: 'POST' },
   queueEnter: { path: '/api/v1/queue/enter', method: 'POST' },
-  queueStatus: { path: '/api/v1/queue/status', method: 'GET' }
+  queueStatus: { path: '/api/v1/queue/status', method: 'GET' },
+  pinStatus: { path: '/api/v1/pin/status', method: 'GET' },
+  pinGenerate: { path: '/api/v1/pin/generate', method: 'POST' }
 };
 const BASE = import.meta.env.VITE_API_BASE_URL || '';
 async function request(key, options = {}) {
