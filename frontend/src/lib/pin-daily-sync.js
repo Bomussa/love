@@ -330,11 +330,11 @@ class PINDailySync {
    * توليد رقم PIN فريد
    */
   /**
-   * توليد رقم PIN عشوائي بـ 6 أرقام (100000-999999)
-   * @returns {string} رقم PIN بـ 6 أرقام
+   * توليد رقم PIN عشوائي من 2 إلى 99
+   * @returns {string} رقم PIN من 10 إلى 99
    */
   generateUniquePin() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return Math.floor(10 + Math.random() * 90).toString();
   }
 
   /**
