@@ -5,7 +5,7 @@ import {
   Bell, Settings, Play, Pause, RotateCcw, Eye, EyeOff,
   ChevronDown, ChevronUp, Filter, Download, Search
 } from 'lucide-react';
-import { supabase } from '../lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 
 // قائمة الجداول في Supabase (73 جدول)
 const ALL_TABLES = [
@@ -26,7 +26,7 @@ const ALL_TABLES = [
   'system_settings', 'unified_queue', 'users'
 ];
 
-// قائمة الدوال في Supabase (78 دالة)
+// قائمة الدوال في Supabase (74 دالة)
 const ALL_FUNCTIONS = [
   'auto_daily_cleanup', 'broadcast_table_changes', 'calculate_weighted_progress',
   'call_next_patient', 'call_next_patient_v2', 'cancel_queue_reservation',
@@ -50,8 +50,7 @@ const ALL_FUNCTIONS = [
   'retry_failed_operations', 'retry_pending_process', 'save_partial_result',
   'select_dead_letters_for_processing', 'set_display_number', 'start_patient_visit',
   'touch_updated_at', 'update_api_last_used', 'update_operation_progress',
-  'update_updated_at_column', 'verify_clinic_pin', 'verify_clinic_pin_secure',
-  'delete_expired_pins', 'update_pin_expiry', 'validate_pin_data', 'reset_usage_counters'
+  'update_updated_at_column', 'verify_clinic_pin', 'verify_clinic_pin_secure'
 ];
 
 // تصنيفات الجداول

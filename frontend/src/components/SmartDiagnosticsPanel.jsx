@@ -25,7 +25,7 @@
  * بيانات حقيقية 100% - لا شيء وهمي
  */
 import React, { useState, useEffect, useRef, useCallback, Component } from 'react';
-import { supabase } from '../lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 import {
   Zap, RefreshCw, CheckCircle, XCircle, AlertTriangle,
   Activity, Database, Wifi, Clock, Shield, TrendingUp,

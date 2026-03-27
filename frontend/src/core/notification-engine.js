@@ -1,6 +1,6 @@
 // === Real-time UI Toasts for Queue Events (Safe Dynamic Import) ===
 import eventBus from './event-bus.js';
-import { supabase } from '../lib/supabase-client.js';
+import { apiClient } from "./lib/api/client";
 
 // Cache for operational notification templates from Supabase
 let _opNotifCache = null;

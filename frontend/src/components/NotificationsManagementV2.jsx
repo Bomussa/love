@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Plus, RefreshCw, Edit, Trash2, Play, Eye, Send, User, Clock, Palette, Type, Move, Timer, Square, Zap } from 'lucide-react';
-import { supabase } from '../lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 import OperationalNotificationsManager from './OperationalNotificationsManager';
 
 // خيارات مواقع الظهور

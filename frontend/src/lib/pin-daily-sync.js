@@ -329,6 +329,10 @@ class PINDailySync {
   /**
    * توليد رقم PIN فريد
    */
+  /**
+   * توليد رقم PIN عشوائي من 2 إلى 99
+   * @returns {string} رقم PIN من 10 إلى 99
+   */
   generateUniquePin() {
     return Math.floor(10 + Math.random() * 90).toString();
   }

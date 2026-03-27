@@ -1,5 +1,5 @@
 // lib/settings.js - خدمة إدارة إعدادات النظام
-import db from '../../../src/lib/supabase-db.js';
+import { apiClient } from "./lib/api/client";
 
 /**
  * جلب قيمة إعداد من قاعدة البيانات
