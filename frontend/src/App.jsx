@@ -12,7 +12,6 @@ import { Analytics } from '@vercel/analytics/react'
 const LoginPage = lazy(() => import('./components/LoginPage.jsx').then(m => ({ default: m.LoginPage })))
 const ExamSelectionPage = lazy(() => import('./components/ExamSelectionPage.jsx').then(m => ({ default: m.ExamSelectionPage })))
 const PatientPage = lazy(() => import('./components/PatientPage.jsx').then(m => ({ default: m.PatientPage })))
-import api from './lib/api-unified'
 import authService from './lib/auth-service'
 const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m => ({ default: m.ClinicLoginPage })))
 import getDynamicMedicalPathway from './lib/dynamic-pathways'
