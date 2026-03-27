@@ -1,5 +1,5 @@
 // lib/routingManager.js - مدير التوجيه الديناميكي مع الأوزان والسعة
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 import { getSystemConfig } from './settings.js';
 
 /**

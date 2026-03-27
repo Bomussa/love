@@ -5,7 +5,7 @@ import {
   Bell, Settings, Play, Pause, RotateCcw, Eye, EyeOff,
   ChevronDown, ChevronUp, Filter, Download, Search
 } from 'lucide-react';
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 // قائمة الجداول في Supabase (73 جدول)
 const ALL_TABLES = [

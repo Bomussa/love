@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { ZFDTicketDisplay } from './ZFDTicketDisplay'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 /**
  * Enhanced DisplayPage with Real-time Sync

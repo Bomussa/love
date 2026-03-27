@@ -9,7 +9,7 @@
  * ✅ معالجة الأخطاء والانقطاعات
  */
 
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 class RealtimeSyncManager {
   constructor() {

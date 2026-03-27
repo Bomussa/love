@@ -3,7 +3,7 @@
  * Updated: Direct Supabase connection for PIN logic
  * Table: pins (clinic_code, pin, is_active, expires_at)
  */
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 class SupabaseApiClient {
   constructor() {

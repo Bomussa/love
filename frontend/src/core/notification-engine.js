@@ -1,6 +1,6 @@
 // === Real-time UI Toasts for Queue Events (Safe Dynamic Import) ===
 import eventBus from './event-bus.js';
-import { apiClient } from "../lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 // Cache for operational notification templates
 let _opNotifCache = null;

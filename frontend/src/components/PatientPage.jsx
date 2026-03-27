@@ -13,7 +13,7 @@ import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
 import NotificationSystem, { useNotifications } from './NotificationSystem'
 import { CountdownTimer } from './CountdownTimer'
 import eventBus from '../core/event-bus'
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
   const [stations, setStations] = useState([])

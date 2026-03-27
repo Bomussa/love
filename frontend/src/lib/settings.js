@@ -1,5 +1,5 @@
 // lib/settings.js - خدمة إدارة إعدادات النظام
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 /**
  * جلب قيمة إعداد من قاعدة البيانات

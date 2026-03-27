@@ -15,7 +15,7 @@ import {
   Building2, FileText, Shield, Database, Wifi,
   Check, X, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 // قائمة الميزات المتاحة للتحكم
 const SYSTEM_FEATURES = [

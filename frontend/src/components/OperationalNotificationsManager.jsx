@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Bell, Edit, Save, X, RefreshCw, Volume2, VolumeX, Zap, AlertCircle, CheckCircle, Info, Clock } from 'lucide-react';
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "@/lib/api/client";
 
 const TYPE_META = {
   NEAR_TURN:    { label_ar: 'اقتراب الدور',      label_en: 'Near Turn',     color: '#F59E0B', icon: Clock },
