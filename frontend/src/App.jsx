@@ -2,6 +2,7 @@ import InteractiveElementReporter from './lib/interactive-element-reporter';
 import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
+import QARepairPanel from './components/QARepairPanel';
 import { apiClient } from './lib/api/client';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'

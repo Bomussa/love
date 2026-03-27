@@ -3,7 +3,7 @@
  * لوحة شاملة لعرض نتائج الفحص والإصلاحات مع التفاصيل الكاملة
  */
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase-client';
+import { apiClient } from "./lib/api/client";
 import {
   Zap, RefreshCw, Play, CheckCircle, XCircle, AlertTriangle,
   Clock, TrendingUp, Activity, Shield, Eye, ChevronDown, ChevronUp,
