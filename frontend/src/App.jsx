@@ -127,10 +127,20 @@ function App() {
     elementMonitor.startMonitoring();
 
     // تفعيل نظام الإصلاح التلقائي المتقدم
-    const advancedRepair = new AdvancedAutoRepair(supabase);
-    advancedRepair.startAutoRepair();
+    // ملاحظة: تم إزالة الاعتماد على supabase غير المعرّف - يتم استخدام apiClient بدلاً منه
+    try {
+      const advancedRepair = new AdvancedAutoRepair(apiClient);
+      advancedRepair.startAutoRepair();
+    } catch (err) {
+      console.warn('⚠️ فشل تفعيل نظام الإصلاح المتقدم:', err);
+    }
+    
     // تهيئة نظام المراقبة الذاتية الشامل
-    healthMonitor.init(supabase);
+    try {
+      healthMonitor.init(apiClient);
+    } catch (err) {
+      console.warn('⚠️ فشل تهيئة نظام المراقبة:', err);
+    }
 
     // تفعيل نظام التقارير للعناصر التفاعلية
     const elementReporter = new InteractiveElementReporter();

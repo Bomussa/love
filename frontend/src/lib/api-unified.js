@@ -1,19 +1,13 @@
-import { apiClient } from "./lib/api/client";
-import PINDailySync from './pin-daily-sync';
-import { GDS, initGDS } from './guaranteed-data-system';
+import { apiClient } from "./api/client";
 
 /**
  * Unified API Service - API Client Implementation
  * تم تحديث الخدمة لتستخدم الـ API الموحد بدلاً من الاتصال المباشر بسبسبيس
  * لضمان الأمان والالتزام بالعقود البرمجية (Canonical Contract)
  *
- * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
  * ✅ استخدام API Client للالتزام بسياسات الوصول
  * ✅ بدون بيانات وهمية
  */
-
-// تهيئة نظام ضمان البيانات
-initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
 
 const api = {
   // --- Patients ---

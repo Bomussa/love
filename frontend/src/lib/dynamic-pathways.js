@@ -26,8 +26,7 @@ async function loadConfigFiles() {
   }
   return { routeMap, clinicsData };
 }
-import { apiClient } from "./lib/api/client";
-import { apiClient } from "./lib/api/client";
+import { apiClient } from "./api/client";
 
 // ✅ تحويل رموز العيادات إلى كائنات كاملة - مع دعم قاعدة البيانات
 async function mapClinicCodes(codes, useDatabase = true, localClinicsData = {}) {
