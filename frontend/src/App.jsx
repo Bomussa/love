@@ -2,7 +2,7 @@ import InteractiveElementReporter from './lib/interactive-element-reporter';
 import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
-import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+import { apiClient } from './lib/api/client';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -127,10 +127,10 @@ function App() {
     elementMonitor.startMonitoring();
 
     // تفعيل نظام الإصلاح التلقائي المتقدم
-    const advancedRepair = new AdvancedAutoRepair(supabase);
+    const advancedRepair = new AdvancedAutoRepair(apiClient);
     advancedRepair.startAutoRepair();
     // تهيئة نظام المراقبة الذاتية الشامل
-    healthMonitor.init(supabase);
+    healthMonitor.init(apiClient);
 
     // تفعيل نظام التقارير للعناصر التفاعلية
     const elementReporter = new InteractiveElementReporter();
