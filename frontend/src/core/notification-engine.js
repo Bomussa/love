@@ -441,5 +441,23 @@ class RealtimeNotificationEngine {
   }
 }
 
+/**
+ * Retry wrapper for notification display
+ */
+export async function notifyWithRetry(engine, patientId, notification, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      engine.notifyPatient(patientId, notification);
+      return true;
+    } catch (error) {
+      console.warn(`[NotificationEngine] Retry ${i + 1}/${maxRetries} failed:`, error);
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+  }
+  return false;
+}
+
 export const notificationEngine = new RealtimeNotificationEngine();
 export default notificationEngine;
