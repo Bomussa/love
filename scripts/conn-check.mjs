@@ -16,7 +16,7 @@ function fetchText(url){
   });
 }
 
-const ORIGIN = process.env.FRONTEND_ORIGIN || process.env.VITE_API_BASE_URL?.replace(//api/(v1|v2).*/,'') || 'https://mmc-mms.com';
+const ORIGIN = process.env.FRONTEND_ORIGIN || process.env.VITE_API_BASE_URL?.replace(/\/api\/(v1|v2).*/,'') || 'https://mmc-mms.com';
 
 (async()=>{
   const front = `${ORIGIN}/.well-known/healthz.json`;

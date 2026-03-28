@@ -16,6 +16,9 @@
     }
   },
   "exclude": [
+    "dist",
+    "**/*.deno.ts",
+    "**/*.deno.js",
     "node_modules",
     "dist",
     "frontend/src/assets",

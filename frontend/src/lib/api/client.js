@@ -121,7 +121,7 @@ async function request(key, options = {}, retryCount = 0) {
         return request(key, options, retryCount + 1);
       }
       
-      throw new Error(error);
+      throw new Error(`[API_ERROR][${key}] ${error}`);
     }
 
     // Support both {data: ...} and direct object responses
