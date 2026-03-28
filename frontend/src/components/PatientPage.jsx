@@ -1039,7 +1039,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                     <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
                       {/* عرض حقل البن كود فقط إذا كان النظام مفعل ومرئي */}
                       {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
-                        <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex flex-nowrap gap-2 items-center w-full">
                           <Input
                             type="text"
                             placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
