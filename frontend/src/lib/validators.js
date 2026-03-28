@@ -23,6 +23,14 @@ export function validateQueue(queue) {
     return false;
   }
 
+  // Strict type checking - ensure all fields are integers
+  for (const field of requiredFields) {
+    if (!Number.isInteger(queue[field])) {
+      console.warn(`[Validators] Queue field ${field} must be integer`);
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -76,7 +84,8 @@ export function sanitizeString(input) {
 
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/[<>"']/g, '') // Remove angle brackets and quotes
+    .replace(/[&]/g, '&amp;') // Escape ampersand
     .substring(0, 500); // Limit length
 }
 
@@ -86,7 +95,7 @@ export function sanitizeString(input) {
 export function sanitizeNumber(input, min = 0, max = Infinity) {
   const num = parseInt(input, 10);
   
-  if (isNaN(num)) {
+  if (isNaN(num) || input === null || input === undefined) {
     return min;
   }
 
@@ -228,13 +237,13 @@ export function validateFormData(data, rules = {}) {
     const value = data[field];
 
     // Check required
-    if (rule.required && !value) {
+    if (rule.required && (value === null || value === undefined || value === '')) {
       errors[field] = `${field} is required`;
       continue;
     }
 
     // Check type
-    if (value && rule.type && typeof value !== rule.type) {
+    if (value !== null && value !== undefined && rule.type && typeof value !== rule.type) {
       errors[field] = `${field} must be ${rule.type}`;
       continue;
     }
@@ -255,6 +264,14 @@ export function validateFormData(data, rules = {}) {
     if (value && rule.pattern && !rule.pattern.test(value)) {
       errors[field] = `${field} has invalid format`;
       continue;
+    }
+
+    // Deep validation for nested objects
+    if (value && rule.nested && typeof value === 'object') {
+      const nestedValidation = validateFormData(value, rule.nested);
+      if (!nestedValidation.valid) {
+        errors[field] = nestedValidation.errors;
+      }
     }
   }
 
