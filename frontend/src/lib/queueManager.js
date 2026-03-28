@@ -15,6 +15,38 @@ import { getSetting, getSystemConfig } from './settings.js';
 const VALID_STATUSES = ['waiting', 'called', 'in', 'done', 'no_show'];
 
 /**
+ * Remove duplicate entries (Repair 60)
+ */
+function removeDuplicates(items) {
+  if (!items || !Array.isArray(items)) return items;
+  
+  const seen = new Set();
+  return items.filter(item => {
+    const key = `${item.patientId}_${item.clinicId}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Validate status transitions (Repair 62)
+ */
+function isValidStatusTransition(currentStatus, newStatus) {
+  const transitions = {
+    'waiting': ['called', 'no_show'],
+    'called': ['in', 'no_show'],
+    'in': ['done', 'no_show'],
+    'done': [],
+    'no_show': []
+  };
+  
+  return transitions[currentStatus]?.includes(newStatus) || false;
+}
+
+/**
  * Validate status value
  */
 function validateStatus(status) {
@@ -32,6 +64,19 @@ function clampNumber(value, min = 0, max = Infinity) {
   const num = parseInt(value, 10);
   if (isNaN(num)) return min;
   return Math.max(min, Math.min(num, max));
+}
+
+/**
+ * Sort queue items by timestamp (Repair 59)
+ */
+function sortByTimestamp(items) {
+  if (!items || !Array.isArray(items)) return items;
+  
+  return items.sort((a, b) => {
+    const timeA = new Date(a.timestamp || 0).getTime();
+    const timeB = new Date(b.timestamp || 0).getTime();
+    return timeA - timeB;
+  });
 }
 
 /**
@@ -71,6 +116,20 @@ export async function getQueueSnapshot(clinicId) {
       waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
     };
   }
+}
+
+/**
+ * Get fallback queue data (Repair 63)
+ */
+function getFallbackQueueData() {
+  return {
+    waiting: 0,
+    called: 0,
+    in: 0,
+    done: 0,
+    no_show: 0,
+    items: []
+  };
 }
 
 /**
