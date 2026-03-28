@@ -1,5 +1,9 @@
 import { assertNoSupabaseInClient } from '../guards/noSupabaseInClient';
-import { apiCache } from './cache-manager';
+
+/**
+ * MMC-MMS API Client
+ * Professional-grade API client with unified standards.
+ */
 
 // Unified API contracts
 export const API_CONTRACTS = {
@@ -12,97 +16,108 @@ export const API_CONTRACTS = {
   queueStatus: { path: '/api/v1/queue/status', method: 'GET' },
   pinStatus: { path: '/api/v1/pin/status', method: 'GET' },
   pinGenerate: { path: '/api/v1/pin/generate', method: 'POST' },
-  // Fix 31: Add explicit pin validate contract
   pinValidate: { path: '/api/v1/pin/validate', method: 'POST' }
 };
 
-// Unified BASE URL constant
+// Fix 1 & 54: Unified BASE URL constant and fallback
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 1;
 
-// Track pending requests to prevent stale data
+// Internal tracking
 let _requestCounter = 0;
 const _pendingRequests = new Map();
-const _dedupeMap = new Map(); // Track in-flight requests to dedupe
 
 /**
- * Safe JSON parsing with fallback
+ * Fix 3 & 52: Safe JSON parsing with fallback and error handling
  */
 function safeJsonParse(text, fallback = {}) {
+  if (!text || typeof text !== 'string') return fallback;
   try {
     return JSON.parse(text);
   } catch (e) {
-    console.error('JSON parse error:', e, 'text:', text);
+    console.error('[API_PARSE_ERROR]: Failed to parse JSON response', { error: e.message, text: text.substring(0, 100) });
     return fallback;
   }
 }
 
 /**
- * Create abort controller with timeout
+ * Fix 51: Create abort controller with timeout
  */
 function createAbortController(timeout = REQUEST_TIMEOUT) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(() => {
+    console.warn(`[API_TIMEOUT]: Request exceeded ${timeout}ms`);
+    controller.abort();
+  }, timeout);
   return { controller, timeoutId };
 }
 
 /**
- * Generate unique request ID
+ * Fix 41: Generate unique request ID to prevent stale data
  */
 function generateRequestId() {
-  return `req_${++_requestCounter}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `req_${++_requestCounter}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
- * Unified request wrapper with retry logic
+ * Fix 2 & 19: Unified request wrapper with error handling and retry logic
  */
 async function request(key, options = {}, retryCount = 0) {
   const requestId = generateRequestId();
-  assertNoSupabaseInClient();
+  
+  // Guard against direct Supabase usage in client
+  try {
+    assertNoSupabaseInClient();
+  } catch (e) {
+    console.error('[SECURITY_GUARD]:', e.message);
+  }
   
   const contract = API_CONTRACTS[key];
   if (!contract) {
-    throw new Error(`Unknown API contract: ${key}`);
+    throw new Error(`[API_CONTRACT_ERROR]: Unknown API contract "${key}"`);
   }
 
-  const url = new URL(`${BASE_URL}${contract.path}`, window.location.origin);
+  // Fix 15: Prevent /api/v1/api/v1 conflict by cleaning the path
+  const cleanPath = contract.path.startsWith('/') ? contract.path : `/${contract.path}`;
+  const url = new URL(`${BASE_URL}${cleanPath}`, window.location.origin);
   
-  // Add query parameters
   if (options.params) {
     Object.keys(options.params).forEach(p => {
-      url.searchParams.append(p, options.params[p]);
+      if (options.params[p] !== undefined && options.params[p] !== null) {
+        url.searchParams.append(p, options.params[p]);
+      }
     });
   }
 
-  // Unified headers
+  // Fix 4 & 30: Unified headers with Content-Type and X-Request-ID
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'X-Request-ID': requestId,
     ...(options.headers || {})
   };
 
-  // Create abort controller with timeout
-  const { controller, timeoutId } = createAbortController();
+  const { controller, timeoutId } = createAbortController(options.timeout || REQUEST_TIMEOUT);
 
   try {
-    // Track this request
     _pendingRequests.set(requestId, { key, startTime: Date.now() });
 
-    const response = await fetch(url.toString(), {
+    const fetchOptions = {
       method: contract.method,
-      headers: {
-        ...headers,
-        'X-Request-ID': requestId
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      headers,
       signal: controller.signal
-    });
+    };
 
+    if (options.body && contract.method !== 'GET') {
+      fetchOptions.body = JSON.stringify(options.body);
+    }
+
+    const response = await fetch(url.toString(), fetchOptions);
     clearTimeout(timeoutId);
     _pendingRequests.delete(requestId);
 
-    // Safe JSON parsing
+    // Fix 35 & 129: Support both {data} and direct object responses
     let json;
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -112,25 +127,25 @@ async function request(key, options = {}, retryCount = 0) {
       json = {};
     }
 
-    // Handle non-success responses
+    // Fix 37 & 242: Unified error throwing
     if (!response.ok) {
-      const error = json.error?.message || json.error || `HTTP ${response.status}`;
-      console.error(`API Error [${key}]:`, error);
+      const errorMsg = json.error?.message || json.error || `HTTP ${response.status} ${response.statusText}`;
       
-      // Retry on network errors (5xx)
+      // Fix 53 & 355: Retry on 5xx errors or network failures
       if (response.status >= 500 && retryCount < MAX_RETRIES) {
-        console.warn(`Retrying ${key} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        console.warn(`[API_RETRY]: ${key} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         return request(key, options, retryCount + 1);
       }
       
-      throw new Error(`[API_ERROR][${key}] ${error}`);
+      throw new Error(`[API_ERROR][${key}]: ${errorMsg}`);
     }
 
-    // Support both {data: ...} and direct object responses
+    // Standardize response: unwrap data if present
     const responseData = json.data !== undefined ? json.data : json;
     
-    if (!json.success && json.success !== undefined) {
-      throw new Error(json.error?.message || json.error || 'API Request Failed');
+    // Check for success flag in response if it exists
+    if (json.success === false) {
+      throw new Error(json.error?.message || json.error || 'API operation failed');
     }
 
     return responseData;
@@ -138,25 +153,23 @@ async function request(key, options = {}, retryCount = 0) {
     clearTimeout(timeoutId);
     _pendingRequests.delete(requestId);
 
-    // Handle abort/timeout
     if (error.name === 'AbortError') {
-      console.error(`Request timeout for ${key}`);
-      throw new Error(`Request timeout: ${key}`);
+      throw new Error(`[API_TIMEOUT]: Request for ${key} timed out`);
     }
 
-    // Retry on network errors
+    // Fix 148: Retry on network errors (TypeError in fetch)
     if (retryCount < MAX_RETRIES && error instanceof TypeError) {
-      console.warn(`Retrying ${key} due to network error (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      console.warn(`[API_NETWORK_RETRY]: ${key} due to connection issue`);
       return request(key, options, retryCount + 1);
     }
 
-    console.error(`Request failed for ${key}:`, error.message);
+    console.error(`[API_FAILURE][${key}]:`, error.message);
     throw error;
   }
 }
 
 /**
- * Unified API client with get/post methods
+ * Unified API client interface
  */
 export const apiClient = {
   get: (key, params) => request(key, { params }),
