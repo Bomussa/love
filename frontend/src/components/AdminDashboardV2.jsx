@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService from '../lib/auth-service';
+import { useState, useEffect } from 'react';
 import { apiClient } from '../lib/api/client';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Shield, LogOut, Home, 
@@ -40,11 +41,14 @@ export function AdminDashboardV2({ language = 'ar' }) {
           // يمكن إضافة المزيد من التفاصيل هنا
         } catch (e) {
           console.error(`Error fetching stats for clinic ${clinic.id}:`, e);
+          toast.error(`خطأ في جلب بيانات العيادة ${clinic.id}`);
         }
       }
       setStats(totalStats);
+      toast.success('تم تحديث الإحصائيات بنجاح');
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      toast.error('فشل تحديث الإحصائيات');
     } finally {
       setLoading(false);
     }
@@ -53,6 +57,18 @@ export function AdminDashboardV2({ language = 'ar' }) {
   const handleLogout = () => {
     authService.logout();
     window.location.href = '/';
+  };
+
+  // Repair 54-56: Button state management
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchStats();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -73,11 +89,12 @@ export function AdminDashboardV2({ language = 'ar' }) {
         
         <div className="flex items-center gap-4">
           <button 
-            onClick={fetchStats}
-            className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={t('تحديث', 'Refresh')}
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
           <div className="h-8 w-px bg-gray-700 mx-2"></div>
           <button 
