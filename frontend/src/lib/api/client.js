@@ -18,6 +18,10 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 1;
 
+// Track pending requests to prevent stale data
+let _requestCounter = 0;
+const _pendingRequests = new Map();
+
 /**
  * Safe JSON parsing with fallback
  */
@@ -40,9 +44,17 @@ function createAbortController(timeout = REQUEST_TIMEOUT) {
 }
 
 /**
+ * Generate unique request ID
+ */
+function generateRequestId() {
+  return `req_${++_requestCounter}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
  * Unified request wrapper with retry logic
  */
 async function request(key, options = {}, retryCount = 0) {
+  const requestId = generateRequestId();
   assertNoSupabaseInClient();
   
   const contract = API_CONTRACTS[key];
@@ -70,14 +82,21 @@ async function request(key, options = {}, retryCount = 0) {
   const { controller, timeoutId } = createAbortController();
 
   try {
+    // Track this request
+    _pendingRequests.set(requestId, { key, startTime: Date.now() });
+
     const response = await fetch(url.toString(), {
       method: contract.method,
-      headers,
+      headers: {
+        ...headers,
+        'X-Request-ID': requestId
+      },
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
+    _pendingRequests.delete(requestId);
 
     // Safe JSON parsing
     let json;
@@ -113,6 +132,7 @@ async function request(key, options = {}, retryCount = 0) {
     return responseData;
   } catch (error) {
     clearTimeout(timeoutId);
+    _pendingRequests.delete(requestId);
 
     // Handle abort/timeout
     if (error.name === 'AbortError') {
