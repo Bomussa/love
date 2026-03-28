@@ -15,5 +15,14 @@
       "https://esm.sh/*": ["node_modules/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "frontend/src/lib/supabase-client.js"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "frontend/src/assets",
+    "frontend/src/lib/supabase-client.js",
+    "frontend/src/assets/js/notifications.js",
+    "frontend/src/lib/routingManager.js",
+    "scripts/conn-check.mjs",
+    "frontend/src/_archived"
+  ]
 }

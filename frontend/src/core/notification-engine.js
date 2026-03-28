@@ -88,15 +88,30 @@ const NOTIFICATION_TYPES = {
   PIN_GENERATED: 'PIN_GENERATED',
 };
 
+// Notification priority levels
+const PRIORITY_LEVELS = {
+  LOW: 1,
+  NORMAL: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+};
+
 class RealtimeNotificationEngine {
   constructor() {
     // تخزين الإشعارات
     this.notifications = new Map(); // patientId -> notification[]
     this.adminNotifications = [];
+    this.notificationDeduplication = new Map(); // Track sent notifications to prevent duplicates
 
     // المشتركون - للإشعارات الفورية
     this.subscribers = new Map(); // patientId -> Set<callback>
     this.adminSubscribers = new Set();
+
+    // Configuration
+    this.MAX_PATIENT_NOTIFICATIONS = 100;
+    this.MAX_ADMIN_NOTIFICATIONS = 200;
+    this.NOTIFICATION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    this.DEDUP_WINDOW = 5 * 60 * 1000; // 5 minutes
 
     // ✅ إصلاح: تحميل الإشعارات المحفوظة فوراً عند التهيئة
     this.loadAllNotifications();
@@ -106,6 +121,9 @@ class RealtimeNotificationEngine {
 
     // ✅ إصلاح: إعداد تحديث دوري للإشعارات
     this.startNotificationSync();
+
+    // ✅ إصلاح: إعداد تنظيف الذاكرة
+    this.startMemoryCleanup();
   }
 
   // ✅ إصلاح: تحميل جميع الإشعارات المحفوظة
@@ -135,7 +153,7 @@ class RealtimeNotificationEngine {
   // ✅ إصلاح: مزامنة الإشعارات بشكل دوري
   startNotificationSync() {
     // مزامنة كل 30 ثانية
-    setInterval(() => {
+    this.syncInterval = setInterval(() => {
       this.syncNotifications();
     }, 30000);
   }
@@ -149,6 +167,48 @@ class RealtimeNotificationEngine {
     } catch (e) {
       console.warn('[NotificationEngine] Sync failed:', e);
     }
+  }
+
+  // ✅ إصلاح: تنظيف الذاكرة والإشعارات القديمة
+  startMemoryCleanup() {
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupOldNotifications();
+    }, 60000); // كل دقيقة
+  }
+
+  cleanupOldNotifications() {
+    const now = Date.now();
+
+    // تنظيف إشعارات المرضى
+    this.notifications.forEach((notifications, patientId) => {
+      const filtered = notifications.filter(n => {
+        const notifTime = new Date(n.timestamp).getTime();
+        return (now - notifTime) < this.NOTIFICATION_TTL;
+      });
+
+      if (filtered.length === 0) {
+        this.notifications.delete(patientId);
+      } else {
+        this.notifications.set(patientId, filtered);
+      }
+    });
+
+    // تنظيف إشعارات الإدارة
+    this.adminNotifications = this.adminNotifications.filter(n => {
+      const notifTime = new Date(n.timestamp).getTime();
+      return (now - notifTime) < this.NOTIFICATION_TTL;
+    });
+
+    // تنظيف خريطة الإزالة المكررة
+    const dedupKeys = Array.from(this.notificationDeduplication.keys());
+    dedupKeys.forEach(key => {
+      const timestamp = this.notificationDeduplication.get(key);
+      if ((now - timestamp) > this.DEDUP_WINDOW) {
+        this.notificationDeduplication.delete(key);
+      }
+    });
+
+    this.saveAllNotifications();
   }
 
   // ✅ إصلاح: حفظ جميع الإشعارات
@@ -217,15 +277,40 @@ class RealtimeNotificationEngine {
   // === إرسال الإشعارات الفورية ===
 
   /**
+   * Check if notification is duplicate
+   */
+  isDuplicate(patientId, notification) {
+    const key = `${patientId}_${notification.type}_${notification.clinicId || ''}`;
+    const lastTime = this.notificationDeduplication.get(key);
+    
+    if (lastTime && (Date.now() - lastTime) < this.DEDUP_WINDOW) {
+      return true;
+    }
+    
+    this.notificationDeduplication.set(key, Date.now());
+    return false;
+  }
+
+  /**
    * إرسال إشعار فوري للمراجع
    * يتم استدعاء جميع callbacks المشتركة فوراً
    */
   notifyPatient(patientId, notification) {
+    // ✅ إصلاح: منع الإشعارات المكررة
+    if (this.isDuplicate(patientId, notification)) {
+      console.debug('[NotificationEngine] Duplicate notification skipped');
+      return;
+    }
+
+    // ✅ إصلاح: تحديد الأولوية الافتراضية
+    const priority = notification.priority || PRIORITY_LEVELS.NORMAL;
+
     // إضافة معلومات إضافية
     const fullNotification = {
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       read: false,
+      priority,
       ...notification,
     };
 
@@ -233,13 +318,22 @@ class RealtimeNotificationEngine {
     if (!this.notifications.has(patientId)) {
       this.notifications.set(patientId, []);
     }
-    this.notifications.get(patientId).push(fullNotification);
 
-    // الاحتفاظ بآخر 100 إشعار فقط
     const patientNotifications = this.notifications.get(patientId);
-    if (patientNotifications.length > 100) {
+    patientNotifications.push(fullNotification);
+
+    // ✅ إصلاح: الاحتفاظ بآخر N إشعار فقط
+    if (patientNotifications.length > this.MAX_PATIENT_NOTIFICATIONS) {
       patientNotifications.shift();
     }
+
+    // ✅ إصلاح: ترتيب حسب الأولوية
+    patientNotifications.sort((a, b) => {
+      if (b.priority !== a.priority) {
+        return b.priority - a.priority;
+      }
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
 
     // حفظ في localStorage فوراً
     this.saveToStorage(patientId);
@@ -251,7 +345,7 @@ class RealtimeNotificationEngine {
         try {
           callback(fullNotification);
         } catch (e) {
-          // console.error('Error in notification callback:', e)
+          console.error('[NotificationEngine] Error in notification callback:', e);
         }
       });
     }
@@ -267,20 +361,32 @@ class RealtimeNotificationEngine {
    * إرسال إشعار فوري للإدارة
    */
   notifyAdmin(notification) {
+    // ✅ إصلاح: تحديد الأولوية الافتراضية
+    const priority = notification.priority || PRIORITY_LEVELS.NORMAL;
+
     const fullNotification = {
       id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       read: false,
+      priority,
       ...notification,
     };
 
     // حفظ الإشعار
     this.adminNotifications.push(fullNotification);
 
-    // الاحتفاظ بآخر 200 إشعار
-    if (this.adminNotifications.length > 200) {
+    // ✅ إصلاح: الاحتفاظ بآخر N إشعار
+    if (this.adminNotifications.length > this.MAX_ADMIN_NOTIFICATIONS) {
       this.adminNotifications.shift();
     }
+
+    // ✅ إصلاح: ترتيب حسب الأولوية
+    this.adminNotifications.sort((a, b) => {
+      if (b.priority !== a.priority) {
+        return b.priority - a.priority;
+      }
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
 
     // حفظ في localStorage
     localStorage.setItem('admin_notifications', JSON.stringify(this.adminNotifications));
@@ -290,7 +396,7 @@ class RealtimeNotificationEngine {
       try {
         callback(fullNotification);
       } catch (e) {
-        // console.error('Error in admin notification callback:', e)
+        console.error('[NotificationEngine] Error in admin notification callback:', e);
       }
     });
 
@@ -316,7 +422,18 @@ class RealtimeNotificationEngine {
   }
 
   triggerAlerts(notification) {
-      // Logic to trigger sound/vibration
+      // Logic to trigger sound/vibration based on priority
+      if (notification.priority >= PRIORITY_LEVELS.HIGH) {
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+      }
+  }
+
+  // Cleanup on destroy
+  destroy() {
+    if (this.syncInterval) clearInterval(this.syncInterval);
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
   }
 }
 

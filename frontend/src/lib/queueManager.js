@@ -11,6 +11,29 @@ import { getSetting, getSystemConfig } from './settings.js';
  * @property {number} no_show - عدد الغائبين
  */
 
+// Valid status transitions
+const VALID_STATUSES = ['waiting', 'called', 'in', 'done', 'no_show'];
+
+/**
+ * Validate status value
+ */
+function validateStatus(status) {
+  if (!status || !VALID_STATUSES.includes(status)) {
+    console.warn(`Invalid status: ${status}, defaulting to 'waiting'`);
+    return 'waiting';
+  }
+  return status;
+}
+
+/**
+ * Clamp numeric values to prevent invalid numbers
+ */
+function clampNumber(value, min = 0, max = Infinity) {
+  const num = parseInt(value, 10);
+  if (isNaN(num)) return min;
+  return Math.max(min, Math.min(num, max));
+}
+
 /**
  * جلب لقطة حالية للكيو في عيادة معينة عبر API
  * @param {number} clinicId - معرف العيادة
@@ -18,10 +41,25 @@ import { getSetting, getSystemConfig } from './settings.js';
  */
 export async function getQueueSnapshot(clinicId) {
   try {
+    // Validate clinicId
+    if (!clinicId) {
+      console.error('clinicId is required');
+      return {
+        waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
+      };
+    }
+
     const data = await apiClient.get('queueSnapshot', { clinicId });
     
     if (data && data.snapshot) {
-      return data.snapshot;
+      // Validate and clamp all numeric values
+      return {
+        waiting: clampNumber(data.snapshot.waiting),
+        called: clampNumber(data.snapshot.called),
+        in: clampNumber(data.snapshot.in),
+        done: clampNumber(data.snapshot.done),
+        no_show: clampNumber(data.snapshot.no_show),
+      };
     }
     
     return {
@@ -42,10 +80,43 @@ export async function getQueueSnapshot(clinicId) {
  */
 export async function getQueueDetails(clinicId) {
   try {
+    // Validate clinicId
+    if (!clinicId) {
+      console.error('clinicId is required');
+      return {
+        waiting: 0, called: 0, in: 0, done: 0, no_show: 0,
+        patients: [],
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+
     const data = await apiClient.get('queueDetails', { clinicId });
     
     if (data && data.details) {
-      return data.details;
+      // Validate patients array
+      const patients = Array.isArray(data.details.patients) ? data.details.patients : [];
+      
+      // Remove duplicate entries
+      const uniquePatients = Array.from(
+        new Map(patients.map(p => [p.patientId, p])).values()
+      );
+
+      // Sort by timestamp
+      uniquePatients.sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeA - timeB;
+      });
+
+      return {
+        waiting: clampNumber(data.details.waiting),
+        called: clampNumber(data.details.called),
+        in: clampNumber(data.details.in),
+        done: clampNumber(data.details.done),
+        no_show: clampNumber(data.details.no_show),
+        patients: uniquePatients,
+        lastUpdated: data.details.lastUpdated || new Date().toISOString(),
+      };
     }
     
     const snapshot = await getQueueSnapshot(clinicId);
@@ -73,11 +144,19 @@ export async function getQueueDetails(clinicId) {
  */
 export async function updateQueueStatus(clinicId, patientId, newStatus) {
   try {
+    // Validate inputs
+    if (!clinicId || !patientId) {
+      throw new Error('clinicId and patientId are required');
+    }
+
+    const validatedStatus = validateStatus(newStatus);
+
     const data = await apiClient.post('updateQueueStatus', {
       clinicId,
       patientId,
-      status: newStatus
+      status: validatedStatus
     });
+    
     return data;
   } catch (error) {
     console.error(`Error updating queue status:`, error);
@@ -93,14 +172,54 @@ export async function updateQueueStatus(clinicId, patientId, newStatus) {
  */
 export async function callNextPatient(clinicId, pin) {
   try {
+    // Validate inputs
+    if (!clinicId) {
+      throw new Error('clinicId is required');
+    }
+
+    // Get current queue details
+    const queueDetails = await getQueueDetails(clinicId);
+    
+    // Check if queue is empty
+    if (!queueDetails.patients || queueDetails.patients.length === 0) {
+      console.warn(`Queue is empty for clinic ${clinicId}`);
+      return {
+        success: false,
+        error: 'Queue is empty',
+        patient: null
+      };
+    }
+
+    // Get next patient (first in waiting status)
+    const nextPatient = queueDetails.patients.find(p => 
+      p && validateStatus(p.status) === 'waiting'
+    );
+
+    if (!nextPatient) {
+      console.warn(`No waiting patients for clinic ${clinicId}`);
+      return {
+        success: false,
+        error: 'No waiting patients',
+        patient: null
+      };
+    }
+
+    // Call API to update status
     const data = await apiClient.post('callNextPatient', {
       clinicId,
-      pin
+      pin,
+      patientId: nextPatient.patientId
     });
+    
     return data;
   } catch (error) {
     console.error(`Error calling next patient:`, error);
-    throw error;
+    // Return fallback instead of throwing
+    return {
+      success: false,
+      error: error.message,
+      patient: null
+    };
   }
 }
 
@@ -111,8 +230,29 @@ export async function callNextPatient(clinicId, pin) {
  */
 export async function getQueueStatus(clinicId) {
   try {
+    // Validate clinicId
+    if (!clinicId) {
+      console.error('clinicId is required');
+      return {
+        success: false,
+        error: 'clinicId is required'
+      };
+    }
+
     const data = await apiClient.get('queueStatus', { clinicId });
-    return data;
+    
+    // Validate response structure
+    if (data && typeof data === 'object') {
+      return {
+        success: true,
+        ...data
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Invalid response format'
+    };
   } catch (error) {
     console.error(`Error getting queue status:`, error);
     return {

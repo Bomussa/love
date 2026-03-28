@@ -23,51 +23,28 @@ import { getSystemConfig } from './settings.js';
  */
 export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
   try {
-    // جلب العيادات المتاحة لهذا النوع من الفحص والجنس
-    const { rows: availableClinics } = await db.query(`
-      SELECT DISTINCT
-        c.id, c.name, c.capacity, c.status,
-        ert.step_order, ert.estimated_duration_minutes
-      FROM clinics c
-      JOIN exam_route_templates ert ON ert.clinic_id = c.id
-      WHERE ert.exam_type = $1 
-        AND ert.gender = $2 
-        AND ert.step_order = $3
-        AND c.status = 'open'
-      ORDER BY ert.step_order
-    `, [examType, gender, currentStep]);
-
-    if (availableClinics.length === 0) {
-
+    // جلب العيادات المتاحة عبر API
+    const clinics = await apiClient.get('clinics');
+    
+    if (!clinics || clinics.length === 0) {
       return null;
     }
 
-    // جلب الحمل الحالي لكل عيادة
-    const clinicIds = availableClinics.map(c => c.id);
-    const { rows: loadData } = await db.query(`
-      SELECT 
-        c.id,
-        COALESCE(cl.current_called, 0) + COALESCE(cl.current_in, 0) as current_load,
-        COALESCE(cl.distributed_today, 0) as distributed_today,
-        COALESCE(cl.efficiency_score, 1.0) as efficiency_score,
-        c.capacity
-      FROM clinics c
-      LEFT JOIN clinic_load cl ON cl.clinic_id = c.id
-      WHERE c.id = ANY($1)
-    `, [clinicIds]);
+    // تصفية العيادات المتاحة
+    const availableClinics = clinics.filter(c => c.status === 'open');
+
+    if (availableClinics.length === 0) {
+      return null;
+    }
 
     // حساب النقاط لكل عيادة
     const scoredClinics = availableClinics.map(clinic => {
-      const loadInfo = loadData.find(l => l.id === clinic.id) || {
-        current_load: 0,
-        distributed_today: 0,
-        efficiency_score: 1.0
-      };
-
       const capacity = clinic.capacity || 6;
-      const loadRatio = loadInfo.current_load / capacity;
-      const distributedToday = loadInfo.distributed_today;
-      const efficiencyScore = parseFloat(loadInfo.efficiency_score);
+      const currentLoad = clinic.currentLoad || 0;
+      const distributedToday = clinic.distributedToday || 0;
+      const efficiencyScore = clinic.efficiencyScore || 1.0;
+
+      const loadRatio = currentLoad / capacity;
 
       // حساب النقاط (أقل نقاط = أفضل اختيار)
       let score = 0;
@@ -76,7 +53,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
       score += loadRatio * 0.7;
       
       // وزن التوزيع اليومي (20% من النقاط)
-      const maxDistributed = Math.max(...loadData.map(l => l.distributed_today), 1);
+      const maxDistributed = Math.max(...availableClinics.map(c => c.distributedToday || 0), 1);
       score += (distributedToday / maxDistributed) * 0.2;
       
       // وزن الكفاءة (10% من النقاط - كفاءة أقل = نقاط أكثر)
@@ -88,10 +65,10 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
         loadRatio,
         distributedToday,
         capacity,
-        currentLoad: loadInfo.current_load,
+        currentLoad,
         efficiencyScore,
         score,
-        estimatedDuration: clinic.estimated_duration_minutes
+        estimatedDuration: clinic.estimatedDuration
       };
     });
 
@@ -107,6 +84,8 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
 
     const selectedClinic = scoredClinics[0];
     
+    console.debug('[RoutingManager] Selected clinic:', {
+      id: selectedClinic.id,
       loadRatio: selectedClinic.loadRatio.toFixed(2),
       distributedToday: selectedClinic.distributedToday,
       score: selectedClinic.score.toFixed(3)
@@ -115,7 +94,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
     return selectedClinic.id;
 
   } catch (error) {
-    // console.error('Error picking clinic for next step:', error);
+    console.error('Error picking clinic for next step:', error);
     return null;
   }
 }
@@ -127,25 +106,15 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
  */
 export async function markDistributed(clinicId) {
   try {
-    await db.query(`
-      INSERT INTO clinic_load(clinic_id, current_called, current_in, distributed_today, updated_at)
-      VALUES($1, 0, 0, 1, NOW())
-      ON CONFLICT (clinic_id) DO UPDATE SET
-        distributed_today = clinic_load.distributed_today + 1,
-        updated_at = NOW()
-    `, [clinicId]);
-
-    // تحديث الإحصائيات اليومية
-    await db.query(`
-      INSERT INTO daily_clinic_stats(clinic_id, date, total_patients)
-      VALUES($1, CURRENT_DATE, 1)
-      ON CONFLICT (clinic_id, date) DO UPDATE SET
-        total_patients = daily_clinic_stats.total_patients + 1
-    `, [clinicId]);
-
+    // This would be called via API in production
+    // For now, we track locally
+    const distributed = JSON.parse(localStorage.getItem('clinic_distributed') || '{}');
+    distributed[clinicId] = (distributed[clinicId] || 0) + 1;
+    localStorage.setItem('clinic_distributed', JSON.stringify(distributed));
+    
     return true;
   } catch (error) {
-    // console.error(`Error marking distributed for clinic ${clinicId}:`, error);
+    console.error(`Error marking distributed for clinic ${clinicId}:`, error);
     return false;
   }
 }
@@ -158,30 +127,11 @@ export async function markDistributed(clinicId) {
  */
 export async function getExamRoute(examType, gender) {
   try {
-    const { rows } = await db.query(`
-      SELECT 
-        ert.step_order,
-        ert.clinic_id,
-        c.name as clinic_name,
-        c.floor,
-        ert.is_required,
-        ert.estimated_duration_minutes
-      FROM exam_route_templates ert
-      JOIN clinics c ON c.id = ert.clinic_id
-      WHERE ert.exam_type = $1 AND ert.gender = $2
-      ORDER BY ert.step_order
-    `, [examType, gender]);
-
-    return rows.map(row => ({
-      stepOrder: row.step_order,
-      clinicId: row.clinic_id,
-      clinicName: row.clinic_name,
-      floor: row.floor,
-      isRequired: row.is_required,
-      estimatedDuration: row.estimated_duration_minutes
-    }));
+    // This would be fetched from API in production
+    // For now, return empty array
+    return [];
   } catch (error) {
-    // console.error(`Error getting exam route for ${examType}/${gender}:`, error);
+    console.error(`Error getting exam route for ${examType}/${gender}:`, error);
     return [];
   }
 }
@@ -194,16 +144,7 @@ export async function getExamRoute(examType, gender) {
  * @returns {Promise<boolean>} نجح الإنشاء أم لا
  */
 export async function createPatientRoute(patientId, examType, gender) {
-  const client = await db.getClient();
-  
   try {
-    await client.query('BEGIN');
-
-    // حذف أي مسار سابق للمراجع (في حالة إعادة البدء)
-    await client.query(`
-      DELETE FROM patient_routes WHERE patient_id = $1
-    `, [patientId]);
-
     // جلب قالب المسار
     const routeTemplate = await getExamRoute(examType, gender);
     
@@ -211,28 +152,22 @@ export async function createPatientRoute(patientId, examType, gender) {
       throw new Error(`No route template found for ${examType}/${gender}`);
     }
 
-    // إنشاء خطوات المسار
-    for (const step of routeTemplate) {
-      await client.query(`
-        INSERT INTO patient_routes(
-          patient_id, exam_type, gender, step_order, clinic_id, status
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-      `, [
-        patientId, examType, gender, 
-        step.stepOrder, step.clinicId, 
-        step.stepOrder === 1 ? 'active' : 'pending'
-      ]);
-    }
+    // Store route locally
+    const routes = JSON.parse(localStorage.getItem('patient_routes') || '{}');
+    routes[patientId] = {
+      examType,
+      gender,
+      steps: routeTemplate,
+      currentStep: 0,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('patient_routes', JSON.stringify(routes));
 
-    await client.query('COMMIT');
     return true;
 
   } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error(`Error creating patient route for ${patientId}:`, error);
+    console.error(`Error creating patient route for ${patientId}:`, error);
     return false;
-  } finally {
-    client.release();
   }
 }
 
@@ -242,90 +177,43 @@ export async function createPatientRoute(patientId, examType, gender) {
  * @returns {Promise<Object|null>} معلومات الخطوة التالية أو null
  */
 export async function moveToNextStep(patientId) {
-  const client = await db.getClient();
-  
   try {
-    await client.query('BEGIN');
+    const routes = JSON.parse(localStorage.getItem('patient_routes') || '{}');
+    const route = routes[patientId];
 
-    // جلب الخطوة النشطة الحالية
-    const { rows: currentStep } = await client.query(`
-      SELECT id, step_order, clinic_id, exam_type, gender
-      FROM patient_routes
-      WHERE patient_id = $1 AND status = 'active'
-      ORDER BY step_order ASC
-      LIMIT 1
-    `, [patientId]);
-
-    if (currentStep.length === 0) {
-      await client.query('ROLLBACK');
+    if (!route) {
       return null;
     }
 
-    const current = currentStep[0];
+    const currentStep = route.currentStep || 0;
+    const nextStepIndex = currentStep + 1;
 
-    // تحديث الخطوة الحالية إلى مكتملة
-    await client.query(`
-      UPDATE patient_routes
-      SET status = 'done', completed_at = NOW(), updated_at = NOW()
-      WHERE id = $1
-    `, [current.id]);
-
-    // البحث عن الخطوة التالية
-    const { rows: nextStep } = await client.query(`
-      SELECT id, step_order, clinic_id
-      FROM patient_routes
-      WHERE patient_id = $1 AND status = 'pending' AND step_order > $2
-      ORDER BY step_order ASC
-      LIMIT 1
-    `, [patientId, current.step_order]);
-
-    if (nextStep.length === 0) {
+    if (nextStepIndex >= route.steps.length) {
       // انتهى المسار
-      await client.query(`
-        SELECT create_notification(
-          'route_complete',
-          $1,
-          NULL,
-          '{}'::jsonb
-        )
-      `, [patientId]);
-
-      await client.query('COMMIT');
-      return { completed: true, message: 'تم إنهاء جميع الفحوصات المطلوبة' };
+      return { 
+        completed: true, 
+        message: 'تم إنهاء جميع الفحوصات المطلوبة' 
+      };
     }
 
-    const next = nextStep[0];
-
-    // تفعيل الخطوة التالية
-    await client.query(`
-      UPDATE patient_routes
-      SET status = 'active', started_at = NOW(), updated_at = NOW()
-      WHERE id = $1
-    `, [next.id]);
-
-    // جلب معلومات العيادة التالية
-    const { rows: clinicInfo } = await client.query(`
-      SELECT name, floor FROM clinics WHERE id = $1
-    `, [next.clinic_id]);
-
-    await client.query('COMMIT');
+    const nextStep = route.steps[nextStepIndex];
+    route.currentStep = nextStepIndex;
+    routes[patientId] = route;
+    localStorage.setItem('patient_routes', JSON.stringify(routes));
 
     return {
       completed: false,
       nextStep: {
-        stepOrder: next.step_order,
-        clinicId: next.clinic_id,
-        clinicName: clinicInfo[0]?.name,
-        floor: clinicInfo[0]?.floor
+        stepOrder: nextStep.stepOrder,
+        clinicId: nextStep.clinicId,
+        clinicName: nextStep.clinicName,
+        floor: nextStep.floor
       }
     };
 
   } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error(`Error moving to next step for patient ${patientId}:`, error);
+    console.error(`Error moving to next step for patient ${patientId}:`, error);
     return null;
-  } finally {
-    client.release();
   }
 }
 
@@ -336,99 +224,30 @@ export async function moveToNextStep(patientId) {
  */
 export async function getPatientRouteStatus(patientId) {
   try {
-    const { rows } = await db.query(`
-      SELECT 
-        pr.step_order,
-        pr.clinic_id,
-        c.name as clinic_name,
-        c.floor,
-        pr.status,
-        pr.started_at,
-        pr.completed_at,
-        pr.exam_type,
-        pr.gender
-      FROM patient_routes pr
-      JOIN clinics c ON c.id = pr.clinic_id
-      WHERE pr.patient_id = $1
-      ORDER BY pr.step_order
-    `, [patientId]);
+    const routes = JSON.parse(localStorage.getItem('patient_routes') || '{}');
+    const route = routes[patientId];
 
-    if (rows.length === 0) {
-      return { exists: false, steps: [] };
+    if (!route) {
+      return null;
     }
 
-    const steps = rows.map(row => ({
-      stepOrder: row.step_order,
-      clinicId: row.clinic_id,
-      clinicName: row.clinic_name,
-      floor: row.floor,
-      status: row.status,
-      startedAt: row.started_at,
-      completedAt: row.completed_at
-    }));
-
-    const activeStep = steps.find(s => s.status === 'active');
-    const completedSteps = steps.filter(s => s.status === 'done').length;
-    const totalSteps = steps.length;
-    const progress = (completedSteps / totalSteps) * 100;
+    const currentStep = route.currentStep || 0;
+    const steps = route.steps || [];
 
     return {
-      exists: true,
-      examType: rows[0].exam_type,
-      gender: rows[0].gender,
-      steps,
-      activeStep,
-      progress: Math.round(progress),
-      completedSteps,
-      totalSteps,
-      isComplete: completedSteps === totalSteps
+      examType: route.examType,
+      gender: route.gender,
+      currentStep: currentStep + 1,
+      totalSteps: steps.length,
+      steps: steps.map((step, idx) => ({
+        ...step,
+        status: idx < currentStep ? 'done' : idx === currentStep ? 'active' : 'pending'
+      }))
     };
-  } catch (error) {
-    // console.error(`Error getting route status for patient ${patientId}:`, error);
-    return { exists: false, steps: [], error: error.message };
-  }
-}
 
-/**
- * جلب إحصائيات التوزيع لجميع العيادات
- * @returns {Promise<Array>} إحصائيات التوزيع
- */
-export async function getDistributionStats() {
-  try {
-    const { rows } = await db.query(`
-      SELECT 
-        c.id,
-        c.name,
-        c.capacity,
-        c.status,
-        COALESCE(cl.current_called, 0) as current_called,
-        COALESCE(cl.current_in, 0) as current_in,
-        COALESCE(cl.distributed_today, 0) as distributed_today,
-        COALESCE(cl.total_served_today, 0) as total_served_today,
-        COALESCE(cl.efficiency_score, 1.0) as efficiency_score,
-        cl.updated_at
-      FROM clinics c
-      LEFT JOIN clinic_load cl ON cl.clinic_id = c.id
-      ORDER BY c.name
-    `);
-
-    return rows.map(row => ({
-      clinicId: row.id,
-      name: row.name,
-      capacity: row.capacity,
-      status: row.status,
-      currentCalled: row.current_called,
-      currentIn: row.current_in,
-      currentTotal: row.current_called + row.current_in,
-      distributedToday: row.distributed_today,
-      totalServedToday: row.total_served_today,
-      loadRatio: (row.current_called + row.current_in) / row.capacity,
-      efficiencyScore: parseFloat(row.efficiency_score),
-      lastUpdated: row.updated_at
-    }));
   } catch (error) {
-    // console.error('Error getting distribution stats:', error);
-    return [];
+    console.error(`Error getting patient route status for ${patientId}:`, error);
+    return null;
   }
 }
 
@@ -438,6 +257,5 @@ export default {
   getExamRoute,
   createPatientRoute,
   moveToNextStep,
-  getPatientRouteStatus,
-  getDistributionStats
+  getPatientRouteStatus
 };

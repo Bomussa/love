@@ -9,12 +9,37 @@ import { apiClient } from "./api/client";
  * ✅ بدون بيانات وهمية
  */
 
+/**
+ * Null-safe unwrap helper
+ */
+function unwrap(data, defaultValue = null) {
+  if (data === null || data === undefined) {
+    return defaultValue;
+  }
+  return data;
+}
+
+/**
+ * Normalize response data structure
+ */
+function normalizeResponse(data) {
+  if (!data) return {};
+  
+  // If data has a data property, unwrap it
+  if (data.data !== undefined) {
+    return data.data;
+  }
+  
+  return data;
+}
+
 const api = {
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
       const data = await apiClient.post('patientLogin', { personalId: patientId, gender: gender || 'male' });
-      return { success: true, data: data.patient };
+      const normalized = normalizeResponse(data);
+      return { success: true, data: unwrap(normalized.patient, normalized) };
     } catch (error) {
       console.error('Login Error:', error);
       return { success: false, error: error.message };
@@ -30,9 +55,10 @@ const api = {
         patientName,
         examType
       });
+      const normalized = normalizeResponse(data);
       return {
         success: true,
-        ...data
+        ...normalized
       };
     } catch (error) {
       console.error('Enter Queue Error:', error);
@@ -44,17 +70,19 @@ const api = {
     try {
       // نستخدم الـ API لجلب الحالة الموحدة للطابور
       const data = await apiClient.get('queueStatus', { clinicId });
+      const normalized = normalizeResponse(data);
       
       // البحث عن المراجع في قائمة الانتظار
-      const patientInQueue = data.patients.find(p => p.patientId === patientId || p.position === patientId);
+      const patients = unwrap(normalized.patients, []);
+      const patientInQueue = patients.find(p => p && (p.patientId === patientId || p.position === patientId));
       
       return {
         success: true,
-        display_number: patientInQueue?.position || 0,
-        current_number: data.currentNumber,
-        ahead: patientInQueue ? data.patients.indexOf(patientInQueue) : 0,
+        display_number: unwrap(patientInQueue?.position, 0),
+        current_number: unwrap(normalized.currentNumber, 0),
+        ahead: patientInQueue ? patients.indexOf(patientInQueue) : 0,
         status: patientInQueue ? 'waiting' : 'unknown',
-        total_waiting: data.queueLength
+        total_waiting: unwrap(normalized.queueLength, patients.length || 0)
       };
     } catch (error) {
       console.error('Get Position Error:', error);
@@ -65,11 +93,13 @@ const api = {
   async queueDone(clinicId, patientId, pin) {
     try {
       const data = await apiClient.post('pinVerify', { clinicId, pin });
-      if (data.verified) {
+      const normalized = normalizeResponse(data);
+      
+      if (unwrap(normalized.verified, false)) {
         // إذا تم التحقق، نقوم بإنهاء الحالة عبر الـ API
         // ملاحظة: نحتاج للتأكد من وجود endpoint لإنهاء الطابور في العقد
         // حالياً نستخدم المنطق الموجود في الـ backend
-        return { success: true, data };
+        return { success: true, data: normalized };
       }
       return { success: false, error: 'رقم PIN غير صحيح' };
     } catch (error) {
@@ -82,7 +112,8 @@ const api = {
   async getClinics() {
     try {
       const data = await apiClient.get('clinics');
-      return { success: true, data };
+      const normalized = normalizeResponse(data);
+      return { success: true, data: normalized };
     } catch (error) {
       console.error('Get Clinics Error:', error);
       return { success: false, error: error.message };
@@ -93,7 +124,8 @@ const api = {
   async getSettings() {
     try {
       const data = await apiClient.get('settings');
-      return { success: true, data };
+      const normalized = normalizeResponse(data);
+      return { success: true, data: normalized };
     } catch (error) {
       console.error('Get Settings Error:', error);
       return { success: false, error: error.message };
@@ -104,12 +136,14 @@ const api = {
   async getCurrentPin(clinicId) {
     try {
       const data = await apiClient.get('pinStatus', { clinicId });
+      const normalized = normalizeResponse(data);
+      
       return {
         success: true,
-        currentPin: data.pin,
-        totalIssued: data.has_active_pin ? 1 : 0,
-        dateKey: data.checked_at?.split('T')[0],
-        allPins: data.pin ? [data.pin] : []
+        currentPin: unwrap(normalized.pin, null),
+        totalIssued: unwrap(normalized.has_active_pin, false) ? 1 : 0,
+        dateKey: unwrap(normalized.checked_at, '').split('T')[0],
+        allPins: unwrap(normalized.pin, null) ? [normalized.pin] : []
       };
     } catch (error) {
       console.error('Get Current PIN Error:', error);
@@ -120,7 +154,8 @@ const api = {
   async issuePin(clinicId) {
     try {
       const data = await apiClient.post('pinGenerate', { clinic_id: clinicId });
-      return { success: true, data };
+      const normalized = normalizeResponse(data);
+      return { success: true, data: normalized };
     } catch (error) {
       console.error('Issue PIN Error:', error);
       return { success: false, error: error.message };
