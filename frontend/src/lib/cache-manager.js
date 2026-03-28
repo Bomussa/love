@@ -121,18 +121,21 @@ class CacheManager {
   getStats() {
     let totalHits = 0;
     let totalSize = 0;
+    let totalMisses = 0;
 
     for (const item of this.cache.values()) {
       totalHits += item.hits;
       totalSize += JSON.stringify(item.value).length;
+      totalMisses += item.hits === 0 ? 1 : 0;
     }
 
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
       totalHits,
+      totalMisses,
       totalSize: `${(totalSize / 1024).toFixed(2)} KB`,
-      hitRate: this.cache.size > 0 ? (totalHits / this.cache.size).toFixed(2) : 0,
+      hitRate: this.cache.size > 0 ? ((totalHits / (totalHits + totalMisses)) * 100).toFixed(2) + '%' : '0%',
     };
   }
 

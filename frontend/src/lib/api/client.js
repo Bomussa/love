@@ -1,4 +1,5 @@
 import { assertNoSupabaseInClient } from '../guards/noSupabaseInClient';
+import { apiCache } from './cache-manager';
 
 // Unified API contracts
 export const API_CONTRACTS = {
@@ -23,6 +24,7 @@ const MAX_RETRIES = 1;
 // Track pending requests to prevent stale data
 let _requestCounter = 0;
 const _pendingRequests = new Map();
+const _dedupeMap = new Map(); // Track in-flight requests to dedupe
 
 /**
  * Safe JSON parsing with fallback
