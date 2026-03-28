@@ -110,8 +110,12 @@ class RealtimeNotificationEngine {
     // Configuration
     this.MAX_PATIENT_NOTIFICATIONS = 100;
     this.MAX_ADMIN_NOTIFICATIONS = 200;
+    // Fix 66: Add TTL (Time To Live) for notifications
     this.NOTIFICATION_TTL = 24 * 60 * 60 * 1000; // 24 hours
     this.DEDUP_WINDOW = 5 * 60 * 1000; // 5 minutes
+    // Fix 68: Maximum notifications per patient
+    this.MAX_NOTIFICATIONS_PER_PATIENT = 50;
+    this.MAX_NOTIFICATIONS_ADMIN = 100;
 
     // ✅ إصلاح: تحميل الإشعارات المحفوظة فوراً عند التهيئة
     this.loadAllNotifications();
@@ -123,6 +127,7 @@ class RealtimeNotificationEngine {
     this.startNotificationSync();
 
     // ✅ إصلاح (Fix 20): إعداد تنظيف الذاكرة ومنع infinite loop
+    // Fix 67: Start memory cleanup to prevent memory leaks
     this.startMemoryCleanup();
   }
 
@@ -170,6 +175,7 @@ class RealtimeNotificationEngine {
   }
 
   // ✅ إصلاح: تنظيف الذاكرة والإشعارات القديمة
+  // Fix 67: Cleanup to prevent memory leaks
   startMemoryCleanup() {
     // Ensure no previous interval exists to prevent duplication
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
@@ -182,25 +188,36 @@ class RealtimeNotificationEngine {
   cleanupOldNotifications() {
     const now = Date.now();
 
+    // Fix 66 & 67: Clean up old notifications based on TTL
     // تنظيف إشعارات المرضى
     this.notifications.forEach((notifications, patientId) => {
       const filtered = notifications.filter(n => {
         const notifTime = new Date(n.timestamp).getTime();
+        // Fix 66: Remove notifications older than TTL
         return (now - notifTime) < this.NOTIFICATION_TTL;
       });
 
       if (filtered.length === 0) {
         this.notifications.delete(patientId);
       } else {
-        this.notifications.set(patientId, filtered);
+        // Fix 68: Enforce max notifications limit
+        const limited = filtered.slice(-this.MAX_NOTIFICATIONS_PER_PATIENT);
+        this.notifications.set(patientId, limited);
       }
     });
 
+    // Fix 66 & 67: Clean up old admin notifications
     // تنظيف إشعارات الإدارة
     this.adminNotifications = this.adminNotifications.filter(n => {
       const notifTime = new Date(n.timestamp).getTime();
+      // Fix 66: Remove notifications older than TTL
       return (now - notifTime) < this.NOTIFICATION_TTL;
     });
+    
+    // Fix 68: Enforce max admin notifications limit
+    if (this.adminNotifications.length > this.MAX_NOTIFICATIONS_ADMIN) {
+      this.adminNotifications = this.adminNotifications.slice(-this.MAX_NOTIFICATIONS_ADMIN);
+    }
 
     // تنظيف خريطة الإزالة المكررة
     const dedupKeys = Array.from(this.notificationDeduplication.keys());
@@ -326,9 +343,11 @@ class RealtimeNotificationEngine {
     const patientNotifications = this.notifications.get(patientId);
     patientNotifications.push(fullNotification);
 
+    // Fix 68: Enforce max notifications limit per patient
     // ✅ إصلاح: الاحتفاظ بآخر N إشعار فقط
-    if (patientNotifications.length > this.MAX_PATIENT_NOTIFICATIONS) {
-      patientNotifications.shift();
+    if (patientNotifications.length > this.MAX_NOTIFICATIONS_PER_PATIENT) {
+      // Remove oldest notifications
+      patientNotifications.splice(0, patientNotifications.length - this.MAX_NOTIFICATIONS_PER_PATIENT);
     }
 
     // ✅ إصلاح: ترتيب حسب الأولوية
@@ -379,9 +398,11 @@ class RealtimeNotificationEngine {
     // حفظ الإشعار
     this.adminNotifications.push(fullNotification);
 
+    // Fix 68: Enforce max admin notifications limit
     // ✅ إصلاح: الاحتفاظ بآخر N إشعار
-    if (this.adminNotifications.length > this.MAX_ADMIN_NOTIFICATIONS) {
-      this.adminNotifications.shift();
+    if (this.adminNotifications.length > this.MAX_NOTIFICATIONS_ADMIN) {
+      // Remove oldest notifications
+      this.adminNotifications.splice(0, this.adminNotifications.length - this.MAX_NOTIFICATIONS_ADMIN);
     }
 
     // ✅ إصلاح: ترتيب حسب الأولوية

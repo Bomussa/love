@@ -18,6 +18,7 @@ export function AdminDashboardV2({ language = 'ar' }) {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const t = (ar, en) => language === 'ar' ? ar : en;
 
@@ -27,17 +28,12 @@ export function AdminDashboardV2({ language = 'ar' }) {
     return () => clearInterval(interval);
   }, []);
 
-  /**
-   * Fix 9 & 62: Add await to fetchStats to prevent race conditions
-   * Fix 10 & 67: Wrap API operations in try/catch for error handling
-   */
   const fetchStats = async () => {
     try {
       setLoading(true);
       const clinics = await apiClient.get('clinics');
       let totalStats = { totalPatients: 0, waiting: 0, serving: 0, completed: 0 };
       
-      // Fix 63: Use Promise.all for faster and safer fetching
       const statsPromises = clinics.map(async (clinic) => {
         try {
           const clinicData = await apiClient.get('queueStatus', { clinicId: clinic.id });
@@ -67,21 +63,53 @@ export function AdminDashboardV2({ language = 'ar' }) {
   };
 
   /**
-   * Fix 8 & 57: Connect save button to API
-   * Fix 56 & 374: Disable button during execution
-   * Fix 57 & 379: Handle loading state
+   * Fix 11 & 72: Connect Add Button
    */
+  const handleAddEntity = async (type, data) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await apiClient.post(`${type}/add`, data);
+      toast.success(t('تمت الإضافة بنجاح', 'Added successfully'));
+      // Fix 13 & 82: Auto reload after operation
+      await fetchStats();
+    } catch (error) {
+      console.error(`Add ${type} error:`, error);
+      toast.error(t('فشل عملية الإضافة', 'Add operation failed'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Fix 12 & 77: Connect Delete Button
+   */
+  const handleDeleteEntity = async (type, id) => {
+    if (isProcessing) return;
+    if (!window.confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
+    
+    setIsProcessing(true);
+    try {
+      await apiClient.post(`${type}/delete`, { id });
+      toast.success(t('تم الحذف بنجاح', 'Deleted successfully'));
+      // Fix 13 & 82: Auto reload after operation
+      await fetchStats();
+    } catch (error) {
+      console.error(`Delete ${type} error:`, error);
+      toast.error(t('فشل عملية الحذف', 'Delete operation failed'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSaveSettings = async (settingsData) => {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      // Fix 58: Optimistic update could be added here if needed
       await apiClient.post('settings', settingsData);
       toast.success(t('تم حفظ الإعدادات بنجاح', 'Settings saved successfully'));
-      // Fix 13 & 82: Reload after operation
       await fetchStats();
     } catch (error) {
-      // Fix 59: Rollback logic would go here
       console.error('Save settings error:', error);
       toast.error(t('فشل حفظ الإعدادات', 'Failed to save settings'));
     } finally {
@@ -222,15 +250,27 @@ export function AdminDashboardV2({ language = 'ar' }) {
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-bold">{t('نظرة عامة على النظام', 'System Overview')}</h3>
-                    <button 
-                      onClick={() => handleSaveSettings({})} 
-                      disabled={isSaving}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-all disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{t('حفظ التغييرات', 'Save Changes')}</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleAddEntity('clinics', { name: 'New Clinic' })} 
+                        disabled={isProcessing}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{t('إضافة عيادة', 'Add Clinic')}</span>
+                      </button>
+                      <button 
+                        onClick={() => handleSaveSettings({})} 
+                        disabled={isSaving}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{t('حفظ الإعدادات', 'Save Settings')}</span>
+                      </button>
+                    </div>
                   </div>
+                  
+                  {/* Connection Status Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="p-6 bg-gray-900/50 rounded-xl border border-gray-700">
                       <h4 className="font-bold mb-4 flex items-center gap-2">
