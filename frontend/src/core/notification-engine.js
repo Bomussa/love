@@ -350,6 +350,7 @@ class RealtimeNotificationEngine {
       patientNotifications.splice(0, patientNotifications.length - this.MAX_NOTIFICATIONS_PER_PATIENT);
     }
 
+    // Fix 69: Priority system - Sort by priority then timestamp
     // ✅ إصلاح: ترتيب حسب الأولوية
     patientNotifications.sort((a, b) => {
       if (b.priority !== a.priority) {
@@ -405,6 +406,7 @@ class RealtimeNotificationEngine {
       this.adminNotifications.splice(0, this.adminNotifications.length - this.MAX_NOTIFICATIONS_ADMIN);
     }
 
+    // Fix 69: Priority system - Sort by priority then timestamp
     // ✅ إصلاح: ترتيب حسب الأولوية
     this.adminNotifications.sort((a, b) => {
       if (b.priority !== a.priority) {
@@ -463,7 +465,8 @@ class RealtimeNotificationEngine {
 }
 
 /**
- * Retry wrapper for notification display
+ * Fix 70: Retry wrapper for notification display
+ * Retry when display fails
  */
 export async function notifyWithRetry(engine, patientId, notification, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
