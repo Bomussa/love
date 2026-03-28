@@ -122,7 +122,7 @@ class RealtimeNotificationEngine {
     // ✅ إصلاح: إعداد تحديث دوري للإشعارات
     this.startNotificationSync();
 
-    // ✅ إصلاح: إعداد تنظيف الذاكرة
+    // ✅ إصلاح (Fix 20): إعداد تنظيف الذاكرة ومنع infinite loop
     this.startMemoryCleanup();
   }
 
@@ -171,6 +171,9 @@ class RealtimeNotificationEngine {
 
   // ✅ إصلاح: تنظيف الذاكرة والإشعارات القديمة
   startMemoryCleanup() {
+    // Ensure no previous interval exists to prevent duplication
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+    
     this.cleanupInterval = setInterval(() => {
       this.cleanupOldNotifications();
     }, 60000); // كل دقيقة
@@ -280,7 +283,8 @@ class RealtimeNotificationEngine {
    * Check if notification is duplicate
    */
   isDuplicate(patientId, notification) {
-    const key = `${patientId}_${notification.type}_${notification.clinicId || ''}`;
+    // Fix 19: deduplication logic
+    const key = `${patientId}_${notification.type}_${notification.clinicId || ''}_${notification.message || ''}`;
     const lastTime = this.notificationDeduplication.get(key);
     
     if (lastTime && (Date.now() - lastTime) < this.DEDUP_WINDOW) {
@@ -296,7 +300,7 @@ class RealtimeNotificationEngine {
    * يتم استدعاء جميع callbacks المشتركة فوراً
    */
   notifyPatient(patientId, notification) {
-    // ✅ إصلاح: منع الإشعارات المكررة
+    // ✅ إصلاح (Fix 19): منع الإشعارات المكررة (deduplication)
     if (this.isDuplicate(patientId, notification)) {
       console.debug('[NotificationEngine] Duplicate notification skipped');
       return;

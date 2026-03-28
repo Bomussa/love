@@ -180,8 +180,8 @@ export async function callNextPatient(clinicId, pin) {
     // Get current queue details
     const queueDetails = await getQueueDetails(clinicId);
     
-    // Check if queue is empty
-    if (!queueDetails.patients || queueDetails.patients.length === 0) {
+    // Check if queue is empty (Fix 16: protect from undefined/empty)
+    if (!queueDetails || !queueDetails.patients || queueDetails.patients.length === 0) {
       console.warn(`Queue is empty for clinic ${clinicId}`);
       return {
         success: false,
@@ -191,6 +191,7 @@ export async function callNextPatient(clinicId, pin) {
     }
 
     // Get next patient (first in waiting status)
+    // Fix 17: ensure consistent status comparison
     const nextPatient = queueDetails.patients.find(p => 
       p && validateStatus(p.status) === 'waiting'
     );

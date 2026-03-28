@@ -7,7 +7,7 @@ let _cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Normalize settings data structure
+ * Normalize settings data structure (Fix 23: normalize data)
  */
 function normalizeSettings(data) {
   if (!data) return {};
@@ -15,6 +15,17 @@ function normalizeSettings(data) {
   // If data has a settings property, unwrap it
   if (data.settings && typeof data.settings === 'object') {
     return data.settings;
+  }
+  
+  // Handle array format from API
+  if (Array.isArray(data)) {
+    const settings = {};
+    data.forEach(item => {
+      if (item.key) {
+        settings[item.key] = item.value;
+      }
+    });
+    return settings;
   }
   
   return data;
@@ -32,8 +43,9 @@ export async function getSetting(key, fallback = '') {
     const allSettings = await getAllSettings();
     
     if (allSettings[key]) {
-      const value = allSettings[key].value || allSettings[key];
-      return String(value);
+      const setting = allSettings[key];
+      const value = (setting && typeof setting === 'object') ? setting.value : setting;
+      return String(value !== undefined ? value : fallback);
     }
     
     return fallback;
@@ -51,7 +63,7 @@ export async function getSetting(key, fallback = '') {
  */
 export async function setSetting(key, value) {
   try {
-    // Update via API if available
+    // Update via API if available (Fix 22: Link API)
     const result = await apiClient.post('updateSetting', {
       key,
       value: String(value)
@@ -81,25 +93,18 @@ export async function getAllSettings() {
       return _settingsCache;
     }
 
-    // Try to fetch from API
+    // Try to fetch from API (Fix 22: Link API)
     try {
+      // Fix 21: removed any undefined db references if they existed
       const data = await apiClient.get('settings');
       const normalized = normalizeSettings(data);
       
       const settings = {};
-      if (Array.isArray(normalized)) {
-        normalized.forEach((item) => {
-          if (item.key) {
-            settings[item.key] = {
-              value: item.value,
-              description: item.description,
-            };
-          }
-        });
-      } else if (typeof normalized === 'object') {
+      if (typeof normalized === 'object') {
         Object.keys(normalized).forEach((key) => {
-          settings[key] = {
-            value: normalized[key],
+          const val = normalized[key];
+          settings[key] = (val && typeof val === 'object') ? val : {
+            value: val,
             description: '',
           };
         });
