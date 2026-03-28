@@ -16,7 +16,13 @@ export const API_CONTRACTS = {
   queueStatus: { path: '/api/v1/queue/status', method: 'GET' },
   pinStatus: { path: '/api/v1/pin/status', method: 'GET' },
   pinGenerate: { path: '/api/v1/pin/generate', method: 'POST' },
-  pinValidate: { path: '/api/v1/pin/validate', method: 'POST' }
+  pinValidate: { path: '/api/v1/pin/validate', method: 'POST' },
+  updateSetting: { path: '/api/v1/settings/update', method: 'POST' },
+  updateSettings: { path: '/api/v1/settings/update-batch', method: 'POST' },
+  markDistributed: { path: '/api/v1/routing/mark-distributed', method: 'POST' },
+  examRoute: { path: '/api/v1/routing/exam-route', method: 'GET' },
+  patientRoute: { path: '/api/v1/routing/patient-route', method: 'GET' },
+  updatePatientStep: { path: '/api/v1/routing/patient-step', method: 'POST' }
 };
 
 // Fix 1 & 54: Unified BASE URL constant and fallback
@@ -27,6 +33,25 @@ const MAX_RETRIES = 1;
 // Internal tracking
 let _requestCounter = 0;
 const _pendingRequests = new Map();
+const _inflightGetRequests = new Map();
+
+
+function createDedupeKey(key, options = {}) {
+  const params = options.params ? JSON.stringify(options.params) : '';
+  return `${key}:${params}`;
+}
+
+function normalizePinPayload(payload) {
+  if (!payload || typeof payload !== 'object' || payload.pin === undefined || payload.pin === null) {
+    return payload;
+  }
+  const pin = String(payload.pin).trim();
+  return { ...payload, pin };
+}
+
+function isRetryableStatus(status) {
+  return status >= 500 && status < 600;
+}
 
 /**
  * Fix 3 & 52: Safe JSON parsing with fallback and error handling
@@ -78,6 +103,10 @@ async function request(key, options = {}, retryCount = 0) {
     throw new Error(`[API_CONTRACT_ERROR]: Unknown API contract "${key}"`);
   }
 
+  if (key === 'pinVerify' || key === 'pinValidate') {
+    options = { ...options, body: normalizePinPayload(options.body) };
+  }
+
   // Fix 15: Prevent /api/v1/api/v1 conflict by cleaning the path
   const cleanPath = contract.path.startsWith('/') ? contract.path : `/${contract.path}`;
   const url = new URL(`${BASE_URL}${cleanPath}`, window.location.origin);
@@ -90,6 +119,13 @@ async function request(key, options = {}, retryCount = 0) {
     });
   }
 
+  if (contract.method === 'GET') {
+    const dedupeKey = createDedupeKey(key, options);
+    if (_inflightGetRequests.has(dedupeKey)) {
+      return _inflightGetRequests.get(dedupeKey);
+    }
+  }
+
   // Fix 4 & 30: Unified headers with Content-Type and X-Request-ID
   const headers = {
     'Content-Type': 'application/json',
@@ -99,7 +135,9 @@ async function request(key, options = {}, retryCount = 0) {
   };
 
   const { controller, timeoutId } = createAbortController(options.timeout || REQUEST_TIMEOUT);
+  const dedupeKey = contract.method === 'GET' ? createDedupeKey(key, options) : null;
 
+  const execution = (async () => {
   try {
     _pendingRequests.set(requestId, { key, startTime: Date.now() });
 
@@ -124,15 +162,16 @@ async function request(key, options = {}, retryCount = 0) {
       const text = await response.text();
       json = safeJsonParse(text, {});
     } else {
-      json = {};
+      const text = await response.text();
+      json = text ? { message: text } : {};
     }
 
     // Fix 37 & 242: Unified error throwing
     if (!response.ok) {
-      const errorMsg = json.error?.message || json.error || `HTTP ${response.status} ${response.statusText}`;
+      const errorMsg = json.error?.message || json.error || json.message || `HTTP ${response.status} ${response.statusText}`;
       
       // Fix 53 & 355: Retry on 5xx errors or network failures
-      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+      if (isRetryableStatus(response.status) && retryCount < MAX_RETRIES) {
         console.warn(`[API_RETRY]: ${key} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         return request(key, options, retryCount + 1);
       }
@@ -166,6 +205,14 @@ async function request(key, options = {}, retryCount = 0) {
     console.error(`[API_FAILURE][${key}]:`, error.message);
     throw error;
   }
+  })();
+
+  if (dedupeKey) {
+    _inflightGetRequests.set(dedupeKey, execution);
+    execution.finally(() => _inflightGetRequests.delete(dedupeKey));
+  }
+
+  return execution;
 }
 
 /**
