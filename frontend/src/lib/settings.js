@@ -1,6 +1,25 @@
 // lib/settings.js - خدمة إدارة إعدادات النظام
 import { apiClient } from "@/lib/api/client";
 
+// Local cache for settings
+let _settingsCache = null;
+let _cacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Normalize settings data structure
+ */
+function normalizeSettings(data) {
+  if (!data) return {};
+  
+  // If data has a settings property, unwrap it
+  if (data.settings && typeof data.settings === 'object') {
+    return data.settings;
+  }
+  
+  return data;
+}
+
 /**
  * جلب قيمة إعداد من قاعدة البيانات
  * @param {string} key - مفتاح الإعداد
@@ -9,13 +28,17 @@ import { apiClient } from "@/lib/api/client";
  */
 export async function getSetting(key, fallback = '') {
   try {
-    const { rows } = await db.query(
-      'SELECT value FROM system_settings WHERE key = $1',
-      [key],
-    );
-    return rows[0]?.value ?? fallback;
+    // Try to get from cache first
+    const allSettings = await getAllSettings();
+    
+    if (allSettings[key]) {
+      const value = allSettings[key].value || allSettings[key];
+      return String(value);
+    }
+    
+    return fallback;
   } catch (error) {
-    // console.error(`Error getting setting ${key}:`, error);
+    console.error(`Error getting setting ${key}:`, error);
     return fallback;
   }
 }
@@ -28,16 +51,19 @@ export async function getSetting(key, fallback = '') {
  */
 export async function setSetting(key, value) {
   try {
-    await db.query(`
-      INSERT INTO system_settings(key, value, updated_at) 
-      VALUES($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET 
-        value = EXCLUDED.value,
-        updated_at = NOW()
-    `, [key, value]);
-    return true;
+    // Update via API if available
+    const result = await apiClient.post('updateSetting', {
+      key,
+      value: String(value)
+    });
+    
+    // Clear cache
+    _settingsCache = null;
+    _cacheTime = 0;
+    
+    return result && result.success !== false;
   } catch (error) {
-    // console.error(`Error setting ${key}:`, error);
+    console.error(`Error setting ${key}:`, error);
     return false;
   }
 }
@@ -48,23 +74,69 @@ export async function setSetting(key, value) {
  */
 export async function getAllSettings() {
   try {
-    const { rows } = await db.query(
-      'SELECT key, value, description FROM system_settings ORDER BY key',
-    );
+    const now = Date.now();
+    
+    // Return cached settings if still valid
+    if (_settingsCache && (now - _cacheTime) < CACHE_TTL) {
+      return _settingsCache;
+    }
 
-    const settings = {};
-    rows.forEach((row) => {
-      settings[row.key] = {
-        value: row.value,
-        description: row.description,
-      };
-    });
-
-    return settings;
+    // Try to fetch from API
+    try {
+      const data = await apiClient.get('settings');
+      const normalized = normalizeSettings(data);
+      
+      const settings = {};
+      if (Array.isArray(normalized)) {
+        normalized.forEach((item) => {
+          if (item.key) {
+            settings[item.key] = {
+              value: item.value,
+              description: item.description,
+            };
+          }
+        });
+      } else if (typeof normalized === 'object') {
+        Object.keys(normalized).forEach((key) => {
+          settings[key] = {
+            value: normalized[key],
+            description: '',
+          };
+        });
+      }
+      
+      _settingsCache = settings;
+      _cacheTime = now;
+      
+      return settings;
+    } catch (apiError) {
+      console.warn('Failed to fetch settings from API, using defaults:', apiError);
+      // Return default settings
+      return getDefaultSettings();
+    }
   } catch (error) {
-    // console.error('Error getting all settings:', error);
-    return {};
+    console.error('Error getting all settings:', error);
+    return getDefaultSettings();
   }
+}
+
+/**
+ * Get default settings
+ */
+function getDefaultSettings() {
+  return {
+    grace_minutes: { value: '5', description: 'Grace period in minutes' },
+    admission_cadence_minutes: { value: '1', description: 'Admission cadence in minutes' },
+    max_capacity_per_clinic: { value: '6', description: 'Max capacity per clinic' },
+    enable_auto_routing: { value: 'true', description: 'Enable auto routing' },
+    enable_notifications: { value: 'true', description: 'Enable notifications' },
+    working_hours_start: { value: '07:00', description: 'Working hours start' },
+    working_hours_end: { value: '15:00', description: 'Working hours end' },
+    emergency_pin: { value: '999', description: 'Emergency PIN' },
+    current_theme: { value: 'medical-professional', description: 'Current theme' },
+    enable_theme_selector: { value: 'true', description: 'Enable theme selector' },
+    show_theme_preview: { value: 'true', description: 'Show theme preview' },
+  };
 }
 
 /**
@@ -83,9 +155,9 @@ export async function getSystemConfig() {
     const emergencyPin = await getSetting('emergency_pin', '999');
 
     return {
-      graceMinutes: parseInt(graceMinutes, 10),
-      cadenceMinutes: parseInt(cadenceMinutes, 10),
-      maxCapacity: parseInt(maxCapacity, 10),
+      graceMinutes: parseInt(graceMinutes, 10) || 5,
+      cadenceMinutes: parseInt(cadenceMinutes, 10) || 1,
+      maxCapacity: parseInt(maxCapacity, 10) || 6,
       autoRouting: autoRouting === 'true',
       notifications: notifications === 'true',
       workingHours: {
@@ -95,7 +167,7 @@ export async function getSystemConfig() {
       emergencyPin,
     };
   } catch (error) {
-    // console.error('Error getting system config:', error);
+    console.error('Error getting system config:', error);
     return {
       graceMinutes: 5,
       cadenceMinutes: 1,
@@ -117,29 +189,18 @@ export async function getSystemConfig() {
  * @returns {Promise<boolean>} نجح التحديث أم لا
  */
 export async function updateSettings(settings) {
-  const client = await db.getClient();
-
   try {
-    await client.query('BEGIN');
-
-    for (const [key, value] of Object.entries(settings)) {
-      await client.query(`
-        INSERT INTO system_settings(key, value, updated_at) 
-        VALUES($1, $2, NOW())
-        ON CONFLICT (key) DO UPDATE SET 
-          value = EXCLUDED.value,
-          updated_at = NOW()
-      `, [key, String(value)]);
-    }
-
-    await client.query('COMMIT');
-    return true;
+    // Update via API if available
+    const result = await apiClient.post('updateSettings', settings);
+    
+    // Clear cache
+    _settingsCache = null;
+    _cacheTime = 0;
+    
+    return result && result.success !== false;
   } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error('Error updating settings:', error);
+    console.error('Error updating settings:', error);
     return false;
-  } finally {
-    client.release();
   }
 }
 
@@ -156,7 +217,7 @@ export async function isWorkingHours() {
     return currentTime >= config.workingHours.start
            && currentTime <= config.workingHours.end;
   } catch (error) {
-    // console.error('Error checking working hours:', error);
+    console.error('Error checking working hours:', error);
     return true; // افتراضياً نعتبر أنه وقت عمل
   }
 }
@@ -177,7 +238,7 @@ export async function getThemeSettings() {
       showThemePreview: showThemePreview === 'true',
     };
   } catch (error) {
-    // console.error('Error getting theme settings:', error);
+    console.error('Error getting theme settings:', error);
     return {
       currentTheme: 'medical-professional',
       enableThemeSelector: true,
@@ -209,7 +270,7 @@ export async function updateThemeSettings(themeSettings) {
 
     return await updateSettings(updates);
   } catch (error) {
-    // console.error('Error updating theme settings:', error);
+    console.error('Error updating theme settings:', error);
     return false;
   }
 }
