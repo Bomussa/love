@@ -109,7 +109,8 @@ async function request(key, options = {}, retryCount = 0) {
 
   // Fix 15: Prevent /api/v1/api/v1 conflict by cleaning the path
   const cleanPath = contract.path.startsWith('/') ? contract.path : `/${contract.path}`;
-  const url = new URL(`${BASE_URL}${cleanPath}`, window.location.origin);
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost';
+  const url = new URL(`${BASE_URL}${cleanPath}`, origin);
   
   if (options.params) {
     Object.keys(options.params).forEach(p => {
