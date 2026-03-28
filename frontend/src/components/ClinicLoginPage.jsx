@@ -95,8 +95,8 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     try {
       const response = await api.verifyPin(selectedClinic, pin.trim())
       
-      // Support both 'verified' and 'isValid' fields
-      const isValid = response.verified || response.isValid || (response.success && response.data?.verified);
+      // Fix 30: Support both 'valid', 'verified', and 'isValid' fields for flexibility
+      const isValid = response.valid || response.verified || response.isValid || (response.success && response.data?.verified);
       
       if (response.success && isValid) {
         // Reset attempts on successful login

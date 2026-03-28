@@ -106,8 +106,10 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
  */
 export async function markDistributed(clinicId) {
   try {
-    // This would be called via API in production
-    // For now, we track locally
+    // Fix 24: ensure no direct db dependency, using API
+    await apiClient.post('markDistributed', { clinicId });
+    
+    // Fallback local tracking
     const distributed = JSON.parse(localStorage.getItem('clinic_distributed') || '{}');
     distributed[clinicId] = (distributed[clinicId] || 0) + 1;
     localStorage.setItem('clinic_distributed', JSON.stringify(distributed));
@@ -127,9 +129,9 @@ export async function markDistributed(clinicId) {
  */
 export async function getExamRoute(examType, gender) {
   try {
-    // This would be fetched from API in production
-    // For now, return empty array
-    return [];
+    // Fix 24: using API
+    const data = await apiClient.get('examRoute', { examType, gender });
+    return data && data.steps ? data.steps : [];
   } catch (error) {
     console.error(`Error getting exam route for ${examType}/${gender}:`, error);
     return [];
@@ -178,14 +180,20 @@ export async function createPatientRoute(patientId, examType, gender) {
  */
 export async function moveToNextStep(patientId) {
   try {
+    // Fix 25: stabilize navigation logic
     const routes = JSON.parse(localStorage.getItem('patient_routes') || '{}');
     const route = routes[patientId];
 
-    if (!route) {
-      return null;
+    if (!route || !route.steps) {
+      // Try to fetch from API if not in local storage
+      const apiRoute = await apiClient.get('patientRoute', { patientId });
+      if (!apiRoute) return null;
+      routes[patientId] = apiRoute;
+      localStorage.setItem('patient_routes', JSON.stringify(routes));
+      return moveToNextStep(patientId);
     }
 
-    const currentStep = route.currentStep || 0;
+    const currentStep = route.currentStep !== undefined ? route.currentStep : -1;
     const nextStepIndex = currentStep + 1;
 
     if (nextStepIndex >= route.steps.length) {
@@ -200,6 +208,9 @@ export async function moveToNextStep(patientId) {
     route.currentStep = nextStepIndex;
     routes[patientId] = route;
     localStorage.setItem('patient_routes', JSON.stringify(routes));
+
+    // Notify API of step movement
+    await apiClient.post('updatePatientStep', { patientId, stepIndex: nextStepIndex });
 
     return {
       completed: false,
@@ -225,13 +236,15 @@ export async function moveToNextStep(patientId) {
 export async function getPatientRouteStatus(patientId) {
   try {
     const routes = JSON.parse(localStorage.getItem('patient_routes') || '{}');
-    const route = routes[patientId];
+    let route = routes[patientId];
 
     if (!route) {
-      return null;
+      // Fix 25: fallback to API
+      route = await apiClient.get('patientRoute', { patientId });
+      if (!route) return null;
     }
 
-    const currentStep = route.currentStep || 0;
+    const currentStep = route.currentStep !== undefined ? route.currentStep : 0;
     const steps = route.steps || [];
 
     return {

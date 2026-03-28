@@ -10,7 +10,9 @@ export const API_CONTRACTS = {
   queueEnter: { path: '/api/v1/queue/enter', method: 'POST' },
   queueStatus: { path: '/api/v1/queue/status', method: 'GET' },
   pinStatus: { path: '/api/v1/pin/status', method: 'GET' },
-  pinGenerate: { path: '/api/v1/pin/generate', method: 'POST' }
+  pinGenerate: { path: '/api/v1/pin/generate', method: 'POST' },
+  // Fix 31: Add explicit pin validate contract
+  pinValidate: { path: '/api/v1/pin/validate', method: 'POST' }
 };
 
 // Unified BASE URL constant
