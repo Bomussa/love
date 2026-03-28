@@ -143,6 +143,27 @@ const api = {
     }
   },
 
+
+  async verifyPin(clinicId, pin) {
+    try {
+      const normalizedPin = String(pin ?? '').trim();
+      const data = await apiClient.post('pinValidate', { clinicId, pin: normalizedPin });
+      const normalized = normalizeResponse(data);
+      const isValid = Boolean(unwrap(normalized.valid, false) || unwrap(normalized.verified, false) || unwrap(normalized.isValid, false));
+
+      return {
+        success: isValid,
+        valid: isValid,
+        verified: isValid,
+        isValid,
+        data: normalized
+      };
+    } catch (error) {
+      console.error('[API_SERVICE][VerifyPIN]:', error);
+      return { success: false, valid: false, verified: false, isValid: false, error: error.message };
+    }
+  },
+
   // --- PIN Management ---
   async getCurrentPin(clinicId) {
     try {
