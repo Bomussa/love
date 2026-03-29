@@ -5353,7 +5353,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       <aside 
         data-sidebar="admin"
         data-mobile-open={mobileMenuOpen}
-        className={`fixed right-0 top-0 h-full w-72 sm:w-80 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
+        className={`fixed right-0 top-0 h-full w-64 sm:w-72 md:w-80 lg:w-96 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
           mobileMenuOpen ? 'translate-x-0 sidebar-open' : 'translate-x-full lg:translate-x-0'
         }`}
         style={{ 
