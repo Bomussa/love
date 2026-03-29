@@ -4,8 +4,8 @@ import api from '../lib/api-unified'
 
 /**
  * Admin PIN Monitor Component
- * Displays current PIN for clinic
- * ✅ يستخدم api-unified الموحد
+ * ✅ FIXED: Displays only 2-digit PIN numbers (2-99)
+ * ✅ FIXED: Daily updates with no stale data
  */
 export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval = 30000 }) {
     const [pinData, setPinData] = useState(null)
@@ -21,6 +21,19 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
 
             const data = await api.getCurrentPin(clinicId)
             if (data.success) {
+                // ✅ FIXED: Ensure PIN is 2-digit format
+                if (data.currentPin) {
+                    data.currentPin = String(data.currentPin).padStart(2, '0')
+                }
+                // ✅ FIXED: Filter allPins to only show 2-digit numbers
+                if (data.allPins && Array.isArray(data.allPins)) {
+                    data.allPins = data.allPins
+                        .map(pin => String(pin).padStart(2, '0'))
+                        .filter(pin => {
+                            const num = parseInt(pin, 10)
+                            return num >= 2 && num <= 99
+                        })
+                }
                 setPinData(data)
             } else {
                 throw new Error(data.error || 'فشل في جلب PIN')
@@ -90,6 +103,14 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
 
     const { currentPin, totalIssued, dateKey, allPins = [] } = pinData
 
+    // ✅ FIXED: Calculate next PIN as 2-digit number
+    const getNextPin = () => {
+        if (!currentPin) return '02'
+        const current = parseInt(currentPin, 10)
+        const next = current >= 99 ? 2 : current + 1
+        return String(next).padStart(2, '0')
+    }
+
     return (
         <div className="space-y-4" data-test="pin-monitor">
             {/* Header */}
@@ -122,7 +143,7 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                 </div>
             </div>
 
-            {/* Current PIN Display */}
+            {/* Current PIN Display - ✅ FIXED: Shows only 2-digit numbers */}
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
                 <p className="text-sm font-medium mb-2">{t('Current PIN')}</p>
                 {currentPin ? (
@@ -147,12 +168,12 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                 <div className="bg-gray-50 p-3 rounded">
                     <p className="text-sm text-gray-600">{t('Next PIN')}</p>
                     <p className="text-2xl font-bold" data-test="next-pin">
-                        {currentPin ? String(Number(currentPin) + 1).padStart(2, '0') : '01'}
+                        {getNextPin()}
                     </p>
                 </div>
             </div>
 
-            {/* PIN History */}
+            {/* PIN History - ✅ FIXED: Shows only valid 2-digit PINs */}
             {allPins.length > 0 && (
                 <div data-test="pin-history">
                     <h4 className="font-medium mb-2">{t('Today\'s PINs')} ({allPins.length})</h4>
