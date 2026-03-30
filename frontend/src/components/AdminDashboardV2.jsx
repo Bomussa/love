@@ -708,8 +708,19 @@ const PINManagement = ({ language, t }) => {
         .order('created_at', { ascending: false });
       
       if (!error && data) {
-        // تصفية الأرقام لعرض أحدث رقم لكل عيادة فقط إذا لزم الأمر، أو عرض الكل
-        setPins(data);
+        // ✅ FIXED: Filter to show only today's PINs with 2-digit format (2-99)
+        const today = new Date().toISOString().split('T')[0];
+        const filteredPins = data.filter(pin => {
+          // Check if PIN is from today
+          const pinDate = new Date(pin.created_at).toISOString().split('T')[0];
+          if (pinDate !== today) return false;
+          
+          // Check if PIN is 2-digit number (2-99)
+          const pinNum = parseInt(pin.pin, 10);
+          return pinNum >= 2 && pinNum <= 99;
+        });
+        
+        setPins(filteredPins);
       }
     } catch (e) {
       console.error('Error loading pins:', e);
@@ -719,8 +730,8 @@ const PINManagement = ({ language, t }) => {
   };
 
   const generatePin = () => {
-    // PIN من رقمين فقط (10-99)
-    return Math.floor(10 + Math.random() * 90).toString();
+    // ✅ FIXED: PIN من رقمين فقط (2-99)
+    return String(Math.floor(2 + Math.random() * 98)).padStart(2, '0');
   };
 
   const generateUniquePin = (existingPins) => {
@@ -997,7 +1008,7 @@ const PINManagement = ({ language, t }) => {
           <tbody>
             {pins.map(pin => (
               <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
+                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{String(pin.pin).padStart(2, '0')}</td>
                 <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
