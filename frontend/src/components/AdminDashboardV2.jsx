@@ -2900,18 +2900,19 @@ const SettingsSection = ({ language, t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('settings')
+        .from('system_settings')
         .select('*');
       
       const settingsObj = {};
       if (!error && data) {
-        data.forEach(s => { settingsObj[s.key] = s.value; });
+        data.forEach(s => { 
+          try {
+            settingsObj[s.id] = JSON.parse(s.value);
+          } catch {
+            settingsObj[s.id] = s.value;
+          }
+        });
       }
-      
-      // جلب إعداد device_restriction من system_settings
-      // Use static imports to avoid TDZ errors
-      const deviceRestriction = await getSystemSetting('device_restriction_enabled', false);
-      settingsObj.device_restriction_enabled = deviceRestriction;
       
       setSettings(settingsObj);
       setLocalValues(settingsObj);
@@ -2924,33 +2925,14 @@ const SettingsSection = ({ language, t }) => {
 
   const updateSetting = async (key, value) => {
     try {
-      // التحقق من وجود الإعداد أولاً
-      const { data: existing } = await supabase
-        .from('settings')
-        .select('id')
-        .eq('key', key)
-        .single();
-      
-      let error;
-      if (existing) {
-        // تحديث الإعداد الموجود
-        const result = await supabase
-          .from('settings')
-          .update({ value: value, updated_at: new Date().toISOString() })
-          .eq('key', key);
-        error = result.error;
-      } else {
-        // إنشاء إعداد جديد
-        const result = await supabase
-          .from('settings')
-          .insert({ 
-            key, 
-            value: value, 
-            updated_at: new Date().toISOString(),
-            is_public: false
-          });
-        error = result.error;
-      }
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ 
+          id: key, 
+          value: typeof value === 'string' ? value : JSON.stringify(value), 
+          updated_at: new Date().toISOString(),
+          description: `إعداد ${key}`
+        }, { onConflict: 'id' });
       
       if (!error) {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -3066,14 +3048,7 @@ const SettingsSection = ({ language, t }) => {
               <p className="text-sm text-gray-400">{t('ربط الجهاز بالرقم العسكري الأول فقط لنفس اليوم', 'Lock device to first military ID for the day')}</p>
             </div>
             <button
-              onClick={async () => {
-                const newValue = !settings.device_restriction_enabled;
-                // تحديث في system_settings
-                // Use static imports to avoid TDZ errors
-                await setSystemSetting('device_restriction_enabled', newValue, 'تفعيل/إيقاف نظام منع الجهاز من استخدام رقم مختلف');
-                setSettings(prev => ({ ...prev, device_restriction_enabled: newValue }));
-                showSuccessToast(newValue ? t('تم تفعيل نظام ربط الجهاز', 'Device restriction enabled') : t('تم إيقاف نظام ربط الجهاز', 'Device restriction disabled'));
-              }}
+              onClick={() => updateSetting('device_restriction_enabled', !settings.device_restriction_enabled)}
               className={`w-14 h-8 rounded-full transition-all ${
                 settings.device_restriction_enabled ? 'bg-orange-500' : 'bg-white/20'
               }`}
