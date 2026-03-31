@@ -5197,6 +5197,13 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadAllData();
@@ -5358,7 +5365,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
+        className="lg:hidden fixed top-4 right-4 z-[120] p-3 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 shadow-lg touch-manipulation active:scale-95 transition-transform"
         aria-label="Toggle Menu"
       >
         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -5368,12 +5375,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       <aside 
         data-sidebar="admin"
         data-mobile-open={mobileMenuOpen}
-        className={`fixed left-0 top-0 h-full w-64 sm:w-72 md:w-80 lg:w-96 bg-[#12121a] border-r border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
-          mobileMenuOpen ? 'translate-x-0 sidebar-open' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className="fixed right-0 top-0 h-full w-64 sm:w-72 md:w-80 lg:w-96 bg-[#12121a] border-l border-white/5 z-[100] transition-transform duration-300 flex flex-col"
         style={{ 
           WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y'
+          touchAction: 'pan-y',
+          transform: (mobileMenuOpen || isDesktop) ? 'translateX(0)' : 'translateX(100%)'
         }}
       >
         {/* Header */}
@@ -5477,7 +5483,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       )}
 
       {/* Main Content */}
-      <main className="lg:ml-64 lg:mr-0 p-3 sm:p-4 lg:p-8 pt-16 sm:pt-20 lg:pt-8 min-h-screen overflow-x-hidden">
+      <main className="lg:mr-96 p-3 sm:p-4 lg:p-8 pt-16 sm:pt-20 lg:pt-8 min-h-screen overflow-x-hidden">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
