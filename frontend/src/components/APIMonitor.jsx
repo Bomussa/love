@@ -315,18 +315,35 @@ const APIMonitor = ({ language = 'ar', t }) => {
       
       setTableStatus(tableResults);
       
-      // فحص الدوال (عينة فقط للسرعة)
+      // فحص عينة من الدوال الأساسية فعلياً (للسرعة نفحص عينة منها)
       const functionResults = {};
       let activeFunctionsCount = 0;
       
-      // نفترض أن جميع الدوال نشطة ما لم يثبت العكس
+      // الدوال الأساسية التي تُفحص فعلياً
+      const coreFunctions = [
+        'generate_daily_pins', 'get_current_pins', 'enter_unified_queue_safe',
+        'call_next_patient', 'get_queue_position', 'verify_clinic_pin',
+        'is_admin', 'daily_cleanup'
+      ];
+      
+      // فحص الدوال الأساسية فعلياً
+      for (const func of coreFunctions) {
+        const result = await checkFunction(func);
+        functionResults[func] = result;
+        if (result.status === 'active' || result.status === 'warning') activeFunctionsCount++;
+      }
+      
+      // باقي الدوال: نفترض نشاطها (لم يثبت العكس)
       for (const func of ALL_FUNCTIONS) {
-        functionResults[func] = {
-          name: func,
-          status: 'active',
-          lastCheck: new Date().toISOString()
-        };
-        activeFunctionsCount++;
+        if (!functionResults[func]) {
+          functionResults[func] = {
+            name: func,
+            status: 'active',
+            lastCheck: new Date().toISOString(),
+            note: 'not individually checked'
+          };
+          activeFunctionsCount++;
+        }
       }
       
       setFunctionStatus(functionResults);

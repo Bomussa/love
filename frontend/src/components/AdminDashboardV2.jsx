@@ -124,22 +124,46 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
+  /**
+   * جلب الطوابير لليوم الحالي مع الرقم الحقيقي للمريض
+   * يجلب patient_id الحقيقي (الرقم العسكري/الشخصي) من جدول patients
+   */
   const loadQueues = async () => {
     try {
       setLoading(true);
-      // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
       const today = new Date().toISOString().split('T')[0];
       
+      // جلب الطوابير مع بيانات المريض الحقيقية عبر JOIN
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('*')
-        .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
+        .select(`
+          *,
+          patients!unified_queue_patient_id_fkey(
+            patient_id,
+            military_id,
+            personal_id
+          )
+        `)
+        .eq('queue_date', today)
         .order('display_number', { ascending: true });
       
       if (!error && data) {
-        setQueues(data);
+        // دمج الرقم الحقيقي في كل صف
+        const enriched = data.map(q => ({
+          ...q,
+          // الرقم الحقيقي: patient_id من جدول patients أو military_id أو personal_id
+          real_patient_id: q.patients?.patient_id || q.patients?.military_id || q.patients?.personal_id || q.patient_id
+        }));
+        setQueues(enriched);
       } else {
-        console.error('Error loading queues:', error);
+        // fallback: جلب بدون JOIN
+        const { data: fallbackData } = await supabase
+          .from('unified_queue')
+          .select('*')
+          .eq('queue_date', today)
+          .order('display_number', { ascending: true });
+        if (fallbackData) setQueues(fallbackData);
+        console.error('Error loading queues with join:', error);
       }
     } catch (e) {
       console.error('Error loading queues:', e);
@@ -485,7 +509,10 @@ const QueueManagement = ({ language, t }) => {
                       <div key={q.id} className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold">{q.display_number || q.queue_number}</span>
-                          <span className="text-xs text-gray-500">({q.patient_id})</span>
+                          {/* عرض الرقم الحقيقي للمريض (عسكري/شخصي) */}
+                          <span className="text-xs text-gray-400 truncate max-w-[80px]">
+                            {q.real_patient_id || q.patient_id || ''}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -883,7 +910,14 @@ const PINManagement = ({ language, t }) => {
     return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicCode;
   };
 
+  /**
+   * التحقق من انتهاء صلاحية الرقم السري
+   * يقارن تاريخ الانتهاء بوقت الآن بدقة
+   * @param {string} expiresAt - تاريخ الانتهاء ISO string
+   * @returns {boolean} - true إذا انتهت الصلاحية
+   */
   const isPinExpired = (expiresAt) => {
+    if (!expiresAt) return true;
     return new Date(expiresAt) < new Date();
   };
 
@@ -934,7 +968,7 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => !p.is_active || isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
@@ -5230,13 +5264,13 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .from('clinics')
         .select('id, name_ar, name_en');
 
-      // Active PINs
+      // عدد الأرقام السرية النشطة غير المنتهية
       const now = new Date().toISOString();
       const { count: pinCount } = await supabase
         .from('pins')
         .select('*', { count: 'exact', head: true })
-        .gte('expires_at', now)
-        .is('used_count', 0);
+        .eq('is_active', true)
+        .gte('expires_at', now);
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
