@@ -230,7 +230,7 @@ const QueueManagement = ({ language, t }) => {
       const maxPostpones = 3;
       if (postponeCount >= maxPostpones) {
         const { error } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .update({ status: 'cancelled', postpone_count: postponeCount })
           .eq('id', queueId);
         
@@ -241,7 +241,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // ترحيل لنهاية الدور برقم جديد
         const { data: maxQueue } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .select('display_number')
           .eq('clinic_id', queue?.clinic_id)
           .order('display_number', { ascending: false })
@@ -251,7 +251,7 @@ const QueueManagement = ({ language, t }) => {
         const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
         
         const { error } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .update({ 
             status: 'waiting', 
             display_number: newDisplayNumber,
@@ -1141,25 +1141,25 @@ const ReportsSection = ({ language, t }) => {
       // إحصائيات اليوم
       const todayStr = today.toISOString().split('T')[0];
       const { data: todayData } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('queue_date', todayStr);
 
       // إحصائيات الأسبوع
       const { data: weekData } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .gte('created_at', weekAgo.toISOString());
 
       // إحصائيات الشهر
       const { data: monthData } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .gte('created_at', monthAgo.toISOString());
 
       // إحصائيات السنة
       const { data: yearData } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .gte('created_at', yearAgo.toISOString());
 
@@ -2010,7 +2010,7 @@ const ClinicsManagement = ({ language, t }) => {
                     
                     // تحويل المراجعين إذا تم اختيار عيادة
                     if (targetClinicId) {
-                      await supabase.from('unified_queue').update({
+                      await supabase.from('queues').update({
                         clinic_id: targetClinicId,
                         transferred_from: transferModal.id,
                         transfer_reason: transferReason
@@ -3910,7 +3910,7 @@ const BackupExport = ({ language, t }) => {
         case 'diagnostics':
           break;
         case 'queues':
-          const { data: queuesData } = await supabase.from('unified_queue').select('*');
+          const { data: queuesData } = await supabase.from('queues').select('*');
           data = queuesData;
           filename = 'queues_export';
           break;
@@ -3925,7 +3925,7 @@ const BackupExport = ({ language, t }) => {
           filename = 'patients_export';
           break;
         case 'all':
-          const { data: allQueues } = await supabase.from('unified_queue').select('*');
+          const { data: allQueues } = await supabase.from('queues').select('*');
           const { data: allClinics } = await supabase.from('clinics').select('*');
           const { data: allPatients } = await supabase.from('patients').select('*');
           data = { queues: allQueues, clinics: allClinics, patients: allPatients };
@@ -5225,7 +5225,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       // جلب بيانات الطوابير لليوم الحالي فقط
       const todayDate = new Date().toISOString().split('T')[0];
       const { data: queueData, error: queueError } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('patient_id, clinic_id, status, entered_at, called_at, completed_at')
         .eq('queue_date', todayDate);
       
@@ -5334,7 +5334,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     
     try {
       // حذف من جدول الطابور
-      await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('queues').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       loadAllData();
       alert(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));
     } catch (error) {
