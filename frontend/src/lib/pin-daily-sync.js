@@ -179,12 +179,23 @@ class PINDailySync {
         // التحقق من أن PIN ليس فارغاً
         if (!pin.pin) {
           validationIssues++;
+          await this.supabase.from('pins').delete().eq('id', pin.id);
+          continue;
+        }
+
+        // ✅ حذف أي رقم PIN ليس من رقمين (10-99)
+        const pinNum = parseInt(pin.pin, 10);
+        if (isNaN(pinNum) || pinNum < 10 || pinNum > 99) {
+          validationIssues++;
+          await this.supabase.from('pins').delete().eq('id', pin.id);
+          console.log(`🗑️ تم حذف PIN غير صحيح: ${pin.pin} للعيادة ${pin.clinic_code}`);
           continue;
         }
 
         // التحقق من أن clinic_code موجود
         if (!pin.clinic_code) {
           validationIssues++;
+          await this.supabase.from('pins').delete().eq('id', pin.id);
           continue;
         }
 

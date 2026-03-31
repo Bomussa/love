@@ -700,27 +700,19 @@ const PINManagement = ({ language, t }) => {
   const loadPins = async () => {
     try {
       setLoading(true);
-      // جلب جميع أرقام PIN النشطة للعيادات
+      // ✅ جلب جميع أرقام PIN من قاعدة البيانات
       const { data, error } = await supabase
         .from('pins')
         .select('*')
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
       
       if (!error && data) {
-        // ✅ FIXED: Filter to show only today's PINs with 2-digit format (2-99)
-        const today = new Date().toISOString().split('T')[0];
-        const filteredPins = data.filter(pin => {
-          // Check if PIN is from today
-          const pinDate = new Date(pin.created_at).toISOString().split('T')[0];
-          if (pinDate !== today) return false;
-          
-          // Check if PIN is 2-digit number (2-99)
+        // ✅ فلترة: فقط أرقام من رقمين (10-99) وحذف أي رقم من 4 أرقام تلقائياً
+        const validPins = data.filter(pin => {
           const pinNum = parseInt(pin.pin, 10);
-          return pinNum >= 2 && pinNum <= 99;
+          return !isNaN(pinNum) && pinNum >= 10 && pinNum <= 99;
         });
-        
-        setPins(filteredPins);
+        setPins(validPins);
       }
     } catch (e) {
       console.error('Error loading pins:', e);
@@ -730,8 +722,8 @@ const PINManagement = ({ language, t }) => {
   };
 
   const generatePin = () => {
-    // ✅ FIXED: PIN من رقمين فقط (2-99)
-    return String(Math.floor(2 + Math.random() * 98)).padStart(2, '0');
+    // ✅ PIN يومي من رقمين فقط (10-99)
+    return String(Math.floor(10 + Math.random() * 90));
   };
 
   const generateUniquePin = (existingPins) => {
@@ -811,6 +803,10 @@ const PINManagement = ({ language, t }) => {
         });
       }
       
+      if (newPins.length === 0) {
+        showErrorToast(t('لا توجد عيادات لتوليد أرقام لها', 'No clinics to generate PINs for'));
+        return;
+      }
       const { error } = await supabase.from('pins').insert(newPins);
       
       if (!error) {
@@ -827,19 +823,27 @@ const PINManagement = ({ language, t }) => {
     }
   };
 
-  // حذف جميع الأرقام المنتهية الصلاحية
+  // حذف جميع الأرقام المنتهية الصلاحية + الأرقام غير الصحيحة (4 أرقام)
   const deleteExpiredPins = async () => {
     try {
       const now = new Date().toISOString();
-      const { error, count } = await supabase
-        .from('pins')
-        .delete()
-        .lt('expires_at', now);
-      
-      if (!error) {
-        showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
-        loadPins();
+      // 1. حذف المنتهية بالتاريخ
+      await supabase.from('pins').delete().lt('expires_at', now);
+      // 2. حذف غير النشطة
+      await supabase.from('pins').delete().eq('is_active', false);
+      // 3. حذف الأرقام ذات 4 أرقام (غير صحيحة)
+      const { data: allPins } = await supabase.from('pins').select('id, pin');
+      if (allPins) {
+        const badPins = allPins.filter(p => {
+          const num = parseInt(p.pin, 10);
+          return isNaN(num) || num < 10 || num > 99;
+        });
+        for (const bad of badPins) {
+          await supabase.from('pins').delete().eq('id', bad.id);
+        }
       }
+      showSuccessToast(t('تم حذف الأرقام المنتهية وغير الصحيحة', 'Expired and invalid PINs deleted'));
+      loadPins();
     } catch (e) {
       console.error('Error deleting expired pins:', e);
     }
@@ -930,7 +934,7 @@ const PINManagement = ({ language, t }) => {
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => !p.is_active || isPinExpired(p.expires_at)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
