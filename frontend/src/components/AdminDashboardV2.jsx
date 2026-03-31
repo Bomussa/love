@@ -98,7 +98,7 @@ const QueueManagement = ({ language, t }) => {
     // اشتراك Real-time لتحديثات الطوابير اللحظية
     const subscription = supabase
       .channel('queues_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'queues' }, (payload) => {
         loadQueues();
       })
       .subscribe();
@@ -135,10 +135,10 @@ const QueueManagement = ({ language, t }) => {
       
       // جلب الطوابير مع بيانات المريض الحقيقية عبر JOIN
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select(`
           *,
-          patients!unified_queue_patient_id_fkey(
+          patients(
             patient_id,
             military_id,
             personal_id
@@ -158,7 +158,7 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // fallback: جلب بدون JOIN
         const { data: fallbackData } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .select('*')
           .eq('queue_date', today)
           .order('display_number', { ascending: true });
@@ -186,7 +186,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       const { error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -203,13 +203,13 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
-  const completePatient = async (queueId) => {
+  const skipPatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', queueId);
+        .from('queues')
+        .update({ status: 'waiting', updated_at: new Date().toISOString() }) // إعادة للانتظار أو حالة تخطي إذا كانت مدعومة
+        .eq('id', queueId);;
       
       if (!error) {
         showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
@@ -283,11 +283,11 @@ const QueueManagement = ({ language, t }) => {
       
       // البحث عن المراجع في قائمة الانتظار
       const { data: patientQueue, error: searchError } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
-        .or(`patient_id.eq.${priorityPatientId},military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId}`)
+        .or(`patient_id.eq.${priorityPatientId},patient_name.ilike.%${priorityPatientId}%`)
         .single();
 
       if (searchError || !patientQueue) {
@@ -295,7 +295,7 @@ const QueueManagement = ({ language, t }) => {
         const { data: patient, error: patientError } = await supabase
           .from('patients')
           .select('*')
-          .or(`military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
+          .or(`patient_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
           .single();
 
         if (patientError || !patient) {
@@ -305,18 +305,17 @@ const QueueManagement = ({ language, t }) => {
 
         // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى"
         const { error: insertError } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .insert({
             clinic_id: priorityClinicId,
-            patient_id: patient.id,
-            military_id: patient.military_id,
-            personal_id: patient.personal_id,
+            patient_id: patient.patient_id || patient.id,
+            patient_name: patient.name || 'مراجع أولوية',
             status: 'called',
             called_at: new Date().toISOString(),
-            is_priority: true,
-            priority_reason: 'تمرير دور مباشر',
-            queue_number: `P-${Date.now().toString().slice(-4)}`,
-            display_number: `أولوية`
+            queue_number_int: 999,
+            display_number: 999,
+            queue_number: '999',
+            queue_date: new Date().toISOString().split('T')[0]
           });
 
         if (insertError) {
@@ -329,12 +328,10 @@ const QueueManagement = ({ language, t }) => {
       } else {
         // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
         await supabase
-          .from('unified_queue')
+          .from('queues')
           .update({ 
             status: 'called', 
-            called_at: new Date().toISOString(),
-            is_priority: true,
-            priority_reason: 'تمرير دور من الإدارة'
+            called_at: new Date().toISOString()
           })
           .eq('id', patientQueue.id);
 
@@ -381,8 +378,8 @@ const QueueManagement = ({ language, t }) => {
       
       // تحديث الرقم في unified_queue
       const { error: queueError } = await supabase
-        .from('unified_queue')
-        .update({ patient_id: newPatientId.trim() })
+        .from('queues')
+        .update({ patient_id: newPatientId })
         .eq('id', editingPatient.id);
 
       if (queueError) {

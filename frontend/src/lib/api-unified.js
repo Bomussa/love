@@ -47,7 +47,7 @@ const api = {
   // --- Queue ---
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_unified_queue_safe', {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
         p_clinic_id: clinicId,
         p_patient_id: patientId,
         p_patient_name: patientName,
@@ -64,12 +64,12 @@ const api = {
 
       const today = new Date().toISOString().split('T')[0];
       const { data: existingEntry } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .eq('queue_date', today)
-        .in('status', ['waiting', 'serving'])
+        .in('status', ['waiting', 'called', 'in_service'])
         .limit(1)
         .maybeSingle();
 
@@ -78,24 +78,26 @@ const api = {
       }
 
       const { data: lastEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
+        .from('queues')
+        .select('queue_number_int')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
-        .order('display_number', { ascending: false })
+        .order('queue_number_int', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const nextNumber = (lastEntry ? lastEntry.display_number : 0) + 1;
+      const nextNumber = (lastEntry ? lastEntry.queue_number_int : 0) + 1;
 
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
           patient_name: patientName,
           exam_type: examType,
+          queue_number_int: nextNumber,
           display_number: nextNumber,
+          queue_number: String(nextNumber),
           status: 'waiting',
           queue_date: today,
           entered_at: new Date().toISOString(),
@@ -115,7 +117,7 @@ const api = {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data: patientEntry, error: entryError } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -128,11 +130,11 @@ const api = {
 
       let currentNumber = 0;
       const { data: servingEntry } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('display_number')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
-        .in('status', ['serving', 'called'])
+        .in('status', ['called', 'in_service'])
         .order('called_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -141,7 +143,7 @@ const api = {
         currentNumber = servingEntry.display_number;
       } else {
         const { data: lastCompleted } = await supabase
-          .from('unified_queue')
+          .from('queues')
           .select('display_number')
           .eq('clinic_id', clinicId)
           .eq('queue_date', today)
@@ -155,7 +157,7 @@ const api = {
       }
 
       const { count, error: countError } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
@@ -205,7 +207,7 @@ const api = {
       }
 
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
