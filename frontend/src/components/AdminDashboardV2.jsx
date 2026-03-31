@@ -767,7 +767,7 @@ const PINManagement = ({ language, t }) => {
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      const existingPins = pins.filter(p => (p.clinic_id === newPin.clinic_id || p.clinic_code === newPin.clinic_id)).map(p => p.pin);
       const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
@@ -778,6 +778,7 @@ const PINManagement = ({ language, t }) => {
       
       const { error } = await supabase.from('pins').insert({
         pin: pinCode,
+        clinic_id: newPin.clinic_id,
         clinic_code: newPin.clinic_id,
         is_active: true,
         generated_at: new Date().toISOString(),
@@ -817,6 +818,7 @@ const PINManagement = ({ language, t }) => {
         const pinCode = generateUniquePin(existingPins);
         newPins.push({
           pin: pinCode,
+          clinic_id: clinic.id,
           clinic_code: clinic.id,
           is_active: true,
           generated_at: new Date().toISOString(),
