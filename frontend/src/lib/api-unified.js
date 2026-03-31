@@ -220,6 +220,92 @@ const api = {
       return { success: false, error: error.message };
     }
   },
+
+  // --- Settings ---
+  async getSettings() {
+    try {
+      const { data, error } = await supabase.from('system_settings').select('*');
+      if (error) throw error;
+      const settings = {};
+      data.forEach(s => {
+        try {
+          settings[s.id] = JSON.parse(s.value);
+        } catch {
+          settings[s.id] = s.value;
+        }
+      });
+      return { success: true, settings };
+    } catch (error) {
+      console.error('Get Settings Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- PINs ---
+  async getPinStatus() {
+    try {
+      const { data, error } = await supabase.from('pins').select('*').is('used_at', null);
+      if (error) throw error;
+      const clinics = {};
+      data.forEach(p => {
+        clinics[p.clinic_id || p.clinic_code] = { has_active_pin: true };
+      });
+      return { success: true, clinics };
+    } catch (error) {
+      console.error('Get Pin Status Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- Stats ---
+  async getQueueCount(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('queues')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .eq('status', 'waiting');
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('Get Queue Count Error:', error);
+      return 0;
+    }
+  },
+
+  async getRoute(patientId) {
+    try {
+      const { data, error } = await supabase
+        .from('patient_routes')
+        .select('*')
+        .eq('patient_id', patientId)
+        .single();
+      if (error) throw error;
+      return { success: true, route: data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async createRoute(patientId, examType, gender, stations) {
+    try {
+      const { data, error } = await supabase
+        .from('patient_routes')
+        .upsert({
+          patient_id: patientId,
+          exam_type: examType,
+          gender: gender,
+          stations: stations,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 };
 
 export default api;
