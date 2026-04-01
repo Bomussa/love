@@ -221,8 +221,7 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
-  const skipPatient = async (queueId) => {
-    try {
+  
       const queue = queues.find(q => q.id === queueId);
       const postponeCount = (queue?.postpone_count || 0) + 1;
       
