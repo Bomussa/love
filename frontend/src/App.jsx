@@ -29,6 +29,7 @@ const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
 const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
+const DoctorDashboard = lazy(() => import('./components/DoctorDashboard').then(m => ({ default: m.DoctorDashboard })))
 
 // Preload المكونات عند بدء التطبيق لتسريع التنقل
 const preloadComponents = () => {
@@ -80,6 +81,13 @@ class AdminErrorBoundary extends React.Component {
 
 function App() {
   // ============= STATE MANAGEMENT =============
+  const [doctorSession, setDoctorSession] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mmc_doctor_session')
+      return stored ? JSON.parse(stored) : null
+    } catch(e) { return null }
+  })
+
   const [clinicSession, setClinicSession] = useState(() => {
     try {
       const stored = localStorage.getItem('mmc_clinic_session')
@@ -180,6 +188,16 @@ function App() {
       return;
     }
 
+    // Priority 2.5: Doctor routes
+    if (path === '/doctor' || path.startsWith('/doctor/')) {
+      if (doctorSession) {
+        setCurrentView('doctor');
+      } else {
+        setCurrentView('login');
+      }
+      return;
+    }
+
     // Priority 3: Clinic routes
     if (path === '/clinic/login' || path === '/clinic/login/') {
       setCurrentView('clinic_login');
@@ -203,7 +221,7 @@ function App() {
     // Default: Login
     console.log('[App] Default to login view');
     setCurrentView('login');
-  }, [language, isAdmin, patientData, clinicSession])
+  }, [language, isAdmin, patientData, clinicSession, doctorSession])
 
   // ============= THEME MANAGEMENT =============
   useEffect(() => {
@@ -327,10 +345,52 @@ function App() {
   const handleLogout = () => {
     setPatientData(null)
     setIsAdmin(false)
+    setDoctorSession(null)
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
+    localStorage.removeItem('mmc_doctor_session')
     window.history.pushState({}, '', '/')
+  }
+
+  // ============= DOCTOR LOGIN HANDLER =============
+  const handleDoctorLogin = async (credentials) => {
+    try {
+      const [username, password] = credentials.split(':')
+      if (!username || !password) {
+        showNotification(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password', 'error')
+        return;
+      }
+
+      // Check if user is a doctor in the database
+      const { data: doctor, error } = await supabase
+        .from('doctors')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .single()
+
+      if (error || !doctor) {
+        showNotification(language === 'ar' ? '❌ بيانات الدخول غير صحيحة' : '❌ Invalid credentials', 'error')
+        return
+      }
+
+      const session = {
+        id: doctor.id,
+        name: doctor.name,
+        clinic_id: doctor.clinic_id,
+        clinic_name: doctor.clinic_name,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      }
+
+      localStorage.setItem('mmc_doctor_session', JSON.stringify(session))
+      setDoctorSession(session)
+      setCurrentView('doctor')
+      showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
+    } catch (error) {
+      console.error('[App] Doctor login error:', error);
+      showNotification(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error')
+    }
   }
 
   // ============= LANGUAGE TOGGLE =============
@@ -471,6 +531,21 @@ function App() {
             language={language}
             toggleLanguage={toggleLanguage}
           />
+        )}
+
+        {currentView === 'doctor' && doctorSession && (
+          <Suspense fallback={<LoadingFallback />}>
+            <DoctorDashboard
+              doctorData={doctorSession}
+              onLogout={() => {
+                setDoctorSession(null)
+                localStorage.removeItem('mmc_doctor_session')
+                setCurrentView('login')
+              }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          </Suspense>
         )}
 
         {currentView === 'clinic_dashboard' && clinicSession && (
