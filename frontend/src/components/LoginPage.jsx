@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { User, Globe, Shield, QrCode, BarChart3, AlertCircle } from 'lucide-react'
+import { User, Globe, Shield, QrCode, BarChart3, AlertCircle, Stethoscope } from 'lucide-react'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
@@ -16,6 +16,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [gender, setGender] = useState('male')
   const [loading, setLoading] = useState(false)
   const [isAdminMode, setIsAdminMode] = useState(false)
+  const [isDoctorMode, setIsDoctorMode] = useState(false)
   const [adminUsername, setAdminUsername] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [showQRScanner, setShowQRScanner] = useState(false)
@@ -188,9 +189,23 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
             <Button
               variant="ghost"
               size="sm"
+              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 border border-blue-600/50"
+              onClick={() => {
+                setIsDoctorMode(!isDoctorMode)
+                setIsAdminMode(false)
+              }}
+              title={language === 'ar' ? 'دخول الطبيب' : 'Doctor Login'}
+            >
+              <Stethoscope className="w-4 h-4 mr-2" />
+              {language === 'ar' ? 'الطبيب' : 'Doctor'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
               onClick={() => {
                 setIsAdminMode(!isAdminMode)
+                setIsDoctorMode(false)
               }}
               title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
             >
@@ -243,18 +258,22 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
             <div className="text-center mb-6">
               {isAdminMode ? (
                 <Shield className="mx-auto w-12 h-12 text-yellow-400 mb-4" />
+              ) : isDoctorMode ? (
+                <Stethoscope className="mx-auto w-12 h-12 text-blue-400 mb-4" />
               ) : (
                 <User className="mx-auto w-12 h-12 text-gray-400 mb-4" />
               )}
               <h2 className="text-xl font-semibold text-white">
                 {isAdminMode
                   ? (language === 'ar' ? 'دخول الإدارة' : 'Admin Access')
+                  : isDoctorMode
+                  ? (language === 'ar' ? 'دخول الطبيب' : 'Doctor Access')
                   : t('welcome', language)
                 }
               </h2>
             </div>
 
-            {!isAdminMode ? (
+            {!isAdminMode && !isDoctorMode ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -341,6 +360,47 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
                   {loading
                     ? (language === 'ar' ? 'جاري المعالجة...' : 'Processing...')
                     : (language === 'ar' ? 'تأكيد ←' : 'Confirm →')}
+                </Button>
+              </form>
+            ) : isDoctorMode ? (
+              <form onSubmit={handleDoctorSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {language === 'ar' ? 'اسم المستخدم' : 'Username'}
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {language === 'ar' ? 'كلمة المرور' : 'Password'}
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="gradient"
+                  className="w-full h-12 text-lg font-semibold"
+                  disabled={loading || !adminUsername.trim() || !adminPassword.trim()}
+                >
+                  {loading
+                    ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...')
+                    : (language === 'ar' ? 'دخول الطبيب ←' : 'Doctor Login →')}
                 </Button>
               </form>
             ) : (
