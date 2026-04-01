@@ -426,6 +426,7 @@ function App() {
           <LoginPage
             onLogin={handleLogin}
             onAdminLogin={handleAdminLogin}
+            onDoctorLogin={handleDoctorLogin}
             currentTheme={currentTheme}
             onThemeChange={setCurrentTheme}
             language={language}
