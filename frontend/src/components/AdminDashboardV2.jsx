@@ -203,25 +203,51 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
+  // إكمال فحص المريض (تحديث الحالة إلى مكتمل)
+  const completePatient = async (queueId) => {
+    try {
+      const queue = queues.find(q => q.id === queueId);
+      const { error } = await supabase
+        .from('queues')
+        .update({ 
+          status: 'completed', 
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', queueId);
+
+      if (!error) {
+        showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
+        await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
+        loadQueues();
+      } else {
+        showErrorToast(t('حدث خطأ أثناء إكمال الفحص', 'Error completing examination'));
+      }
+    } catch (e) {
+      console.error('Error completing patient:', e);
+      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
+    }
+  };
+
+  // تخطي المريض (إعادة إلى الانتظار)
   const skipPatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
         .from('queues')
-        .update({ status: 'waiting', updated_at: new Date().toISOString() }) // إعادة للانتظار أو حالة تخطي إذا كانت مدعومة
-        .eq('id', queueId);;
-      
+        .update({ status: 'waiting', updated_at: new Date().toISOString() })
+        .eq('id', queueId);
+
       if (!error) {
-        showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
-        await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
+        showSuccessToast(t('تم تخطي المريض وإعادته للانتظار', 'Patient skipped and returned to waiting'));
+        await logActivity('queue_skip', `تم تخطي الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
         loadQueues();
       }
     } catch (e) {
-      console.error('Error completing patient:', e);
+      console.error('Error skipping patient:', e);
     }
   };
 
-  };
 
   // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
   const priorityCallPatient = async () => {
