@@ -221,53 +221,6 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
-  
-      const queue = queues.find(q => q.id === queueId);
-      const postponeCount = (queue?.postpone_count || 0) + 1;
-      
-      // إذا تجاوز الحد الأقصى للترحيلات، يتم الإلغاء
-      const maxPostpones = 3;
-      if (postponeCount >= maxPostpones) {
-        const { error } = await supabase
-          .from('queues')
-          .update({ status: 'cancelled', postpone_count: postponeCount })
-          .eq('id', queueId);
-        
-        if (!error) {
-          showErrorToast(t('تم إلغاء المراجع بعد تجاوز الحد الأقصى', 'Patient cancelled after max postpones'));
-          await logActivity('queue_cancel', `تم إلغاء الرقم ${queue?.display_number} بعد ${postponeCount} ترحيلات`);
-        }
-      } else {
-        // ترحيل لنهاية الدور برقم جديد
-        const { data: maxQueue } = await supabase
-          .from('queues')
-          .select('display_number')
-          .eq('clinic_id', queue?.clinic_id)
-          .order('display_number', { ascending: false })
-          .limit(1)
-          .single();
-        
-        const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
-        
-        const { error } = await supabase
-          .from('queues')
-          .update({ 
-            status: 'waiting', 
-            display_number: newDisplayNumber,
-            postpone_count: postponeCount,
-            called_at: null
-          })
-          .eq('id', queueId);
-        
-        if (!error) {
-          showSuccessToast(t(`تم ترحيل المراجع للرقم ${newDisplayNumber}`, `Patient moved to number ${newDisplayNumber}`));
-          await logActivity('queue_postpone', `تم ترحيل الرقم ${queue?.display_number} إلى ${newDisplayNumber}`);
-        }
-      }
-      loadQueues();
-    } catch (e) {
-      console.error('Error skipping patient:', e);
-    }
   };
 
   // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
