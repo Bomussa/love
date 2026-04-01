@@ -111,6 +111,25 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
     }
   }
 
+  const handleDoctorSubmit = async (e) => {
+    e.preventDefault()
+    setValidationError('')
+
+    if (!adminUsername.trim() || !adminPassword.trim()) {
+      setValidationError(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await onDoctorLogin(`${sanitizeInput(adminUsername)}:${adminPassword.trim()}`)
+    } catch (error) {
+      setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="h-screen max-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full max-w-full" style={{overflowY: "auto", overflowX: "hidden"}}>
       <div className="w-full max-w-md mx-auto space-y-8">
