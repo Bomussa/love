@@ -11,7 +11,7 @@ import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
 import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
 
-export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
+export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
   const [gender, setGender] = useState('male')
   const [loading, setLoading] = useState(false)
