@@ -598,3 +598,10 @@ export function formatDate(date) {
 export function calculateWaitTime(position, avgTime = 5) {
   return Math.max(0, (position - 1) * avgTime);
 }
+
+export function formatDuration(ms) {
+  if (!ms || ms === 0) return '00:00'
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
