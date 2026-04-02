@@ -135,7 +135,7 @@ const QueueManagement = ({ language, t }) => {
       
       // جلب الطوابير مع بيانات المريض الحقيقية عبر JOIN
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select(`
           *,
           patients(
@@ -186,7 +186,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       const { error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -208,7 +208,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .update({ 
           status: 'completed', 
           completed_at: new Date().toISOString(),
@@ -234,7 +234,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .update({ status: 'waiting', updated_at: new Date().toISOString() })
         .eq('id', queueId);
 
@@ -2717,6 +2717,7 @@ const SystemStatus = ({ language, t }) => {
       { name: 'clinics', label: t('العيادات', 'Clinics') },
       { name: 'queue', label: t('الطابور (queue)', 'Queue') },
       { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
+      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
@@ -3372,6 +3373,7 @@ const UsersManagement = ({ language, t }) => {
   const allPermissions = [
     { id: 'dashboard', label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', label: t('إدارة الطوابير', 'Queue Management') },
+    { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', label: t('الإشعارات', 'Notifications') },
     { id: 'routes', label: t('المسارات', 'Routes') },
     { id: 'floor_directions', label: t('توجيه الطوابق', 'Floor Directions') },
@@ -4771,6 +4773,7 @@ const DatabaseManagement = ({ language, t }) => {
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
     { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
+    { name: 'pins', label: t('الأرقام السرية', 'PINs'), icon: Key },
   ];
 
   useEffect(() => {
@@ -5322,6 +5325,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
+    { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
     { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
@@ -5638,6 +5642,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         )}
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
+        {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}

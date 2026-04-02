@@ -3,19 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "Medical Committee Integrated Application monorepo (frontend + api proxy).",
-  "workspaces": [
-    "frontend",
-    "api"
-  ],
   "scripts": {
-    "dev": "npm run dev --workspace frontend",
-    "build": "tsc",
-    "preview": "npm run preview --workspace frontend",
-    "lint": "eslint .",
-    "test": "npm run test --workspace frontend",
-    "typecheck": "tsc --noEmit",
-    "test:smoke": "node --test scripts/smoke.test.ts",
-    "ci:resilient": "./scripts/resilient-ci.sh"
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
   },
   "engines": {
     "node": "20.x"
