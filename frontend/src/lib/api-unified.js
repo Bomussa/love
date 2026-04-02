@@ -55,7 +55,13 @@ const api = {
       });
 
       if (!rpcError && rpcResult) {
-        return { success: true, ...rpcResult };
+        // RPC returns {status, clinic, user, number, message}
+        return { 
+          success: rpcResult.status === 'OK' || rpcResult.status === 'ALREADY_IN_QUEUE', 
+          ...rpcResult,
+          display_number: rpcResult.number,
+          alreadyExists: rpcResult.status === 'ALREADY_IN_QUEUE'
+        };
       }
 
       if (rpcError) {
@@ -64,12 +70,12 @@ const api = {
 
       const today = new Date().toISOString().split('T')[0];
       const { data: existingEntry } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .eq('queue_date', today)
-        .in('status', ['waiting', 'called', 'in_service'])
+        .in('status', ['waiting', 'called', 'in_progress', 'serving'])
         .limit(1)
         .maybeSingle();
 
@@ -78,26 +84,24 @@ const api = {
       }
 
       const { data: lastEntry } = await supabase
-        .from('queues')
-        .select('queue_number_int')
+        .from('unified_queue')
+        .select('display_number')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
-        .order('queue_number_int', { ascending: false })
+        .order('display_number', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const nextNumber = (lastEntry ? lastEntry.queue_number_int : 0) + 1;
+      const nextNumber = (lastEntry ? lastEntry.display_number : 0) + 1;
 
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .insert([{
           clinic_id: clinicId,
           patient_id: patientId,
           patient_name: patientName,
           exam_type: examType,
-          queue_number_int: nextNumber,
           display_number: nextNumber,
-          queue_number: String(nextNumber),
           status: 'waiting',
           queue_date: today,
           entered_at: new Date().toISOString(),
@@ -117,7 +121,7 @@ const api = {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data: patientEntry, error: entryError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -130,11 +134,11 @@ const api = {
 
       let currentNumber = 0;
       const { data: servingEntry } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('display_number')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
-        .in('status', ['called', 'in_service'])
+        .in('status', ['called', 'in_progress', 'serving'])
         .order('called_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -143,7 +147,7 @@ const api = {
         currentNumber = servingEntry.display_number;
       } else {
         const { data: lastCompleted } = await supabase
-          .from('queues')
+          .from('unified_queue')
           .select('display_number')
           .eq('clinic_id', clinicId)
           .eq('queue_date', today)
@@ -157,7 +161,7 @@ const api = {
       }
 
       const { count, error: countError } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
@@ -179,35 +183,11 @@ const api = {
     }
   },
 
-  async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
+  async queueDone(clinicId, patientId, pin, skipPinCheck = true) {
     try {
-      if (!skipPinCheck) {
-        if (!pin) {
-          return { success: false, error: 'يرجى إدخال رقم PIN' };
-        }
-
-        const now = new Date().toISOString();
-        const { data: validPin, error: pinError } = await supabase
-          .from('pins')
-          .select('*')
-          .eq('clinic_id', clinicId)
-          .eq('pin', pin)
-          .is('used_at', null)
-          .gte('valid_until', now)
-          .maybeSingle();
-
-        if (pinError || !validPin) {
-          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
-        }
-
-        await supabase
-          .from('pins')
-          .update({ used_at: now })
-          .eq('id', validPin.id);
-      }
-
+      // PIN check removed as per user request
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -262,7 +242,7 @@ const api = {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { count, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
