@@ -34,12 +34,25 @@ const FALLBACK_CLINICS = {
   XR: { id: 'XR', name: 'Radiology', nameAr: 'الأشعة', floor: 'M' },
 };
 
+/**
+ * قراءة JSON بشكل آمن من Response.
+ * @param {Response} response
+ * @returns {Promise<object>}
+ */
+async function safeJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
 // تحميل البيانات بشكل ديناميكي
 async function loadConfigFiles() {
   if (!routeMap) {
     try {
       const response = await fetch('/config/routeMap.json');
-      routeMap = await response.json();
+      routeMap = response.ok ? await safeJson(response) : {};
     } catch (e) {
       console.warn('Failed to load routeMap.json, using fallback');
       routeMap = {};
@@ -48,7 +61,7 @@ async function loadConfigFiles() {
   if (!clinicsData) {
     try {
       const response = await fetch('/config/clinics.json');
-      clinicsData = await response.json();
+      clinicsData = response.ok ? await safeJson(response) : {};
     } catch (e) {
       console.warn('Failed to load clinics.json, using fallback');
       clinicsData = {};
@@ -60,7 +73,6 @@ async function loadConfigFiles() {
   };
 }
 import { supabase } from './supabase-client';
-import { queueQueries } from './supabase-queries';
 
 // ✅ تحويل رموز العيادات إلى كائنات كاملة - مع دعم قاعدة البيانات
 async function mapClinicCodes(codes, useDatabase = true, localClinicsData = {}) {
