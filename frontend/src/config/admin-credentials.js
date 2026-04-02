@@ -20,7 +20,6 @@ export const ADMIN_CREDENTIALS = {
   permissions: [
     'dashboard',
     'queue_management',
-    'pin_management',
     'reports',
     'clinic_configuration',
     'settings',

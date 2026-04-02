@@ -24,6 +24,30 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
   const clinicId = doctorData?.clinic_id
   const clinicName = doctorData?.clinic_name || (language === 'ar' ? 'العيادة' : 'Clinic')
 
+  const getPatientIdentifier = (patient) => String(
+    patient?.patient_id ||
+    patient?.military_number ||
+    patient?.user_id ||
+    patient?.patient ||
+    ''
+  );
+
+  const notifyPatientRealtime = async (patient, titleAr, titleEn, messageAr, messageEn) => {
+    const targetPatientId = getPatientIdentifier(patient);
+    if (!targetPatientId) return;
+
+    await supabase.from('direct_alerts').insert({
+      patient_id: targetPatientId,
+      title_ar: titleAr,
+      title_en: titleEn,
+      message_ar: messageAr,
+      message_en: messageEn,
+      is_active: true,
+      sound_enabled: true,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    }).catch(() => {});
+  };
+
   // Fetch patients for this clinic
   const fetchPatients = async () => {
     if (!clinicId) return
@@ -116,6 +140,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       if (error) throw error
 
+      await notifyPatientRealtime(
+        nextPatient,
+        'تم استدعاؤك',
+        'You have been called',
+        `الرجاء التوجه إلى ${clinicName}. رقمك: ${nextPatient.display_number}`,
+        `Please proceed to ${clinicName}. Your number: ${nextPatient.display_number}`
+      );
+
       pushNotif({
         type: 'success',
         title: language === 'ar' ? 'تم الاستدعاء' : 'Patient Called',
@@ -153,6 +185,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       setCurrentPatient(patient)
       setExamStartTime(new Date())
+
+      await notifyPatientRealtime(
+        patient,
+        'بدأ الفحص',
+        'Examination started',
+        `بدأ فحصك في ${clinicName}.`,
+        `Your examination started at ${clinicName}.`
+      );
 
       pushNotif({
         type: 'success',
@@ -193,6 +233,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       if (error) throw error
 
+      await notifyPatientRealtime(
+        currentPatient,
+        'تم إنهاء الفحص',
+        'Examination completed',
+        `تم إنهاء فحصك في ${clinicName}.`,
+        `Your examination has been completed at ${clinicName}.`
+      );
+
       pushNotif({
         type: 'success',
         title: language === 'ar' ? 'تم إكمال الفحص' : 'Exam Completed',
@@ -230,6 +278,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       if (error) throw error
 
+      await notifyPatientRealtime(
+        patient,
+        'تم تخطي الدور',
+        'Turn skipped',
+        `تم تخطي دورك مؤقتاً في ${clinicName}.`,
+        `Your turn was temporarily skipped at ${clinicName}.`
+      );
+
       pushNotif({
         type: 'warning',
         title: language === 'ar' ? 'تم التخطي' : 'Patient Skipped',
@@ -264,6 +320,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
         .eq('id', patient.id)
 
       if (error) throw error
+
+      await notifyPatientRealtime(
+        patient,
+        'تم إلغاء الدور',
+        'Turn cancelled',
+        `تم إلغاء دورك في ${clinicName}.`,
+        `Your turn has been cancelled at ${clinicName}.`
+      );
 
       pushNotif({
         type: 'info',

@@ -3373,7 +3373,6 @@ const UsersManagement = ({ language, t }) => {
   const allPermissions = [
     { id: 'dashboard', label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', label: t('إدارة الطوابير', 'Queue Management') },
-    { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', label: t('الإشعارات', 'Notifications') },
     { id: 'routes', label: t('المسارات', 'Routes') },
     { id: 'floor_directions', label: t('توجيه الطوابق', 'Floor Directions') },
@@ -5170,6 +5169,155 @@ const SmartSystemPanel = ({ language, t }) => {
 };
 
 // المكون الرئيسي
+const DoctorControlPanel = ({ language, t }) => {
+  const [clinics, setClinics] = useState([]);
+  const [selectedClinic, setSelectedClinic] = useState('');
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const loadClinics = async () => {
+    const { data } = await supabase.from('clinics').select('id, name_ar, name_en').order('name_ar');
+    if (data) {
+      setClinics(data);
+      if (!selectedClinic && data[0]?.id) setSelectedClinic(data[0].id);
+    }
+  };
+
+  const loadDoctorQueue = async () => {
+    if (!selectedClinic) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('clinic_id', selectedClinic)
+        .gte('created_at', todayStart.toISOString())
+        .order('display_number', { ascending: true });
+      if (error) throw error;
+      setRows(data || []);
+    } catch (e) {
+      showErrorToast(t('تعذر تحميل بيانات الطبيب', 'Failed to load doctor queue'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadClinics(); }, []);
+  useEffect(() => { loadDoctorQueue(); }, [selectedClinic]);
+
+  useEffect(() => {
+    if (!selectedClinic) return;
+    const channel = supabase
+      .channel(`admin_doctor_control_${selectedClinic}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'unified_queue',
+        filter: `clinic_id=eq.${selectedClinic}`
+      }, loadDoctorQueue)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedClinic]);
+
+  const updateStatus = async (entry, status, extra = {}) => {
+    try {
+      const payload = { status, updated_at: new Date().toISOString(), ...extra };
+      const { error } = await supabase.from('unified_queue').update(payload).eq('id', entry.id);
+      if (error) throw error;
+      await loadDoctorQueue();
+    } catch (e) {
+      showErrorToast(t('فشل تحديث الحالة', 'Failed to update status'));
+    }
+  };
+
+  const waiting = rows.filter(r => ['waiting', 'called'].includes(r.status)).length;
+  const completed = rows.filter(r => r.status === 'completed').length;
+  const noShow = rows.filter(r => ['skipped', 'cancelled'].includes(r.status)).length;
+  const inService = rows.filter(r => ['in_progress', 'serving', 'in_service'].includes(r.status));
+
+  const durationText = (row) => {
+    if (!row.exam_start_time) return '-';
+    const end = row.exam_end_time ? new Date(row.exam_end_time) : new Date();
+    const sec = Math.max(0, Math.floor((end - new Date(row.exam_start_time)) / 1000));
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+        <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <h3 className="text-xl font-bold">{t('شاشة متابعة الطبيب', 'Doctor Control Screen')}</h3>
+          <select
+            value={selectedClinic}
+            onChange={(e) => setSelectedClinic(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+          >
+            {clinics.map(c => (
+              <option key={c.id} value={c.id} className="text-black">
+                {language === 'ar' ? c.name_ar : (c.name_en || c.name_ar)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4"><p>{t('المنتظرون', 'Waiting')}</p><p className="text-2xl font-bold">{waiting}</p></div>
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4"><p>{t('المكتمل', 'Completed')}</p><p className="text-2xl font-bold">{completed}</p></div>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4"><p>{t('تغيب/ملغي', 'No-show/Cancelled')}</p><p className="text-2xl font-bold">{noShow}</p></div>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4"><p>{t('يخدم الآن', 'In service')}</p><p className="text-2xl font-bold">{inService.length}</p></div>
+      </div>
+
+      <div className="overflow-x-auto bg-white/5 border border-white/10 rounded-2xl">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-right border-b border-white/10">
+              <th className="p-3">{t('الرقم', 'No')}</th>
+              <th className="p-3">{t('الرقم العسكري/الشخصي', 'Military/Personal ID')}</th>
+              <th className="p-3">{t('الجنس', 'Gender')}</th>
+              <th className="p-3">{t('الدخول', 'Start')}</th>
+              <th className="p-3">{t('الخروج', 'End')}</th>
+              <th className="p-3">{t('المدة', 'Duration')}</th>
+              <th className="p-3">{t('الحالة', 'Status')}</th>
+              <th className="p-3">{t('إجراءات', 'Actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-b border-white/5">
+                <td className="p-3">{r.display_number || '-'}</td>
+                <td className="p-3">{r.patient_id || r.military_number || '-'}</td>
+                <td className="p-3">{r.gender || '-'}</td>
+                <td className="p-3">{r.exam_start_time ? new Date(r.exam_start_time).toLocaleTimeString() : '-'}</td>
+                <td className="p-3">{r.exam_end_time ? new Date(r.exam_end_time).toLocaleTimeString() : '-'}</td>
+                <td className="p-3">{durationText(r)}</td>
+                <td className="p-3">{r.status}</td>
+                <td className="p-3">
+                  <div className="flex flex-wrap gap-1">
+                    <button className="px-2 py-1 bg-blue-600/30 rounded" onClick={() => updateStatus(r, 'called', { called_at: new Date().toISOString() })}>{t('نداء', 'Call')}</button>
+                    <button className="px-2 py-1 bg-green-600/30 rounded" onClick={() => updateStatus(r, 'in_progress', { exam_start_time: new Date().toISOString() })}>{t('بدء', 'Start')}</button>
+                    <button className="px-2 py-1 bg-emerald-600/30 rounded" onClick={() => updateStatus(r, 'completed', { exam_end_time: new Date().toISOString() })}>{t('تمرير', 'Advance')}</button>
+                    <button className="px-2 py-1 bg-yellow-600/30 rounded" onClick={() => updateStatus(r, 'skipped', { skipped_at: new Date().toISOString() })}>{t('ترحيل', 'Postpone')}</button>
+                    <button className="px-2 py-1 bg-violet-600/30 rounded" onClick={() => updateStatus(r, 'waiting')}>{t('إعادة', 'Reinstate')}</button>
+                    <button className="px-2 py-1 bg-pink-600/30 rounded" onClick={() => updateStatus(r, 'waiting', { priority: 'vip' })}>VIP</button>
+                    <button className="px-2 py-1 bg-red-600/30 rounded" onClick={() => updateStatus(r, 'cancelled', { cancelled_at: new Date().toISOString() })}>{t('إلغاء', 'Cancel')}</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading && rows.length === 0 && (
+              <tr><td className="p-4 text-center text-gray-400" colSpan={8}>{t('لا توجد بيانات اليوم لهذه العيادة', 'No daily data for this clinic')}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
@@ -5325,7 +5473,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
-    { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
+    { id: 'doctor_control', icon: UserCheck, label: t('شاشة الطبيب', 'Doctor Screen') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
     { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
@@ -5642,6 +5790,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         )}
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
+        {activeTab === 'doctor_control' && <DoctorControlPanel language={language} t={t} />}
         {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}

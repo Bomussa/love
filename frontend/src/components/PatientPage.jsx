@@ -25,6 +25,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [queuePositions, setQueuePositions] = useState({})
   const [directAlerts, setDirectAlerts] = useState([])
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
+  const patientIdentifier = String(
+    patientData?.patient_id ||
+    patientData?.military_number ||
+    patientData?.id ||
+    ''
+  );
 
   // أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
   const handleGetTicketForFirstClinic = async (station) => {
@@ -320,8 +326,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }, [patientData?.id, language])
 
   useEffect(() => {
-    if (!patientData?.military_number) return;
-    const patientId = String(patientData.military_number);
+    if (!patientIdentifier) return;
+    const patientId = patientIdentifier;
     const fetchActiveAlerts = async () => {
       try {
         const { data } = await supabase
@@ -353,7 +359,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [patientData?.military_number]);
+  }, [patientIdentifier]);
 
   const dismissDirectAlert = async (alertId) => {
     try {
