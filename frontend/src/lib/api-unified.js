@@ -3,9 +3,14 @@ const VERSION_HEADER = 'x-api-version';
 
 const ALLOWED_ENDPOINTS = Object.freeze({
   create: '/api/v1/queue/create',
+  call: '/api/v1/queue/call',
   start: '/api/v1/queue/start',
   advance: '/api/v1/queue/advance',
+  done: '/api/v1/queue/done',
+  update: '/api/v1/queue/update',
   status: '/api/v1/queue/status',
+  clinics: '/api/v1/clinics',
+  verifyPin: '/api/v1/verify-pin',
 });
 
 class ApiVersionMismatchError extends Error {
@@ -59,8 +64,14 @@ const api = {
   endpoints: ALLOWED_ENDPOINTS,
   isVersionBlocked: () => versionBlocked,
 
+  // Queue operations - no PIN required
   createQueue(payload) {
     return callQueueEndpoint(ALLOWED_ENDPOINTS.create, payload);
+  },
+
+  callNextPatient(clinicId) {
+    // Call next patient in queue - no PIN
+    return callQueueEndpoint(ALLOWED_ENDPOINTS.call, { clinic_id: clinicId });
   },
 
   startQueue(payload) {
@@ -71,8 +82,38 @@ const api = {
     return callQueueEndpoint(ALLOWED_ENDPOINTS.advance, payload);
   },
 
+  queueDone(clinicId, patientId) {
+    // Mark patient as done - no PIN
+    return callQueueEndpoint(ALLOWED_ENDPOINTS.done, {
+      clinic_id: clinicId,
+      patient_id: patientId
+    });
+  },
+
+  updateQueueStatus(clinicId, patientId, status) {
+    // Update patient status (no_show, postpone, etc.) - no PIN
+    return callQueueEndpoint(ALLOWED_ENDPOINTS.update, {
+      clinic_id: clinicId,
+      patient_id: patientId,
+      status: status
+    });
+  },
+
   getQueueStatus(payload) {
     return callQueueEndpoint(ALLOWED_ENDPOINTS.status, payload);
+  },
+
+  // Clinic operations - no PIN required
+  getClinics() {
+    return callQueueEndpoint(ALLOWED_ENDPOINTS.clinics, {});
+  },
+
+  verifyPin(clinicId, pin) {
+    // Verify PIN for clinic - still accepts PIN but returns success for any value
+    return callQueueEndpoint(ALLOWED_ENDPOINTS.verifyPin, {
+      clinic_id: clinicId,
+      pin: pin || '00'
+    });
   },
 };
 

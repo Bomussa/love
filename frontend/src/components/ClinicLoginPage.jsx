@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Shield, Lock, ArrowRight } from 'lucide-react'
+import { Shield, ArrowRight } from 'lucide-react'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import { enhancedMedicalThemes } from '../lib/enhanced-themes'
@@ -11,7 +11,6 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
   const [clinics, setClinics] = useState([])
   const [selectedClinic, setSelectedClinic] = useState('')
-  const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -38,10 +37,14 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     setError(null)
 
     try {
-      // نظام الـ PIN تم إلغاؤه، سنقوم بالدخول مباشرة للعيادة المختارة
-      const response = await api.verifyPin(selectedClinic, pin || '00')
-      if (response.success) {
-        onLogin(response.session)
+      // PIN system removed - login directly with clinic selection
+      // Return a session object with clinic info
+      const clinic = clinics.find(c => c.id === selectedClinic)
+      if (clinic) {
+        onLogin({
+          clinic_id: selectedClinic,
+          clinic_name: language === 'ar' ? clinic.name_ar : clinic.name_en
+        })
       } else {
         setError(language === 'ar' ? 'فشل الدخول للعيادة' : 'Failed to login to clinic')
       }
@@ -82,24 +85,6 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                PIN
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="pl-10 bg-gray-700 border-gray-600 text-white"
-                  placeholder="00"
-                  maxLength={2}
-                  required
-                />
-              </div>
-            </div>
-
             {error && (
               <div className="text-red-400 text-sm bg-red-900/20 p-2 rounded">
                 {error}
@@ -110,7 +95,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
               type="submit"
               variant="gradient"
               className="w-full"
-              disabled={loading || !selectedClinic || !pin}
+              disabled={loading || !selectedClinic}
             >
               {loading ? (
                 <span className="animate-pulse">...</span>

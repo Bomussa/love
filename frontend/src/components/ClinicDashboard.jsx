@@ -8,7 +8,7 @@ import api from '../lib/api-unified'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
 // AdminPINMonitor removed - not used in this component
 
-export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
+export function ClinicDashboard({ clinicId, onLogout, language }) {
   const [currentTicket, setCurrentTicket] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -35,12 +35,11 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     setLoading(true)
     setError(null)
     try {
-      const result = await api.callNextPatient(clinicId, pin)
+      const result = await api.callNextPatient(clinicId)
       if (result.success) {
         refreshStatus()
-        // Play sound?
       } else {
-        setError(result.error || 'Failed to call next')
+        setError(result.error || t('Failed to call next'))
       }
     } catch (err) {
       setError(err.message)
@@ -53,10 +52,12 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
     if (!currentTicket) return
     setLoading(true)
     try {
-      const result = await api.queueDone(clinicId, currentTicket.patient_id, pin)
+      const result = await api.queueDone(clinicId, currentTicket.patient_id)
       if (result.success) {
         setCurrentTicket(null)
         refreshStatus()
+      } else {
+        setError(result.error || t('Failed to complete'))
       }
     } catch (err) {
       console.error(err)
@@ -96,12 +97,6 @@ export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
           </div>
         </div>
         <div className="flex gap-4 items-center">
-            {/* PIN Monitor (Compact) */}
-            <div className="bg-gray-700 px-3 py-1 rounded">
-                <span className="text-xs text-gray-400">PIN:</span>
-                <span className="ml-2 font-mono font-bold text-yellow-400">{pin}</span>
-            </div>
-            
           <Button variant="outline" onClick={onLogout} className="flex gap-2 text-red-400 border-red-900/50 hover:bg-red-900/20">
             <LogOut className="w-4 h-4" />
             {t('Logout')}
