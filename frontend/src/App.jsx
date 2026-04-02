@@ -439,53 +439,35 @@ function App() {
             patientData={patientData}
             onExamSelect={async (examType) => {
               try {
-                // جلب المسار الديناميكي بناءً على نوع الفحص والجنس
-                const clinics = await getDynamicMedicalPathway(examType, patientData.gender)
+                // نحافظ على السلوك الحالي (اختيار مسار ديناميكي) مع إزالة نقطة الفشل
+                // التي كانت تمنع الانتقال لشاشة المراجع عند أي تعثر مؤقت في queue API.
+                let clinics = await getDynamicMedicalPathway(examType, patientData.gender)
+
+                // Fallback واضح: لو المسار المطلوب غير متاح نحاول المسار العام
+                // لتفادي توقف تدفق المستخدم عند اختيار نوع الفحص.
+                if (!clinics || clinics.length === 0) {
+                  console.warn('[App] No clinics found for selected exam, trying general fallback', { examType, gender: patientData.gender });
+                  clinics = await getDynamicMedicalPathway('general', patientData.gender)
+                }
 
                 if (!clinics || clinics.length === 0) {
-                  console.error('[App] No clinics found for:', examType, patientData.gender);
+                  console.error('[App] No clinics found after fallback:', examType, patientData.gender);
                   throw new Error('No clinics found');
                 }
 
-                // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
-                let firstClinic = clinics[0].id;
-                try {
-                  const queueCounts = await Promise.all(
-                    clinics.map(async (clinic) => {
-                      const count = await api.getQueueCount(clinic.id);
-                      return { id: clinic.id, count: count || 0, clinic };
-                    })
-                  );
-                  // ترتيب العيادات حسب الأقل ازدحاماً
-                  queueCounts.sort((a, b) => a.count - b.count);
-                  firstClinic = queueCounts[0].id;
-                  console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
-                } catch (weightError) {
-                  console.warn('[App] Weight calculation failed, using first clinic:', weightError);
-                }
+                const updatedPatientData = {
+                  ...patientData,
+                  queueType: examType,
+                  pathway: clinics
+                };
 
-                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
-
-                if (queueRes.success) {
-                  const updatedPatientData = {
-                    ...patientData,
-                    queueType: examType,
-                    currentClinic: firstClinic,
-                    queueNumber: queueRes.display_number || queueRes.number,
-                    ahead: queueRes.ahead || 0,
-                    pathway: clinics
-                  };
-
-                  setPatientData(updatedPatientData)
-                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
-                  setCurrentView('patient')
-                  showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
-                } else {
-                  throw new Error(queueRes.error || 'Failed to enter queue')
-                }
+                setPatientData(updatedPatientData)
+                localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
+                setCurrentView('patient')
+                showNotification(language === 'ar' ? 'تم تحديد المسار بنجاح' : 'Path selected successfully', 'success')
               } catch (error) {
                 console.error('[App] Exam select error:', error);
-                showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
+                showNotification(language === 'ar' ? 'فشل تحميل المسار الطبي' : 'Failed to load medical pathway', 'error')
               }
             }}
             onBack={() => {

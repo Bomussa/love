@@ -4,6 +4,36 @@
 let routeMap = null;
 let clinicsData = null;
 
+/**
+ * Fallback ثابت داخل الكود لضمان استمرار عمل شاشة المسار الطبي
+ * حتى لو فشل تحميل ملفات الإعداد أو فشل الاتصال المؤقت بقاعدة البيانات.
+ */
+const FALLBACK_ROUTE_MAP = {
+  تجنيد: ['LAB', 'XR', 'BIO', 'EYE', 'INT', 'SUR', 'ENT', 'PSY', 'DNT', 'DER'],
+  ترفيع: ['LAB', 'XR', 'BIO', 'EYE', 'INT', 'SUR', 'ENT', 'PSY', 'DNT', 'DER'],
+  نقل: ['LAB', 'XR', 'BIO', 'EYE', 'INT', 'SUR', 'ENT', 'PSY', 'DNT', 'DER'],
+  تحويل: ['LAB', 'XR', 'BIO', 'EYE', 'INT', 'SUR', 'ENT', 'PSY', 'DNT', 'DER'],
+  'تجديد التعاقد': ['LAB', 'XR', 'BIO', 'EYE', 'INT', 'SUR', 'ENT', 'PSY', 'DNT', 'DER'],
+  'طيران سنوي': ['LAB', 'EYE', 'INT', 'ENT', 'ECG', 'AUD'],
+  طباخين: ['LAB', 'INT', 'ENT', 'SUR'],
+  دورات: ['LAB', 'EYE', 'SUR', 'INT'],
+};
+
+const FALLBACK_CLINICS = {
+  LAB: { id: 'LAB', name: 'Laboratory', nameAr: 'المختبر', floor: 'M' },
+  EYE: { id: 'EYE', name: 'Ophthalmology', nameAr: 'العيون', floor: '2' },
+  INT: { id: 'INT', name: 'Internal Medicine', nameAr: 'الباطنية', floor: '2' },
+  SUR: { id: 'SUR', name: 'General Surgery', nameAr: 'الجراحة العامة', floor: '2' },
+  ENT: { id: 'ENT', name: 'ENT', nameAr: 'أنف وأذن وحنجرة', floor: '2' },
+  DER: { id: 'DER', name: 'Dermatology', nameAr: 'الجلدية', floor: '3' },
+  PSY: { id: 'PSY', name: 'Psychiatry', nameAr: 'الطب النفسي', floor: '2' },
+  DNT: { id: 'DNT', name: 'Dentistry', nameAr: 'الأسنان', floor: '2' },
+  AUD: { id: 'AUD', name: 'Audiology', nameAr: 'قياس السمع', floor: '2' },
+  ECG: { id: 'ECG', name: 'ECG', nameAr: 'تخطيط القلب', floor: '2' },
+  BIO: { id: 'BIO', name: 'Biometrics', nameAr: 'القياسات الحيوية', floor: '2' },
+  XR: { id: 'XR', name: 'Radiology', nameAr: 'الأشعة', floor: 'M' },
+};
+
 // تحميل البيانات بشكل ديناميكي
 async function loadConfigFiles() {
   if (!routeMap) {
@@ -24,7 +54,10 @@ async function loadConfigFiles() {
       clinicsData = {};
     }
   }
-  return { routeMap, clinicsData };
+  return {
+    routeMap: { ...FALLBACK_ROUTE_MAP, ...(routeMap || {}) },
+    clinicsData: { ...FALLBACK_CLINICS, ...(clinicsData || {}) },
+  };
 }
 import { supabase } from './supabase-client';
 import { queueQueries } from './supabase-queries';

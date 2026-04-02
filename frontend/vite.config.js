@@ -14,6 +14,7 @@ export default defineConfig({
     }),
     legacy({
       targets: ['defaults', 'not IE 11'],
+      modernTargets: ['chrome >= 80', 'firefox >= 78', 'safari >= 14'],
       modernPolyfills: false,
       renderLegacyChunks: false,
     }),
@@ -65,7 +66,6 @@ export default defineConfig({
     cssMinify: true,
     sourcemap: false,
     chunkSizeWarningLimit: 500,
-    target: ['es2020', 'chrome80', 'firefox78', 'safari14'],
     // تحسين حجم الـ chunks
     reportCompressedSize: false,
     rollupOptions: {
