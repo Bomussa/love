@@ -40,7 +40,7 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       const waiting = data?.filter(p => p.status === 'waiting' || p.status === 'called') || []
       const completed = data?.filter(p => p.status === 'completed') || []
-      const inProgress = data?.find(p => p.status === 'in_progress')
+      const inProgress = data?.find(p => p.status === 'in_progress' || p.status === 'serving' || p.status === 'in_service')
 
       setPatients(waiting)
 

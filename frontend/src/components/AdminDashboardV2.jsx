@@ -135,7 +135,7 @@ const QueueManagement = ({ language, t }) => {
       
       // جلب الطوابير مع بيانات المريض الحقيقية عبر JOIN
       const { data, error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .select(`
           *,
           patients(
@@ -186,7 +186,7 @@ const QueueManagement = ({ language, t }) => {
       
       const nextPatient = waitingQueue[0];
       const { error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
       
@@ -208,7 +208,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ 
           status: 'completed', 
           completed_at: new Date().toISOString(),
@@ -234,7 +234,7 @@ const QueueManagement = ({ language, t }) => {
     try {
       const queue = queues.find(q => q.id === queueId);
       const { error } = await supabase
-        .from('queues')
+        .from('unified_queue')
         .update({ status: 'waiting', updated_at: new Date().toISOString() })
         .eq('id', queueId);
 

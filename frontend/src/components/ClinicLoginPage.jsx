@@ -32,17 +32,18 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!selectedClinic || !pin) return
+    if (!selectedClinic) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const response = await api.verifyPin(selectedClinic, pin)
-      if (response.success && response.isValid) {
+      // نظام الـ PIN تم إلغاؤه، سنقوم بالدخول مباشرة للعيادة المختارة
+      const response = await api.verifyPin(selectedClinic, pin || '00')
+      if (response.success) {
         onLogin(response.session)
       } else {
-        setError(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN')
+        setError(language === 'ar' ? 'فشل الدخول للعيادة' : 'Failed to login to clinic')
       }
     } catch (err) {
       setError(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error')
