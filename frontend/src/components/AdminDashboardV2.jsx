@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
+
+import DoctorControl from './DoctorControl';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
   Settings, FileText, MapPin, Key, RefreshCw, Trash2, 
@@ -3391,7 +3393,8 @@ const SystemStatus = ({ language, t }) => {
       { name: 'clinics', label: t('العيادات', 'Clinics') },
       { name: 'queue', label: t('الطابور (queue)', 'Queue') },
       { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
-      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
+      { name: 'doctor-control', label: t('لوحة الطبيب', 'Doctor Control') },
+    { name: 'doctor-management', label: t('إدارة الأطباء', 'Doctor Management') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
