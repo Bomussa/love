@@ -3,7 +3,7 @@ import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/co
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle, Loader2 } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
@@ -19,6 +19,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [stations, setStations] = useState([])
   const [selectedStation, setSelectedStation] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true) // حالة التحميل الأولي
   const [activeTicket, setActiveTicket] = useState(null)
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
@@ -26,11 +27,44 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [directAlerts, setDirectAlerts] = useState([])
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
-  // أخذ رقم دور للعيادة الأولى (بدون دخول تلقائي)
+  // ✅ دالة مساعدة لجلب رقم الطابور للعيادة
+  const fetchQueueNumberForStation = async (station) => {
+    try {
+      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      if (positionData && positionData.success) {
+        return {
+          yourNumber: positionData.display_number,
+          current: positionData.current_number,
+          ahead: positionData.ahead,
+          totalWaiting: positionData.total_waiting,
+          status: 'waiting'
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to get queue position for station:', station.id, e)
+    }
+    return null
+  }
+
+  // ✅ دالة لإنشاء Queue entry وجلب الرقم
   const handleGetTicketForFirstClinic = async (station) => {
     try {
-      await api.enterQueue(station.id, patientData.id, false)
+      setLoading(true)
+      console.log('[PatientPage] Getting ticket for first clinic:', station.id)
+
+      // أولاً: محاولة إنشاء Queue entry
+      const enterResult = await api.enterQueue(station.id, patientData.id, false, patientData.name, patientData.queueType)
+
+      if (enterResult && !enterResult.success && enterResult.error) {
+        // إذا كان هناك خطأ (وليس because already in queue)
+        if (!enterResult.alreadyExists) {
+          console.warn('[PatientPage] Enter queue result:', enterResult)
+        }
+      }
+
+      // ثانياً: جلب رقم الطابور الحالي
       const positionData = await api.getQueuePosition(station.id, patientData.id)
+
       if (positionData && positionData.success) {
         setStations(prev => prev.map((s, idx) => idx === 0 ? {
           ...s,
@@ -38,12 +72,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           current: positionData.current_number,
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
-          status: 'ready',
+          status: positionData.status === 'waiting' ? 'ready' : positionData.status,
           isEntered: false,
         } : s))
+
+        console.log('[PatientPage] Got queue number:', positionData.display_number, 'ahead:', positionData.ahead)
       }
     } catch (e) {
-      console.error('Get ticket for first clinic failed:', e)
+      console.error('[PatientPage] Get ticket for first clinic failed:', e)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -52,12 +90,17 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     try {
       setLoading(true)
       const entryTime = new Date().toISOString();
+
+      // إنشاء Queue entry مع isAutoEnter = true
       const enterResult = await api.enterQueue(station.id, patientData.id, true, patientData.name, patientData.queueType)
-      if (enterResult && !enterResult.success && enterResult.error) {
+
+      if (enterResult && !enterResult.success && enterResult.error && !enterResult.alreadyExists) {
         pushNotif({ type: 'error', message: enterResult.error })
         setLoading(false)
         return
       }
+
+      // جلب بيانات الطابور
       const positionData = await api.getQueuePosition(station.id, patientData.id)
       if (positionData && positionData.success) {
         setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
@@ -67,7 +110,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           current: positionData.current_number,
           ahead: positionData.ahead,
           totalWaiting: positionData.total_waiting,
-          status: 'ready',
+          status: positionData.status === 'waiting' ? 'ready' : positionData.status,
           isEntered: true,
           entered_at: positionData.entered_at || entryTime
         } : s))
@@ -81,7 +124,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       }
       setLoading(false)
     } catch (e) {
-      console.error('Enter clinic failed:', e)
+      console.error('[PatientPage] Enter clinic failed:', e)
       pushNotif({
         type: 'error',
         message: language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.'
@@ -90,43 +133,44 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
+  // ✅ تحميل المسار الطبي عند بدء الصفحة
   useEffect(() => {
     const loadPathway = async () => {
+      setInitialLoading(true)
       try {
         let examStations = null
-        let routeAlreadySaved = false
-        try {
-          const savedRoute = await api.getRoute(patientData.id)
-          if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
-            examStations = savedRoute.route.stations
-            routeAlreadySaved = true
-          }
-        } catch (err) {}
-        if (!examStations) {
-          examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
-        }
-        let sortedStations = [...examStations];
-        if (!routeAlreadySaved) {
+
+        // ✅ استخدام المسار من patientData إذا كان متوفراً
+        if (patientData.pathway && patientData.pathway.length > 0) {
+          examStations = patientData.pathway
+          console.log('[PatientPage] Using pathway from patientData:', examStations.length, 'stations')
+        } else {
+          // جلب المسار من API أو قاعدة البيانات
           try {
-            const queueCounts = await Promise.all(
-              examStations.map(async (station) => {
-                const count = await api.getQueueCount(station.id);
-                return { station, count: count || 0 };
-              })
-            );
-            queueCounts.sort((a, b) => a.count - b.count);
-            sortedStations = queueCounts.map(q => q.station);
-            try {
-              await api.createRoute(
-                patientData.id,
-                patientData.examType || patientData.queueType,
-                patientData.gender,
-                sortedStations
-              );
-            } catch (saveErr) {}
-          } catch (sortError) {}
+            const savedRoute = await api.getRoute(patientData.id)
+            if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
+              examStations = savedRoute.route.stations
+              console.log('[PatientPage] Using saved route:', examStations.length, 'stations')
+            }
+          } catch (err) {
+            console.warn('[PatientPage] Failed to get saved route:', err)
+          }
+
+          // إذا لم يكن هناك مسار محفوظ، جلب المسار الديناميكي
+          if (!examStations) {
+            examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
+            console.log('[PatientPage] Loaded dynamic pathway:', examStations?.length, 'stations')
+          }
         }
-        const initialStations = sortedStations.map((station, index) => ({
+
+        if (!examStations || examStations.length === 0) {
+          console.error('[PatientPage] No stations found for pathway')
+          setInitialLoading(false)
+          return
+        }
+
+        // تهيئة المحطات
+        const initialStations = examStations.map((station, index) => ({
           ...station,
           status: index === 0 ? 'ready' : 'locked',
           current: 0,
@@ -134,10 +178,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           ahead: 0,
           isEntered: false
         }))
+
         setStations(initialStations)
-        if (sortedStations.length > 0) {
-          const firstClinic = sortedStations[0]
+
+        // جلب رقم الطابور للعيادة الأولى
+        if (examStations.length > 0) {
+          const firstClinic = examStations[0]
           await handleGetTicketForFirstClinic(firstClinic)
+
           if (firstClinic.floor) {
             pushNotif({
               type: 'floor_guide',
@@ -149,11 +197,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           }
         }
       } catch (err) {
-        console.error('Failed to load pathway:', err)
+        console.error('[PatientPage] Failed to load pathway:', err)
+      } finally {
+        setInitialLoading(false)
       }
     }
+
     loadPathway()
-  }, [patientData.examType, patientData.queueType, patientData.gender])
+  }, [patientData.examType, patientData.queueType, patientData.gender, patientData.pathway])
 
   useEffect(() => {
     if (patientData?.id) {
@@ -431,6 +482,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               </p>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ مؤشر التحميل الأولي
+  if (initialLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#C9A54C] mx-auto mb-4"></div>
+          <p className="text-white text-lg">{language === 'ar' ? 'جارٍ تحميل المسار الطبي...' : 'Loading medical pathway...'}</p>
         </div>
       </div>
     )

@@ -448,44 +448,29 @@ function App() {
                 }
 
                 // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
-                let firstClinic = clinics[0].id;
-                try {
-                  const queueCounts = await Promise.all(
-                    clinics.map(async (clinic) => {
-                      const count = await api.getQueueCount(clinic.id);
-                      return { id: clinic.id, count: count || 0, clinic };
-                    })
-                  );
-                  // ترتيب العيادات حسب الأقل ازدحاماً
-                  queueCounts.sort((a, b) => a.count - b.count);
-                  firstClinic = queueCounts[0].id;
-                  console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
-                } catch (weightError) {
-                  console.warn('[App] Weight calculation failed, using first clinic:', weightError);
-                }
+                // العيادات مرتبة بالفعل في getDynamicMedicalPathway
+                const firstClinic = clinics[0];
 
-                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
+                console.log('[App] Selected first clinic:', firstClinic);
 
-                if (queueRes.success) {
-                  const updatedPatientData = {
-                    ...patientData,
-                    queueType: examType,
-                    currentClinic: firstClinic,
-                    queueNumber: queueRes.display_number || queueRes.number,
-                    ahead: queueRes.ahead || 0,
-                    pathway: clinics
-                  };
+                // ✅ إنشاء Queue entry بدون تسجيل تلقائي
+                // PatientPage سيتعامل مع الحصول على الرقم
+                const updatedPatientData = {
+                  ...patientData,
+                  queueType: examType,
+                  currentClinic: firstClinic?.id,
+                  clinicIds: clinics.map(c => c.id), // جميع معرفات العيادات في المسار
+                  pathway: clinics, // كامل بيانات المسار
+                  isAutoEnter: false // لا تدخل تلقائي - PatientPage ستحصل على الرقم
+                };
 
-                  setPatientData(updatedPatientData)
-                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
-                  setCurrentView('patient')
-                  showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
-                } else {
-                  throw new Error(queueRes.error || 'Failed to enter queue')
-                }
+                setPatientData(updatedPatientData)
+                localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
+                setCurrentView('patient')
+                showNotification(language === 'ar' ? 'تم تحديد المسار الطبي بنجاح' : 'Medical pathway selected successfully', 'success')
               } catch (error) {
                 console.error('[App] Exam select error:', error);
-                showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
+                showNotification(language === 'ar' ? 'فشل تحديد المسار الطبي' : 'Failed to select medical pathway', 'error')
               }
             }}
             onBack={() => {

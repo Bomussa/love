@@ -9,7 +9,7 @@ import {
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
   UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
-  UserPlus, Zap, FolderOpen
+  UserPlus, Zap, FolderOpen, Stethoscope, UserX, AlertTriangle, Star, ArrowRight, ArrowLeft
 } from 'lucide-react';
 
 // دالة عرض شعار النجاح
@@ -2017,6 +2017,680 @@ const ClinicsManagement = ({ language, t }) => {
                 className="flex-1 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
               >
                 {t('إلغاء', 'Cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// مكون إدارة الأطباء - للعرض والتحكم بالإطباء في لوحة الإدارة
+const DoctorManagement = ({ language, t }) => {
+  const [selectedClinic, setSelectedClinic] = useState(null);
+  const [clinics, setClinics] = useState([]);
+  const [doctorStats, setDoctorStats] = useState({});
+  const [waitingPatients, setWaitingPatients] = useState([]);
+  const [completedToday, setCompletedToday] = useState([]);
+  const [missedToday, setMissedToday] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [vipPatientId, setVipPatientId] = useState('');
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // تحميل العيادات
+  useEffect(() => {
+    loadClinics();
+  }, []);
+
+  // تحميل بيانات الطبيب عند اختيار العيادة
+  useEffect(() => {
+    if (selectedClinic) {
+      loadDoctorData(selectedClinic);
+    }
+  }, [selectedClinic, filterDate]);
+
+  const loadClinics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('is_active', true)
+        .order('name_ar');
+      if (!error && data) {
+        setClinics(data);
+        if (data.length > 0 && !selectedClinic) {
+          setSelectedClinic(data[0].id);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading clinics:', e);
+    }
+  };
+
+  const loadDoctorData = async (clinicId) => {
+    setLoading(true);
+    try {
+      // جلب المنتظرين
+      const { data: waiting } = await supabase
+        .from('queues')
+        .select('*, patients(patient_id, military_id, personal_id, gender)')
+        .eq('clinic_id', clinicId)
+        .in('status', ['waiting', 'called', 'serving'])
+        .eq('queue_date', filterDate)
+        .order('queue_number_int', { ascending: true });
+
+      // جلب المكتمل اليوم
+      const { data: completed } = await supabase
+        .from('queues')
+        .select('*, patients(patient_id, military_id, personal_id, gender)')
+        .eq('clinic_id', clinicId)
+        .eq('status', 'completed')
+        .eq('queue_date', filterDate)
+        .order('completed_at', { ascending: false });
+
+      // جلب المتغيبين
+      const { data: missed } = await supabase
+        .from('queues')
+        .select('*, patients(patient_id, military_id, personal_id, gender)')
+        .eq('clinic_id', clinicId)
+        .eq('status', 'no_show')
+        .eq('queue_date', filterDate)
+        .order('called_at', { ascending: false });
+
+      setWaitingPatients(waiting || []);
+      setCompletedToday(completed || []);
+      setMissedToday(missed || []);
+
+      // حساب إحصائيات العيادة
+      const totalWaiting = (waiting || []).length;
+      const totalCompleted = (completed || []).length;
+      const totalMissed = (missed || []).length;
+
+      // حساب متوسط مدة البقاء
+      let avgStayTime = 0;
+      const withStayTime = (completed || []).filter(q => q.called_at && q.completed_at);
+      if (withStayTime.length > 0) {
+        const totalStay = withStayTime.reduce((acc, q) => {
+          return acc + (new Date(q.completed_at) - new Date(q.called_at));
+        }, 0);
+        avgStayTime = Math.round(totalStay / withStayTime.length / 60000);
+      }
+
+      setDoctorStats({
+        waiting: totalWaiting,
+        completed: totalCompleted,
+        missed: totalMissed,
+        avgStayTime
+      });
+    } catch (e) {
+      console.error('Error loading doctor data:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // استدعاء المريض التالي
+  const callNext = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'called',
+          called_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t(`تم استدعاء الرقم: ${patient.queue_number}`, `Called number: ${patient.queue_number}`));
+        await logActivity('doctor_call', `الطبيب استدعى الرقم ${patient.queue_number}`);
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ أثناء الاستدعاء', 'Error calling patient'));
+    }
+  };
+
+  // بدء فحص المريض
+  const startExam = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'serving',
+          entered_clinic_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t(`بدأ فحص الرقم: ${patient.queue_number}`, `Started exam for: ${patient.queue_number}`));
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // إكمال فحص المريض
+  const completeExam = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t(`اكتمل فحص الرقم: ${patient.queue_number}`, `Completed: ${patient.queue_number}`));
+        await logActivity('doctor_complete', `اكتمل فحص الرقم ${patient.queue_number}`);
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // تمرير الدور (نقل لآخر الصف)
+  const passTurn = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'waiting',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t('تم تمرير الدور', 'Turn passed'));
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // تسجيل كـ VIP
+  const markAsVip = async () => {
+    if (!vipPatientId.trim()) {
+      alert(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter ID'));
+      return;
+    }
+    try {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('*')
+        .or(`patient_id.eq.${vipPatientId},military_id.eq.${vipPatientId},personal_id.eq.${vipPatientId}`)
+        .single();
+
+      if (!patient) {
+        alert(t('لم يتم العثور على المراجع', 'Patient not found'));
+        return;
+      }
+
+      // إضافة كـ VIP
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          is_vip: true,
+          status: 'called',
+          called_at: new Date().toISOString()
+        })
+        .eq('patient_id', patient.patient_id)
+        .eq('clinic_id', selectedClinic)
+        .eq('queue_date', filterDate);
+
+      if (!error) {
+        showSuccessToast(t('تم تسجيل المراجع كـ VIP', 'Marked as VIP'));
+        setShowVipModal(false);
+        setVipPatientId('');
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // إلغاء الدور
+  const cancelTurn = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t('تم إلغاء الدور', 'Turn cancelled'));
+        await logActivity('doctor_cancel', `تم إلغاء الرقم ${patient.queue_number}`);
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // تسجيل كـ متغيب
+  const markAsMissed = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'no_show',
+          marked_missed_at: new Date().toISOString()
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t('تم تسجيل المراجع كمتغيب', 'Marked as absent'));
+        await logActivity('doctor_missed', `تم تسجيل الرقم ${patient.queue_number} كمتغيب`);
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // إعادة الدور
+  const restoreTurn = async (patient) => {
+    try {
+      const { error } = await supabase
+        .from('queues')
+        .update({
+          status: 'waiting',
+          called_at: null
+        })
+        .eq('id', patient.id);
+
+      if (!error) {
+        showSuccessToast(t('تم إعادة الدور', 'Turn restored'));
+        loadDoctorData(selectedClinic);
+      }
+    } catch (e) {
+      showErrorToast(t('حدث خطأ', 'Error'));
+    }
+  };
+
+  // الحصول على الرقم الحقيقي للمريض
+  const getRealPatientId = (patient) => {
+    if (patient.patients) {
+      return patient.patients.patient_id || patient.patients.military_id || patient.patients.personal_id || patient.patient_id;
+    }
+    return patient.patient_id;
+  };
+
+  // الحصول على جنس المريض
+  const getGender = (patient) => {
+    if (patient.patients?.gender) {
+      return patient.patients.gender === 'male' ? t('ذكر', 'Male') : t('أنثى', 'Female');
+    }
+    return '-';
+  };
+
+  // حساب مدة البقاء
+  const getStayDuration = (entered, exited) => {
+    if (!entered) return '-';
+    const end = exited ? new Date(exited) : new Date();
+    const start = new Date(entered);
+    const mins = Math.round((end - start) / 60000);
+    return `${mins} ${t('دقيقة', 'min')}`;
+  };
+
+  const selectedClinicName = clinics.find(c => c.id === selectedClinic)?.name_ar || '';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Stethoscope size={24} className="text-[#C9A54C]" />
+          {t('إدارة الأطباء', 'Doctor Management')}
+        </h3>
+        <div className="flex gap-3 items-center">
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+          />
+          <button
+            onClick={() => loadDoctorData(selectedClinic)}
+            className="p-2 bg-[#8A1538] text-white rounded-lg hover:bg-[#6B0F2A] transition-all"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* اختيار العيادة */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+        <label className="block text-sm text-gray-400 mb-2">{t('اختر العيادة', 'Select Clinic')}</label>
+        <select
+          value={selectedClinic || ''}
+          onChange={(e) => setSelectedClinic(e.target.value)}
+          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
+        >
+          <option value="">{t('اختر عيادة', 'Select clinic')}</option>
+          {clinics.map(clinic => (
+            <option key={clinic.id} value={clinic.id}>
+              {language === 'ar' ? clinic.name_ar : clinic.name_en}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedClinic && (
+        <>
+          {/* إحصائيات سريعة */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={20} className="text-yellow-400" />
+                <span className="text-gray-400 text-sm">{t('منتظر', 'Waiting')}</span>
+              </div>
+              <div className="text-3xl font-bold text-yellow-400">{doctorStats.waiting}</div>
+            </div>
+            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle size={20} className="text-green-400" />
+                <span className="text-gray-400 text-sm">{t('مكتمل', 'Completed')}</span>
+              </div>
+              <div className="text-3xl font-bold text-green-400">{doctorStats.completed}</div>
+            </div>
+            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <UserX size={20} className="text-red-400" />
+                <span className="text-gray-400 text-sm">{t('متغيب', 'Absent')}</span>
+              </div>
+              <div className="text-3xl font-bold text-red-400">{doctorStats.missed}</div>
+            </div>
+            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Timer size={20} className="text-blue-400" />
+                <span className="text-gray-400 text-sm">{t('متوسط البقاء', 'Avg Stay')}</span>
+              </div>
+              <div className="text-3xl font-bold text-blue-400">{doctorStats.avgStayTime} {t('دقيقة', 'min')}</div>
+            </div>
+          </div>
+
+          {/* أزرار الإجراءات */}
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => setShowVipModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-all"
+            >
+              <Star size={18} />
+              {t('إضافة VIP', 'Add VIP')}
+            </button>
+          </div>
+
+          {/* قائمة المنتظرين */}
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10">
+              <h4 className="font-bold flex items-center gap-2">
+                <Users size={18} className="text-yellow-400" />
+                {t('المراجعون المنتظرون', 'Waiting Patients')} ({waitingPatients.length})
+              </h4>
+            </div>
+
+            {loading ? (
+              <div className="p-8 text-center">
+                <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                {t('جاري التحميل...', 'Loading...')}
+              </div>
+            ) : waitingPatients.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">
+                {t('لا يوجد مراجعون منتظرون', 'No waiting patients')}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-white/5">
+                    <tr>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('رقم الدور', 'Queue #')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الرقم العسكري', 'Military ID')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الجنس', 'Gender')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الحالة', 'Status')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('مدة البقاء', 'Stay Duration')}</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('إجراءات', 'Actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {waitingPatients.map(patient => (
+                      <tr key={patient.id} className="hover:bg-white/5">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">{patient.queue_number}</span>
+                            {patient.is_vip && <Star size={16} className="text-purple-400" />}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono">{getRealPatientId(patient)}</td>
+                        <td className="px-4 py-3">{getGender(patient)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            patient.status === 'serving' ? 'bg-green-500/20 text-green-400' :
+                            patient.status === 'called' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {patient.status === 'serving' ? t('يُفحص', 'Serving') :
+                             patient.status === 'called' ? t('تم الاستدعاء', 'Called') :
+                             t('منتظر', 'Waiting')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {getStayDuration(patient.entered_clinic_at || patient.called_at, patient.completed_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2 flex-wrap">
+                            {patient.status === 'waiting' && (
+                              <button
+                                onClick={() => callNext(patient)}
+                                className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 text-sm"
+                              >
+                                {t('استدعاء', 'Call')}
+                              </button>
+                            )}
+                            {(patient.status === 'waiting' || patient.status === 'called') && (
+                              <button
+                                onClick={() => startExam(patient)}
+                                className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 text-sm"
+                              >
+                                {t('بدء', 'Start')}
+                              </button>
+                            )}
+                            {patient.status === 'serving' && (
+                              <button
+                                onClick={() => completeExam(patient)}
+                                className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 text-sm"
+                              >
+                                {t('اكتمال', 'Complete')}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => passTurn(patient)}
+                              className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 text-sm"
+                            >
+                              <ArrowRight size={14} />
+                            </button>
+                            <button
+                              onClick={() => markAsMissed(patient)}
+                              className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 text-sm"
+                            >
+                              <UserX size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedPatient(patient);
+                                setShowCancelModal(true);
+                              }}
+                              className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-lg hover:bg-gray-500/30 text-sm"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* المكتملون اليوم */}
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10">
+              <h4 className="font-bold flex items-center gap-2">
+                <CheckCircle size={18} className="text-green-400" />
+                {t('المكتملون اليوم', 'Completed Today')} ({completedToday.length})
+              </h4>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto">
+              {completedToday.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  {t('لا يوجد مكتملون', 'No completed')}
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-white/5 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-right text-sm text-gray-300">{t('رقم الدور', 'Queue #')}</th>
+                      <th className="px-4 py-2 text-right text-sm text-gray-300">{t('الرقم', 'ID')}</th>
+                      <th className="px-4 py-2 text-right text-sm text-gray-300">{t('وقت الدخول', 'Entry')}</th>
+                      <th className="px-4 py-2 text-right text-sm text-gray-300">{t('وقت الخروج', 'Exit')}</th>
+                      <th className="px-4 py-2 text-right text-sm text-gray-300">{t('المدة', 'Duration')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {completedToday.map(patient => (
+                      <tr key={patient.id} className="hover:bg-white/5">
+                        <td className="px-4 py-2">{patient.queue_number}</td>
+                        <td className="px-4 py-2 font-mono text-sm">{getRealPatientId(patient)}</td>
+                        <td className="px-4 py-2 text-sm">{patient.called_at ? new Date(patient.called_at).toLocaleTimeString() : '-'}</td>
+                        <td className="px-4 py-2 text-sm">{patient.completed_at ? new Date(patient.completed_at).toLocaleTimeString() : '-'}</td>
+                        <td className="px-4 py-2">{getStayDuration(patient.called_at, patient.completed_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* المتغيبون */}
+          {missedToday.length > 0 && (
+            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-red-500/20 overflow-hidden">
+              <div className="p-4 bg-red-500/10 border-b border-red-500/20">
+                <h4 className="font-bold flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-red-400" />
+                  {t('المتغيبون', 'Absent')} ({missedToday.length})
+                </h4>
+              </div>
+              <div className="max-h-[200px] overflow-y-auto">
+                <table className="w-full">
+                  <tbody className="divide-y divide-white/5">
+                    {missedToday.map(patient => (
+                      <tr key={patient.id} className="hover:bg-white/5">
+                        <td className="px-4 py-3">{patient.queue_number}</td>
+                        <td className="px-4 py-3 font-mono">{getRealPatientId(patient)}</td>
+                        <td className="px-4 py-3">{getGender(patient)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400">
+                          {patient.called_at ? new Date(patient.called_at).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => restoreTurn(patient)}
+                            className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 text-sm"
+                          >
+                            <ArrowLeft size={14} /> {t('إعادة', 'Restore')}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal إضافة VIP */}
+      {showVipModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Star className="text-purple-400" size={20} />
+              {t('إضافة مراجع VIP', 'Add VIP Patient')}
+            </h4>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">{t('الرقم العسكري أو الشخصي', 'Military/Personal ID')}</label>
+              <input
+                type="text"
+                value={vipPatientId}
+                onChange={(e) => setVipPatientId(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white"
+                placeholder={t('أدخل الرقم', 'Enter ID')}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowVipModal(false);
+                  setVipPatientId('');
+                }}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={markAsVip}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium"
+              >
+                <Star size={16} className="inline ml-2" />
+                {t('إضافة VIP', 'Add VIP')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تأكيد الإلغاء */}
+      {showCancelModal && selectedPatient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <AlertTriangle className="text-red-400" size={20} />
+              {t('تأكيد إلغاء الدور', 'Confirm Cancel')}
+            </h4>
+            <p className="text-gray-300 mb-4">
+              {t('هل أنت متأكد من إلغاء دور الرقم', 'Are you sure to cancel queue number')} <strong>{selectedPatient.queue_number}</strong>؟
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedPatient(null);
+                }}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
+              >
+                {t('لا', 'No')}
+              </button>
+              <button
+                onClick={() => {
+                  cancelTurn(selectedPatient);
+                  setShowCancelModal(false);
+                  setSelectedPatient(null);
+                }}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium"
+              >
+                {t('نعم، إلغاء', 'Yes, Cancel')}
               </button>
             </div>
           </div>
@@ -5325,7 +5999,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
-    { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
+    { id: 'doctors', icon: Stethoscope, label: t('إدارة الأطباء', 'Doctor Management') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
     { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
@@ -5642,7 +6316,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         )}
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
-        {activeTab === 'pins' && <PINManagement language={language} t={t} />}
+        {activeTab === 'doctors' && <DoctorManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}

@@ -183,9 +183,9 @@ const api = {
     }
   },
 
-  async queueDone(clinicId, patientId, pin, skipPinCheck = true) {
+  async queueDone(clinicId, patientId) {
     try {
-      // PIN check removed as per user request
+      // PIN check removed - no authentication required for completing queue
       const { data, error } = await supabase
         .from('unified_queue')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
@@ -217,22 +217,6 @@ const api = {
       return { success: true, settings };
     } catch (error) {
       console.error('Get Settings Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  // --- PINs ---
-  async getPinStatus() {
-    try {
-      const { data, error } = await supabase.from('pins').select('*').is('used_at', null);
-      if (error) throw error;
-      const clinics = {};
-      data.forEach(p => {
-        clinics[p.clinic_id || p.clinic_code] = { has_active_pin: true };
-      });
-      return { success: true, clinics };
-    } catch (error) {
-      console.error('Get Pin Status Error:', error);
       return { success: false, error: error.message };
     }
   },
