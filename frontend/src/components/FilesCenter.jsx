@@ -2,16 +2,27 @@
  * FilesCenter — مركز الملفات
  * شاشة إدارة ملفات التوثيق داخل لوحة الإدارة
  * أيقونات صغيرة + اسم مختصر + قائمة خيارات (فتح، إرسال، تصدير، تعديل، حذف)
+ *
+ * @description يعرض هذا المكون قائمة الملفات التوثيقية والنظامية مع إمكانية القراءة والتصدير
+ * @description يتم تحميل الملفات ديناميكياً من Supabase مع بيانات ثابتة كـ fallback
+ * @author MMC-MMS Development Team
+ * @version 2.1.0
+ * @date 2024-04-03
+ *
+ * @example
+ * <FilesCenter language="ar" />
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FileText, Database, Wrench, Code, Server, Shield,
   BookOpen, Settings, Cpu, BarChart3, Download, Send,
   Edit3, Trash2, Eye, X, ChevronRight, Search,
   Plus, RefreshCw, Copy, Share2, Printer, FolderOpen,
   CheckCircle, AlertCircle, Clock, FileCode, FileSearch,
-  Layers, GitBranch, Zap, HardDrive, Lock, Activity
+  Layers, GitBranch, Zap, HardDrive, Lock, Activity,
+  RefreshCw as SyncIcon, AlertTriangle, CheckCircle2
 } from 'lucide-react';
+import { supabase } from '../lib/supabase-client';
 
 // ===== قائمة الملفات الحقيقية =====
 const FILES_DATA = {
@@ -754,11 +765,31 @@ SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 };
 
 // ===== المكوّن الرئيسي =====
+/**
+ * FilesCenter - مركز الملفات
+ * يعرض قائمة الملفات التوثيقية والنظامية مع إمكانية القراءة والتصدير والتعديل
+ *
+ * @component
+ * @param {Object} props - خصائص المكون
+ * @param {string} props.language - لغة العرض ('ar' أو 'en')
+ * @param {Function} props.t - دالة الترجمة
+ * @returns {JSX.Element} واجهة مركز الملفات
+ *
+ * @description
+ * - يتم تحميل الملفات من Supabase مع fallback للبيانات الثابتة
+ * - يدعم البحث والتصفية حسب الفئة
+ * - إمكانية قراءة وتعديل وتصدير الملفات
+ * - حفظ التغييرات في قاعدة البيانات
+ *
+ * @author MMC-MMS Development Team
+ * @version 2.1.0
+ */
 const FilesCenter = ({ language = 'ar', t }) => {
   const isAr = language === 'ar';
-  const files = FILES_DATA[language] || FILES_DATA.ar;
+  const staticFiles = FILES_DATA[language] || FILES_DATA.ar;
   const categories = CATEGORIES[language] || CATEGORIES.ar;
 
+  // حالات المكون
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenu, setOpenMenu] = useState(null);
@@ -767,7 +798,140 @@ const FilesCenter = ({ language = 'ar', t }) => {
   const [editContent, setEditContent] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [notification, setNotification] = useState(null);
+
+  // حالات البيانات من Supabase
+  const [dbFiles, setDbFiles] = useState([]); // ملفات قاعدة البيانات
+  const [loadingFiles, setLoadingFiles] = useState(true); // حالة التحميل
+  const [dbStatus, setDbStatus] = useState('loading'); // حالة الاتصال
+
   const menuRef = useRef(null);
+
+  /**
+   * جلب الملفات من Supabase
+   * @description يقوم بتحميل قائمة الملفات من جدول system_docs في Supabase
+   * @async
+   * @returns {Promise<Array>} مصفوفة الملفات المحملة
+   */
+  const loadFilesFromDatabase = useCallback(async () => {
+    setLoadingFiles(true);
+    setDbStatus('loading');
+
+    try {
+      // جلب الملفات من Supabase
+      const { data: docs, error: docsError } = await supabase
+        .from('system_docs')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (docsError) {
+        console.warn('[FilesCenter] خطأ في جلب الملفات:', docsError.message);
+        setDbStatus('error');
+      } else if (docs && docs.length > 0) {
+        // تحويل بيانات Supabase إلى صيغة متوافقة
+        const formattedDocs = docs.map(doc => ({
+          id: doc.id,
+          name: isAr ? (doc.name_ar || doc.name) : doc.name,
+          fullName: doc.name,
+          icon: getIconByCategory(doc.category),
+          color: getColorByCategory(doc.category),
+          category: doc.category,
+          path: doc.path || `/docs/${doc.name}.md`,
+          size: doc.size || calculateSize(doc.content),
+          lines: doc.lines || (doc.content ? doc.content.split('\n').length : 10),
+          desc: isAr ? (doc.description_ar || doc.description || doc.name) : (doc.description || doc.name),
+          content: doc.content || '', // محتوى الملف من قاعدة البيانات
+          source: 'database', // علامة للمصدر
+          updated_at: doc.updated_at
+        }));
+        setDbFiles(formattedDocs);
+        setDbStatus('success');
+        console.log('[FilesCenter] تم تحميل', formattedDocs.length, 'ملف من قاعدة البيانات');
+      } else {
+        setDbStatus('empty');
+        console.log('[FilesCenter] لا توجد ملفات في قاعدة البيانات، استخدام البيانات الثابتة');
+      }
+    } catch (err) {
+      console.error('[FilesCenter] خطأ في الاتصال بقاعدة البيانات:', err);
+      setDbStatus('error');
+    } finally {
+      setLoadingFiles(false);
+    }
+  }, [isAr]);
+
+  /**
+   * حساب حجم المحتوى
+   * @param {string} content - محتوى الملف
+   * @returns {string} الحجم بتنسيق مقروء
+   */
+  const calculateSize = (content) => {
+    if (!content) return '~1 KB';
+    const bytes = new Blob([content]).size;
+    if (bytes < 1024) return `~${bytes} B`;
+    if (bytes < 1024 * 1024) return `~${Math.round(bytes / 1024)} KB`;
+    return `~${Math.round(bytes / (1024 * 1024))} MB`;
+  };
+
+  /**
+   * الحصول على الأيقونة حسب الفئة
+   * @param {string} category - فئة الملف
+   * @returns {Component} مكون الأيقونة
+   */
+  const getIconByCategory = (category) => {
+    const icons = {
+      docs: FileText,
+      system: Settings,
+      tests: CheckCircle,
+      database: Database,
+      api: Code,
+      security: Shield,
+      config: Settings,
+      logs: FileText
+    };
+    return icons[category] || FileText;
+  };
+
+  /**
+   * الحصول على اللون حسب الفئة
+   * @param {string} category - فئة الملف
+   * @returns {string} كود اللون HEX
+   */
+  const getColorByCategory = (category) => {
+    const colors = {
+      docs: '#8A1538',
+      system: '#C9A54C',
+      tests: '#1e8449',
+      database: '#3498db',
+      api: '#7d3c98',
+      security: '#922b21',
+      config: '#d35400',
+      logs: '#566573'
+    };
+    return colors[category] || '#8A1538';
+  };
+
+  /**
+   * الحصول على محتوى الملف
+   * @param {Object} file - كائن الملف
+   * @returns {string} محتوى الملف
+   */
+  const getFileContent = (file) => {
+    // أولاً: إذا كان الملف من قاعدة البيانات وله محتوى، استخدمه
+    if (file.source === 'database' && file.content) {
+      return file.content;
+    }
+    // ثانياً: إذا كان الملف في FILE_CONTENT، استخدمه
+    if (FILE_CONTENT[file.id]) {
+      return FILE_CONTENT[file.id];
+    }
+    // ثالثاً: بناء محتوى من البيانات الأساسية
+    return `# ${file.fullName}\n\n${file.desc}\n\nالمسار: ${file.path}\nالحجم: ${file.size}\nعدد الأسطر: ${file.lines}`;
+  };
+
+  // تحميل الملفات عند بدء المكون وعند تغيير اللغة
+  useEffect(() => {
+    loadFilesFromDatabase();
+  }, [loadFilesFromDatabase]);
 
   // إغلاق القائمة عند النقر خارجها
   useEffect(() => {
@@ -780,13 +944,18 @@ const FilesCenter = ({ language = 'ar', t }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // دمج الملفات الثابتة مع ملفات قاعدة البيانات (ملفات DB أولاً)
+  const allFiles = [...dbFiles, ...staticFiles.filter(
+    sf => !dbFiles.some(db => db.id === sf.id)
+  )];
+
   // فلترة الملفات
-  const filteredFiles = files.filter(f => {
+  const filteredFiles = allFiles.filter(f => {
     const matchCategory = activeCategory === 'all' || f.category === activeCategory;
-    const matchSearch = !searchQuery || 
-      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = !searchQuery ||
+      (f.name && f.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (f.fullName && f.fullName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (f.desc && f.desc.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchCategory && matchSearch;
   });
 
@@ -797,25 +966,36 @@ const FilesCenter = ({ language = 'ar', t }) => {
   };
 
   // ===== خيارات الملف =====
+  /**
+   * فتح الملف للقراءة
+   * @param {Object} file - كائن الملف
+   */
   const handleOpen = (file) => {
-    const content = FILE_CONTENT[file.id] || 
-      `# ${file.fullName}\n\n${file.desc}\n\nالمسار: ${file.path}\nالحجم: ${file.size}\nعدد الأسطر: ${file.lines}`;
+    const content = getFileContent(file);
     setOpenFile({ ...file, content });
     setEditMode(false);
     setEditContent(content);
     setOpenMenu(null);
   };
 
+  /**
+   * فتح الملف للتعديل
+   * @param {Object} file - كائن الملف
+   */
   const handleEdit = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}`;
+    const content = getFileContent(file);
     setOpenFile({ ...file, content });
     setEditMode(true);
     setEditContent(content);
     setOpenMenu(null);
   };
 
+  /**
+   * تصدير الملف كـ Markdown
+   * @param {Object} file - كائن الملف
+   */
   const handleExport = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}\n\nالمسار: ${file.path}`;
+    const content = getFileContent(file);
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -829,8 +1009,12 @@ const FilesCenter = ({ language = 'ar', t }) => {
     setOpenMenu(null);
   };
 
+  /**
+   * تصدير الملف كـ PDF
+   * @param {Object} file - كائن الملف
+   */
   const handleExportPDF = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n\n${file.desc}`;
+    const content = getFileContent(file);
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -886,8 +1070,12 @@ const FilesCenter = ({ language = 'ar', t }) => {
     setOpenMenu(null);
   };
 
+  /**
+   * نسخ محتوى الملف
+   * @param {Object} file - كائن الملف
+   */
   const handleCopy = (file) => {
-    const content = FILE_CONTENT[file.id] || `# ${file.fullName}\n${file.desc}`;
+    const content = getFileContent(file);
     navigator.clipboard.writeText(content).then(() => {
       setCopiedId(file.id);
       setTimeout(() => setCopiedId(null), 2000);
@@ -1012,17 +1200,64 @@ const FilesCenter = ({ language = 'ar', t }) => {
 
       {/* الرأس */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#8A1538' }}>
-            <FolderOpen size={20} className="text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#8A1538' }}>
+              <FolderOpen size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: '#C9A54C' }}>
+                {isAr ? 'مركز الملفات' : 'Files Center'}
+              </h1>
+              <p className="text-xs" style={{ color: '#888' }}>
+                {loadingFiles ? (
+                  isAr ? 'جارٍ التحميل...' : 'Loading...'
+                ) : (
+                  isAr ? `${allFiles.length} ملف — اضغط على أي ملف لعرض الخيارات` : `${allFiles.length} files — Click any file for options`
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: '#C9A54C' }}>
-              {isAr ? 'مركز الملفات' : 'Files Center'}
-            </h1>
-            <p className="text-xs" style={{ color: '#888' }}>
-              {isAr ? `${files.length} ملف — اضغط على أي ملف لعرض الخيارات` : `${files.length} files — Click any file for options`}
-            </p>
+          {/* مؤشر حالة قاعدة البيانات وأزرار التحكم */}
+          <div className="flex items-center gap-2">
+            {/* حالة الاتصال بقاعدة البيانات */}
+            <div className="flex items-center gap-2 px-3 py-1 rounded-lg" style={{ backgroundColor: '#1a1a2e' }}>
+              {dbStatus === 'loading' && (
+                <>
+                  <RefreshCw size={14} className="animate-spin text-yellow-400" />
+                  <span className="text-xs text-yellow-400">{isAr ? 'اتصال...' : 'Connecting...'}</span>
+                </>
+              )}
+              {dbStatus === 'success' && (
+                <>
+                  <CheckCircle2 size={14} className="text-green-400" />
+                  <span className="text-xs text-green-400">{isAr ? 'Supabase متصل' : 'Supabase Connected'}</span>
+                  <span className="text-xs text-gray-500">({dbFiles.length} {isAr ? 'ملف' : 'files'})</span>
+                </>
+              )}
+              {dbStatus === 'error' && (
+                <>
+                  <AlertTriangle size={14} className="text-red-400" />
+                  <span className="text-xs text-red-400">{isAr ? 'خطأ في الاتصال' : 'Connection Error'}</span>
+                </>
+              )}
+              {dbStatus === 'empty' && (
+                <>
+                  <CheckCircle size={14} className="text-blue-400" />
+                  <span className="text-xs text-blue-400">{isAr ? 'البيانات المحلية' : 'Local Data'}</span>
+                </>
+              )}
+            </div>
+            {/* زر التحديث */}
+            <button
+              onClick={loadFilesFromDatabase}
+              disabled={loadingFiles}
+              className="p-2 rounded-lg transition-all disabled:opacity-50"
+              style={{ backgroundColor: '#8A1538', color: 'white' }}
+              title={isAr ? 'تحديث' : 'Refresh'}
+            >
+              <RefreshCw size={16} className={loadingFiles ? 'animate-spin' : ''} />
+            </button>
           </div>
         </div>
       </div>
@@ -1071,10 +1306,23 @@ const FilesCenter = ({ language = 'ar', t }) => {
 
       {/* شبكة الأيقونات */}
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 mb-6">
-        {filteredFiles.map(file => (
-          <FileIcon key={file.id} file={file} />
-        ))}
-        {filteredFiles.length === 0 && (
+        {loadingFiles ? (
+          // حالة التحميل
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <div
+                className="w-16 h-16 rounded-2xl animate-pulse"
+                style={{ backgroundColor: '#2a2a3e' }}
+              />
+              <div className="mt-2 h-3 w-12 rounded animate-pulse" style={{ backgroundColor: '#2a2a3e' }} />
+            </div>
+          ))
+        ) : (
+          filteredFiles.map(file => (
+            <FileIcon key={file.id} file={file} />
+          ))
+        )}
+        {!loadingFiles && filteredFiles.length === 0 && (
           <div className="col-span-full text-center py-8 text-sm" style={{ color: '#666' }}>
             {isAr ? 'لا توجد ملفات مطابقة' : 'No matching files'}
           </div>
