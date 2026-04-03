@@ -255,18 +255,35 @@ const api = {
 
   async createRoute(patientId, examType, gender, stations) {
     try {
+      // تحويل المحطات إلى الشكل الصحيح
+      const stationsData = stations.map((s, index) => ({
+        id: s.id,
+        name: s.name || s.nameAr,
+        nameAr: s.nameAr || s.name,
+        floor: s.floor,
+        floorCode: s.floorCode,
+        order: index + 1,
+      }));
+
+      // استخدام upsert مع onConflict للpatient_id
       const { data, error } = await supabase
         .from('patient_routes')
         .upsert({
           patient_id: patientId,
           exam_type: examType,
           gender: gender,
-          stations: stations,
+          stations: stationsData,
           updated_at: new Date().toISOString()
-        });
+        }, {
+          onConflict: 'patient_id'
+        })
+        .select()
+        .single();
+
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
+      console.error('Create Route Error:', error);
       return { success: false, error: error.message };
     }
   },

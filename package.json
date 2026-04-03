@@ -10,8 +10,5 @@
   },
   "engines": {
     "node": "20.x"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-legacy": "^7.2.1"
   }
 }

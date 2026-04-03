@@ -44,10 +44,9 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.507.0",
     "next-themes": "^0.4.6",
-    "pnpm-store": "link:/tmp/pnpm-store",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
-    "react-day-picker": "9.14.0",
+    "react-day-picker": "^9.14.0",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.56.2",
     "react-hot-toast": "^2.6.0",
@@ -58,7 +57,7 @@
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "vite": "^7.1.12",
+    "vite": "^6.0.0",
     "zod": "^3.24.4"
   },
   "scripts": {
