@@ -8,7 +8,10 @@ import api from '../lib/api-unified'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
 // AdminPINMonitor removed - not used in this component
 
-export function ClinicDashboard({ clinicId, pin, onLogout, language }) {
+export function ClinicDashboard({ session, onLogout, language, toggleLanguage }) {
+  // استخراج clinicId و pin من session
+  const clinicId = session?.clinicId;
+  const pin = session?.pin;
   const [currentTicket, setCurrentTicket] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)

@@ -269,6 +269,141 @@ const api = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+
+  // --- Clinics ---
+  async getClinics() {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name, name_ar, name_en, floor, pin_required')
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, clinics: data || [] };
+    } catch (error) {
+      console.error('Get Clinics Error:', error);
+      return { success: false, error: error.message, clinics: [] };
+    }
+  },
+
+  async verifyPin(clinicId, pin) {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name, name_ar, name_en, pin')
+        .eq('id', clinicId)
+        .single();
+
+      if (error) {
+        return { success: false, isValid: false, error: 'Clinic not found' };
+      }
+
+      if (data.pin && data.pin === pin) {
+        return {
+          success: true,
+          isValid: true,
+          session: {
+            clinicId: data.id,
+            clinicName: data.name_ar || data.name,
+            pin: pin
+          }
+        };
+      }
+
+      return { success: false, isValid: false, error: 'Invalid PIN' };
+    } catch (error) {
+      console.error('Verify PIN Error:', error);
+      return { success: false, isValid: false, error: error.message };
+    }
+  },
+
+  // --- Queue Status ---
+  async getQueueStatus(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .order('display_number', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, queue: data || [] };
+    } catch (error) {
+      console.error('Get Queue Status Error:', error);
+      return { success: false, error: error.message, queue: [] };
+    }
+  },
+
+  async callNextPatient(clinicId, pin) {
+    try {
+      // Verify PIN first
+      const pinCheck = await this.verifyPin(clinicId, pin);
+      if (!pinCheck.isValid) {
+        return { success: false, error: 'Invalid PIN' };
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Find next waiting patient
+      const { data: nextPatient, error: findError } = await supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .eq('status', 'waiting')
+        .order('display_number', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (findError && findError.code !== 'PGRST116') {
+        return { success: false, error: findError.message };
+      }
+
+      if (!nextPatient) {
+        return { success: false, error: 'No patients in queue' };
+      }
+
+      // Update to called status
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .update({ status: 'called', called_at: new Date().toISOString() })
+        .eq('id', nextPatient.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data, ticket: nextPatient };
+    } catch (error) {
+      console.error('Call Next Patient Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async updateQueueStatus(clinicId, patientId, status) {
+    try {
+      const updateData = { status };
+      if (status === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      } else if (status === 'called' || status === 'no_show') {
+        updateData.called_at = new Date().toISOString();
+      }
+
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .update(updateData)
+        .eq('clinic_id', clinicId)
+        .eq('patient_id', patientId)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update Queue Status Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 
