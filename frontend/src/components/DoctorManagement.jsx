@@ -35,7 +35,9 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
     specialty: '',
     phone: '',
     email: '',
-    is_active: true
+    is_active: true,
+    role: 'DOCTOR',
+    permissions: ['dashboard', 'queue_management', 'clinic_only', 'patient_view']
   });
 
   const translate = (ar, en) => language === 'ar' ? ar : en;
@@ -100,7 +102,9 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
       specialty: '',
       phone: '',
       email: '',
-      is_active: true
+      is_active: true,
+      role: 'DOCTOR',
+      permissions: ['dashboard', 'queue_management', 'clinic_only', 'patient_view']
     });
     setShowPassword(false);
     setShowModal(true);
@@ -119,7 +123,9 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
       specialty: doctor.specialty || '',
       phone: doctor.phone || '',
       email: doctor.email || '',
-      is_active: doctor.is_active !== false
+      is_active: doctor.is_active !== false,
+      role: doctor.role || 'DOCTOR',
+      permissions: doctor.permissions || ['dashboard', 'queue_management', 'clinic_only', 'patient_view']
     });
     setShowPassword(false);
     setShowModal(true);
@@ -152,6 +158,8 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         phone: formData.phone.trim(),
         email: formData.email.trim(),
         is_active: formData.is_active,
+        role: formData.role,
+        permissions: formData.permissions,
         updated_at: new Date().toISOString()
       };
 
@@ -549,6 +557,20 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                   placeholder={translate('doctor@example.com', 'doctor@example.com')}
                 />
+              </div>
+
+              {/* Role Selection */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">{translate('الدور / الصلاحية', 'Role / Permission')} *</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
+                >
+                  <option value="DOCTOR">{translate('طبيب', 'Doctor')}</option>
+                  <option value="ADMIN">{translate('مدير', 'Administrator')}</option>
+                  <option value="RECEPTIONIST">{translate('موظف استقبال', 'Receptionist')}</option>
+                </select>
               </div>
 
               {/* Active Status */}
