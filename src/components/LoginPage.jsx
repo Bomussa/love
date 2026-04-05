@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -9,7 +9,7 @@ import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
-import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
+import { normalizeNumerals, validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
 
 export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -22,18 +22,8 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
   const [showStatistics, setShowStatistics] = useState(false)
   const [validationError, setValidationError] = useState('')
 
-  const normalizeArabicNumbers = (str) => {
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const englishNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    let result = str;
-    for (let i = 0; i < arabicNumbers.length; i++) {
-      result = result.replace(new RegExp(arabicNumbers[i], 'g'), englishNumbers[i]);
-    }
-    return result;
-  }
-
   const handlePatientIdChange = (e) => {
-    const normalized = normalizeArabicNumbers(e.target.value);
+    const normalized = normalizeNumerals(e.target.value)
     setPatientId(normalized);
   }
 
@@ -233,7 +223,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           <div className="flex-1 relative">
             <QRScanner
               onResult={(result) => {
-                setPatientId(result)
+                setPatientId(normalizeNumerals(result))
                 setShowQRScanner(false)
               }}
               onError={(err) => console.error(err)}

@@ -5,7 +5,7 @@ import { Input } from './Input'
 import { User, Globe, Shield, Stethoscope, AlertCircle } from 'lucide-react'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
-import { sanitizeInput, validateMilitaryId, validateAdminData } from '../lib/validation'
+import { normalizeNumerals, sanitizeInput, validateMilitaryId, validateAdminData } from '../lib/validation'
 
 export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -20,7 +20,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidationError('')
-    const sanitizedId = sanitizeInput(patientId)
+    const sanitizedId = sanitizeInput(normalizeNumerals(patientId))
     const validation = validateMilitaryId(sanitizedId)
     
     if (!validation.isValid) {
@@ -106,7 +106,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
               {isAdminMode ? <Shield className="w-8 h-8 text-[#C9A54C]" /> : isDoctorMode ? <Stethoscope className="w-8 h-8 text-[#C9A54C]" /> : <User className="w-8 h-8 text-white" />}
             </div>
             <h2 className="text-2xl font-bold text-white">
-              {isAdminMode ? (language === 'ar' ? 'لوحة التحكم' : 'Admin Panel') : isDoctorMode ? (language === 'ar' ? 'دخول الطبيب' : 'Doctor Login') : (language === 'ar' ? 'مرحباً بك في نظام اللجنة الطبية' : 'Welcome to MMC System')}
+              {isAdminMode ? (language === 'ar' ? 'دخول الإدارة' : 'Admin Login') : isDoctorMode ? (language === 'ar' ? 'دخول الطبيب' : 'Doctor Login') : (language === 'ar' ? 'مرحباً بك في نظام اللجنة الطبية' : 'Welcome to MMC System')}
             </h2>
           </div>
 
@@ -120,7 +120,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
                   type="text"
                   placeholder={language === 'ar' ? 'أدخل الرقم الشخصي أو العسكري' : 'Enter ID number'}
                   value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
+                  onChange={(e) => setPatientId(normalizeNumerals(e.target.value))}
                   className="bg-white/10 border-white/20 text-white placeholder-white/40 h-12"
                   required
                 />
