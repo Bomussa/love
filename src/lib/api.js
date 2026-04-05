@@ -8,6 +8,15 @@
 
 const API_VERSION = '/api/v1';
 
+export function withApiPrefix(base, endpoint) {
+  const normalizedBase = String(base || '').replace(/\/+$/, '');
+  const normalizedEndpoint = String(endpoint || '').startsWith('/') ? endpoint : `/${endpoint}`;
+  if (normalizedEndpoint.startsWith(API_VERSION)) {
+    return `${normalizedBase}${normalizedEndpoint}`;
+  }
+  return `${normalizedBase}${API_VERSION}${normalizedEndpoint}`;
+}
+
 /**
  * Resolves API base URLs from environment and defaults
  * @returns {string[]} Array of API base URLs
@@ -65,7 +74,7 @@ class ApiService {
 
     let lastError = null;
     for (const base of API_BASES) {
-      const url = `${base}${endpoint}`;
+      const url = withApiPrefix(base, endpoint);
       try {
         const response = await fetch(url, config);
         const text = await response.text();
@@ -174,7 +183,7 @@ class ApiService {
    * @returns {Promise<Object>} Login response
    */
   async patientLogin(patientId, gender) {
-    return this.request(`${API_VERSION}/patient/login`, {
+    return this.request(`/patient/login`, {
       method: 'POST',
       body: JSON.stringify({ personalId: patientId, gender }),
     });
@@ -196,7 +205,7 @@ class ApiService {
     const body = { sessionId, examType, gender };
     if (idempotencyKey) body.idempotencyKey = idempotencyKey;
     
-    return this.request(`${API_VERSION}/queue/create`, {
+    return this.request(`/queue/create`, {
       method: 'POST',
       body: JSON.stringify(body),
     });
@@ -214,7 +223,7 @@ class ApiService {
   async enterQueue(clinicId, userId, isAutoEntry = false, name = null, queueType = null) {
     // For the new doctor-controlled system, this is handled by createQueue
     // This method provides backward compatibility
-    return this.request(`${API_VERSION}/queue/enter`, {
+    return this.request(`/queue/enter`, {
       method: 'POST',
       body: JSON.stringify({ 
         clinic: clinicId, 
@@ -233,7 +242,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue position response
    */
   async getQueuePosition(clinicId, userId) {
-    return this.request(`${API_VERSION}/queue/position?clinic=${clinicId}&user=${userId}`, {
+    return this.request(`/queue/position?clinic=${encodeURIComponent(clinicId)}&user=${encodeURIComponent(userId)}`, {
       method: 'GET',
     });
   }
@@ -245,7 +254,7 @@ class ApiService {
    */
   async getQueueCount(clinicId) {
     try {
-      const response = await this.request(`${API_VERSION}/queue/status?clinicId=${clinicId}`);
+      const response = await this.request(`/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
       return response?.data?.waitingCount || 0;
     } catch (e) {
       return 0;
@@ -258,7 +267,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue status
    */
   async getQueueStatus(clinicId) {
-    return this.request(`${API_VERSION}/queue/status?clinicId=${clinicId}`);
+    return this.request(`/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
   }
 
   /**
@@ -268,7 +277,7 @@ class ApiService {
    * @returns {Promise<Object>} Call response
    */
   async callNextPatient(clinicId, doctorId = null) {
-    return this.request(`${API_VERSION}/queue/call`, {
+    return this.request(`/queue/call`, {
       method: 'POST',
       body: JSON.stringify({ clinicId, doctorId }),
     });
@@ -281,7 +290,7 @@ class ApiService {
    * @returns {Promise<Object>} Start response
    */
   async startExamination(queueId, doctorId = null) {
-    return this.request(`${API_VERSION}/queue/start`, {
+    return this.request(`/queue/start`, {
       method: 'POST',
       body: JSON.stringify({ queueId, doctorId }),
     });
@@ -294,7 +303,7 @@ class ApiService {
    * @returns {Promise<Object>} Advance response
    */
   async advancePatient(queueId, doctorId = null) {
-    return this.request(`${API_VERSION}/queue/advance`, {
+    return this.request(`/queue/advance`, {
       method: 'POST',
       body: JSON.stringify({ queueId, doctorId }),
     });
@@ -311,7 +320,7 @@ class ApiService {
   async queueDone(clinicId, userId, pin = null, skipPin = false) {
     // In the new system, completion is handled by the doctor via advancePatient
     // This method provides backward compatibility
-    return this.request(`${API_VERSION}/queue/done`, {
+    return this.request(`/queue/done`, {
       method: 'POST',
       body: JSON.stringify({ clinicId, patientId: userId }),
     });
@@ -330,7 +339,7 @@ class ApiService {
    * @returns {Promise<Object>} Route creation response
    */
   async createRoute(patientId, examType, gender, stations) {
-    return this.request(`${API_VERSION}/route/create`, {
+    return this.request(`/route/create`, {
       method: 'POST',
       body: JSON.stringify({ patientId, examType, gender, stations }),
     });
@@ -342,7 +351,7 @@ class ApiService {
    * @returns {Promise<Object>} Route response
    */
   async getRoute(patientId) {
-    return this.request(`${API_VERSION}/route/get?patientId=${patientId}`);
+    return this.request(`/route/get?patientId=${encodeURIComponent(patientId)}`);
   }
 
   /**
@@ -350,7 +359,7 @@ class ApiService {
    * @returns {Promise<Object>} Path response
    */
   async choosePath() {
-    return this.request(`${API_VERSION}/path/choose`);
+    return this.request(`/path/choose`);
   }
 
   // ==========================================
@@ -362,7 +371,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue stats
    */
   async getQueues() {
-    return this.request(`${API_VERSION}/stats/queues`);
+    return this.request(`/stats/queues`);
   }
 
   /**
@@ -370,7 +379,7 @@ class ApiService {
    * @returns {Promise<Object>} Dashboard stats
    */
   async getQueueStats() {
-    return this.request(`${API_VERSION}/stats/dashboard`);
+    return this.request(`/stats/dashboard`);
   }
 
   // ==========================================
@@ -384,7 +393,7 @@ class ApiService {
    * @returns {Promise<Object>} Login response
    */
   async adminLogin(username, password) {
-    return this.request(`${API_VERSION}/admin/login`, {
+    return this.request(`/admin/login`, {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
@@ -395,7 +404,7 @@ class ApiService {
    * @returns {Promise<Object>} Admin status
    */
   async getAdminStatus() {
-    return this.request(`${API_VERSION}/admin/status`);
+    return this.request(`/admin/status`);
   }
 
   /**
@@ -403,7 +412,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue logs
    */
   async getQueueLogs() {
-    return this.request(`${API_VERSION}/admin/queue/logs`);
+    return this.request(`/admin/queue/logs`);
   }
 
   /**
@@ -411,7 +420,7 @@ class ApiService {
    * @returns {Promise<Object>} Recovery response
    */
   async recoverQueues() {
-    return this.request(`${API_VERSION}/admin/queue/recover`, {
+    return this.request(`/admin/queue/recover`, {
       method: 'POST',
     });
   }
@@ -425,7 +434,7 @@ class ApiService {
    * @returns {Promise<Object>} Health status
    */
   async getHealthStatus() {
-    return this.request(`${API_VERSION}/health/status`);
+    return this.request(`/health/status`);
   }
 
   // ==========================================
@@ -568,7 +577,7 @@ class ApiService {
   }
 
   async getRecentReports(adminCode) {
-    return this.request(`${API_VERSION}/reports/history?adminCode=${encodeURIComponent(adminCode)}`);
+    return this.request(`/reports/history?adminCode=${encodeURIComponent(adminCode)}`);
   }
 
   async pauseQueue(queueType, adminCode) {
@@ -579,7 +588,7 @@ class ApiService {
     console.log('Resetting system...');
     try {
       // Clear queues
-      await this.request(`${API_VERSION}/admin/queue/clear`, {
+      await this.request(`/admin/queue/clear`, {
         method: 'POST',
         body: JSON.stringify({ adminCode })
       });
@@ -614,7 +623,7 @@ class ApiService {
     };
 
     // Subscribe to events
-    const eventBus = window.eventBus;
+    const eventBus = typeof window !== 'undefined' ? window.eventBus : null;
     if (eventBus) {
       const unsubscribe1 = eventBus.on('queue:update', handleQueueUpdate);
       const unsubscribe2 = eventBus.on('heartbeat', handleHeartbeat);
@@ -638,6 +647,7 @@ class ApiService {
   // ==========================================
 
   connectWebSocket() {
+    if (typeof window === 'undefined') return null;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
 

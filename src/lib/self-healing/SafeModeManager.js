@@ -18,6 +18,9 @@ let listeners = new Set();
  * Initialize safe mode from storage
  */
 export function initSafeMode() {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return false;
+  }
   // Check localStorage for safe mode setting
   const stored = localStorage.getItem(SAFE_MODE_CONFIG.settingsKey);
   safeModeEnabled = stored === 'true';
@@ -51,7 +54,9 @@ export function enableSafeMode() {
   if (safeModeEnabled) return true;
   
   safeModeEnabled = true;
-  localStorage.setItem(SAFE_MODE_CONFIG.settingsKey, 'true');
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(SAFE_MODE_CONFIG.settingsKey, 'true');
+  }
   
   applySafeMode();
   notifyListeners();
@@ -74,7 +79,9 @@ export function disableSafeMode() {
   if (!safeModeEnabled) return true;
   
   safeModeEnabled = false;
-  localStorage.removeItem(SAFE_MODE_CONFIG.settingsKey);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(SAFE_MODE_CONFIG.settingsKey);
+  }
   
   removeSafeMode();
   notifyListeners();
@@ -105,6 +112,7 @@ export function toggleSafeMode() {
  */
 function applySafeMode() {
   // Set global flag
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   window.MMC_SAFE_MODE = true;
   
   // Show banner
@@ -123,6 +131,7 @@ function applySafeMode() {
  * Remove safe mode restrictions
  */
 function removeSafeMode() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   // Remove global flag
   delete window.MMC_SAFE_MODE;
   
@@ -142,6 +151,7 @@ function removeSafeMode() {
  * Disable a feature
  */
 function disableFeature(featureName) {
+  if (typeof window === 'undefined') return;
   if (!window.MMC_DISABLED_FEATURES) {
     window.MMC_DISABLED_FEATURES = new Set();
   }
@@ -157,6 +167,7 @@ function disableFeature(featureName) {
  * Enable a feature
  */
 function enableFeature(featureName) {
+  if (typeof window === 'undefined') return;
   if (window.MMC_DISABLED_FEATURES) {
     window.MMC_DISABLED_FEATURES.delete(featureName);
   }
@@ -187,6 +198,7 @@ export function isFeaturePreserved(featureName) {
  * Show safe mode banner
  */
 function showSafeModeBanner() {
+  if (typeof document === 'undefined') return;
   // Remove existing banner
   hideSafeModeBanner();
   
@@ -194,12 +206,12 @@ function showSafeModeBanner() {
   banner.id = 'mmc-safe-mode-banner';
   banner.className = 'mmc-safe-mode-banner';
   banner.innerHTML = `
-    <div class="mmc-banner-content">
-      <span class="mmc-banner-icon">🛡️</span>
-      <span class="mmc-banner-text">
+    <div class="mmc-safe-mode-banner-content">
+      <span class="mmc-safe-mode-banner-icon">🛡️</span>
+      <span class="mmc-safe-mode-banner-text">
         وضع الأمان مفعل - Safe Mode Active
       </span>
-      <button class="mmc-banner-close" onclick="window.safeModeManager?.disableSafeMode()">✕</button>
+      <button class="mmc-safe-mode-banner-close" onclick="window.safeModeManager?.disableSafeMode()">✕</button>
     </div>
   `;
   
@@ -210,6 +222,7 @@ function showSafeModeBanner() {
  * Hide safe mode banner
  */
 function hideSafeModeBanner() {
+  if (typeof document === 'undefined') return;
   const existing = document.getElementById('mmc-safe-mode-banner');
   if (existing) {
     existing.remove();
@@ -273,7 +286,7 @@ export const safeModeStyles = `
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   }
   
-  .mmc-safe-mode-banner .mmc-banner-content {
+  .mmc-safe-mode-banner .mmc-safe-mode-banner-content {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -282,15 +295,15 @@ export const safeModeStyles = `
     margin: 0 auto;
   }
   
-  .mmc-safe-mode-banner .mmc-banner-icon {
+  .mmc-safe-mode-banner .mmc-safe-mode-banner-icon {
     font-size: 16px;
   }
   
-  .mmc-safe-mode-banner .mmc-banner-text {
+  .mmc-safe-mode-banner .mmc-safe-mode-banner-text {
     font-weight: 500;
   }
   
-  .mmc-safe-mode-banner .mmc-banner-close {
+  .mmc-safe-mode-banner .mmc-safe-mode-banner-close {
     background: rgba(255,255,255,0.2);
     border: none;
     color: white;
@@ -305,7 +318,7 @@ export const safeModeStyles = `
     font-size: 12px;
   }
   
-  .mmc-safe-mode-banner .mmc-banner-close:hover {
+  .mmc-safe-mode-banner .mmc-safe-mode-banner-close:hover {
     background: rgba(255,255,255,0.3);
   }
 `;
@@ -314,6 +327,7 @@ export const safeModeStyles = `
  * Inject safe mode styles
  */
 export function injectSafeModeStyles() {
+  if (typeof document === 'undefined') return;
   if (document.getElementById('mmc-safe-mode-styles')) return;
   
   const styleEl = document.createElement('style');

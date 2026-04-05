@@ -6,7 +6,7 @@
  * @since 2025-04-01
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
 import { Button } from './Button';
 import { Lock, Unlock, Clock, Globe, LogIn, CheckCircle, ArrowRight } from 'lucide-react';
@@ -31,21 +31,13 @@ import { supabase } from '../lib/supabase-client';
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
   // State management
   const [stations, setStations] = useState([]);
-  const [selectedStation, setSelectedStation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTicket, setActiveTicket] = useState(null);
   const [currentNotice, setCurrentNotice] = useState(null);
   const [routeWithZFD, setRouteWithZFD] = useState(null);
   const [directAlerts, setDirectAlerts] = useState([]);
-  const [queuePositions, setQueuePositions] = useState({});
+  const emittedQueueEventsRef = useRef(new Set());
 
   // System settings (PIN system removed)
-  const [systemSettings] = useState({
-    queue_system_enabled: true,
-    queue_system_visible: true,
-    doctor_control_enabled: true
-  });
-
   /**
    * Gets ticket for first clinic without auto-entry
    * @param {Object} station - Clinic station
@@ -122,7 +114,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const positionData = await api.getQueuePosition(station.id, patientData.id);
 
       if (positionData?.success) {
-        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number });
         setStations(prev => prev.map(s => s.id === station.id ? {
           ...s,
           yourNumber: positionData.display_number,
@@ -271,7 +262,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const lastStateRef = { current: null };
 
     const updateQueueStatus = async () => {
-      if (document.hidden) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
 
       try {
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
@@ -299,18 +290,27 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                     const message = messages[positionData.display_number];
                     if (message) {
+                      const eventKey = `${patientData.id}:${currentStation.id}:${positionData.display_number}`;
+                      if (!emittedQueueEventsRef.current.has(eventKey)) {
+                        emittedQueueEventsRef.current.add(eventKey);
+                        if (positionData.display_number === 0) {
+                          eventBus.emit('queue:your_turn', {
+                            clinicName: s.nameAr,
+                            position: positionData.display_number
+                          });
+                        } else {
+                          eventBus.emit('queue:near_turn', {
+                            clinicName: s.nameAr,
+                            position: positionData.display_number
+                          });
+                        }
+                      }
+
                       setCurrentNotice({
                         type: 'queue_update',
                         message,
                         clinic: s.nameAr
                       });
-
-                      if (positionData.display_number === 0) {
-                        eventBus.emit('queue:your_turn', {
-                          clinicName: s.nameAr,
-                          position: positionData.display_number
-                        });
-                      }
 
                       setTimeout(() => setCurrentNotice(null), 10000);
                     }
@@ -347,7 +347,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     const interval = setInterval(updateQueueStatus, dynamicInterval);
 
     return () => clearInterval(interval);
-  }, [patientData?.id, language, stations.length]);
+  }, [patientData?.id, language, stations]);
 
   /**
    * Direct alerts from admin
@@ -682,9 +682,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   </div>
 
                   {/* ZFD Ticket */}
-                  {routeWithZFD?.route?.length > index && (
+                  {(Array.isArray(routeWithZFD?.route) ? routeWithZFD.route.length > index : Array.isArray(routeWithZFD?.route?.stations) && routeWithZFD.route.stations.length > index) && (
                     <div className="mb-4" data-test="zfd-ticket-section">
-                      <ZFDTicketDisplay step={routeWithZFD.route[index]} />
+                      <ZFDTicketDisplay step={Array.isArray(routeWithZFD?.route) ? routeWithZFD.route[index] : routeWithZFD.route.stations[index]} />
                     </div>
                   )}
 
