@@ -125,32 +125,11 @@ function App() {
 
   // ============= AUTO REPAIR SYSTEM =============
   useEffect(() => {
-    // تفعيل نظام الإصلاح التلقائي
-    autoRepairSystem.startMonitoring();
-    console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
-
-    functionTableMonitor.startMonitoring();
-
-    // تفعيل نظام مراقبة العناصر التفاعلية
-    elementMonitor.startMonitoring();
-
-    // تفعيل نظام الإصلاح التلقائي المتقدم
-    const advancedRepair = new AdvancedAutoRepair(supabase);
-    advancedRepair.startAutoRepair();
-    // تهيئة نظام المراقبة الذاتية الشامل
-    healthMonitor.init(supabase);
-
-    // تفعيل نظام التقارير للعناصر التفاعلية
-    const elementReporter = new InteractiveElementReporter();
-    elementReporter.startReporting();
-    console.log('✅ نظام التقارير: تم التفعيل');
-    console.log('✅ نظام الإصلاح التلقائي المتقدم: تم التفعيل');
-    console.log('✅ نظام مراقبة العناصر: تم التفعيل');
-    console.log('✅ نظام مراقبة الدوال والجداول: تم التفعيل');
-
-    return () => {
-      // لا نوقف المراقبة - نريدها مستمرة طوال فترة الجلسة
-    };
+    // تم إيقاف أنظمة الإصلاح التلقائي الزائدة لتحسين سرعة الأداء والتنقل
+    // سيتم الاعتماد على معالجة الأخطاء المدمجة في الـ API الموحد
+    console.log('🚀 نظام الأداء المحسن: تم التفعيل');
+    
+    return () => {};
   }, []);
 
   // ============= ROUTING LOGIC - ✅ إصلاح شامل =============

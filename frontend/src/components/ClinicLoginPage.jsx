@@ -2,16 +2,12 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { Input } from './Input'
-import { Shield, Lock, ArrowRight } from 'lucide-react'
-import { t } from '../lib/i18n'
+import { Shield, ArrowRight } from 'lucide-react'
 import api from '../lib/api-unified'
-import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 
-export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
+export function ClinicLoginPage({ onLogin, language }) {
   const [clinics, setClinics] = useState([])
   const [selectedClinic, setSelectedClinic] = useState('')
-  const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -32,20 +28,28 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!selectedClinic || !pin) return
+    if (!selectedClinic) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const response = await api.verifyPin(selectedClinic, pin)
-      if (response.success && response.isValid) {
-        onLogin(response.session)
+      // In Backend v5.0, PIN is removed. We just create a session for the clinic.
+      const clinic = clinics.find(c => c.id === selectedClinic);
+      if (clinic) {
+        const session = {
+          clinicId: clinic.id,
+          clinicName: language === 'ar' ? clinic.name_ar : clinic.name_en,
+          loginTime: new Date().toISOString()
+        };
+        // Save to localStorage for persistence as App.jsx expects
+        localStorage.setItem('mmc_clinic_session', JSON.stringify(session));
+        onLogin(session);
       } else {
-        setError(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN')
+        setError(language === 'ar' ? 'العيادة غير موجودة' : 'Clinic not found')
       }
     } catch (err) {
-      setError(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error')
+      setError(language === 'ar' ? 'خطأ في الدخول' : 'Login error')
     } finally {
       setLoading(false)
     }
@@ -81,24 +85,6 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                PIN
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="pl-10 bg-gray-700 border-gray-600 text-white"
-                  placeholder="00"
-                  maxLength={2}
-                  required
-                />
-              </div>
-            </div>
-
             {error && (
               <div className="text-red-400 text-sm bg-red-900/20 p-2 rounded">
                 {error}
@@ -109,7 +95,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
               type="submit"
               variant="gradient"
               className="w-full"
-              disabled={loading || !selectedClinic || !pin}
+              disabled={loading || !selectedClinic}
             >
               {loading ? (
                 <span className="animate-pulse">...</span>

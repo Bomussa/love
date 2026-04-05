@@ -1,43 +1,25 @@
 
 import { supabase } from './supabase-client';
-import { initGDS } from './guaranteed-data-system';
 
 /**
- * Unified API Service - Direct Supabase Implementation (V2 - Excellence Standard)
- * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
- *
- * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
- * ✅ إعادة المحاولة التلقائية
- * ✅ بدون بيانات وهمية
+ * Unified API Service - MMC Backend v5.0 Integration
+ * ✅ PIN system REMOVED completely
+ * ✅ Full support for WAITING → IN_PROGRESS → DONE
+ * ✅ Authoritative API endpoints only
  */
 
-// تهيئة نظام ضمان البيانات
-initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
+const API_BASE = '/api/v1';
 
 const api = {
   // --- Patients ---
-  async patientLogin(patientId, gender) {
+  async patientLogin(personalId, gender) {
     try {
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('patient_id', patientId)
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        // Patient doesn't exist, create new
-        const { data: newUser, error: createError } = await supabase
-          .from('patients')
-          .insert([{ patient_id: patientId, gender: gender || 'male', status: 'active' }])
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        return { success: true, data: newUser };
-      }
-
-      if (error) throw error;
-      return { success: true, data };
+      const response = await fetch(`${API_BASE}/patient/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personalId, gender })
+      });
+      return await response.json();
     } catch (error) {
       console.error('Login Error:', error);
       return { success: false, error: error.message };
@@ -45,72 +27,23 @@ const api = {
   },
 
   // --- Queue ---
-  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
+  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = 'recruitment', gender = 'male') {
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
-        p_clinic_id: clinicId,
-        p_patient_id: patientId,
-        p_patient_name: patientName,
-        p_exam_type: examType,
+      const response = await fetch(`${API_BASE}/queue/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId, examType, gender })
       });
-
-      if (!rpcError && rpcResult) {
-        // RPC returns {status, clinic, user, number, message}
+      const result = await response.json();
+      if (result.success) {
         return { 
-          success: rpcResult.status === 'OK' || rpcResult.status === 'ALREADY_IN_QUEUE', 
-          ...rpcResult,
-          display_number: rpcResult.number,
-          alreadyExists: rpcResult.status === 'ALREADY_IN_QUEUE'
+          success: true, 
+          ...result.data,
+          display_number: result.data.number,
+          alreadyExists: result.data.already_exists
         };
       }
-
-      if (rpcError) {
-        console.warn('RPC failed, using fallback:', rpcError.message);
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingEntry } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .in('status', ['waiting', 'called', 'in_progress', 'serving'])
-        .limit(1)
-        .maybeSingle();
-
-      if (existingEntry) {
-        return { success: true, ...existingEntry, alreadyExists: true };
-      }
-
-      const { data: lastEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextNumber = (lastEntry ? lastEntry.display_number : 0) + 1;
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .insert([{
-          clinic_id: clinicId,
-          patient_id: patientId,
-          patient_name: patientName,
-          exam_type: examType,
-          display_number: nextNumber,
-          status: 'waiting',
-          queue_date: today,
-          entered_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, ...data };
+      return result;
     } catch (error) {
       console.error('Enter Queue Error:', error);
       return { success: false, error: error.message };
@@ -119,306 +52,105 @@ const api = {
 
   async getQueuePosition(clinicId, patientId) {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: patientEntry, error: entryError } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .order('entered_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (entryError) throw entryError;
-
-      let currentNumber = 0;
-      const { data: servingEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .in('status', ['called', 'in_progress', 'serving'])
-        .order('called_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (servingEntry) {
-        currentNumber = servingEntry.display_number;
-      } else {
-        const { data: lastCompleted } = await supabase
-          .from('unified_queue')
-          .select('display_number')
-          .eq('clinic_id', clinicId)
-          .eq('queue_date', today)
-          .eq('status', 'completed')
-          .order('completed_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (lastCompleted) {
-          currentNumber = lastCompleted.display_number;
-        }
-      }
-
-      const { count, error: countError } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting')
-        .lt('entered_at', patientEntry.entered_at);
-
-      if (countError) throw countError;
-
-      return {
-        success: true,
-        display_number: patientEntry.display_number,
-        current_number: currentNumber,
-        ahead: count || 0,
-        status: patientEntry.status,
-      };
+      const response = await fetch(`${API_BASE}/queue/position?user=${patientId}&clinic=${clinicId}`);
+      const result = await response.json();
+      return result;
     } catch (error) {
       console.error('Get Position Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  async queueDone(clinicId, patientId) {
+  // --- Doctor Actions (NO PIN REQUIRED) ---
+  async callNextPatient(clinicId) {
     try {
-      // PIN check removed - no authentication required for completing queue
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
+      const response = await fetch(`${API_BASE}/queue/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicId })
+      });
+      return await response.json();
     } catch (error) {
-      console.error('Queue Done Error:', error);
+      console.error('Call Next Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  // --- Settings ---
+  async startExam(queueId) {
+    try {
+      const response = await fetch(`${API_BASE}/queue/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queueId })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Start Exam Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async advanceQueue(queueId, doctorClinicId, version) {
+    try {
+      const response = await fetch(`${API_BASE}/queue/advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queueId, doctorClinicId, version })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Advance Queue Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- Settings & Stats ---
   async getSettings() {
     try {
-      const { data, error } = await supabase.from('system_settings').select('*');
-      if (error) throw error;
-      const settings = {};
-      data.forEach(s => {
-        try {
-          settings[s.id] = JSON.parse(s.value);
-        } catch {
-          settings[s.id] = s.value;
-        }
-      });
-      return { success: true, settings };
+      const response = await fetch(`${API_BASE}/settings`);
+      return await response.json();
     } catch (error) {
       console.error('Get Settings Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  // --- Stats ---
-  async getQueueCount(clinicId) {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting');
-      if (error) throw error;
-      return count || 0;
-    } catch (error) {
-      console.error('Get Queue Count Error:', error);
-      return 0;
-    }
-  },
-
-  async getRoute(patientId) {
-    try {
-      const { data, error } = await supabase
-        .from('patient_routes')
-        .select('*')
-        .eq('patient_id', patientId)
-        .single();
-      if (error) throw error;
-      return { success: true, route: data };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  async createRoute(patientId, examType, gender, stations) {
-    try {
-      // تحويل المحطات إلى الشكل الصحيح
-      const stationsData = stations.map((s, index) => ({
-        id: s.id,
-        name: s.name || s.nameAr,
-        nameAr: s.nameAr || s.name,
-        floor: s.floor,
-        floorCode: s.floorCode,
-        order: index + 1,
-      }));
-
-      // استخدام upsert مع onConflict للpatient_id
-      const { data, error } = await supabase
-        .from('patient_routes')
-        .upsert({
-          patient_id: patientId,
-          exam_type: examType,
-          gender: gender,
-          stations: stationsData,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'patient_id'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Create Route Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  // --- Clinics ---
   async getClinics() {
     try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('id, name, name_ar, name_en, floor, pin_required')
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-      return { success: true, clinics: data || [] };
+      const response = await fetch(`${API_BASE}/clinics`);
+      const result = await response.json();
+      return { success: result.success, clinics: result.data || [] };
     } catch (error) {
       console.error('Get Clinics Error:', error);
       return { success: false, error: error.message, clinics: [] };
     }
   },
 
-  async verifyPin(clinicId, pin) {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('id, name, name_ar, name_en, pin')
-        .eq('id', clinicId)
-        .single();
-
-      if (error) {
-        return { success: false, isValid: false, error: 'Clinic not found' };
-      }
-
-      if (data.pin && data.pin === pin) {
-        return {
-          success: true,
-          isValid: true,
-          session: {
-            clinicId: data.id,
-            clinicName: data.name_ar || data.name,
-            pin: pin
-          }
-        };
-      }
-
-      return { success: false, isValid: false, error: 'Invalid PIN' };
-    } catch (error) {
-      console.error('Verify PIN Error:', error);
-      return { success: false, isValid: false, error: error.message };
-    }
-  },
-
-  // --- Queue Status ---
   async getQueueStatus(clinicId) {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .order('display_number', { ascending: true });
-
-      if (error) throw error;
-      return { success: true, queue: data || [] };
+      const response = await fetch(`${API_BASE}/queue/status?clinicId=${clinicId}`);
+      return await response.json();
     } catch (error) {
       console.error('Get Queue Status Error:', error);
-      return { success: false, error: error.message, queue: [] };
-    }
-  },
-
-  async callNextPatient(clinicId, pin) {
-    try {
-      // Verify PIN first
-      const pinCheck = await this.verifyPin(clinicId, pin);
-      if (!pinCheck.isValid) {
-        return { success: false, error: 'Invalid PIN' };
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-
-      // Find next waiting patient
-      const { data: nextPatient, error: findError } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting')
-        .order('display_number', { ascending: true })
-        .limit(1)
-        .single();
-
-      if (findError && findError.code !== 'PGRST116') {
-        return { success: false, error: findError.message };
-      }
-
-      if (!nextPatient) {
-        return { success: false, error: 'No patients in queue' };
-      }
-
-      // Update to called status
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'called', called_at: new Date().toISOString() })
-        .eq('id', nextPatient.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data, ticket: nextPatient };
-    } catch (error) {
-      console.error('Call Next Patient Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  async updateQueueStatus(clinicId, patientId, status) {
+  // --- Admin ---
+  async adminLogin(username, password) {
     try {
-      const updateData = { status };
-      if (status === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-      } else if (status === 'called' || status === 'no_show') {
-        updateData.called_at = new Date().toISOString();
+      const response = await fetch(`${API_BASE}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const result = await response.json();
+      if (result.success && result.data?.session?.token) {
+        localStorage.setItem('mmc_admin_token', result.data.session.token);
       }
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update(updateData)
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
+      return result;
     } catch (error) {
-      console.error('Update Queue Status Error:', error);
+      console.error('Admin Login Error:', error);
       return { success: false, error: error.message };
     }
   }
