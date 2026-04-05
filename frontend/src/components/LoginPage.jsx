@@ -5,7 +5,7 @@ import { Input } from './Input'
 import { User, Globe, Shield, Stethoscope, AlertCircle } from 'lucide-react'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
-import { sanitizeInput, validateMilitaryId, validateAdminData } from '../lib/validation'
+import { sanitizeInput, validateMilitaryId, validateAdminData, normalizeNumerals } from '../lib/validation'
 
 export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
@@ -20,7 +20,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidationError('')
-    const sanitizedId = sanitizeInput(patientId)
+    const sanitizedId = sanitizeInput(normalizeNumerals(patientId))
     const validation = validateMilitaryId(sanitizedId)
     
     if (!validation.isValid) {
@@ -60,18 +60,37 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
     }
   }
 
+  const handleDoctorSubmit = async (e) => {
+    e.preventDefault()
+    setValidationError('')
+    const validation = validateAdminData({ username: sanitizeInput(adminUsername), password: adminPassword })
+
+    if (!validation.isValid) {
+      setValidationError(validation.errors[0])
+      return
+    }
+
+    setLoading(true)
+    try {
+      const credentials = `${sanitizeInput(adminUsername)}:${adminPassword.trim()}`
+      if (typeof onDoctorLogin === 'function') {
+        await onDoctorLogin(credentials)
+      } else {
+        await onAdminLogin(credentials)
+      }
+    } catch (error) {
+      setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start pt-12 px-4 relative" 
          style={{ background: 'linear-gradient(180deg, #8A1538 0%, #C9A54C 100%)' }}>
       
       {/* Top Navigation */}
       <div className="w-full max-w-4xl flex justify-between items-center mb-8">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/10" onClick={toggleLanguage}>
-            <Globe className="w-4 h-4 mr-2" />
-            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
-          </Button>
-        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/10" onClick={() => { setIsDoctorMode(true); setIsAdminMode(false); }}>
             <Stethoscope className="w-4 h-4 mr-2" />
@@ -80,6 +99,12 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
           <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/10" onClick={() => { setIsAdminMode(true); setIsDoctorMode(false); }}>
             <Shield className="w-4 h-4 mr-2" />
             {language === 'ar' ? 'الإدارة' : 'Admin'}
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/10" onClick={toggleLanguage}>
+            <Globe className="w-4 h-4 mr-2" />
+            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
           </Button>
         </div>
       </div>
@@ -120,7 +145,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
                   type="text"
                   placeholder={language === 'ar' ? 'أدخل الرقم الشخصي أو العسكري' : 'Enter ID number'}
                   value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
+                  onChange={(e) => setPatientId(normalizeNumerals(e.target.value))}
                   className="bg-white/10 border-white/20 text-white placeholder-white/40 h-12"
                   required
                 />
@@ -162,7 +187,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, language, togg
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleAdminSubmit} className="space-y-6">
+            <form onSubmit={isDoctorMode ? handleDoctorSubmit : handleAdminSubmit} className="space-y-6">
               <Input
                 type="text"
                 placeholder={language === 'ar' ? 'اسم المستخدم' : 'Username'}

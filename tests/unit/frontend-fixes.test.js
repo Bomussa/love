@@ -57,6 +57,10 @@ test('normalizeNumerals converts Eastern Arabic digits', () => {
   assert.equal(normalizeNumerals('۱۲۳۴۵'), '12345');
 });
 
+test('normalizeNumerals keeps latin text and normalizes mixed numerals', () => {
+  assert.equal(normalizeNumerals('ID-١2۳-AB'), 'ID-123-AB');
+});
+
 test('withApiPrefix does not duplicate /api/v1', () => {
   assert.equal(withApiPrefix('https://x.com', '/api/v1/queue/create'), 'https://x.com/api/v1/queue/create');
 });

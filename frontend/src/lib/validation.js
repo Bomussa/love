@@ -155,6 +155,29 @@ export function sanitizeInput(input) {
 }
 
 /**
+ * توحيد الأرقام العربية/الفارسية إلى أرقام إنجليزية
+ * @param {string|number} input - النص أو الرقم المُدخل
+ * @returns {string}
+ */
+export function normalizeNumerals(input) {
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+  const easternArabic = '۰۱۲۳۴۵۶۷۸۹';
+
+  return String(input ?? '')
+    .split('')
+    .map((ch) => {
+      const arabicIndex = arabicIndic.indexOf(ch);
+      if (arabicIndex >= 0) return String(arabicIndex);
+
+      const easternIndex = easternArabic.indexOf(ch);
+      if (easternIndex >= 0) return String(easternIndex);
+
+      return ch;
+    })
+    .join('');
+}
+
+/**
  * التحقق من صحة نوع الفحص
  * @param {string} examType - نوع الفحص
  * @returns {{ isValid: boolean, error?: string }}
@@ -231,5 +254,6 @@ export default {
   validateLoginData,
   validateAdminData,
   sanitizeInput,
+  normalizeNumerals,
   PATTERNS,
 };
