@@ -1,9 +1,11 @@
 /**
- * MMC Frontend API Service v5.0.0
+ * MMC Frontend API Service v7.0.0
  * - All data from Supabase via backend API (single source of truth)
- * - PIN system REMOVED - no PIN anywhere
+ * - PIN system PERMANENTLY REMOVED
  * - Doctor-controlled queue flow
- * - /queue/create is the canonical entry (was the bug causing missing medical path screen)
+ * - /queue/create is the canonical entry
+ * - Idempotency key support
+ * - Version control for concurrency
  */
 
 const API_VERSION = "/api/v1";
@@ -169,7 +171,7 @@ class ApiService {
   // ── Health ──
   async getHealthStatus() { return this.request(`${API_VERSION}/health`); }
 
-  // ── Legacy shims (no PIN, backward compat) ──
+  // ── Legacy shims (backward compat) ──
   async enterQueue(clinicId, userId, isAutoEntry = false, name = null, queueType = null) {
     return this.request(`${API_VERSION}/queue/enter`, {
       method: "POST", body: JSON.stringify({ clinic: clinicId, user: userId, isAutoEntry, name, queueType }),
@@ -181,13 +183,6 @@ class ApiService {
       method: "POST", body: JSON.stringify({ clinicId, patientId: userId }),
     });
   }
-
-  // PIN system removed — shims return safe no-op
-  async generatePIN()   { return { success: false, message: "PIN system removed" }; }
-  async getPinStatus()  { return { success: true,  message: "PIN system removed", doctorControl: true }; }
-  async getActivePins() { return { success: true,  pins: [] }; }
-  async clinicExit()    { return { success: true,  message: "Controlled by doctor" }; }
-  async completeClinic(clinicId, user) { return this.queueDone(clinicId, user); }
 
   connectSSE(clinic, callback) { return { close: () => {} }; }
 }

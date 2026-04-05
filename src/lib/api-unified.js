@@ -1,11 +1,13 @@
 /**
- * api-unified.js — MMC Frontend API v5.0 FINAL
+ * api-unified.js — MMC Frontend API v7.0 FINAL
  * Single source of truth: ALL data from Supabase directly
- * ✅ No PIN system anywhere
+ * ✅ PIN system PERMANENTLY REMOVED
  * ✅ createQueue() calls /queue/create (the fixed endpoint)
  * ✅ Doctor-controlled advance flow
  * ✅ Live Supabase queries for clinics, queues, stats
  * ✅ Offline fallback with sync queue
+ * ✅ Idempotency key support
+ * ✅ Version control for concurrency
  */
 
 import { supabase } from './supabase-client';
@@ -241,16 +243,6 @@ async function getSettings() {
 async function getHealthStatus() { return apiRequest('/api/v1/health'); }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// PIN SYSTEM SHIMS — all return safe no-ops (PIN removed)
-// ════════════════════════════════════════════════════════════════════════════════
-
-const generatePIN  = async () => ({ success: false, message: 'PIN system removed' });
-const getPinStatus = async () => ({ success: true,  message: 'PIN system removed', doctorControl: true });
-const getActivePins= async () => ({ success: true,  pins: [] });
-const clinicExit   = async () => ({ success: true,  message: 'Controlled by doctor' });
-const completeClinic = async (clinicId, userId) => queueDone(clinicId, userId);
-
-// ════════════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ════════════════════════════════════════════════════════════════════════════════
 
@@ -265,9 +257,6 @@ const api = {
   getDashboardStats: getQueueStats,
   adminLogin, recoverQueues,
   getSettings, getHealthStatus,
-  // Legacy shims
-  generatePIN, getPinStatus, getActivePins, clinicExit, completeClinic,
-  getActivePINs: getActivePins, deactivatePIN: async () => ({ success: true }),
 };
 
 export default api;
