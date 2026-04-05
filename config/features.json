@@ -1,0 +1,7 @@
+{
+  "features": {
+    "qr_enabled": true,
+    "live_statistics_enabled": true,
+    "safe_mode_enabled": true
+  }
+}

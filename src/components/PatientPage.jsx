@@ -306,10 +306,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                       });
 
                       if (positionData.display_number === 0) {
-                        eventBus.emit('queue:your_turn', {
-                          clinicName: s.nameAr,
-                          position: positionData.display_number
-                        });
+                        eventBus.emit('queue:your_turn', { clinicName: s.nameAr, type: 'YOUR_TURN', position: positionData.display_number });
+                      } else if (positionData.display_number === 1) {
+                        eventBus.emit('queue:step_done_next', { clinicName: s.nameAr, type: 'STEP_DONE_NEXT', position: positionData.display_number });
+                      } else if (positionData.display_number === 2) {
+                        eventBus.emit('queue:near_turn', { clinicName: s.nameAr, type: 'NEAR_TURN', position: positionData.display_number });
                       }
 
                       setTimeout(() => setCurrentNotice(null), 10000);
@@ -343,10 +344,21 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       }
     };
 
-    updateQueueStatus();
-    const interval = setInterval(updateQueueStatus, dynamicInterval);
+    let cancelled = false;
+    let timeoutId;
 
-    return () => clearInterval(interval);
+    const loop = async () => {
+      if (cancelled) return;
+      await updateQueueStatus();
+      timeoutId = setTimeout(loop, dynamicInterval);
+    };
+
+    loop();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [patientData?.id, language, stations.length]);
 
   /**

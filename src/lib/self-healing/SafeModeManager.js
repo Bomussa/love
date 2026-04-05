@@ -6,7 +6,6 @@
 import { logRepair } from './RepairLog';
 import {
   SAFE_MODE_CONFIG,
-  STATUS,
   SEVERITY,
 } from './constants';
 
@@ -19,7 +18,8 @@ let listeners = new Set();
  */
 export function initSafeMode() {
   // Check localStorage for safe mode setting
-  const stored = localStorage.getItem(SAFE_MODE_CONFIG.settingsKey);
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  const stored = window.localStorage.getItem(SAFE_MODE_CONFIG.settingsKey);
   safeModeEnabled = stored === 'true';
   
   if (safeModeEnabled) {
@@ -51,7 +51,9 @@ export function enableSafeMode() {
   if (safeModeEnabled) return true;
   
   safeModeEnabled = true;
-  localStorage.setItem(SAFE_MODE_CONFIG.settingsKey, 'true');
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(SAFE_MODE_CONFIG.settingsKey, 'true');
+  }
   
   applySafeMode();
   notifyListeners();
@@ -74,7 +76,9 @@ export function disableSafeMode() {
   if (!safeModeEnabled) return true;
   
   safeModeEnabled = false;
-  localStorage.removeItem(SAFE_MODE_CONFIG.settingsKey);
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem(SAFE_MODE_CONFIG.settingsKey);
+  }
   
   removeSafeMode();
   notifyListeners();
@@ -105,6 +109,7 @@ export function toggleSafeMode() {
  */
 function applySafeMode() {
   // Set global flag
+  if (typeof window === 'undefined') return;
   window.MMC_SAFE_MODE = true;
   
   // Show banner
@@ -124,6 +129,7 @@ function applySafeMode() {
  */
 function removeSafeMode() {
   // Remove global flag
+  if (typeof window === 'undefined') return;
   delete window.MMC_SAFE_MODE;
   
   // Hide banner
@@ -142,6 +148,7 @@ function removeSafeMode() {
  * Disable a feature
  */
 function disableFeature(featureName) {
+  if (typeof window === 'undefined') return;
   if (!window.MMC_DISABLED_FEATURES) {
     window.MMC_DISABLED_FEATURES = new Set();
   }
@@ -157,6 +164,7 @@ function disableFeature(featureName) {
  * Enable a feature
  */
 function enableFeature(featureName) {
+  if (typeof window === 'undefined') return;
   if (window.MMC_DISABLED_FEATURES) {
     window.MMC_DISABLED_FEATURES.delete(featureName);
   }
@@ -172,6 +180,7 @@ function enableFeature(featureName) {
  */
 export function isFeatureDisabled(featureName) {
   if (!safeModeEnabled) return false;
+  if (typeof window === 'undefined') return SAFE_MODE_CONFIG.disabledFeatures.includes(featureName);
   return window.MMC_DISABLED_FEATURES?.has(featureName) ||
          SAFE_MODE_CONFIG.disabledFeatures.includes(featureName);
 }
@@ -190,16 +199,17 @@ function showSafeModeBanner() {
   // Remove existing banner
   hideSafeModeBanner();
   
+  if (typeof document === 'undefined') return;
   const banner = document.createElement('div');
   banner.id = 'mmc-safe-mode-banner';
   banner.className = 'mmc-safe-mode-banner';
   banner.innerHTML = `
-    <div class="mmc-banner-content">
-      <span class="mmc-banner-icon">🛡️</span>
-      <span class="mmc-banner-text">
+    <div class="mmc-safe-mode-banner-content">
+      <span class="mmc-safe-mode-banner-icon">🛡️</span>
+      <span class="mmc-safe-mode-banner-text">
         وضع الأمان مفعل - Safe Mode Active
       </span>
-      <button class="mmc-banner-close" onclick="window.safeModeManager?.disableSafeMode()">✕</button>
+      <button class="mmc-safe-mode-banner-close" onclick="window.safeModeManager?.disableSafeMode()">✕</button>
     </div>
   `;
   
@@ -210,6 +220,7 @@ function showSafeModeBanner() {
  * Hide safe mode banner
  */
 function hideSafeModeBanner() {
+  if (typeof document === 'undefined') return;
   const existing = document.getElementById('mmc-safe-mode-banner');
   if (existing) {
     existing.remove();
@@ -314,6 +325,7 @@ export const safeModeStyles = `
  * Inject safe mode styles
  */
 export function injectSafeModeStyles() {
+  if (typeof document === 'undefined') return;
   if (document.getElementById('mmc-safe-mode-styles')) return;
   
   const styleEl = document.createElement('style');
