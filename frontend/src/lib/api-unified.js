@@ -1,21 +1,38 @@
 
+/**
+ * api-unified.js - واجهة برمجة التطبيقات الموحدة
+ * Unified API Service - Direct Supabase Implementation
+ *
+ * نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
+ * إعادة المحاولة التلقائية
+ * بدون بيانات وهمية
+ *
+ * @module api-unified
+ * @version 2.0.0 - PIN system removed
+ */
+
 import { supabase } from './supabase-client';
 import { initGDS } from './guaranteed-data-system';
-
-/**
- * Unified API Service - Direct Supabase Implementation (V2 - Excellence Standard)
- * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
- *
- * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
- * ✅ إعادة المحاولة التلقائية
- * ✅ بدون بيانات وهمية
- */
 
 // تهيئة نظام ضمان البيانات
 initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
 
+/**
+ * كائن API الموحد
+ * يوفر جميع الوظائف للتفاعل مع قاعدة البيانات عبر Supabase
+ */
 const api = {
-  // --- Patients ---
+
+  // ═══════════════════════════════════════════════════════════════
+  // مرضى / Patients
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * تسجيل دخول المريض
+   * @param {string} patientId - رقم المريض العسكري/الشخصي
+   * @param {string} gender - جنس المريض (male/female)
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
   async patientLogin(patientId, gender) {
     try {
       const { data, error } = await supabase
@@ -44,7 +61,19 @@ const api = {
     }
   },
 
-  // --- Queue ---
+  // ═══════════════════════════════════════════════════════════════
+  // طابور / Queue Management
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * إدخال المريض إلى الطابور
+   * @param {string} clinicId - معرف العيادة
+   * @param {string} patientId - رقم المريض
+   * @param {boolean} isAutoEnter - إدخال تلقائي
+   * @param {string} patientName - اسم المريض (اختياري)
+   * @param {string} examType - نوع الفحص (اختياري)
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
     try {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
@@ -113,6 +142,12 @@ const api = {
     }
   },
 
+  /**
+   * الحصول على موقع المريض في الطابور
+   * @param {string} clinicId - معرف العيادة
+   * @param {string} patientId - رقم المريض
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
   async getQueuePosition(clinicId, patientId) {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -179,36 +214,23 @@ const api = {
     }
   },
 
-  async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
+  /**
+   * إنهاء خدمة المريض في الطابور
+   * PIN system removed - لا يحتاج تحقق
+   *
+   * @param {string} clinicId - معرف العيادة
+   * @param {string} patientId - رقم المريض
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async queueDone(clinicId, patientId) {
     try {
-      if (!skipPinCheck) {
-        if (!pin) {
-          return { success: false, error: 'يرجى إدخال رقم PIN' };
-        }
-
-        const now = new Date().toISOString();
-        const { data: validPin, error: pinError } = await supabase
-          .from('pins')
-          .select('*')
-          .eq('clinic_id', clinicId)
-          .eq('pin', pin)
-          .is('used_at', null)
-          .gte('valid_until', now)
-          .maybeSingle();
-
-        if (pinError || !validPin) {
-          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
-        }
-
-        await supabase
-          .from('pins')
-          .update({ used_at: now })
-          .eq('id', validPin.id);
-      }
-
       const { data, error } = await supabase
         .from('queues')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .select();
@@ -221,7 +243,153 @@ const api = {
     }
   },
 
-  // --- Settings ---
+  /**
+   * تحديث حالة المريض في الطابور
+   * @param {string} clinicId - معرف العيادة
+   * @param {string} patientId - رقم المريض
+   * @param {string} newStatus - الحالة الجديدة (waiting/called/completed/no_show/cancelled)
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async updateQueueStatus(clinicId, patientId, newStatus) {
+    try {
+      const updateData = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      // إضافة الوقت المناسب حسب الحالة
+      switch (newStatus) {
+        case 'called':
+          updateData.called_at = new Date().toISOString();
+          break;
+        case 'completed':
+          updateData.completed_at = new Date().toISOString();
+          break;
+        case 'no_show':
+          updateData.no_show_at = new Date().toISOString();
+          break;
+        case 'in_service':
+          updateData.started_at = new Date().toISOString();
+          break;
+      }
+
+      const { data, error } = await supabase
+        .from('queues')
+        .update(updateData)
+        .eq('clinic_id', clinicId)
+        .eq('patient_id', patientId)
+        .select();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update Queue Status Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * مناداة المريض التالي
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async callNextPatient(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      // البحث عن أول مريض في الانتظار
+      const { data: nextPatient, error: findError } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .eq('status', 'waiting')
+        .order('entered_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (findError && findError.code !== 'PGRST116') throw findError;
+      if (!nextPatient) {
+        return { success: false, error: 'لا يوجد مراجعون في الانتظار' };
+      }
+
+      // تحديث الحالة إلى called
+      const { data, error } = await supabase
+        .from('queues')
+        .update({
+          status: 'called',
+          called_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', nextPatient.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Call Next Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * بدء خدمة المريض
+   * @param {string} queueId - معرف السجل في الطابور
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async startService(queueId) {
+    try {
+      const { data, error } = await supabase
+        .from('queues')
+        .update({
+          status: 'in_service',
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', queueId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Start Service Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * الحصول على حالة الطابور للعيادة
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<{success: boolean, queue?: array, error?: string}>}
+   */
+  async getQueueStatus(clinicId) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('queues')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('queue_date', today)
+        .order('entered_at', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, queue: data || [] };
+    } catch (error) {
+      console.error('Get Queue Status Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // إعدادات / Settings
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * الحصول على الإعدادات
+   * @returns {Promise<{success: boolean, settings?: object, error?: string}>}
+   */
   async getSettings() {
     try {
       const { data, error } = await supabase.from('system_settings').select('*');
@@ -241,23 +409,15 @@ const api = {
     }
   },
 
-  // --- PINs ---
-  async getPinStatus() {
-    try {
-      const { data, error } = await supabase.from('pins').select('*').is('used_at', null);
-      if (error) throw error;
-      const clinics = {};
-      data.forEach(p => {
-        clinics[p.clinic_id || p.clinic_code] = { has_active_pin: true };
-      });
-      return { success: true, clinics };
-    } catch (error) {
-      console.error('Get Pin Status Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
+  // ═══════════════════════════════════════════════════════════════
+  // إحصائيات / Statistics
+  // ═══════════════════════════════════════════════════════════════
 
-  // --- Stats ---
+  /**
+   * الحصول على عدد الانتظار
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<number>}
+   */
   async getQueueCount(clinicId) {
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -275,6 +435,15 @@ const api = {
     }
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // مسارات / Routes
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * الحصول على مسار المريض
+   * @param {string} patientId - رقم المريض
+   * @returns {Promise<{success: boolean, route?: object, error?: string}>}
+   */
   async getRoute(patientId) {
     try {
       const { data, error } = await supabase
@@ -289,6 +458,14 @@ const api = {
     }
   },
 
+  /**
+   * إنشاء مسار للمريض
+   * @param {string} patientId - رقم المريض
+   * @param {string} examType - نوع الفحص
+   * @param {string} gender - الجنس
+   * @param {array} stations - المحطات
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
   async createRoute(patientId, examType, gender, stations) {
     try {
       const { data, error } = await supabase
@@ -303,6 +480,124 @@ const api = {
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // أطباء / Doctors
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * إضافة طبيب جديد
+   * @param {object} doctorData - بيانات الطبيب
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async addDoctor(doctorData) {
+    try {
+      const { data, error } = await supabase
+        .from('doctors')
+        .insert([{
+          ...doctorData,
+          is_active: true,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Add Doctor Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * تحديث بيانات طبيب
+   * @param {string} doctorId - معرف الطبيب
+   * @param {object} updateData - بيانات التحديث
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  async updateDoctor(doctorId, updateData) {
+    try {
+      const { data, error } = await supabase
+        .from('doctors')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', doctorId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Update Doctor Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * الحصول على قائمة الأطباء
+   * @returns {Promise<{success: boolean, doctors?: array, error?: string}>}
+   */
+  async getDoctors() {
+    try {
+      const { data, error } = await supabase
+        .from('doctors')
+        .select('*')
+        .order('name_ar', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, doctors: data || [] };
+    } catch (error) {
+      console.error('Get Doctors Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // العيادات / Clinics
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * الحصول على قائمة العيادات
+   * @returns {Promise<{success: boolean, clinics?: array, error?: string}>}
+   */
+  async getClinics() {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*')
+        .order('name_ar', { ascending: true });
+
+      if (error) throw error;
+      return { success: true, clinics: data || [] };
+    } catch (error) {
+      console.error('Get Clinics Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * الحصول على بيانات عيادة
+   * @param {string} clinicId - معرف العيادة
+   * @returns {Promise<{success: boolean, clinic?: object, error?: string}>}
+   */
+  async getClinic(clinicId) {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .single();
+
+      if (error) throw error;
+      return { success: true, clinic: data };
+    } catch (error) {
+      console.error('Get Clinic Error:', error);
       return { success: false, error: error.message };
     }
   }
