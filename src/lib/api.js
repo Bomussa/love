@@ -14,11 +14,12 @@ const API_VERSION = '/api/v1';
  */
 function resolveApiBases() {
   const bases = [];
-  const envBase = (import.meta.env?.VITE_API_BASE || '').trim();
+  const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
+  const envBase = (env?.VITE_API_BASE || '').trim();
   if (envBase) bases.push(envBase);
 
   // Development fallback
-  if (import.meta.env?.DEV) bases.push('http://localhost:3000');
+  if (env?.DEV) bases.push('http://localhost:3000');
 
   // Production: same origin
   if (typeof window !== 'undefined') {
@@ -233,7 +234,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue position response
    */
   async getQueuePosition(clinicId, userId) {
-    return this.request(`${API_VERSION}/queue/position?clinic=${clinicId}&user=${userId}`, {
+    return this.request(`${API_VERSION}/queue/position?clinic=${encodeURIComponent(clinicId)}&user=${encodeURIComponent(userId)}`, {
       method: 'GET',
     });
   }
@@ -245,7 +246,7 @@ class ApiService {
    */
   async getQueueCount(clinicId) {
     try {
-      const response = await this.request(`${API_VERSION}/queue/status?clinicId=${clinicId}`);
+      const response = await this.request(`${API_VERSION}/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
       return response?.data?.waitingCount || 0;
     } catch (e) {
       return 0;
@@ -258,7 +259,7 @@ class ApiService {
    * @returns {Promise<Object>} Queue status
    */
   async getQueueStatus(clinicId) {
-    return this.request(`${API_VERSION}/queue/status?clinicId=${clinicId}`);
+    return this.request(`${API_VERSION}/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
   }
 
   /**
@@ -342,7 +343,7 @@ class ApiService {
    * @returns {Promise<Object>} Route response
    */
   async getRoute(patientId) {
-    return this.request(`${API_VERSION}/route/get?patientId=${patientId}`);
+    return this.request(`${API_VERSION}/route/get?patientId=${encodeURIComponent(patientId)}`);
   }
 
   /**
