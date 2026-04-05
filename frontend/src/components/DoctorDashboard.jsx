@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { Globe, LogOut, Users, Clock, CheckCircle, Activity, UserCheck } from 'lucide-react'
+import { Globe, LogOut, Users, Clock, CheckCircle, Activity, UserCheck, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase-client'
 import api from '../lib/api-unified'
 import NotificationSystem, { useNotifications } from './NotificationSystem'
@@ -18,6 +17,7 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
   })
   const [currentPatient, setCurrentPatient] = useState(null)
   const [examStartTime, setExamStartTime] = useState(null)
+  const [connectionStatus, setConnectionStatus] = useState('connected')
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
   const clinicId = doctorData?.clinicId || doctorData?.clinic_id
@@ -27,40 +27,30 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
   const fetchData = async () => {
     if (!clinicId) return
     try {
-      const response = await api.getQueueStatus(clinicId)
-      if (response.success) {
-        // Backend v5.0 returns data in a specific format
-        const allData = response.data || []
-        const waiting = allData.filter(p => p.status === 'WAITING')
-        const inProgress = allData.find(p => p.status === 'IN_PROGRESS')
-        const completed = allData.filter(p => p.status === 'DONE')
-
-        setPatients(waiting)
+      setConnectionStatus('loading')
+      const response = await api.getClinicWaitingCount(clinicId)
+      
+      if (response.success || response.data) {
+        setConnectionStatus('connected')
+        const waitingCount = response.data?.waitingCount || response.data || 0
         
-        if (inProgress) {
-          setCurrentPatient(inProgress)
-          setExamStartTime(inProgress.activated_at ? new Date(inProgress.activated_at) : new Date())
-        } else {
-          setCurrentPatient(null)
-          setExamStartTime(null)
-        }
-
-        // Stats calculation
-        setStats({
-          totalToday: allData.length,
-          completedToday: completed.length,
-          waitingNow: waiting.length,
-          avgExamTime: 0 // Can be calculated if needed
-        })
+        setStats(prev => ({
+          ...prev,
+          waitingNow: waitingCount
+        }))
+      } else {
+        setConnectionStatus('error')
+        console.error('API Error:', response.error)
       }
     } catch (err) {
+      setConnectionStatus('error')
       console.error('Error fetching data:', err)
     }
   }
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 5000)
+    const interval = setInterval(fetchData, 3000)
     return () => clearInterval(interval)
   }, [clinicId])
 
@@ -79,11 +69,11 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
     setLoading(true)
     try {
       const result = await api.callNextPatient(clinicId)
-      if (result.success && result.data?.queueId) {
+      if (result.success && result.data) {
         pushNotif({
           type: 'success',
           title: language === 'ar' ? 'تم الاستدعاء' : 'Patient Called',
-          message: language === 'ar' ? `تم استدعاء المراجع رقم ${result.data.number}` : `Called patient ${result.data.number}`
+          message: language === 'ar' ? `تم استدعاء المراجع رقم ${result.data.display_number}` : `Called patient ${result.data.display_number}`
         })
         fetchData()
       } else {
@@ -96,129 +86,196 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
     }
   }
 
-  const handleStartExam = async (patientId) => {
+  const handleStartExam = async (queueId) => {
+    if (!queueId) return
     setLoading(true)
     try {
-      const result = await api.startExam(patientId)
+      const result = await api.startExam(queueId)
       if (result.success) {
-        pushNotif({ type: 'success', message: language === 'ar' ? 'بدء الفحص' : 'Exam started' })
+        setCurrentPatient(result.data)
+        setExamStartTime(new Date())
+        pushNotif({
+          type: 'success',
+          title: language === 'ar' ? 'بدء الفحص' : 'Exam Started',
+          message: language === 'ar' ? 'تم بدء فحص المراجع' : 'Patient exam started'
+        })
         fetchData()
       }
     } catch (err) {
-      pushNotif({ type: 'error', message: language === 'ar' ? 'فشل بدء الفحص' : 'Start failed' })
+      pushNotif({ type: 'error', message: language === 'ar' ? 'فشل بدء الفحص' : 'Failed to start exam' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCompleteExam = async () => {
-    if (!currentPatient) return
+  const handleAdvanceQueue = async (queueId) => {
+    if (!queueId || !clinicId) return
     setLoading(true)
     try {
-      const result = await api.advanceQueue(currentPatient.id, clinicId, currentPatient.version)
+      const result = await api.advanceQueue(queueId, clinicId)
       if (result.success) {
-        pushNotif({ type: 'success', message: language === 'ar' ? 'تم إكمال الفحص' : 'Exam completed' })
+        setCurrentPatient(null)
+        setExamStartTime(null)
+        pushNotif({
+          type: 'success',
+          title: language === 'ar' ? 'تم الانتقال' : 'Advanced',
+          message: language === 'ar' ? 'تم نقل المراجع للعيادة التالية' : 'Patient moved to next clinic'
+        })
         fetchData()
       }
     } catch (err) {
-      pushNotif({ type: 'error', message: language === 'ar' ? 'فشل إكمال الفحص' : 'Complete failed' })
+      pushNotif({ type: 'error', message: language === 'ar' ? 'فشل الانتقال' : 'Failed to advance' })
     } finally {
       setLoading(false)
     }
   }
+
+  const t = (ar, en) => language === 'ar' ? ar : en
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
-      <NotificationSystem notifications={notifList} onDismiss={dismissNotif} />
-      
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <img src="/mms-logo.png" alt="Logo" className="w-12 h-12" />
-            <div>
-              <h1 className="text-xl font-bold">{clinicName}</h1>
-              <p className="text-sm text-gray-400">{language === 'ar' ? 'لوحة تحكم الطبيب' : 'Doctor Dashboard'}</p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">{t('لوحة الطبيب', 'Doctor Dashboard')}</h1>
+            <p className="text-gray-300">{clinicName}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={toggleLanguage}><Globe className="w-4 h-4 mr-2" />{language === 'ar' ? 'EN' : 'AR'}</Button>
-            <Button variant="ghost" size="sm" className="text-red-400" onClick={onLogout}><LogOut className="w-4 h-4 mr-2" />{language === 'ar' ? 'خروج' : 'Exit'}</Button>
+          <div className="flex gap-4">
+            <button
+              onClick={toggleLanguage}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+            >
+              <Globe size={20} />
+              {language === 'ar' ? 'EN' : 'AR'}
+            </button>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2"
+            >
+              <LogOut size={20} />
+              {t('تسجيل الخروج', 'Logout')}
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Users className="w-8 h-8 text-blue-500" />
-              <div><p className="text-xs text-gray-400">{language === 'ar' ? 'إجمالي اليوم' : 'Total Today'}</p><p className="text-xl font-bold">{stats.totalToday}</p></div>
+        {/* Connection Status */}
+        <div className="mb-6">
+          <div className={`p-4 rounded-lg flex items-center gap-2 ${
+            connectionStatus === 'connected' ? 'bg-green-900/30 border border-green-500' :
+            connectionStatus === 'loading' ? 'bg-yellow-900/30 border border-yellow-500' :
+            'bg-red-900/30 border border-red-500'
+          }`}>
+            <div className={`w-3 h-3 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-500' :
+              connectionStatus === 'loading' ? 'bg-yellow-500 animate-pulse' :
+              'bg-red-500'
+            }`} />
+            <span className="text-white">
+              {connectionStatus === 'connected' ? t('متصل', 'Connected') :
+               connectionStatus === 'loading' ? t('جاري الاتصال...', 'Connecting...') :
+               t('خطأ في الاتصال', 'Connection Error')}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card className="bg-gradient-to-br from-blue-900 to-blue-800 border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-gray-300 text-sm">{t('الانتظار الآن', 'Waiting Now')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">{stats.waitingNow}</div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Clock className="w-8 h-8 text-yellow-500" />
-              <div><p className="text-xs text-gray-400">{language === 'ar' ? 'في الانتظار' : 'Waiting'}</p><p className="text-xl font-bold">{stats.waitingNow}</p></div>
+
+          <Card className="bg-gradient-to-br from-green-900 to-green-800 border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-gray-300 text-sm">{t('المكتمل اليوم', 'Completed Today')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">{stats.completedToday}</div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-4 flex items-center gap-3">
-              <CheckCircle className="w-8 h-8 text-green-500" />
-              <div><p className="text-xs text-gray-400">{language === 'ar' ? 'تم فحصهم' : 'Completed'}</p><p className="text-xl font-bold">{stats.completedToday}</p></div>
+
+          <Card className="bg-gradient-to-br from-purple-900 to-purple-800 border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-gray-300 text-sm">{t('الإجمالي اليوم', 'Total Today')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">{stats.totalToday}</div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Activity className="w-8 h-8 text-purple-500" />
-              <div><p className="text-xs text-gray-400">{language === 'ar' ? 'الحالة' : 'Status'}</p><p className="text-sm font-bold text-green-400">{language === 'ar' ? 'متصل' : 'Online'}</p></div>
+
+          <Card className="bg-gradient-to-br from-orange-900 to-orange-800 border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-gray-300 text-sm">{t('متوسط الوقت', 'Avg Time')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">{stats.avgExamTime}m</div>
             </CardContent>
           </Card>
         </div>
 
-        {currentPatient ? (
-          <Card className="bg-blue-900/20 border-blue-500/50">
-            <CardHeader><CardTitle className="text-blue-400">{language === 'ar' ? 'المراجع الحالي' : 'Current Patient'}</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
+        {/* Current Patient */}
+        {currentPatient && (
+          <Card className="bg-gradient-to-br from-yellow-900 to-yellow-800 border-2 border-yellow-500 mb-8">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Activity size={24} className="text-yellow-300" />
+                {t('المراجع الحالي', 'Current Patient')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-3xl font-bold">#{currentPatient.display_number}</p>
-                  <p className="text-sm text-gray-400">{currentPatient.patient_id}</p>
+                  <p className="text-gray-300 text-sm">{t('الرقم', 'Number')}</p>
+                  <p className="text-2xl font-bold text-white">{currentPatient.display_number}</p>
                 </div>
-                <Button onClick={handleCompleteExam} disabled={loading} className="bg-green-600 hover:bg-green-700">
-                  <UserCheck className="w-4 h-4 mr-2" /> {language === 'ar' ? 'إكمال الفحص' : 'Complete Exam'}
-                </Button>
+                <div>
+                  <p className="text-gray-300 text-sm">{t('الحالة', 'Status')}</p>
+                  <p className="text-2xl font-bold text-white">{currentPatient.status}</p>
+                </div>
               </div>
+              <button
+                onClick={() => handleAdvanceQueue(currentPatient.id)}
+                disabled={loading}
+                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg font-bold flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={20} />
+                {t('انتقال للعيادة التالية', 'Move to Next Clinic')}
+              </button>
             </CardContent>
           </Card>
-        ) : (
-          <div className="text-center py-12 bg-gray-800/50 rounded-xl border border-dashed border-gray-700">
-            <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-6">{language === 'ar' ? 'لا يوجد مراجع قيد الفحص حالياً' : 'No patient currently in exam'}</p>
-            <Button onClick={handleCallNext} disabled={loading || stats.waitingNow === 0} size="lg" className="bg-blue-600 hover:bg-blue-700">
-              {language === 'ar' ? 'نداء المراجع التالي' : 'Call Next Patient'}
-            </Button>
-          </div>
         )}
 
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader><CardTitle>{language === 'ar' ? 'قائمة الانتظار' : 'Waiting List'}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {patients.length > 0 ? patients.map(p => (
-                <div key={p.id} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg border border-gray-600">
-                  <div className="flex items-center gap-4">
-                    <span className="text-xl font-bold">#{p.display_number}</span>
-                    <span className="text-sm text-gray-400">{p.patient_id}</span>
-                  </div>
-                  <Button size="sm" onClick={() => handleStartExam(p.id)} disabled={loading || !!currentPatient}>
-                    {language === 'ar' ? 'بدء' : 'Start'}
-                  </Button>
-                </div>
-              )) : (
-                <p className="text-center text-gray-500 py-4">{language === 'ar' ? 'القائمة فارغة' : 'List is empty'}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={handleCallNext}
+            disabled={loading}
+            className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-lg font-bold text-lg flex items-center justify-center gap-2"
+          >
+            <Users size={24} />
+            {t('استدعاء التالي', 'Call Next Patient')}
+          </button>
+
+          <button
+            onClick={() => currentPatient && handleStartExam(currentPatient.id)}
+            disabled={loading || !currentPatient}
+            className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-lg font-bold text-lg flex items-center justify-center gap-2"
+          >
+            <CheckCircle size={24} />
+            {t('بدء الفحص', 'Start Exam')}
+          </button>
+        </div>
+
+        {/* Notifications */}
+        <NotificationSystem notifications={notifList} onDismiss={dismissNotif} />
       </div>
     </div>
   )
 }
+
+export default DoctorDashboard
