@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
@@ -233,7 +233,7 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
           <div className="flex-1 relative">
             <QRScanner
               onResult={(result) => {
-                setPatientId(result)
+                setPatientId(normalizeArabicNumbers(result))
                 setShowQRScanner(false)
               }}
               onError={(err) => console.error(err)}
