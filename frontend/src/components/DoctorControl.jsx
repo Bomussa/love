@@ -29,9 +29,8 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     waiting: 0,
-    inProgress: 0,
+    called: 0,
     completed: 0,
-    missed: 0,
     avgWaitTime: 0
   });
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -129,8 +128,8 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
       setPatients(enrichedData);
       calculateStats(enrichedData);
       
-      // Set current patient (in_progress)
-      const current = enrichedData.find(p => p.status === 'in_progress');
+      // Set current patient (called)
+      const current = enrichedData.find(p => p.status === 'called');
       setCurrentPatient(current || null);
 
     } catch (e) {
@@ -146,23 +145,22 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
    */
   const calculateStats = (data) => {
     const waiting = data.filter(p => p.status === 'waiting').length;
-    const inProgress = data.filter(p => p.status === 'in_progress').length;
+    const called = data.filter(p => p.status === 'called').length;
     const completed = data.filter(p => p.status === 'completed').length;
-    const missed = data.filter(p => p.status === 'missed').length;
     
-    // Calculate average wait time
-    const completedPatients = data.filter(p => p.status === 'completed' && p.entered_at && p.called_at);
+    // Calculate average wait time (time between called_at and completed_at)
+    const completedPatients = data.filter(p => p.status === 'completed' && p.completed_at && p.called_at);
     let avgWaitTime = 0;
     if (completedPatients.length > 0) {
       const totalWait = completedPatients.reduce((sum, p) => {
-        const enter = new Date(p.entered_at).getTime();
-        const call = new Date(p.called_at).getTime();
-        return sum + (enter - call);
+        const completed = new Date(p.completed_at).getTime();
+        const called = new Date(p.called_at).getTime();
+        return sum + (completed - called);
       }, 0);
       avgWaitTime = Math.round(totalWait / completedPatients.length / 60000); // minutes
     }
 
-    setStats({ waiting, inProgress, completed, missed, avgWaitTime });
+    setStats({ waiting, called, completed, avgWaitTime });
   };
 
   /**
@@ -184,7 +182,7 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
       const { error } = await supabase
         .from('queues')
         .update({
-          status: 'in_progress',
+          status: 'called',
           called_at: new Date().toISOString(),
           doctor_id: doctorId,
           updated_at: new Date().toISOString()
@@ -238,30 +236,31 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   };
 
   /**
-   * Mark patient as missed
+   * Mark patient as no-show (cancelled)
    */
-  const markMissed = async (patient) => {
+  const markNoShow = async (patient) => {
     try {
       const { error } = await supabase
         .from('queues')
         .update({
-          status: 'missed',
+          status: 'completed',
+          completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', patient.id);
 
       if (error) throw error;
 
-      toast.info(translate('تم تسجيل الغياب', 'Absence recorded'));
+      toast.info(translate('تم إلغاء الدور', 'Queue cancelled'));
       
-      await logActivity('patient_missed', `تم تسجيل غياب المريض ${patient.real_patient_id}`,
+      await logActivity('patient_cancelled', `تم إلغاء دور المريض ${patient.real_patient_id}`,
         { patient_id: patient.patient_id, queue_id: patient.id });
 
       loadPatients();
 
     } catch (e) {
-      console.error('Error marking missed:', e);
-      toast.error(translate('خطأ في تسجيل الغياب', 'Error recording absence'));
+      console.error('Error cancelling patient:', e);
+      toast.error(translate('خطأ في إلغاء الدور', 'Error cancelling queue'));
     }
   };
 
@@ -308,7 +307,6 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
         .update({
           status: 'waiting',
           called_at: null,
-          entered_at: null,
           completed_at: null,
           updated_at: new Date().toISOString()
         })
@@ -399,7 +397,7 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard 
           icon={<Users className="text-blue-400" />}
           value={stats.waiting}
@@ -408,8 +406,8 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
         />
         <StatCard 
           icon={<Activity className="text-yellow-400" />}
-          value={stats.inProgress}
-          label={translate('قيد الفحص', 'In Progress')}
+          value={stats.called}
+          label={translate('تم الاستدعاء', 'Called')}
           color="yellow"
         />
         <StatCard 
@@ -417,12 +415,6 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
           value={stats.completed}
           label={translate('تم الفحص', 'Completed')}
           color="green"
-        />
-        <StatCard 
-          icon={<UserX className="text-red-400" />}
-          value={stats.missed}
-          label={translate('تغيب', 'Missed')}
-          color="red"
         />
         <StatCard 
           icon={<Clock className="text-purple-400" />}
@@ -460,9 +452,11 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-400">{translate('مدة الفحص', 'Exam Duration')}</div>
+              <div className="text-sm text-gray-400">{translate('وقت الاستدعاء', 'Called At')}</div>
               <div className="font-mono text-lg text-[#C9A54C]">
-                {formatDuration(currentPatient.entered_at)}
+                {currentPatient.called_at 
+                  ? new Date(currentPatient.called_at).toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+                  : '-'}
               </div>
             </div>
           </div>
@@ -475,11 +469,11 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
               {translate('إنهاء الفحص', 'Complete')}
             </button>
             <button
-              onClick={() => markMissed(currentPatient)}
+              onClick={() => markNoShow(currentPatient)}
               className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium flex items-center gap-2 transition-all"
             >
               <UserX size={20} />
-              {translate('تغيب', 'Missed')}
+              {translate('إلغاء', 'Cancel')}
             </button>
           </div>
         </div>
@@ -521,9 +515,8 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
         >
           <option value="all">{translate('الكل', 'All')}</option>
           <option value="waiting">{translate('في الانتظار', 'Waiting')}</option>
-          <option value="in_progress">{translate('قيد الفحص', 'In Progress')}</option>
+          <option value="called">{translate('تم الاستدعاء', 'Called')}</option>
           <option value="completed">{translate('تم الفحص', 'Completed')}</option>
-          <option value="missed">{translate('تغيب', 'Missed')}</option>
         </select>
       </div>
 
@@ -564,10 +557,10 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
                   }
                 </td>
                 <td className="p-4">
-                  {patient.status === 'in_progress' 
-                    ? <span className="font-mono text-[#C9A54C]">{formatDuration(patient.entered_at)}</span>
-                    : patient.status === 'completed' && patient.entered_at && patient.completed_at
-                      ? formatDuration(patient.entered_at, patient.completed_at)
+                  {patient.status === 'called' 
+                    ? <span className="font-mono text-[#C9A54C]">{formatDuration(patient.called_at)}</span>
+                    : patient.status === 'completed' && patient.called_at && patient.completed_at
+                      ? formatDuration(patient.called_at, patient.completed_at)
                       : '-'
                   }
                 </td>
@@ -576,9 +569,9 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
                     {patient.status === 'waiting' && (
                       <>
                         <button
-                          onClick={() => markMissed(patient)}
+                          onClick={() => markNoShow(patient)}
                           className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
-                          title={translate('تسجيل غياب', 'Mark Missed')}
+                          title={translate('إلغاء الدور', 'Cancel Queue')}
                         >
                           <UserX size={16} />
                         </button>
@@ -591,7 +584,7 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
                         </button>
                       </>
                     )}
-                    {(patient.status === 'completed' || patient.status === 'missed') && (
+                    {patient.status === 'completed' && (
                       <button
                         onClick={() => returnToQueue(patient)}
                         className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-all"
@@ -647,9 +640,8 @@ const StatCard = ({ icon, value, label, color }) => {
 const StatusBadge = ({ status, t }) => {
   const statusConfig = {
     waiting: { color: 'bg-blue-500/20 text-blue-400', label: t('في الانتظار', 'Waiting') },
-    in_progress: { color: 'bg-yellow-500/20 text-yellow-400', label: t('قيد الفحص', 'In Progress') },
+    called: { color: 'bg-yellow-500/20 text-yellow-400', label: t('تم الاستدعاء', 'Called') },
     completed: { color: 'bg-green-500/20 text-green-400', label: t('تم الفحص', 'Completed') },
-    missed: { color: 'bg-red-500/20 text-red-400', label: t('تغيب', 'Missed') },
   };
 
   const config = statusConfig[status] || statusConfig.waiting;
