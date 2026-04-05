@@ -38,6 +38,29 @@ const PATTERNS = {
 // ============================================================================
 
 /**
+ * تحويل الأرقام العربية/الفارسية إلى إنجليزية
+ * @param {string|number} input
+ * @returns {string}
+ */
+export function normalizeNumerals(input = '') {
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+  const easternArabic = '۰۱۲۳۴۵۶۷۸۹';
+
+  return String(input)
+    .split('')
+    .map((char) => {
+      const arIndex = arabicIndic.indexOf(char);
+      if (arIndex !== -1) return String(arIndex);
+
+      const faIndex = easternArabic.indexOf(char);
+      if (faIndex !== -1) return String(faIndex);
+
+      return char;
+    })
+    .join('');
+}
+
+/**
  * التحقق من الرقم العسكري
  * @param {string} id - الرقم العسكري
  * @returns {{ isValid: boolean, error?: string }}
@@ -47,7 +70,7 @@ export function validateMilitaryId(id) {
     return { isValid: false, error: 'الرقم العسكري مطلوب' };
   }
 
-  const trimmed = id.trim();
+  const trimmed = normalizeNumerals(id).trim();
 
   if (trimmed.length < 2) {
     return { isValid: false, error: 'الرقم العسكري قصير جداً (الحد الأدنى 2 أرقام)' };
@@ -231,5 +254,6 @@ export default {
   validateLoginData,
   validateAdminData,
   sanitizeInput,
+  normalizeNumerals,
   PATTERNS,
 };
