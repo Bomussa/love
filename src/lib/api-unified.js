@@ -1,23 +1,23 @@
 /**
- * api-unified.js — MMC Frontend API v7.0 FINAL
- * Single source of truth: ALL data from Supabase directly
+ * api-unified.js — MMC Frontend API v8.0 PRODUCTION
+ * Single source of truth: ALL data from Backend API only
  * ✅ PIN system PERMANENTLY REMOVED
- * ✅ createQueue() calls /queue/create (the fixed endpoint)
+ * ✅ NO direct Supabase access - all through backend API
  * ✅ Doctor-controlled advance flow
- * ✅ Live Supabase queries for clinics, queues, stats
- * ✅ Offline fallback with sync queue
  * ✅ Idempotency key support
  * ✅ Version control for concurrency
  */
-
-import { supabase } from './supabase-client';
 
 const API_BASE = import.meta.env?.VITE_API_BASE?.trim() || '';
 
 // ── HTTP helper (falls back through configured bases) ──────────────────────────
 async function apiRequest(endpoint, options = {}) {
   const bases = [API_BASE, window.location.origin].filter(Boolean);
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const headers = { 
+    'Content-Type': 'application/json',
+    'X-API-Version': 'v1',
+    ...options.headers 
+  };
   let lastError = null;
 
   for (const base of bases) {
@@ -26,7 +26,10 @@ async function apiRequest(endpoint, options = {}) {
       const text = await r.text();
       let data;
       try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-      if (!r.ok) { lastError = new Error(data?.error || `HTTP ${r.status}`); continue; }
+      if (!r.ok) { 
+        lastError = new Error(data?.error || data?.message || `HTTP ${r.status}`); 
+        continue; 
+      }
       return data;
     } catch (e) { lastError = e; }
   }
@@ -70,19 +73,10 @@ if (typeof window !== 'undefined') {
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function patientLogin(patientId, gender) {
-  try {
-    // Upsert patient in Supabase directly
-    const { data, error } = await supabase
-      .from('patients')
-      .upsert({ patient_id: patientId, gender: gender || 'male', last_active: new Date().toISOString() }, { onConflict: 'patient_id' })
-      .select().single();
-
-    if (error) throw error;
-    return { success: true, data: { ...data, id: patientId, sessionId: patientId, personalId: patientId, gender: data.gender } };
-  } catch (err) {
-    console.warn('[patientLogin] Supabase failed, using API fallback:', err.message);
-    return apiRequest('/api/v1/patient/login', { method: 'POST', body: JSON.stringify({ personalId: patientId, gender }) });
-  }
+  return apiRequest('/api/v1/patient/login', { 
+    method: 'POST', 
+    body: JSON.stringify({ personalId: patientId, gender }) 
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -100,7 +94,7 @@ async function createQueue(sessionId, examType, gender, idempotencyKey = null) {
 }
 
 async function enterQueue(clinicId, userId, isAutoEntry = false, name = null, queueType = null) {
-  // Legacy shim — routes to /queue/enter which backend redirects to create logic
+  // Legacy shim — routes to /queue/enter
   return apiRequest('/api/v1/queue/enter', {
     method: 'POST',
     body: JSON.stringify({ clinic: clinicId, user: userId, isAutoEntry, name, queueType }),
@@ -113,71 +107,50 @@ async function getQueueStatus(clinicOrQueueId, isClinic = false) {
 }
 
 async function getQueuePosition(clinicId, userId) {
-  // Try Supabase directly first for real-time accuracy
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const { data: waiting } = await supabase
-      .from('queues').select('id,display_number,patient_id')
-      .eq('clinic_id', clinicId).eq('queue_date', today).eq('status', 'WAITING')
-      .order('display_number');
-
-    const { data: userQ } = await supabase
-      .from('queues').select('id,display_number,entered_at')
-      .eq('patient_id', userId).eq('queue_date', today)
-      .not('status', 'in', '("DONE","CANCELLED")').limit(1).maybeSingle();
-
-    const pos = userQ && waiting ? waiting.findIndex(w => w.id === userQ.id) : -1;
-    return {
-      success: true,
-      display_number: userQ?.display_number || null,
-      current_number: waiting?.[0]?.display_number ? waiting[0].display_number - 1 : 0,
-      ahead: pos >= 0 ? pos : 0,
-      total_waiting: waiting?.length || 0,
-      entered_at: userQ?.entered_at || null,
-    };
-  } catch {
-    return apiRequest(`/api/v1/queue/position?clinic=${clinicId}&user=${userId}`);
-  }
+  return apiRequest(`/api/v1/queue/position?clinic=${clinicId}&user=${userId}`);
 }
 
 async function getQueueCount(clinicId) {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const { count } = await supabase.from('queues')
-      .select('*', { count: 'exact', head: true })
-      .eq('clinic_id', clinicId).eq('queue_date', today).eq('status', 'WAITING');
-    return count || 0;
+    const result = await getQueueStatus(clinicId, true);
+    return result?.waitingCount || 0;
   } catch { return 0; }
 }
 
 async function callNextPatient(clinicId, doctorId = null) {
-  return apiRequest('/api/v1/queue/call', { method: 'POST', body: JSON.stringify({ clinicId, doctorId }) });
+  return apiRequest('/api/v1/queue/call', { 
+    method: 'POST', 
+    body: JSON.stringify({ clinicId, doctorId }) 
+  });
 }
 
 async function startExamination(queueId, doctorId = null) {
-  return apiRequest('/api/v1/queue/start', { method: 'POST', body: JSON.stringify({ queueId, doctorId }) });
+  return apiRequest('/api/v1/queue/start', { 
+    method: 'POST', 
+    body: JSON.stringify({ queueId, doctorId }) 
+  });
 }
 
 async function advancePatient(queueId, doctorClinicId = null, version = null) {
-  return apiRequest('/api/v1/queue/advance', { method: 'POST', body: JSON.stringify({ queueId, doctorClinicId, version }) });
+  return apiRequest('/api/v1/queue/advance', { 
+    method: 'POST', 
+    body: JSON.stringify({ queueId, doctorClinicId, version }) 
+  });
 }
 
 async function queueDone(clinicId, userId) {
-  return apiRequest('/api/v1/queue/done', { method: 'POST', body: JSON.stringify({ clinicId, patientId: userId }) });
+  return apiRequest('/api/v1/queue/done', { 
+    method: 'POST', 
+    body: JSON.stringify({ clinicId, patientId: userId }) 
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// CLINICS — from Supabase (single source of truth)
+// CLINICS — from Backend API (single source of truth)
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function getClinics() {
-  try {
-    const { data, error } = await supabase.from('clinics').select('*').eq('is_active', true).order('name_ar');
-    if (error) throw error;
-    return { success: true, data: data || [] };
-  } catch {
-    return apiRequest('/api/v1/clinics');
-  }
+  return apiRequest('/api/v1/clinics');
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -185,7 +158,10 @@ async function getClinics() {
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function createRoute(patientId, examType, gender, stations) {
-  return apiRequest('/api/v1/route/create', { method: 'POST', body: JSON.stringify({ patientId, examType, gender, stations }) });
+  return apiRequest('/api/v1/route/create', { 
+    method: 'POST', 
+    body: JSON.stringify({ patientId, examType, gender, stations }) 
+  });
 }
 
 async function getRoute(patientId) {
@@ -193,28 +169,26 @@ async function getRoute(patientId) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// STATS — from Supabase directly
+// STATS — from Backend API
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function getQueues() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase.from('queues').select('status,clinic_id,display_number,patient_id').eq('queue_date', today);
-    const all = data || [];
-    return { success: true, data: { total: all.length, waiting: all.filter(q => q.status === 'WAITING').length, in_progress: all.filter(q => q.status === 'IN_PROGRESS').length, done: all.filter(q => q.status === 'DONE').length } };
-  } catch {
-    return apiRequest('/api/v1/stats/queues');
-  }
+  return apiRequest('/api/v1/stats/queues');
 }
 
-async function getQueueStats() { return getQueues(); }
+async function getQueueStats() { 
+  return apiRequest('/api/v1/stats/dashboard'); 
+}
 
 // ════════════════════════════════════════════════════════════════════════════════
 // ADMIN
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function adminLogin(username, password) {
-  return apiRequest('/api/v1/admin/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+  return apiRequest('/api/v1/admin/login', { 
+    method: 'POST', 
+    body: JSON.stringify({ username, password }) 
+  });
 }
 
 async function recoverQueues() {
@@ -222,25 +196,20 @@ async function recoverQueues() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// SETTINGS — live from Supabase
+// SETTINGS — from Backend API
 // ════════════════════════════════════════════════════════════════════════════════
 
 async function getSettings() {
-  try {
-    const { data } = await supabase.from('system_settings').select('*');
-    const settings = {};
-    (data || []).forEach(s => { settings[s.key || s.id] = s.value; });
-    return { success: true, data: { pin_system_enabled: false, pin_system_visible: false, queue_system_enabled: true, doctor_control_enabled: true, ...settings } };
-  } catch {
-    return { success: true, data: { pin_system_enabled: false, queue_system_enabled: true, doctor_control_enabled: true } };
-  }
+  return apiRequest('/api/v1/settings');
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
 // HEALTH
 // ════════════════════════════════════════════════════════════════════════════════
 
-async function getHealthStatus() { return apiRequest('/api/v1/health'); }
+async function getHealthStatus() { 
+  return apiRequest('/api/v1/health'); 
+}
 
 // ════════════════════════════════════════════════════════════════════════════════
 // EXPORTS
@@ -248,15 +217,27 @@ async function getHealthStatus() { return apiRequest('/api/v1/health'); }
 
 const api = {
   patientLogin,
-  createQueue, enterQueue,
-  getQueueStatus, getQueuePosition, getQueueCount,
-  callNextPatient, startExamination, advancePatient, queueDone,
-  getClinics, getClinicOccupancy: getQueues,
-  createRoute, getRoute,
-  getQueues, getQueueStats, getActiveQueue: getQueues,
+  createQueue, 
+  enterQueue,
+  getQueueStatus, 
+  getQueuePosition, 
+  getQueueCount,
+  callNextPatient, 
+  startExamination, 
+  advancePatient, 
+  queueDone,
+  getClinics, 
+  getClinicOccupancy: getQueues,
+  createRoute, 
+  getRoute,
+  getQueues, 
+  getQueueStats, 
+  getActiveQueue: getQueues,
   getDashboardStats: getQueueStats,
-  adminLogin, recoverQueues,
-  getSettings, getHealthStatus,
+  adminLogin, 
+  recoverQueues,
+  getSettings, 
+  getHealthStatus,
 };
 
 export default api;

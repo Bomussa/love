@@ -8,7 +8,8 @@
  */
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+// NOTE: All data now comes from Backend API only - no direct Supabase access
+import { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
 import api from './lib/api-unified';
 import authService from './lib/auth-service';
 import getDynamicMedicalPathway from './lib/dynamic-pathways';
@@ -184,12 +185,18 @@ function App() {
   const handleDoctorLogin = async (credentials) => {
     try {
       const [username, password] = credentials.split(':');
-      const { data: doctor, error } = await supabase
-        .from('doctors').select('*').eq('username', username).eq('password', password).single();
-      if (error || !doctor) {
+      // Use API instead of direct Supabase
+      const result = await api.adminLogin(username, password);
+      if (!result.success || !result.data) {
         showToast(language === 'ar' ? '❌ بيانات غير صحيحة' : '❌ Invalid credentials', 'error'); return;
       }
-      const session = { id: doctor.id, name: doctor.name, clinic_id: doctor.clinic_id, clinic_name: doctor.clinic_name, expiresAt: new Date(Date.now() + 86_400_000).toISOString() };
+      const session = { 
+        id: result.data.id, 
+        name: result.data.username, 
+        clinic_id: result.data.clinic_id || 'registration', 
+        clinic_name: result.data.clinic_name || 'Registration',
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString() 
+      };
       localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
       setDoctorSession(session);
       setCurrentView('doctor');

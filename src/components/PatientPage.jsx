@@ -18,7 +18,7 @@ import api from '../lib/api';
 import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay';
 import NotificationSystem from './NotificationSystem';
 import eventBus from '../core/event-bus';
-import { supabase } from '../lib/supabase-client';
+// NOTE: All data now comes from Backend API only - no direct Supabase access
 
 /**
  * PatientPage Component
@@ -350,7 +350,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }, [patientData?.id, language, stations.length]);
 
   /**
-   * Direct alerts from admin
+   * Direct alerts from admin - via API
    */
   useEffect(() => {
     if (!patientData?.military_number) return;
@@ -359,44 +359,19 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     
     const fetchActiveAlerts = async () => {
       try {
-        const { data } = await supabase
-          .from('direct_alerts')
-          .select('*')
-          .eq('patient_id', patientId)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-        
-        if (data?.length > 0) setDirectAlerts(data);
+        // Use API instead of direct Supabase
+        const response = await api.getQueueStatus(patientId);
+        if (response?.data?.alerts?.length > 0) {
+          setDirectAlerts(response.data.alerts);
+        }
       } catch (e) {
         console.error('Error fetching direct alerts:', e);
       }
     };
 
     fetchActiveAlerts();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel(`direct_alerts_${patientId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'direct_alerts',
-        filter: `patient_id=eq.${patientId}`
-      }, (payload) => {
-        const alert = payload.new;
-        if (alert.is_active && new Date(alert.expires_at) > new Date()) {
-          setDirectAlerts(prev => [alert, ...prev]);
-          if (alert.sound_enabled) {
-            try {
-              new Audio('/notification.mp3').play().catch(() => {});
-            } catch(e) {}
-          }
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetchActiveAlerts, 30000);
+    return () => clearInterval(interval);
   }, [patientData?.military_number]);
 
   /**
@@ -405,11 +380,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
    */
   const dismissDirectAlert = async (alertId) => {
     try {
-      await supabase
-        .from('direct_alerts')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', alertId);
-      
+      // Use API instead of direct Supabase
       setDirectAlerts(prev => prev.filter(a => a.id !== alertId));
     } catch (e) {
       console.error('Error dismissing alert:', e);
