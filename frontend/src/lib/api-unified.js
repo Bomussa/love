@@ -1,88 +1,100 @@
 /**
- * Unified API Service - MMC v6.0 (LOCKED)
+ * Unified API Service - MMC v7.0 (FINAL)
  * ✅ All queue logic moved to Backend (love-api)
  * ✅ PIN system REMOVED
- * ✅ Doctor-Only Control
+ * ✅ Idempotency Key Support
+ * ✅ Versioning Support (X-API-Version: 7.0)
  * ✅ Performance Optimized
  */
 
 const API_BASE = '/api/v1';
 
+// Generate a simple idempotency key
+const generateIdempotencyKey = () => {
+  return `idemp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
 const api = {
+  // Helper for fetch with headers
+  async _fetch(endpoint, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-API-Version': '7.0',
+      ...options.headers
+    };
+
+    // Add idempotency key for POST/PATCH/PUT if not present
+    if (['POST', 'PATCH', 'PUT'].includes(options.method) && !headers['Idempotency-Key']) {
+      headers['Idempotency-Key'] = generateIdempotencyKey();
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers
+    });
+    return await response.json();
+  },
+
   // --- Patients ---
   async patientLogin(personalId, gender) {
-    const res = await fetch(`${API_BASE}/patient/login`, {
+    return this._fetch('/patient/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ personalId, gender })
     });
-    return await res.json();
   },
 
   // --- Queue ---
   async enterQueue(patientId, examType, clinicId = null) {
-    const res = await fetch(`${API_BASE}/queue/create`, {
+    return this._fetch('/queue/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, examType, clinicId })
     });
-    return await res.json();
   },
 
   async getQueueStatus(patientId) {
-    const res = await fetch(`${API_BASE}/queue/status?patientId=${patientId}`);
-    return await res.json();
+    const url = patientId ? `/queue/status?patientId=${patientId}` : '/queue/status';
+    return this._fetch(url);
   },
 
   async getClinicWaitingCount(clinicId) {
-    const res = await fetch(`${API_BASE}/queue/status?clinicId=${clinicId}`);
-    const json = await res.json();
+    const json = await this._fetch(`/queue/status?clinicId=${clinicId}`);
     return json.success ? json.data.waitingCount : 0;
   },
 
   // --- Doctor Controls ---
   async callNextPatient(clinicId) {
-    const res = await fetch(`${API_BASE}/queue/call`, {
+    return this._fetch('/queue/call', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinicId })
     });
-    return await res.json();
   },
 
   async startExam(queueId) {
-    const res = await fetch(`${API_BASE}/queue/start`, {
+    return this._fetch('/queue/start', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ queueId })
     });
-    return await res.json();
   },
 
-  async advanceQueue(queueId, clinicId) {
-    const res = await fetch(`${API_BASE}/queue/advance`, {
+  async advanceQueue(queueId, clinicId, expectedVersion = null) {
+    return this._fetch('/queue/advance', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ queueId, clinicId })
+      body: JSON.stringify({ queueId, clinicId, expectedVersion })
     });
-    return await res.json();
   },
 
   // --- Clinics ---
   async getClinics() {
-    const res = await fetch(`${API_BASE}/clinics`);
-    return await res.json();
+    return this._fetch('/clinics');
   },
 
   // --- Settings ---
   async getSettings() {
-    const res = await fetch(`${API_BASE}/settings`);
-    return await res.json();
+    return this._fetch('/settings');
   },
 
   async getHealth() {
-    const res = await fetch(`${API_BASE}/health`);
-    return await res.json();
+    return this._fetch('/health');
   }
 };
 

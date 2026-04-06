@@ -61,7 +61,7 @@ function mapClinicCodesInstant(codes) {
 }
 
 // Main export - instant pathway
-export default async function getDynamicMedicalPathway(examType, gender = 'male') {
+export async function getDynamicMedicalPathway(examType, gender = 'male') {
   try {
     // Return instant pathway without any async calls
     const path = getPathInstant(examType);

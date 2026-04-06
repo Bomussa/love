@@ -3193,17 +3193,14 @@ const SettingsSection = ({ language, t }) => {
           </div>
         </div>
 
-        {/* إعدادات البن التلقائي */}
-        <div className="mt-6 pt-6 border-t border-whi          {/* PIN System Removed - v6.0 */}ext-sm text-gray-400 mb-2">{t('وقت إيقاف التسجيل', 'Registration Stop Time')}</label>
-              <input
-                type="time"
-                value={settings.registration_stop_time || '13:00'}
-                onChange={(e) => updateSetting('registration_stop_time', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
-              />
-              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإيقاف استقبال المراجعين', 'Daily time to stop accepting patients')}</p>
-            </div>
-
+        {/* إعدادات التسجيل */}
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Clock size={20} className="text-[#C9A54C]" />
+            {t('مواعيد التسجيل', 'Registration Times')}
+          </h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-2">{t('وقت بدء التسجيل', 'Registration Start Time')}</label>
               <input
@@ -3213,6 +3210,17 @@ const SettingsSection = ({ language, t }) => {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               />
               <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لبدء استقبال المراجعين', 'Daily time to start accepting patients')}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('وقت إيقاف التسجيل', 'Registration Stop Time')}</label>
+              <input
+                type="time"
+                value={settings.registration_stop_time || '13:00'}
+                onChange={(e) => updateSetting('registration_stop_time', e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإيقاف استقبال المراجعين', 'Daily time to stop accepting patients')}</p>
             </div>
           </div>
 
@@ -3268,8 +3276,6 @@ const SettingsSection = ({ language, t }) => {
           <h4 className="text-lg font-bold mb-4">{t('التحكم في الميزات', 'Feature Controls')}</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* نظام البن كود */}
-            <div className="bg-white/5 rounde              {/* PIN System Removed - v6.0 */}          
             {/* نظام الدور */}
             <div className="bg-white/5 rounded-xl p-4">
               <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام الدور', 'Queue System')}</h5>
