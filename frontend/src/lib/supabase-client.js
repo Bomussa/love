@@ -1,26 +1,27 @@
 /**
- * Supabase Client Configuration
+ * Supabase Client Configuration - v7.1
  * تكوين عميل Supabase مع اتصال غير قابل للتوقف
- * الميزات: إعادة المحاولة التلقائية + Health Check + Realtime
- *
+ * 
  * ✅ اتصال دائم بدون انقطاع
- * ✅ إعادة المحاولة التلقائية (10 محاولات)
+ * ✅ إعادة المحاولة التلقائية
  * ✅ مراقبة مستمرة للاتصال
  * ✅ معالجة جميع أنواع الأخطاء
+ * ✅ متوافق مع love-api v7.1
+ * 
+ * Updated: 2026-04-07
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 
 // Supabase configuration - Production values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'; // Project URL: https://rujwuruuosffcxazymit.supabase.co
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODcyNjUsImV4cCI6MjA3Njk2MzI2NX0.HnrSwc7OZTqZRzCwzBH8hqtgtHMBix4yxy0RKvRDX10'; // anonpublic key
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODcyNjUsImV4cCI6MjA3Njk2MzI2NX0.HnrSwc7OZTqZRzCwzBH8hqtgtHMBix4yxy0RKvRDX10';
 
 // إعدادات إعادة المحاولة
 const RETRY_CONFIG = {
   maxRetries: 5,
-  baseDelay: 1000, // 1 ثانية
-  maxDelay: 30000, // 30 ثانية
+  baseDelay: 1000,
+  maxDelay: 30000,
 };
 
 // Create Supabase client with enhanced configuration
@@ -37,7 +38,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-client-info': 'mmc-mms-frontend',
+      'x-client-info': 'mmc-mms-frontend-v7.1',
     },
   },
 });
@@ -97,19 +98,10 @@ export async function healthCheck() {
 
     if (clinicsError) throw new Error(`DB_CONNECTION_FAILED: ${clinicsError.message}`);
 
-    const { data: configData } = await supabase
-      .from('system_config')
-      .select('value')
-      .eq('key', 'system_enabled')
-      .single();
-
-    const systemEnabled = configData?.value !== false;
-
     console.log('✅ Supabase Health Check passed');
     connectionStatus = 'connected';
     return {
       status: 'OK',
-      systemEnabled,
       connectionStatus,
       timestamp: new Date().toISOString(),
     };
@@ -166,7 +158,6 @@ export async function reconnect() {
     return true;
   }
 
-  // محاولة إعادة الاتصال مع backoff
   return retryWithBackoff(testConnection);
 }
 
@@ -205,17 +196,13 @@ export async function initializeAllConnections() {
 
   try {
     console.log('🚀 تهيئة نظام الاتصال الدائم...');
-    await initializePersistentConnection();
-    startConnectionMonitor(15000); // مراقبة كل 15 ثانية
+    startConnectionMonitor(15000);
     persistentConnectionInitialized = true;
     console.log('✅ تم تهيئة نظام الاتصال الدائم بنجاح');
   } catch (error) {
     console.error('❌ فشل تهيئة نظام الاتصال:', error);
   }
 }
-
-// تصدير مدير الاتصالات وأنواع الخدمات
-export { connectionManager, ServiceTypes };
 
 export default supabase;
 
@@ -225,7 +212,6 @@ export default supabase;
 
 /**
  * توليد بصمة فريدة للجهاز
- * تجمع بين عدة عوامل لإنشاء معرف فريد
  */
 export function generateDeviceFingerprint() {
   const canvas = document.createElement('canvas');
@@ -245,7 +231,6 @@ export function generateDeviceFingerprint() {
     canvasData.slice(-50),
   ].join('|');
 
-  // تحويل إلى hash بسيط
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i++) {
     const char = fingerprint.charCodeAt(i);
@@ -257,14 +242,12 @@ export function generateDeviceFingerprint() {
 
 /**
  * التحقق من تسجيل الجهاز لهذا اليوم
- * @returns {Promise<{allowed: boolean, existingPatientId?: string}>}
  */
 export async function checkDeviceLogin(patientId) {
   try {
     const deviceFingerprint = generateDeviceFingerprint();
     const today = new Date().toISOString().split('T')[0];
 
-    // التحقق من وجود تسجيل سابق لهذا الجهاز اليوم
     const { data: existingLogin, error } = await supabase
       .from('device_logins')
       .select('patient_id')
@@ -274,7 +257,6 @@ export async function checkDeviceLogin(patientId) {
 
     if (error) {
       console.error('خطأ في التحقق من الجهاز:', error);
-      // في حالة الخطأ، نسمح بالدخول مع تحذير
       return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
     }
 
@@ -323,7 +305,7 @@ export async function registerDeviceLogin(patientId) {
 }
 
 /**
- * تسجيل نشاط يومي (يُمسح نهاية اليوم)
+ * تسجيل نشاط يومي
  */
 export async function logDailyActivity(actionType, details = {}) {
   try {
@@ -360,13 +342,8 @@ export async function logPermanentAudit(actionType, details) {
       .insert({
         action_type: actionType,
         action_details: details,
-        target_table: details.targetTable || null,
-        target_id: details.targetId || null,
-        old_value: details.oldValue || null,
-        new_value: details.newValue || null,
-        performed_by: details.performedBy || 'unknown',
-        performed_by_role: details.performedByRole || 'unknown',
-        user_agent: navigator.userAgent,
+        performed_by: details.performedBy || 'system',
+        timestamp: new Date().toISOString(),
       });
 
     if (error) {
@@ -381,155 +358,43 @@ export async function logPermanentAudit(actionType, details) {
 }
 
 /**
- * جلب سجلات النشاط اليومي
+ * دالة مساعدة للحصول على إعدادات النظام
  */
-export async function getDailyActivityLogs(filters = {}) {
-  try {
-    let query = supabase
-      .from('daily_activity_logs')
-      .select('*')
-      .eq('log_date', new Date().toISOString().split('T')[0])
-      .order('performed_at', { ascending: false });
-
-    if (filters.patientId) {
-      query = query.eq('patient_id', filters.patientId);
-    }
-    if (filters.actionType) {
-      query = query.eq('action_type', filters.actionType);
-    }
-    if (filters.clinicId) {
-      query = query.eq('clinic_id', filters.clinicId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error) {
-    console.error('خطأ في جلب السجلات اليومية:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * جلب سجلات التدقيق الدائمة
- */
-export async function getPermanentAuditLogs(filters = {}) {
-  try {
-    let query = supabase
-      .from('permanent_audit_logs')
-      .select('*')
-      .order('performed_at', { ascending: false });
-
-    if (filters.performedBy) {
-      query = query.eq('performed_by', filters.performedBy);
-    }
-    if (filters.actionType) {
-      query = query.eq('action_type', filters.actionType);
-    }
-    if (filters.targetTable) {
-      query = query.eq('target_table', filters.targetTable);
-    }
-    if (filters.limit) {
-      query = query.limit(filters.limit);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (error) {
-    console.error('خطأ في جلب سجلات التدقيق:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * جلب إعداد من جدول system_settings
- * @param {string} key - مفتاح الإعداد
- * @param {any} defaultValue - القيمة الافتراضية إذا لم يوجد الإعداد
- */
-export async function getSystemSetting(key, defaultValue = null) {
+export async function getSystemSetting(key) {
   try {
     const { data, error } = await supabase
       .from('system_settings')
       .select('value')
-      .eq('id', key)
-      .single();
+      .eq('key', key)
+      .maybeSingle();
 
-    if (error) {
-      // إذا لم يوجد الإعداد، نرجع القيمة الافتراضية
-      if (error.code === 'PGRST116') {
-        return defaultValue;
-      }
-      console.warn(`تحذير: فشل جلب الإعداد ${key}:`, error.message);
-      return defaultValue;
-    }
-
-    // تحويل القيمة من JSON إذا كانت مخزنة كـ JSON
-    try {
-      return JSON.parse(data.value);
-    } catch {
-      return data.value;
-    }
+    if (error) throw error;
+    return data?.value || null;
   } catch (error) {
-    console.error(`خطأ في جلب الإعداد ${key}:`, error);
-    return defaultValue;
+    console.error(`خطأ في الحصول على إعداد ${key}:`, error);
+    return null;
   }
 }
 
 /**
- * حفظ إعداد في جدول system_settings
- * @param {string} key - مفتاح الإعداد
- * @param {any} value - قيمة الإعداد
- * @param {string} description - وصف الإعداد (اختياري)
+ * دالة مساعدة لتعيين إعدادات النظام
  */
-export async function setSystemSetting(key, value, description = null) {
+export async function setSystemSetting(key, value) {
   try {
     const { error } = await supabase
       .from('system_settings')
       .upsert({
-        id: key,
+        key,
         value,
-        description: description || `إعداد ${key}`,
         updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'id',
+        onConflict: 'key',
       });
 
     if (error) throw error;
-    return { success: true };
+    return true;
   } catch (error) {
-    console.error(`خطأ في حفظ الإعداد ${key}:`, error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * جلب جميع إعدادات النظام
- */
-export async function getAllSystemSettings() {
-  try {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('*')
-      .order('key');
-
-    if (error) throw error;
-
-    // تحويل إلى كائن key-value
-    const settings = {};
-    data?.forEach((item) => {
-      try {
-        settings[item.key] = JSON.parse(item.value);
-      } catch {
-        settings[item.key] = item.value;
-      }
-    });
-
-    return { success: true, data: settings, raw: data };
-  } catch (error) {
-    console.error('خطأ في جلب إعدادات النظام:', error);
-    return { success: false, error: error.message };
+    console.error(`خطأ في تعيين إعداد ${key}:`, error);
+    return false;
   }
 }
