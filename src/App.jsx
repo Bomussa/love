@@ -92,12 +92,20 @@ function App() {
       return;
     }
     
-    if (path.match(/\/clinic\/[^/]+\/display$/)) {
+    const clinicDisplayMatch = path.match(/\/clinic\/([^/]+)\/display$/);
+    if (clinicDisplayMatch) {
+      const clinicId = clinicDisplayMatch[1];
       setCurrentView('display');
+      // Store clinicId for DisplayPage
+      window.__clinicId = clinicId;
       return;
     }
     
     if (path.startsWith('/clinic/')) {
+      const clinicId = path.split('/')[2];
+      if (clinicId && clinicId !== 'login') {
+        window.__clinicId = clinicId;
+      }
       setCurrentView(clinicSession ? 'clinic_dashboard' : 'clinic_login');
       return;
     }
@@ -163,7 +171,7 @@ function App() {
       case 'clinic_login': return <ClinicLoginPage onLogin={(session) => { setClinicSession(session); localStorage.setItem('mmc_clinic_session', JSON.stringify(session)); setCurrentView('clinic_dashboard'); }} language={language} />
       case 'clinic_dashboard': return <ClinicDashboard session={clinicSession} onLogout={handleLogout} language={language} toggleLanguage={() => setLanguage(l => l === 'ar' ? 'en' : 'ar')} />
       case 'doctor': return <DoctorDashboard doctorData={doctorSession} onLogout={handleLogout} language={language} toggleLanguage={() => setLanguage(l => l === 'ar' ? 'en' : 'ar')} />
-      case 'display': return <DisplayPage language={language} />
+      case 'display': return <DisplayPage clinicId={window.__clinicId} language={language} />
       case 'qrscan': return <QrScanPage language={language} />
       default: return <LoginPage onLogin={handleLogin} onAdminLogin={() => setIsAdmin(true)} language={language} toggleLanguage={() => setLanguage(l => l === 'ar' ? 'en' : 'ar')} />
     }

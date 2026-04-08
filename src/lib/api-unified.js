@@ -89,9 +89,15 @@ const api = {
    * @returns {Promise<Object>} The created queue entry
    */
   async createQueue(payload) {
-    return this._fetch('/queue/create', {
+    // Standardize payload: clinicId -> clinic_id, sessionId -> session_id
+    const standardizedPayload = {
+      ...payload,
+      clinic_id: payload.clinic_id || payload.clinicId,
+      session_id: payload.session_id || payload.sessionId
+    };
+    return this._fetch('/queue/enter', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(standardizedPayload)
     });
   },
 
@@ -110,7 +116,11 @@ const api = {
     // Legacy style
     return this._fetch('/queue/enter', {
       method: 'POST',
-      body: JSON.stringify({ patientId, examType, clinicId })
+      body: JSON.stringify({ 
+        patient_id: patientId, 
+        exam_type: examType, 
+        clinic_id: clinicId 
+      })
     });
   },
 

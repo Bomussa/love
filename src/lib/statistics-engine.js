@@ -1,49 +1,29 @@
 /**
  * =====================================================================
- * Statistics Engine - المحرك الموحد للإحصاءات
+ * Statistics Engine - المحرك الموحد للإحصاءات (Fixed for public.queues)
  * =====================================================================
  * مصدر واحد لكل الإحصاءات في التطبيق
- * - أرقام اليوم: لحظية من unified_queue (تُصفَّر يومياً تلقائياً)
+ * - أرقام اليوم: لحظية من queues (تُصفَّر يومياً تلقائياً بناءً على وقت قطر)
  * - إحصاءات تاريخية: يومية / أسبوعية / شهرية / 6 أشهر / سنة
  * - منطق صحيح: الإجمالي = منتظرون + يُخدَّمون + مكتملون
  * =====================================================================
  */
 
 import { supabase } from './supabase-client';
+import { getQatarStartOfDay, getQatarEndOfDay, getQatarDate } from './date-utils';
 
 // ============================================================
-// دوال الوقت المساعدة
+// دوال الوقت المساعدة (تستخدم الآن date-utils)
 // ============================================================
 
-/** بداية اليوم الحالي (UTC+3 للسعودية) */
-function getTodayStart() {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString();
-}
-
-/** بداية يوم محدد */
-function getDayStart(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
-/** نهاية يوم محدد */
-function getDayEnd(date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d.toISOString();
-}
-
-/** تاريخ اليوم بصيغة YYYY-MM-DD */
+/** تاريخ اليوم بصيغة YYYY-MM-DD (قطر) */
 function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
+  return getQatarDate().toISOString().split('T')[0];
 }
 
 /** تاريخ قبل N يوم */
 function getDaysAgo(n) {
-  const d = new Date();
+  const d = getQatarDate();
   d.setDate(d.getDate() - n);
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
@@ -51,7 +31,7 @@ function getDaysAgo(n) {
 
 /** بداية الأسبوع الحالي (الأحد) */
 function getWeekStart() {
-  const d = new Date();
+  const d = getQatarDate();
   const day = d.getDay();
   d.setDate(d.getDate() - day);
   d.setHours(0, 0, 0, 0);
@@ -60,7 +40,7 @@ function getWeekStart() {
 
 /** بداية الشهر الحالي */
 function getMonthStart() {
-  const d = new Date();
+  const d = getQatarDate();
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
@@ -69,12 +49,12 @@ function getMonthStart() {
 /** بداية فترة زمنية حسب النوع */
 function getPeriodStart(period) {
   switch (period) {
-    case 'today':    return getTodayStart();
+    case 'today':    return getQatarStartOfDay();
     case 'week':     return getWeekStart();
     case 'month':    return getMonthStart();
     case 'halfYear': return getDaysAgo(180);
     case 'year':     return getDaysAgo(365);
-    default:         return getTodayStart();
+    default:         return getQatarStartOfDay();
   }
 }
 
@@ -83,18 +63,20 @@ function getPeriodStart(period) {
 // ============================================================
 
 /**
- * جلب إحصاءات اليوم الحالي - لحظية من unified_queue
+ * جلب إحصاءات اليوم الحالي - لحظية من queues
  * المنطق الصحيح: الإجمالي = منتظرون + يُخدَّمون + مكتملون
  */
 export async function getTodayStats() {
   try {
-    const today = getTodayDate();
+    const startOfDay = getQatarStartOfDay();
+    const endOfDay = getQatarEndOfDay();
 
-    // جلب كل سجلات اليوم دفعة واحدة
+    // جلب كل سجلات اليوم من جدول queues
     const { data, error } = await supabase
-      .from('unified_queue')
-      .select('status, clinic_id, entered_at, completed_at, called_at, patient_id, exam_type')
-      .eq('queue_date', today);
+      .from('queues')
+      .select('status, clinic_id, created_at, completed_at, called_at, patient_id, exam_type')
+      .gte('created_at', startOfDay)
+      .lte('created_at', endOfDay);
 
     if (error) throw error;
 
@@ -108,12 +90,12 @@ export async function getTodayStats() {
 
     // متوسط وقت الانتظار (للمكتملين فقط)
     const completedRows = rows.filter(r =>
-      r.status === 'completed' && r.entered_at && r.completed_at
+      r.status === 'completed' && r.created_at && r.completed_at
     );
     let avgWaitMinutes = 0;
     if (completedRows.length > 0) {
       const totalWait = completedRows.reduce((acc, r) => {
-        return acc + (new Date(r.completed_at) - new Date(r.entered_at));
+        return acc + (new Date(r.completed_at) - new Date(r.created_at));
       }, 0);
       avgWaitMinutes = Math.round(totalWait / completedRows.length / 60000);
     }
@@ -139,7 +121,6 @@ export async function getTodayStats() {
     return {
       success: true,
       period: 'today',
-      date: today,
       total,
       waiting,
       serving,
@@ -165,19 +146,20 @@ export async function getTodayStats() {
 // ============================================================
 
 /**
- * جلب إحصاءات لفترة زمنية محددة من unified_queue
+ * جلب إحصاءات لفترة زمنية محددة من queues
  * @param {string} period - 'today' | 'week' | 'month' | 'halfYear' | 'year'
  */
 export async function getPeriodStats(period = 'today') {
   try {
     const startISO = getPeriodStart(period);
-    const today = getTodayDate();
+    const endISO = getQatarEndOfDay();
 
     const { data, error } = await supabase
-      .from('unified_queue')
-      .select('status, clinic_id, entered_at, completed_at, called_at, patient_id, exam_type, queue_date')
-      .gte('entered_at', startISO)
-      .order('entered_at', { ascending: true });
+      .from('queues')
+      .select('status, clinic_id, created_at, completed_at, called_at, patient_id, exam_type')
+      .gte('created_at', startISO)
+      .lte('created_at', endISO)
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
 
@@ -194,12 +176,12 @@ export async function getPeriodStats(period = 'today') {
 
     // متوسط وقت الانتظار
     const completedRows = rows.filter(r =>
-      r.status === 'completed' && r.entered_at && r.completed_at
+      r.status === 'completed' && r.created_at && r.completed_at
     );
     let avgWaitMinutes = 0;
     if (completedRows.length > 0) {
       const totalWait = completedRows.reduce((acc, r) =>
-        acc + (new Date(r.completed_at) - new Date(r.entered_at)), 0);
+        acc + (new Date(r.completed_at) - new Date(r.created_at)), 0);
       avgWaitMinutes = Math.round(totalWait / completedRows.length / 60000);
     }
 
@@ -231,7 +213,6 @@ export async function getPeriodStats(period = 'today') {
       success: true,
       period,
       startDate: startISO.split('T')[0],
-      endDate: today,
       total,
       waiting,
       serving,
@@ -263,24 +244,14 @@ function buildChartData(rows, period) {
 
   rows.forEach(r => {
     let key;
-    const date = new Date(r.entered_at);
+    const date = new Date(r.created_at);
 
     if (period === 'today') {
       // تجميع بالساعة
       key = `${String(date.getHours()).padStart(2, '0')}:00`;
-    } else if (period === 'week') {
+    } else {
       // تجميع باليوم
-      key = r.queue_date || date.toISOString().split('T')[0];
-    } else if (period === 'month') {
-      // تجميع باليوم
-      key = r.queue_date || date.toISOString().split('T')[0];
-    } else if (period === 'halfYear') {
-      // تجميع بالأسبوع
-      const weekNum = Math.floor(date.getDate() / 7) + 1;
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-W${weekNum}`;
-    } else if (period === 'year') {
-      // تجميع بالشهر
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      key = date.toISOString().split('T')[0];
     }
 
     if (!grouped[key]) {
@@ -305,22 +276,21 @@ function buildChartData(rows, period) {
  */
 export async function getAllPeriodsSnapshot() {
   try {
-    const today = getTodayDate();
     const yearAgo = getDaysAgo(365);
 
-    // جلب كل البيانات دفعة واحدة (سنة كاملة)
+    // جلب كل البيانات دفعة واحدة (سنة كاملة) من جدول queues
     const { data, error } = await supabase
-      .from('unified_queue')
-      .select('status, patient_id, entered_at, completed_at, queue_date, clinic_id')
-      .gte('entered_at', yearAgo)
-      .order('entered_at', { ascending: true });
+      .from('queues')
+      .select('status, patient_id, created_at, completed_at, clinic_id')
+      .gte('created_at', yearAgo)
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
 
     const rows = data || [];
 
     const periods = {
-      today:    { label: 'اليوم',    start: getTodayStart() },
+      today:    { label: 'اليوم',    start: getQatarStartOfDay() },
       week:     { label: 'الأسبوع',  start: getWeekStart() },
       month:    { label: 'الشهر',    start: getMonthStart() },
       halfYear: { label: '6 أشهر',   start: getDaysAgo(180) },
@@ -330,7 +300,7 @@ export async function getAllPeriodsSnapshot() {
     const result = {};
 
     for (const [key, config] of Object.entries(periods)) {
-      const periodRows = rows.filter(r => new Date(r.entered_at) >= new Date(config.start));
+      const periodRows = rows.filter(r => new Date(r.created_at) >= new Date(config.start));
       const waiting   = periodRows.filter(r => r.status === 'waiting').length;
       const serving   = periodRows.filter(r => ['serving', 'called'].includes(r.status)).length;
       const completed = periodRows.filter(r => r.status === 'completed').length;
@@ -338,12 +308,12 @@ export async function getAllPeriodsSnapshot() {
       const uniquePatients = new Set(periodRows.map(r => r.patient_id).filter(Boolean)).size;
 
       const completedRows = periodRows.filter(r =>
-        r.status === 'completed' && r.entered_at && r.completed_at
+        r.status === 'completed' && r.created_at && r.completed_at
       );
       let avgWaitMinutes = 0;
       if (completedRows.length > 0) {
         const totalWait = completedRows.reduce((acc, r) =>
-          acc + (new Date(r.completed_at) - new Date(r.entered_at)), 0);
+          acc + (new Date(r.completed_at) - new Date(r.created_at)), 0);
         avgWaitMinutes = Math.round(totalWait / completedRows.length / 60000);
       }
 
