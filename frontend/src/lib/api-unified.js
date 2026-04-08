@@ -11,7 +11,7 @@
  * Synchronized with: love-api v7.1.0
  */
 
-const API_BASE = '/api/v1';
+const API_BASE = '/api';
 const API_VERSION = 'v1';
 
 /**
@@ -21,6 +21,9 @@ const API_VERSION = 'v1';
  */
 function normalizeResponse(res) {
   if (!res) return null;
+  // If response has success field, return it as-is
+  if (res.hasOwnProperty('success')) return res;
+  // Otherwise try to extract data
   return res.data || res.queue || res;
 }
 

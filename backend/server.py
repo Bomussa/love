@@ -221,8 +221,7 @@ async def patient_login(data: PatientLogin):
             # Create new patient
             patient_data = {
                 "patient_id": data.personalId,
-                "gender": data.gender,
-                "entered_at": datetime.now(timezone.utc).isoformat()
+                "gender": data.gender
             }
             result = await supabase.insert("patients", patient_data)
             return {"success": True, "data": result[0] if result else patient_data}
