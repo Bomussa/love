@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
-import useDoctorSessions from '../hooks/useDoctorSessions';
 
 import DoctorControl from './DoctorControl';
 import { 
@@ -1644,10 +1643,6 @@ const DoctorManagement = ({ language, t }) => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [vipPatientId, setVipPatientId] = useState('');
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  // ✅ Realtime Doctor Sessions from Supabase (NO POLLING)
-  const { data: doctorSessions, loading: sessionsLoading, error: sessionsError } = useDoctorSessions();
-  const [showDoctorView, setShowDoctorView] = useState(false);
 
   // تحميل العيادات
   useEffect(() => {
@@ -1961,17 +1956,6 @@ const DoctorManagement = ({ language, t }) => {
           {t('إدارة الأطباء', 'Doctor Management')}
         </h3>
         <div className="flex gap-3 items-center">
-          <button
-            onClick={() => setShowDoctorView(!showDoctorView)}
-            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-              showDoctorView 
-                ? 'bg-[#C9A54C] text-black font-medium' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <Activity size={18} />
-            {t('عرض جلسات الأطباء', 'Doctor Sessions View')}
-          </button>
           <input
             type="date"
             value={filterDate}
@@ -1979,184 +1963,33 @@ const DoctorManagement = ({ language, t }) => {
             className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
           />
           <button
-            onClick={() => {
-              if (showDoctorView) {
-                // Manual refetch for doctor sessions
-                window.location.reload(); // Force refresh to update view
-              } else {
-                loadDoctorData(selectedClinic);
-              }
-            }}
+            onClick={() => loadDoctorData(selectedClinic)}
             className="p-2 bg-[#8A1538] text-white rounded-lg hover:bg-[#6B0F2A] transition-all"
           >
-            <RefreshCw size={20} className={loading || sessionsLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* ✅ NEW: Doctor Sessions Overview */}
-      {showDoctorView ? (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
-            <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <UserCog size={20} className="text-[#C9A54C]" />
-              {t('جلسات الأطباء - العرض الشامل', 'Doctor Sessions - Comprehensive View')}
-            </h4>
-            
-            {sessionsLoading ? (
-              <div className="text-center py-8">
-                <RefreshCw size={32} className="animate-spin text-[#C9A54C] mx-auto" />
-                <p className="text-gray-400 mt-2">{t('جاري التحميل...', 'Loading...')}</p>
-              </div>
-            ) : doctorSessions.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                {t('لا توجد جلسات نشطة اليوم', 'No active sessions today')}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">{t('العيادة', 'Clinic')}</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">{t('الطبيب', 'Doctor')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('منتظر', 'Waiting')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('نشط', 'Active')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('مكتمل', 'Completed')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('متغيب', 'Missed')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('استدعاءات', 'Calls')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('بدء', 'Starts')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('تمرير', 'Advances')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('مدة الجلسة', 'Duration')}</th>
-                      <th className="text-center py-3 px-4 text-gray-300 font-medium">{t('الحالة', 'Status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {doctorSessions.map((session, idx) => {
-                      const isActive = session.session_active;
-                      const statusColor = session.status === 'active' 
-                        ? 'text-green-400' 
-                        : session.status === 'on_break' 
-                        ? 'text-yellow-400' 
-                        : 'text-gray-400';
-                      
-                      return (
-                        <tr key={idx} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col">
-                              <span className="text-xs px-2 py-1 bg-[#C9A54C]/20 text-[#C9A54C] rounded font-mono inline-block w-fit">
-                                {session.clinic_id}
-                              </span>
-                              <span className="text-white mt-1">{language === 'ar' ? session.clinic_name : session.clinic_name_en}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-white">{session.doctor_name}</td>
-                          <td className="text-center py-3 px-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-400 font-bold">
-                              {session.waiting_count}
-                            </span>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-bold">
-                              {session.active_count}
-                            </span>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20 text-green-400 font-bold">
-                              {session.completed_count}
-                            </span>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-500/20 text-red-400 font-bold">
-                              {session.missed_count}
-                            </span>
-                          </td>
-                          <td className="text-center py-3 px-4 text-purple-400 font-medium">
-                            {session.calls_made}
-                          </td>
-                          <td className="text-center py-3 px-4 text-cyan-400 font-medium">
-                            {session.starts_made}
-                          </td>
-                          <td className="text-center py-3 px-4 text-orange-400 font-medium">
-                            {session.advances_made}
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <div className="flex flex-col items-center">
-                              <span className="text-white font-bold">{session.session_duration_minutes}</span>
-                              <span className="text-xs text-gray-400">{t('دقيقة', 'min')}</span>
-                              {isActive && (
-                                <span className="text-[10px] text-green-400 mt-1 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                  {t('مباشر', 'Live')}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="text-center py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor} bg-current/10`}>
-                              {session.status === 'active' ? t('نشط', 'Active') : 
-                               session.status === 'on_break' ? t('استراحة', 'Break') : 
-                               t('غير نشط', 'Inactive')}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
-            {/* Summary Cards */}
-            {doctorSessions.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{doctorSessions.length}</div>
-                  <div className="text-sm text-gray-400">{t('عيادات نشطة', 'Active Clinics')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-400">
-                    {doctorSessions.reduce((sum, s) => sum + s.waiting_count, 0)}
-                  </div>
-                  <div className="text-sm text-gray-400">{t('إجمالي المنتظرين', 'Total Waiting')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">
-                    {doctorSessions.reduce((sum, s) => sum + s.completed_count, 0)}
-                  </div>
-                  <div className="text-sm text-gray-400">{t('إجمالي المكتمل', 'Total Completed')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#C9A54C]">
-                    {Math.round(doctorSessions.reduce((sum, s) => sum + s.session_duration_minutes, 0) / doctorSessions.length)}
-                  </div>
-                  <div className="text-sm text-gray-400">{t('متوسط مدة الجلسة', 'Avg Duration (min)')}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Original clinic-specific view */}
-          {/* اختيار العيادة */}
-          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-            <label className="block text-sm text-gray-400 mb-2">{t('اختر العيادة', 'Select Clinic')}</label>
-            <select
-              value={selectedClinic || ''}
-              onChange={(e) => setSelectedClinic(e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
-            >
-              <option value="">{t('اختر عيادة', 'Select clinic')}</option>
-              {clinics.map(clinic => (
-                <option key={clinic.id} value={clinic.id}>
-                  {language === 'ar' ? clinic.name_ar : clinic.name_en}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* اختيار العيادة */}
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
+        <label className="block text-sm text-gray-400 mb-2">{t('اختر العيادة', 'Select Clinic')}</label>
+        <select
+          value={selectedClinic || ''}
+          onChange={(e) => setSelectedClinic(e.target.value)}
+          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
+        >
+          <option value="">{t('اختر عيادة', 'Select clinic')}</option>
+          {clinics.map(clinic => (
+            <option key={clinic.id} value={clinic.id}>
+              {language === 'ar' ? clinic.name_ar : clinic.name_en}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {selectedClinic && (
-        <div className="space-y-6">
+        <>
           {/* إحصائيات سريعة */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
@@ -2201,8 +2034,6 @@ const DoctorManagement = ({ language, t }) => {
           </div>
 
 
-        </div>
-      )}
         </>
       )}
 
