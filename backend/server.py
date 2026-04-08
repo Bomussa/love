@@ -149,12 +149,10 @@ class QueueCreate(BaseModel):
 
 class QueueCall(BaseModel):
     clinicId: str
-    pin: Optional[str] = None
 
 class QueueDone(BaseModel):
     clinicId: str
     patientId: str
-    pin: Optional[str] = None
 
 class QueueAdvance(BaseModel):
     queueId: str
@@ -224,7 +222,7 @@ async def patient_login(data: PatientLogin):
             patient_data = {
                 "patient_id": data.personalId,
                 "gender": data.gender,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "entered_at": datetime.now(timezone.utc).isoformat()
             }
             result = await supabase.insert("patients", patient_data)
             return {"success": True, "data": result[0] if result else patient_data}
@@ -264,7 +262,7 @@ async def create_queue(data: QueueCreate):
             "display_number": next_number,
             "queue_number": str(next_number),
             "queue_date": today,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "entered_at": datetime.now(timezone.utc).isoformat()
         }
         
         result = await supabase.insert("queues", queue_data)
@@ -361,12 +359,12 @@ async def start_exam(request: Request):
         if not queue_id:
             raise HTTPException(status_code=400, detail="queueId is required")
         
-        # Update status to in_progress
+        # Update status to called (valid status)
         result = await supabase.update("queues",
             filters={"id": queue_id},
             data={
-                "status": "in_progress",
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "called",
+                "entered_clinic_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
         )
@@ -391,11 +389,11 @@ async def advance_queue(request: Request, queue_id: Optional[str] = None):
         if not queue_id:
             raise HTTPException(status_code=400, detail="queueId is required")
         
-        # For now, mark as completed
+        # Mark as done (using allowed status value)
         result = await supabase.update("queues",
             filters={"id": queue_id},
             data={
-                "status": "completed",
+                "status": "done",
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
