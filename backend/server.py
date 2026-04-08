@@ -492,6 +492,107 @@ async def admin_login(data: AdminLogin):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
+# Doctor Session Endpoints
+# ============================================================================
+
+@api_router.get("/doctor/sessions")
+@api_router.get("/doctor/sessions/{doctor_id}")
+async def get_doctor_sessions(doctor_id: Optional[str] = None, clinic_id: Optional[str] = None, date: Optional[str] = None):
+    """Get doctor sessions with real-time statistics"""
+    try:
+        today = date or datetime.now(timezone.utc).date().isoformat()
+        
+        # Get all clinics with their doctors (from queues table for now)
+        queues_query = {
+            "queue_date": today
+        }
+        
+        if clinic_id:
+            queues_query["clinic_id"] = clinic_id
+        
+        queues = await supabase.select("queues", filters=queues_query)
+        
+        # Get clinics info
+        clinics = await supabase.select("clinics")
+        clinics_map = {c["id"]: c for c in clinics}
+        
+        # Organize by clinic
+        sessions = {}
+        for queue in queues:
+            cid = queue.get("clinic_id")
+            if cid not in sessions:
+                clinic = clinics_map.get(cid, {})
+                sessions[cid] = {
+                    "clinic_id": cid,
+                    "clinic_name": clinic.get("name_ar", cid),
+                    "clinic_name_en": clinic.get("name_en", cid),
+                    "doctor_name": f"Doctor {cid}",  # TODO: Add doctor table
+                    "waiting_count": 0,
+                    "active_count": 0,
+                    "completed_count": 0,
+                    "missed_count": 0,
+                    "calls_made": 0,
+                    "starts_made": 0,
+                    "advances_made": 0,
+                    "session_start": None,
+                    "session_end": None,
+                    "status": "inactive",
+                    "last_action": None
+                }
+            
+            status = queue.get("status")
+            if status == "waiting":
+                sessions[cid]["waiting_count"] += 1
+            elif status in ["called", "in_progress", "serving"]:
+                sessions[cid]["active_count"] += 1
+                if queue.get("called_at"):
+                    sessions[cid]["calls_made"] += 1
+                if queue.get("entered_clinic_at"):
+                    sessions[cid]["starts_made"] += 1
+            elif status == "completed":
+                sessions[cid]["completed_count"] += 1
+                sessions[cid]["advances_made"] += 1
+            elif status == "no_show":
+                sessions[cid]["missed_count"] += 1
+            
+            # Track session timing
+            if queue.get("called_at"):
+                if not sessions[cid]["session_start"] or queue["called_at"] < sessions[cid]["session_start"]:
+                    sessions[cid]["session_start"] = queue["called_at"]
+                sessions[cid]["status"] = "active"
+            
+            if queue.get("completed_at"):
+                if not sessions[cid]["session_end"] or queue["completed_at"] > sessions[cid]["session_end"]:
+                    sessions[cid]["session_end"] = queue["completed_at"]
+                sessions[cid]["last_action"] = queue["completed_at"]
+        
+        # Calculate session duration
+        for session in sessions.values():
+            if session["session_start"]:
+                start_time = datetime.fromisoformat(session["session_start"].replace("Z", "+00:00"))
+                if session["session_end"]:
+                    end_time = datetime.fromisoformat(session["session_end"].replace("Z", "+00:00"))
+                    session["session_duration_minutes"] = int((end_time - start_time).total_seconds() / 60)
+                else:
+                    # Active session - calculate from now
+                    now = datetime.now(timezone.utc)
+                    session["session_duration_minutes"] = int((now - start_time).total_seconds() / 60)
+                    session["session_active"] = True
+            else:
+                session["session_duration_minutes"] = 0
+                session["session_active"] = False
+        
+        return {
+            "success": True,
+            "data": list(sessions.values()),
+            "date": today
+        }
+    
+    except Exception as e:
+        logger.error(f"Get doctor sessions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
 # Settings & System Endpoints
 # ============================================================================
 
