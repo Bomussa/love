@@ -1,0 +1,10 @@
+/* Safety: hide legacy QR buttons if any exist in old builds */
+button[data-role="qr-scan"],
+.qr-scan-btn {
+  display: none !important;
+}
+
+/* Hide QR scanner when feature is disabled */
+.qr-scanner-disabled {
+  display: none !important;
+}

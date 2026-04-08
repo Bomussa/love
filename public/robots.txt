@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://mmc-mms.com/sitemap.xml
