@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
+import useDoctorSessions from '../hooks/useDoctorSessions';
 
 import DoctorControl from './DoctorControl';
 import { 
@@ -1644,10 +1645,9 @@ const DoctorManagement = ({ language, t }) => {
   const [vipPatientId, setVipPatientId] = useState('');
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // ✅ NEW: Doctor Sessions State
-  const [doctorSessions, setDoctorSessions] = useState([]);
+  // ✅ Realtime Doctor Sessions from Supabase (NO POLLING)
+  const { data: doctorSessions, loading: sessionsLoading, error: sessionsError } = useDoctorSessions();
   const [showDoctorView, setShowDoctorView] = useState(false);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   // تحميل العيادات
   useEffect(() => {
@@ -1660,31 +1660,6 @@ const DoctorManagement = ({ language, t }) => {
       loadDoctorData(selectedClinic);
     }
   }, [selectedClinic, filterDate]);
-
-  // ✅ NEW: Load Doctor Sessions
-  useEffect(() => {
-    if (showDoctorView) {
-      loadDoctorSessions();
-      const interval = setInterval(loadDoctorSessions, 10000); // Update every 10s
-      return () => clearInterval(interval);
-    }
-  }, [showDoctorView, filterDate]);
-
-  // ✅ NEW: Load Doctor Sessions from API
-  const loadDoctorSessions = async () => {
-    setSessionsLoading(true);
-    try {
-      const response = await fetch(`/api/doctor/sessions?date=${filterDate}`);
-      const data = await response.json();
-      if (data.success) {
-        setDoctorSessions(data.data);
-      }
-    } catch (e) {
-      console.error('Error loading doctor sessions:', e);
-    } finally {
-      setSessionsLoading(false);
-    }
-  };
 
   const loadClinics = async () => {
     try {
@@ -2005,8 +1980,12 @@ const DoctorManagement = ({ language, t }) => {
           />
           <button
             onClick={() => {
-              if (showDoctorView) loadDoctorSessions();
-              else loadDoctorData(selectedClinic);
+              if (showDoctorView) {
+                // Manual refetch for doctor sessions
+                window.location.reload(); // Force refresh to update view
+              } else {
+                loadDoctorData(selectedClinic);
+              }
             }}
             className="p-2 bg-[#8A1538] text-white rounded-lg hover:bg-[#6B0F2A] transition-all"
           >
@@ -2177,7 +2156,7 @@ const DoctorManagement = ({ language, t }) => {
           </div>
 
       {selectedClinic && (
-        <>
+        <div className="space-y-6">
           {/* إحصائيات سريعة */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
@@ -2222,6 +2201,8 @@ const DoctorManagement = ({ language, t }) => {
           </div>
 
 
+        </div>
+      )}
         </>
       )}
 
