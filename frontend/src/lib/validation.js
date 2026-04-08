@@ -69,18 +69,10 @@ export function validateMilitaryId(id) {
  * @param {string} pin - رقم PIN
  * @returns {{ isValid: boolean, error?: string }}
  */
+// ❌ DEPRECATED - PIN system removed
 export function validatePin(pin) {
-  if (!pin || typeof pin !== 'string') {
-    return { isValid: false, error: 'رقم PIN مطلوب' };
-  }
-
-  const trimmed = pin.trim();
-
-  if (!PATTERNS.PIN.test(trimmed)) {
-    return { isValid: false, error: 'رقم PIN يجب أن يكون 4-6 أرقام' };
-  }
-
-  return { isValid: true };
+  console.warn('validatePin is deprecated - PIN system removed');
+  return { isValid: true, error: null };
 }
 
 /**
