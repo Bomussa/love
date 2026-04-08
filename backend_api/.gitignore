@@ -1,0 +1,11 @@
+.vercel
+.env
+.env.*
+.env.local
+.envrc
+supabase/.env
+.env*.local
+
+node_modules
+pnpm-lock.yaml
+.pnpm-debug.log

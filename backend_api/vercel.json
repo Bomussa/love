@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "functions": {
+    "api/v1.js": {
+      "maxDuration": 30
+    }
+  },
+  "redirects": [
+    {
+      "source": "/api/(?!v1)(.*)",
+      "destination": "/api/v1/$1",
+      "permanent": true
+    },
+    {
+      "source": "https://www.mmc-mms.com/(.*)",
+      "destination": "https://mmc-mms.com/$1",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/v1.js"
+    }
+  ]
+}

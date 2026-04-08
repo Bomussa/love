@@ -1,0 +1,38 @@
+name: Migration Guard
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/migration-guard.yml'
+      - 'scripts/check-migration-table-conflicts.js'
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/migration-guard.yml'
+      - 'scripts/check-migration-table-conflicts.js'
+
+jobs:
+  prevent-conflicting-table-recreate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run migration conflict guard (PR)
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-migration-table-conflicts.js "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}"
+
+      - name: Run migration conflict guard (push)
+        if: github.event_name == 'push'
+        run: node scripts/check-migration-table-conflicts.js "${{ github.event.before }}" "${{ github.sha }}"
