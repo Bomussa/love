@@ -1,6 +1,7 @@
 /**
- * Unified API Client - v4.1
- * Keeps current behavior, restores compatibility, and avoids throwing on API errors.
+ * Unified API Client - v5.0
+ * REAL-TIME DATA ONLY: Removes all fake/simulated data logic.
+ * Connects directly to Supabase via love-api.
  */
 
 export const API_VERSION = 'v1';
@@ -23,21 +24,6 @@ async function readJsonSafely(response) {
   }
 }
 
-function successResult(payload) {
-  if (Array.isArray(payload)) {
-    return { success: true, data: payload };
-  }
-
-  if (payload && typeof payload === 'object') {
-    if (Object.prototype.hasOwnProperty.call(payload, 'success')) {
-      return payload;
-    }
-    return { success: true, ...payload };
-  }
-
-  return { success: true, data: payload };
-}
-
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: options.method || 'GET',
@@ -56,38 +42,38 @@ async function request(path, options = {}) {
     };
   }
 
-  return successResult(payload);
-}
-
-function buildQueueBody(data = {}) {
-  return {
-    clinicId: data.clinicId || data.clinic_id,
-    patientId: data.patientId || data.patient_id,
-    patientName: data.patientName || data.patient_name,
-    examType: data.examType || data.exam_type,
-    gender: data.gender,
-  };
+  return payload;
 }
 
 export const api = {
-  getQueueStatus: (clinicId) =>
-    request(`/queue/status?clinicId=${encodeURIComponent(clinicId)}`),
-
-  getStats: (clinicId) =>
-    request(`/queue/status?clinicId=${encodeURIComponent(clinicId)}`),
-
-  createQueue: (data) =>
-    request('/queue/create', {
+  // 1. Patient Login (Persistent Records)
+  patientLogin: (personalId, gender, examType) =>
+    request('/patient/login', {
       method: 'POST',
-      body: JSON.stringify(buildQueueBody(data)),
+      body: JSON.stringify({ personalId, gender, examType }),
     }),
 
+  // 2. Queue Status (Real Data Only)
+  getQueueStatus: (clinicId, patientId) => {
+    let url = `/queue/status?`;
+    if (clinicId) url += `clinicId=${encodeURIComponent(clinicId)}&`;
+    if (patientId) url += `patientId=${encodeURIComponent(patientId)}`;
+    return request(url);
+  },
+
+  // 3. Queue Entry (Weighted Dynamic Start)
   enterQueue: (data) =>
     request('/queue/enter', {
       method: 'POST',
-      body: JSON.stringify(buildQueueBody(data)),
+      body: JSON.stringify({
+        clinicId: data.clinicId,
+        patientId: data.patientId,
+        examType: data.examType,
+        gender: data.gender,
+      }),
     }),
 
+  // 4. Doctor Actions
   callNextPatient: (clinicId) =>
     request('/queue/call', {
       method: 'POST',
@@ -109,34 +95,17 @@ export const api = {
   queueDone: (queueId) =>
     request('/queue/done', {
       method: 'POST',
-      body: JSON.stringify({ queueId, id: queueId }),
+      body: JSON.stringify({ queueId }),
     }),
+
+  // 5. Clinics & Admin
+  getClinics: () => request('/clinics'),
 
   adminLogin: (username, password) =>
     request('/admin/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }),
-
-  patientLogin: (personalId, gender) =>
-    request('/patient/login', {
-      method: 'POST',
-      body: JSON.stringify({ personalId, gender }),
-    }),
-
-  getClinics: async () => {
-    const result = await request('/clinics');
-    if (Array.isArray(result?.data)) {
-      return { success: true, clinics: result.data, data: result.data };
-    }
-    if (Array.isArray(result)) {
-      return { success: true, clinics: result, data: result };
-    }
-    if (result && typeof result === 'object' && Array.isArray(result.data)) {
-      return { success: true, clinics: result.data, data: result.data };
-    }
-    return result;
-  },
 };
 
 export default api;
