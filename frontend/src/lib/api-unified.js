@@ -18,17 +18,18 @@ const api = {
   // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
+      // Backend uses personal_id in patients table, frontend uses patient_id
       const { data, error } = await supabase
         .from('patients')
         .select('*')
-        .eq('patient_id', patientId)
+        .eq('personal_id', patientId)
         .single();
 
       if (error && error.code === 'PGRST116') {
         // Patient doesn't exist, create new
         const { data: newUser, error: createError } = await supabase
           .from('patients')
-          .insert([{ patient_id: patientId, gender: gender || 'male', status: 'active' }])
+          .insert([{ personal_id: patientId, gender: gender || 'male', status: 'active', name: `Patient ${patientId}` }])
           .select()
           .single();
 
