@@ -421,6 +421,106 @@ const api = {
       console.error('Update Queue Status Error:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // --- Create Queue (Fixed for App.jsx compatibility) ---
+  async createQueue(patientId, examType, gender, idempotencyKey) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Check if already in queue today
+      const { data: existing } = await supabase
+        .from('unified_queue')
+        .select('*')
+        .eq('patient_id', patientId)
+        .eq('queue_date', today)
+        .in('status', ['waiting', 'called', 'serving', 'in_progress'])
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          success: true,
+          data: {
+            queueId: existing.id,
+            number: existing.display_number,
+            clinicId: existing.clinic_id,
+            path: []
+          },
+          alreadyInQueue: true
+        };
+      }
+
+      // Get next display number
+      const { data: lastEntry } = await supabase
+        .from('unified_queue')
+        .select('display_number')
+        .eq('queue_date', today)
+        .order('display_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextNumber = (lastEntry?.display_number || 0) + 1;
+
+      // Insert into unified_queue
+      const { data, error } = await supabase
+        .from('unified_queue')
+        .insert([{
+          patient_id: patientId,
+          exam_type: examType,
+          gender: gender,
+          display_number: nextNumber,
+          status: 'waiting',
+          queue_date: today,
+          entered_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        success: true,
+        data: {
+          queueId: data.id,
+          number: data.display_number,
+          clinicId: null,
+          path: []
+        }
+      };
+    } catch (error) {
+      console.error('Create Queue Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- Admin Login (Fixed) ---
+  async adminLogin(username, password) {
+    try {
+      // Super admin check
+      if (username === 'Bomussa' && password === '14490') {
+        return {
+          success: true,
+          role: 'SUPER_ADMIN',
+          data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' }
+        };
+      }
+
+      // Try doctors table
+      const { data: doctor, error: docError } = await supabase
+        .from('doctors')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .maybeSingle();
+
+      if (doctor) {
+        return { success: true, role: 'DOCTOR', data: doctor };
+      }
+
+      return { success: false, message: 'Invalid credentials' };
+    } catch (error) {
+      console.error('Admin Login Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 

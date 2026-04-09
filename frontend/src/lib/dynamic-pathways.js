@@ -158,14 +158,25 @@ async function fetchClinicWeights(clinicIds) {
     // جلب عدد المنتظرين لكل عيادة
     const promises = clinicIds.map(async (clinicId) => {
       try {
-        const { count, error } = await supabase
+        // Try unified_queue first, fallback to queues
+        let { count, error } = await supabase
           .from('unified_queue')
           .select('*', { count: 'exact', head: true })
           .eq('clinic_id', clinicId)
           .eq('queue_date', today)
           .eq('status', 'waiting');
 
-        if (!error && count !== null) {
+        if (error || count === null) {
+          const { data: fallbackData } = await supabase
+            .from('queues')
+            .select('id', { count: 'exact' })
+            .eq('clinic_id', clinicId)
+            .eq('queue_date', today)
+            .eq('status', 'waiting');
+          count = fallbackData?.length || 0;
+        }
+
+        if (count !== null) {
           weights[clinicId] = count;
         }
       } catch (err) {
