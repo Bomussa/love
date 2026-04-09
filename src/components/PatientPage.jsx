@@ -280,17 +280,29 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           const positionData = await api.getQueuePosition(currentStation.id, patientData.id);
           
           if (positionData?.success) {
-            const stateKey = `${currentStation.id}-${positionData.display_number}`;
+            const stateKey = `${currentStation.id}-${positionData.display_number}-${positionData.current_number}`;
             
             if (lastStateRef.current !== stateKey) {
               lastStateRef.current = stateKey;
 
               setStations(prev => prev.map(s => {
                 if (s.id === currentStation.id) {
-                  // Notify when approaching turn
-                  const previousNumber = s.lastNotifiedPosition || 999;
-                  
-                  if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
+                  // Update with real data from Supabase
+                  return {
+                    ...s,
+                    yourNumber: positionData.display_number,
+                    current: positionData.current_number,
+                    ahead: positionData.ahead,
+                    totalWaiting: positionData.total_waiting,
+                    status: 'ready'
+                  };
+                }
+                return s;
+              }));
+
+              // Notify when approaching turn
+              const previousNumber = currentStation.lastNotifiedPosition || 999;
+              if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
                     const messages = {
                       0: language === 'ar' ? '🔔 دورك الآن!' : '🔔 Your turn now!',
                       1: language === 'ar' ? '⚠️ أنت التالي - كن جاهزاً' : '⚠️ You are next - be ready',
@@ -697,12 +709,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                         </div>
                         <div className="text-gray-300 text-sm font-medium">{t('current', language)}</div>
                       </div>
-                      <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
-                        <div className="text-3xl font-bold text-yellow-400 mb-1" data-test="your-number">
-                          {typeof station.yourNumber === 'number' ? station.yourNumber : '-'}
-                        </div>
-                        <div className="text-yellow-200 text-sm font-medium">{t('yourNumber', language)}</div>
-                      </div>
+	                      <div className="p-3 bg-yellow-500/20 rounded-lg border-2 border-yellow-500/50">
+	                        <div className="text-3xl font-bold text-yellow-400 mb-1" data-test="your-number">
+	                          {station.yourNumber || (patientData.queueNumber ? parseInt(patientData.queueNumber) : '-')}
+	                        </div>
+	                        <div className="text-yellow-200 text-sm font-medium">{t('yourNumber', language)}</div>
+	                      </div>
                       <div className="p-3 bg-gray-700/50 rounded-lg">
                         <div className="text-3xl font-bold text-white mb-1" data-test="ahead-count">
                           {station.ahead || 0}
