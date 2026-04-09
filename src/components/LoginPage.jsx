@@ -7,7 +7,7 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
-import featuresConfig from '../../config/features.json'
+import featuresConfig from '../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
 import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
 
@@ -46,35 +46,24 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
     if (e && e.preventDefault) {
       e.preventDefault()
     }
-    console.log('=== handleSubmit CALLED ===')
     setValidationError('')
     
-    // قراءة القيمة من DOM مباشرة للتأكد من الحصول على القيمة الصحيحة
     const inputElement = document.querySelector('input[type="text"]')
     const currentPatientId = inputElement ? inputElement.value : patientId
-    console.log('=== handleSubmit START ===', { patientId, currentPatientId, gender })
     
-    // التحقق من صحة الرقم العسكري
     const sanitizedId = sanitizeInput(currentPatientId || patientId)
     const validation = validateMilitaryId(sanitizedId)
     
     if (!validation.isValid) {
-      console.log('=== Validation FAILED ===', validation.error)
       setValidationError(validation.error)
       return
     }
-    console.log('=== Validation PASSED ===')
 
     setLoading(true)
     try {
-      // تسجيل دخول المراجع
       logPatientRegistered({ militaryId: sanitizedId, gender })
-      
-      console.log('=== Calling onLogin ===')
       await onLogin({ patientId: sanitizedId, gender })
-      console.log('=== onLogin SUCCESS ===')
     } catch (error) {
-      console.error('=== onLogin ERROR ===', error)
       setValidationError(language === 'ar' ? 'حدث خطأ في تسجيل الدخول' : 'Login error occurred')
     } finally {
       setLoading(false)
@@ -85,7 +74,6 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
     e.preventDefault()
     setValidationError('')
     
-    // التحقق من صحة بيانات الإدارة
     const validation = validateAdminData({
       username: sanitizeInput(adminUsername),
       password: adminPassword
@@ -98,11 +86,8 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
 
     setLoading(true)
     try {
-      // تسجيل دخول الإدارة
       const sanitizedUsername = sanitizeInput(adminUsername)
       logAdminLogin(sanitizedUsername)
-      
-      // إرسال username:password كرمز واحد
       await onAdminLogin(`${sanitizedUsername}:${adminPassword.trim()}`)
     } catch (error) {
       setValidationError(language === 'ar' ? 'خطأ في اسم المستخدم أو كلمة المرور' : 'Invalid username or password')
@@ -155,7 +140,6 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
           </Button>
         </div>
         
-        {/* Admin quick access (Right) + Info icon on same row */}
         {onAdminLogin && (
           <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
             {!isAdminMode && (
@@ -234,10 +218,8 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
           </div>
         )}
 
-        {/* Logo and Title */}
         <div className="text-center space-y-2">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
-
           <div>
             <h1 className="text-xl font-bold text-white">
               {language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}
@@ -251,243 +233,170 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
                 : 'Military Specialized Medical Center – Al-Attar'}
             </p>
           </div>
-
-          {/* تمت إزالة محدد الثيم من هذا المكان ونقلُه إلى داخل البطاقة فوق حقل اسم المستخدم */}
         </div>
 
-        {/* Login Form */}
-        <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
-          <CardContent className="p-8">
-            {/* محدد الثيمات - فوق حقل اسم المستخدم مباشرة */}
-            <div className="mb-6">
-              <div className="flex flex-wrap justify-center gap-2 theme-buttons-container">
-                {enhancedMedicalThemes.map((theme) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => onThemeChange(theme.id)}
-                    className={`px-2 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all border whitespace-nowrap ${currentTheme === theme.id ? 'bg-theme-primary text-white border-theme-primary shadow-md' : 'bg-gray-800/60 text-gray-300 border-gray-700 hover:bg-gray-700/70'}`}
-                    title={language === 'ar' ? theme.descriptionAr : theme.description}
-                  >
-                    {language === 'ar' ? theme.nameAr : theme.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-center mb-6">
-              {isAdminMode ? (
-                <Shield className="mx-auto w-12 h-12 text-yellow-400 mb-4" />
-              ) : isDoctorMode ? (
-                <Stethoscope className="mx-auto w-12 h-12 text-blue-400 mb-4" />
-              ) : (
-                <User className="mx-auto w-12 h-12 text-gray-400 mb-4" />
-              )}
-              <h2 className="text-xl font-semibold text-white">
-                {isAdminMode
-                  ? (language === 'ar' ? 'دخول الإدارة' : 'Admin Access')
-                  : isDoctorMode
-                  ? (language === 'ar' ? 'دخول الطبيب' : 'Doctor Access')
-                  : t('welcome', language)
-                }
-              </h2>
-            </div>
-
-            {!isAdminMode && !isDoctorMode ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-300">
-                      {t('personalNumber', language)}
-                    </label>
-                    {featuresConfig?.features?.qr_enabled && (
-                      <button
-                        type="button"
-                        onClick={() => setShowQRScanner(true)}
-                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        <QrCode className="w-4 h-4" />
-                        {language === 'ar' ? 'مسح الباركود' : 'Scan QR'}
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    type="text"
-                    placeholder={t('enterPersonalNumber', language)}
-                    value={patientId}
-                    onChange={handlePatientIdChange}
-                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
-                    pattern="^[0-9]{2,12}$"
-                    title={language === 'ar' ? 'الرقم العسكري يجب أن يتكون من 2 إلى 12 رقمًا' : 'Military number must be 2-12 digits'}
-                    minLength={2}
-                    maxLength={12}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
-                    {t('gender', language)}
+        <Card className="bg-gray-900/50 border-gray-800 backdrop-blur-xl shadow-2xl">
+          <CardContent className="p-6">
+            {isAdminMode || isDoctorMode ? (
+              <form onSubmit={isDoctorMode ? handleDoctorSubmit : handleAdminSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">
+                    {language === 'ar' ? 'اسم المستخدم' : 'Username'}
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      type="button"
-                      variant={gender === 'male' ? 'gradient' : 'outline'}
-                      className={`h-12 ${gender === 'male' ? '' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}`}
-                      onClick={() => setGender('male')}
-                    >
-                      👨 {t('male', language)}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={gender === 'female' ? 'gradient' : 'outline'}
-                      className={`h-12 ${gender === 'female' ? '' : 'border-gray-600 text-gray-300 hover:bg-gray-700'}`}
-                      onClick={() => setGender('female')}
-                    >
-                      👩 {t('female', language)}
-                    </Button>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      type="text"
+                      value={adminUsername}
+                      onChange={(e) => setAdminUsername(e.target.value)}
+                      className="pl-10 bg-gray-800/50 border-gray-700 text-white"
+                      placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
+                      required
+                    />
                   </div>
                 </div>
-
-                {/* إشعار خاص للنساء */}
-                {gender === 'female' && (
-                  <div className="bg-pink-900/30 border-2 border-pink-500/50 rounded-xl p-4 text-center">
-                    <div className="text-pink-300 text-lg font-bold mb-2">⚠️ ملاحظة مهمة للعنصر النسائي</div>
-                    <div className="text-pink-200 text-sm leading-relaxed">
-                      يرجى التسجيل في <span className="font-bold">استقبال المركز الطبي التخصصي العسكري الرئيسي</span> قبل البدء بالفحوصات
-                    </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">
+                    {language === 'ar' ? 'كلمة المرور' : 'Password'}
+                  </label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      className="pl-10 bg-gray-800/50 border-gray-700 text-white"
+                      placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
+                      required
+                    />
+                  </div>
+                </div>
+                {validationError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {validationError}
                   </div>
                 )}
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {language === 'ar' ? 'جاري التحقق...' : 'Verifying...'}
+                    </div>
+                  ) : (
+                    language === 'ar' ? 'تسجيل الدخول' : 'Login'
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-gray-400 hover:text-white"
+                  onClick={() => {
+                    setIsAdminMode(false)
+                    setIsDoctorMode(false)
+                    setValidationError('')
+                  }}
+                >
+                  {language === 'ar' ? 'العودة لتسجيل المراجعين' : 'Back to Patient Login'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">
+                      {language === 'ar' ? 'الرقم الشخصي أو العسكري' : 'Personal or Military ID'}
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={patientId}
+                        onChange={handlePatientIdChange}
+                        className="pl-10 py-6 bg-gray-800/50 border-gray-700 text-white text-lg font-bold tracking-wider"
+                        placeholder={language === 'ar' ? 'أدخل رقمك هنا' : 'Enter your ID here'}
+                        required
+                      />
+                    </div>
+                  </div>
 
-                {/* عرض رسالة الخطأ */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setGender('male')}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
+                        gender === 'male'
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                          : 'bg-gray-800/30 border-gray-700 text-gray-500 hover:border-gray-600'
+                      }`}
+                    >
+                      <span className="text-2xl">👨</span>
+                      <span className="font-bold">{language === 'ar' ? 'ذكر' : 'Male'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGender('female')}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
+                        gender === 'female'
+                          ? 'bg-pink-600/20 border-pink-500 text-pink-400'
+                          : 'bg-gray-800/30 border-gray-700 text-gray-500 hover:border-gray-600'
+                      }`}
+                    >
+                      <span className="text-2xl">👩</span>
+                      <span className="font-bold">{language === 'ar' ? 'أنثى' : 'Female'}</span>
+                    </button>
+                  </div>
+                </div>
+
                 {validationError && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-2 text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
                     {validationError}
                   </div>
                 )}
 
                 <Button
                   type="submit"
-                  variant="gradient"
-                  className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !patientId.trim()}
-                  onClick={(e) => {
-                    console.log('=== Button CLICKED ===')
-                    // الزر type=submit سيستدعي onSubmit تلقائياً
-                  }}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-8 text-xl shadow-lg shadow-blue-900/20"
+                  disabled={loading}
                 >
-                  {loading
-                    ? (language === 'ar' ? 'جاري المعالجة...' : 'Processing...')
-                    : (language === 'ar' ? 'تأكيد ←' : 'Confirm →')}
-                </Button>
-              </form>
-            ) : isDoctorMode ? (
-              <form onSubmit={handleDoctorSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'اسم المستخدم' : 'Username'}
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'كلمة المرور' : 'Password'}
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="gradient"
-                  className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !adminUsername.trim() || !adminPassword.trim()}
-                >
-                  {loading
-                    ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...')
-                    : (language === 'ar' ? 'دخول الطبيب ←' : 'Doctor Login →')}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleAdminSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'اسم المستخدم' : 'Username'}
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder={language === 'ar' ? 'أدخل اسم المستخدم' : 'Enter username'}
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'كلمة المرور' : 'Password'}
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder={language === 'ar' ? 'أدخل كلمة المرور' : 'Enter password'}
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="gradient"
-                  className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !adminUsername.trim() || !adminPassword.trim()}
-                >
-                  {loading
-                    ? (language === 'ar' ? 'جاري التحقق...' : 'Verifying...')
-                    : (language === 'ar' ? 'دخول ←' : 'Login →')}
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      {language === 'ar' ? 'جاري تسجيل دورك...' : 'Registering...'}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-6 h-6" />
+                      {language === 'ar' ? 'تأكيد وأخذ دور' : 'Confirm & Get Ticket'}
+                    </div>
+                  )}
                 </Button>
               </form>
             )}
           </CardContent>
         </Card>
+
+        <div className="text-center">
+          <p className="text-gray-500 text-xs">
+            {language === 'ar' 
+              ? '© ٢٠٢٦ اللجنة الطبية العسكرية - جميع الحقوق محفوظة' 
+              : '© 2026 Military Medical Committee - All Rights Reserved'}
+          </p>
+        </div>
       </div>
-      
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <QRScanner
+
+      {showStatistics && (
+        <LiveStatisticsPanel 
+          onClose={() => setShowStatistics(false)} 
           language={language}
-          onScan={(scannedId) => {
-            setPatientId(scannedId);
-            setShowQRScanner(false);
-          }}
-          onClose={() => setShowQRScanner(false)}
         />
       )}
-      
-      {/* Statistics Panel */}
-      <LiveStatisticsPanel
-        isOpen={showStatistics}
-        onClose={() => setShowStatistics(false)}
-        language={language}
-      />
-      
-
     </div>
   )
 }

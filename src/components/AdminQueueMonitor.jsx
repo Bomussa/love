@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { GENERAL_REFRESH_INTERVAL } from '../core/config/refresh.constants'
+import { GENERAL_REFRESH_INTERVAL } from '../lib/refresh.constants'
 import { t } from '../lib/i18n'
 import enhancedApi from '../lib/api-unified'
 
