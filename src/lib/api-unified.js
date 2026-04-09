@@ -35,3 +35,5 @@ export const api = {
       body: JSON.stringify({ id }),
     }),
 };
+
+export default api;
