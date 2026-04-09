@@ -30,7 +30,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   // ✅ دالة مساعدة لجلب رقم الطابور للعيادة
   const fetchQueueNumberForStation = async (station) => {
     try {
-      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      // استخدام patient_id (الرقم الشخصي) بدلاً من id الداخلي
+      const patientIdentifier = patientData.patient_id || patientData.id;
+      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
       if (positionData && positionData.success) {
         return {
           yourNumber: positionData.display_number,
@@ -52,8 +54,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setLoading(true)
       console.log('[PatientPage] Getting ticket for first clinic:', station.id)
 
+      // استخدام patient_id (الرقم الشخصي) بدلاً من id الداخلي
+      const patientIdentifier = patientData.patient_id || patientData.id;
+
       // أولاً: محاولة إنشاء Queue entry
-      const enterResult = await api.enterQueue(station.id, patientData.id, false, patientData.name, patientData.queueType)
+      const enterResult = await api.enterQueue(station.id, patientIdentifier, false, patientData.name, patientData.queueType)
 
       if (enterResult && !enterResult.success && enterResult.error) {
         // إذا كان هناك خطأ (وليس because already in queue)
@@ -63,7 +68,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       }
 
       // ثانياً: جلب رقم الطابور الحالي
-      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
 
       if (positionData && positionData.success) {
         setStations(prev => prev.map((s, idx) => idx === 0 ? {
@@ -91,8 +96,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setLoading(true)
       const entryTime = new Date().toISOString();
 
+      // استخدام patient_id (الرقم الشخصي) بدلاً من id الداخلي
+      const patientIdentifier = patientData.patient_id || patientData.id;
+
       // إنشاء Queue entry مع isAutoEnter = true
-      const enterResult = await api.enterQueue(station.id, patientData.id, true, patientData.name, patientData.queueType)
+      const enterResult = await api.enterQueue(station.id, patientIdentifier, true, patientData.name, patientData.queueType)
 
       if (enterResult && !enterResult.success && enterResult.error && !enterResult.alreadyExists) {
         pushNotif({ type: 'error', message: enterResult.error })
@@ -101,7 +109,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       }
 
       // جلب بيانات الطابور
-      const positionData = await api.getQueuePosition(station.id, patientData.id)
+      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
       if (positionData && positionData.success) {
         setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
         setStations(prev => prev.map(s => s.id === station.id ? {
@@ -247,7 +255,9 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       try {
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
         if (currentStation) {
-          const positionData = await api.getQueuePosition(currentStation.id, patientData.id);
+          // استخدام patient_id (الرقم الشخصي) بدلاً من id الداخلي
+          const patientIdentifier = patientData.patient_id || patientData.id;
+          const positionData = await api.getQueuePosition(currentStation.id, patientIdentifier);
           if (positionData && positionData.success) {
             const stateKey = `${currentStation.id}-${positionData.display_number}`;
             if (lastStateRef.current !== stateKey) {
@@ -319,7 +329,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         event: '*',
         schema: 'public',
         table: 'unified_queue',
-        filter: `patient_id=eq.${patientData.id}`
+        filter: `patient_id=eq.${patientData.patient_id || patientData.id}`
       }, (payload) => {
         const updatedEntry = payload.new;
         updateQueueStatus();
@@ -371,14 +381,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }, [patientData?.id, language])
 
   useEffect(() => {
-    if (!patientData?.military_number) return;
-    const patientId = String(patientData.military_number);
+    if (!patientData?.patient_id) return;
+    const patientIdentifier = String(patientData.patient_id);
     const fetchActiveAlerts = async () => {
       try {
         const { data } = await supabase
           .from('direct_alerts')
           .select('*')
-          .eq('patient_id', patientId)
+          .eq('patient_id', patientIdentifier)
           .eq('is_active', true)
           .gt('expires_at', new Date().toISOString())
           .order('created_at', { ascending: false });
@@ -387,12 +397,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     };
     fetchActiveAlerts();
     const channel = supabase
-      .channel(`direct_alerts_${patientId}`)
+      .channel(`direct_alerts_${patientIdentifier}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'direct_alerts',
-        filter: `patient_id=eq.${patientId}`
+        filter: `patient_id=eq.${patientIdentifier}`
       }, (payload) => {
         const alert = payload.new;
         if (alert.is_active && new Date(alert.expires_at) > new Date()) {
@@ -404,7 +414,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [patientData?.military_number]);
+  }, [patientData?.patient_id]);
 
   const dismissDirectAlert = async (alertId) => {
     try {
