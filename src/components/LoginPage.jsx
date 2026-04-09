@@ -7,7 +7,7 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 import { t } from '../lib/i18n'
 import { logPatientRegistered, logAdminLogin } from '../lib/activityLogger'
 import { QRScanner } from './QRScanner'
-import featuresConfig from '../config/features.json'
+import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
 import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
 
