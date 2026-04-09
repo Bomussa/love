@@ -1,8 +1,19 @@
+/**
+ * Unified API Client - v3.2
+ * Bridges frontend requests to the love-api backend.
+ * Fixed: Unified all endpoints under /api/v1/queue/*
+ */
+
 const BASE = "/api/v1";
 
 async function request(path, options = {}) {
+  // Ensure we use the full URL for the backend if needed, 
+  // but Vercel rewrites handle this in production.
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    },
     ...options,
   });
 
@@ -15,14 +26,14 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  // مراجع الانتظار
-  getClinicWaitingCount: (clinicId) =>
-    request(`/queue/status?clinicId=${clinicId}`),
-
+  // Queue Status & Stats
   getQueueStatus: (clinicId) =>
     request(`/queue/status?clinicId=${clinicId}`),
 
-  // عمليات الطابور
+  getStats: (clinicId) =>
+    request(`/queue/status?clinicId=${clinicId}`),
+
+  // Queue Operations
   enterQueue: (data) =>
     request("/queue/enter", {
       method: "POST",
@@ -53,9 +64,12 @@ export const api = {
       body: JSON.stringify({ id }),
     }),
     
-  // إحصائيات
-  getStats: (clinicId) =>
-    request(`/queue/stats?clinicId=${clinicId}`),
+  // Admin & Auth
+  adminLogin: (username, password) =>
+    request("/admin/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
 };
 
 export default api;

@@ -1,20 +1,24 @@
-import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
+import { utcToZonedTime, format } from 'date-fns-tz';
 
-import CONST from '../config/constants.json' assert { type: 'json' };
-
-export const tz = CONST.TIMEZONE as string;
-const pivot = CONST.SERVICE_DAY_PIVOT as string;
+// استيراد الإعدادات بشكل متوافق مع Vite
+const tz = "Asia/Qatar";
+const pivot = "05:00";
 
 export function nowISO() {
   return new Date().toISOString();
 }
 
+/**
+ * جلب مفتاح التاريخ المحلي بتوقيت قطر
+ * يعتمد على نقطة التحول (Pivot) لليوم الخدمي
+ */
 export function localDateKeyAsiaQatar(d = new Date()) {
   const z = utcToZonedTime(d, tz);
   const [h, m] = pivot.split(':').map(Number);
   const pivotDate = new Date(z);
   pivotDate.setHours(h, m, 0, 0);
-  // قبل 05:00 → ننسب لليوم السابق
+  
+  // إذا كان الوقت الحالي قبل الساعة 5 صباحاً، نعتبره تابعاً لليوم السابق
   if (z.getTime() < pivotDate.getTime()) {
     const y = new Date(z);
     y.setDate(y.getDate() - 1);
