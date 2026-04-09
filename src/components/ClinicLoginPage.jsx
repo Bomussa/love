@@ -112,3 +112,4 @@ export function ClinicLoginPage({ onLogin, language }) {
     </div>
   )
 }
+export default ClinicLoginPage

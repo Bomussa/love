@@ -44,3 +44,4 @@ export default function ClinicDashboard() {
     </div>
   );
 }
+export default ClinicDashboard

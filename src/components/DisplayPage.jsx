@@ -46,3 +46,4 @@ export default function DisplayPage() {
     </h1>
   );
 }
+export default DisplayPage

@@ -279,3 +279,4 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 }
 
 export default DoctorDashboard
+export default DoctorDashboard
