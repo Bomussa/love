@@ -2802,20 +2802,20 @@ const SystemStatus = ({ language, t }) => {
     setLoading(true);
     const results = {};
     
-    // قائمة الجداول للفحص
+    // قائمة الجداول للفحص - تصحيح أسماء الجداول
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queue', label: t('الطابور (queue)', 'Queue') },
-      { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
-      { name: 'doctor-control', label: t('لوحة الطبيب', 'Doctor Control') },
-    { name: 'doctor-management', label: t('إدارة الأطباء', 'Doctor Management') },
-      { name: 'settings', label: t('الإعدادات', 'Settings') },
+      { name: 'queues', label: t('الطوابير', 'Queues') },
+      { name: 'patients', label: t('المرضى', 'Patients') },
+      { name: 'doctors', label: t('الأطباء', 'Doctors') },
+      { name: 'admin_users', label: t('مستخدمي الإدارة', 'Admin Users') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
-      { name: 'patients', label: t('المرضى', 'Patients') },
-      { name: 'admins', label: t('المسؤولين', 'Admins') },
-      { name: 'users', label: t('المستخدمين', 'Users') },
-      { name: 'sessions', label: t('الجلسات', 'Sessions') },
+      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
+      { name: 'settings', label: t('الإعدادات', 'Settings') },
+      { name: 'system_settings', label: t('إعدادات النظام', 'System Settings') },
+      { name: 'unified_queue', label: t('الطابور الموحد', 'Unified Queue') },
+      { name: 'activity_logs', label: t('سجلات النشاط', 'Activity Logs') },
     ];
 
     for (const table of tables) {
