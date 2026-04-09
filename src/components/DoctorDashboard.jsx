@@ -28,23 +28,29 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
     if (!clinicId) return
     try {
       setConnectionStatus('loading')
-      const response = await api.getClinicWaitingCount(clinicId)
+      const response = await api.getQueueStatus(clinicId)
       
       if (response.success || response.data) {
         setConnectionStatus('connected')
-        const waitingCount = response.data?.waitingCount || response.data || 0
+        const data = response.data || response
+        setStats({
+          waitingNow: data.totalWaiting || 0,
+          completedToday: data.totalDone || 0,
+          totalToday: data.totalToday || 0,
+          avgExamTime: data.avgWaitTime || 0
+        })
         
-        setStats(prev => ({
-          ...prev,
-          waitingNow: waitingCount
-        }))
+        // تحديث المراجع الحالي إذا كان موجوداً في الرد
+        if (data.in && data.in.length > 0) {
+          setCurrentPatient(data.in[0])
+        } else {
+          setCurrentPatient(null)
+        }
       } else {
         setConnectionStatus('error')
-        console.error('API Error:', response.error)
       }
     } catch (err) {
       setConnectionStatus('error')
-      console.error('Error fetching data:', err)
     }
   }
 
@@ -278,5 +284,4 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
   )
 }
 
-export default DoctorDashboard
 export default DoctorDashboard

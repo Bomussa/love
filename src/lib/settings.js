@@ -1,5 +1,5 @@
 // lib/settings.js - خدمة إدارة إعدادات النظام
-import db from '../../../src/lib/supabase-db.js';
+import db from './supabase-client.js';
 
 /**
  * جلب قيمة إعداد من قاعدة البيانات
@@ -9,13 +9,15 @@ import db from '../../../src/lib/supabase-db.js';
  */
 export async function getSetting(key, fallback = '') {
   try {
-    const { rows } = await db.query(
-      'SELECT value FROM system_settings WHERE key = $1',
-      [key],
-    );
-    return rows[0]?.value ?? fallback;
+    const { data, error } = await db
+      .from('system_settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data?.value ?? fallback;
   } catch (error) {
-    // console.error(`Error getting setting ${key}:`, error);
     return fallback;
   }
 }
@@ -28,16 +30,16 @@ export async function getSetting(key, fallback = '') {
  */
 export async function setSetting(key, value) {
   try {
-    await db.query(`
-      INSERT INTO system_settings(key, value, updated_at) 
-      VALUES($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET 
-        value = EXCLUDED.value,
-        updated_at = NOW()
-    `, [key, value]);
-    return true;
+    const { error } = await db
+      .from('system_settings')
+      .upsert({ 
+        key, 
+        value, 
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'key' });
+    
+    return !error;
   } catch (error) {
-    // console.error(`Error setting ${key}:`, error);
     return false;
   }
 }
@@ -48,12 +50,15 @@ export async function setSetting(key, value) {
  */
 export async function getAllSettings() {
   try {
-    const { rows } = await db.query(
-      'SELECT key, value, description FROM system_settings ORDER BY key',
-    );
+    const { data, error } = await db
+      .from('system_settings')
+      .select('key, value, description')
+      .order('key');
+
+    if (error) throw error;
 
     const settings = {};
-    rows.forEach((row) => {
+    data.forEach((row) => {
       settings[row.key] = {
         value: row.value,
         description: row.description,
@@ -62,7 +67,6 @@ export async function getAllSettings() {
 
     return settings;
   } catch (error) {
-    // console.error('Error getting all settings:', error);
     return {};
   }
 }
@@ -80,7 +84,6 @@ export async function getSystemConfig() {
     const notifications = await getSetting('enable_notifications', 'true');
     const workingHoursStart = await getSetting('working_hours_start', '07:00');
     const workingHoursEnd = await getSetting('working_hours_end', '15:00');
-    const emergencyPin = await getSetting('emergency_pin', '999');
 
     return {
       graceMinutes: parseInt(graceMinutes, 10),
@@ -91,11 +94,9 @@ export async function getSystemConfig() {
       workingHours: {
         start: workingHoursStart,
         end: workingHoursEnd,
-      },
-      emergencyPin,
+      }
     };
   } catch (error) {
-    // console.error('Error getting system config:', error);
     return {
       graceMinutes: 5,
       cadenceMinutes: 1,
@@ -105,8 +106,7 @@ export async function getSystemConfig() {
       workingHours: {
         start: '07:00',
         end: '15:00',
-      },
-      emergencyPin: '999',
+      }
     };
   }
 }
@@ -117,29 +117,20 @@ export async function getSystemConfig() {
  * @returns {Promise<boolean>} نجح التحديث أم لا
  */
 export async function updateSettings(settings) {
-  const client = await db.getClient();
-
   try {
-    await client.query('BEGIN');
+    const updates = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value: String(value),
+      updated_at: new Date().toISOString()
+    }));
 
-    for (const [key, value] of Object.entries(settings)) {
-      await client.query(`
-        INSERT INTO system_settings(key, value, updated_at) 
-        VALUES($1, $2, NOW())
-        ON CONFLICT (key) DO UPDATE SET 
-          value = EXCLUDED.value,
-          updated_at = NOW()
-      `, [key, String(value)]);
-    }
+    const { error } = await db
+      .from('system_settings')
+      .upsert(updates, { onConflict: 'key' });
 
-    await client.query('COMMIT');
-    return true;
+    return !error;
   } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error('Error updating settings:', error);
     return false;
-  } finally {
-    client.release();
   }
 }
 
@@ -156,7 +147,6 @@ export async function isWorkingHours() {
     return currentTime >= config.workingHours.start
            && currentTime <= config.workingHours.end;
   } catch (error) {
-    // console.error('Error checking working hours:', error);
     return true; // افتراضياً نعتبر أنه وقت عمل
   }
 }
@@ -177,7 +167,6 @@ export async function getThemeSettings() {
       showThemePreview: showThemePreview === 'true',
     };
   } catch (error) {
-    // console.error('Error getting theme settings:', error);
     return {
       currentTheme: 'medical-professional',
       enableThemeSelector: true,
@@ -209,7 +198,6 @@ export async function updateThemeSettings(themeSettings) {
 
     return await updateSettings(updates);
   } catch (error) {
-    // console.error('Error updating theme settings:', error);
     return false;
   }
 }
