@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase-client'
  * ✅ تحديث فوري عند أي تغيير
  * ✅ استهلاك موارد منخفض
  * ✅ أداء ممتاز
+ * ✅ موحد على جدول queues
  */
 export function DisplayPage({ clinicId, language }) {
   const [currentStep, setCurrentStep] = useState(null)
@@ -43,7 +44,7 @@ export function DisplayPage({ clinicId, language }) {
    */
   const initializeRealtimeSubscription = () => {
     try {
-      // الاشتراك في تغييرات جدول unified_queue
+      // الاشتراك في تغييرات جدول queues الموحد
       subscriptionRef.current = supabase
         .channel(`queue-${clinicId}`)
         .on(
@@ -51,7 +52,7 @@ export function DisplayPage({ clinicId, language }) {
           {
             event: '*',
             schema: 'public',
-            table: 'unified_queue',
+            table: 'queues',
             filter: `clinic_id=eq.${clinicId}`,
           },
           (payload) => {
@@ -73,18 +74,9 @@ export function DisplayPage({ clinicId, language }) {
    */
   const handleQueueUpdate = async (payload) => {
     try {
-      const { new: newData, old: oldData, eventType } = payload
-
       // جلب أحدث بيانات الطابور
       await fetchCurrentStatus()
-      
       setLastUpdate(new Date().toLocaleTimeString('ar-SA'))
-      
-      console.log('Queue updated:', {
-        event: eventType,
-        data: newData,
-        timestamp: new Date().toISOString()
-      })
     } catch (error) {
       console.error('Error handling queue update:', error)
     }
@@ -95,12 +87,14 @@ export function DisplayPage({ clinicId, language }) {
    */
   const fetchCurrentStatus = async () => {
     try {
-      // جلب أول مراجع في حالة "called" أو "serving"
+      const today = new Date().toISOString().split('T')[0];
+      // جلب أول مراجع في حالة "called" أو "serving" من جدول queues
       const { data, error } = await supabase
-        .from('unified_queue')
+        .from('queues')
         .select('*')
         .eq('clinic_id', clinicId)
-        .in('status', ['called', 'serving'])
+        .eq('queue_date', today)
+        .in('status', ['called', 'CALLED', 'serving', 'SERVING'])
         .order('called_at', { ascending: true })
         .limit(1)
         .single()

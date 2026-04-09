@@ -1,6 +1,7 @@
 // lib/queueManager.js - مدير الكيو اللحظي مع المهلة الزمنية والاستدعاء التلقائي
+// v2.3 - موحد على جدول queues
 import db from './supabase-client.js';
-import { getSetting, getSystemConfig } from './settings.js';
+import { getSystemConfig } from './settings.js';
 
 /**
  * نوع بيانات لقطة الكيو
@@ -19,11 +20,12 @@ import { getSetting, getSystemConfig } from './settings.js';
  */
 export async function getQueueSnapshot(clinicId) {
   try {
+    const today = new Date().toISOString().split('T')[0];
     const { data, error } = await db
       .from('queues')
       .select('status')
       .eq('clinic_id', clinicId)
-      .eq('queue_date', new Date().toISOString().split('T')[0]);
+      .eq('queue_date', today);
 
     if (error) throw error;
 
@@ -32,9 +34,12 @@ export async function getQueueSnapshot(clinicId) {
     };
     
     data.forEach((row) => {
-      if (snapshot[row.status] !== undefined) {
-        snapshot[row.status]++;
-      }
+      const status = String(row.status).toLowerCase();
+      if (status === 'waiting') snapshot.waiting++;
+      else if (status === 'called') snapshot.called++;
+      else if (status === 'serving' || status === 'in') snapshot.in++;
+      else if (status === 'completed' || status === 'done') snapshot.done++;
+      else if (status === 'no_show') snapshot.no_show++;
     });
 
     return snapshot;
@@ -89,7 +94,6 @@ export async function getQueueDetails(clinicId) {
  */
 export async function callNextPatient(clinicId) {
   try {
-    const config = await getSystemConfig();
     const today = new Date().toISOString().split('T')[0];
 
     // البحث عن أول مراجع في الانتظار
@@ -193,24 +197,10 @@ export async function completeClinicForPatient(clinicId, patientId) {
   }
 }
 
-/**
- * معالجة المراجعين الذين انتهت مهلتهم (تحويل إلى no_show)
- * @param {number} clinicId - معرف العيادة
- * @returns {Promise<number>} عدد المراجعين الذين تم تحويلهم لـ no_show
- */
-export async function expireNoShows(clinicId) {
-  try {
-    const now = new Date().toISOString();
-    const { data, error } = await db
-      .from('queues')
-      .update({ status: 'no_show', updated_at: now })
-      .eq('clinic_id', clinicId)
-      .eq('status', 'called')
-      .lt('expires_at', now)
-      .select();
-
-    return error ? 0 : data.length;
-  } catch (error) {
-    return 0;
-  }
-}
+export default {
+  getQueueSnapshot,
+  getQueueDetails,
+  callNextPatient,
+  checkInAtClinic,
+  completeClinicForPatient
+};
