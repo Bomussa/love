@@ -1,30 +1,42 @@
 import supabase from "./supabase-client";
+import { localDateKeyAsiaQatar } from "../utils/time";
 
-function getQatarRange() {
-  const now = new Date();
-  const start = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Qatar" })
-  );
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
+/**
+ * Statistics Engine - v2.1
+ * Unified data source on 'queues' table with Asia/Qatar timezone support.
+ */
 
 export async function getStats(clinicId) {
-  const { start, end } = getQatarRange();
-  const { data } = await supabase
-    .from("queues")
-    .select("*")
-    .eq("clinic_id", clinicId)
-    .gte("created_at", start.toISOString())
-    .lte("created_at", end.toISOString());
+  try {
+    const today = localDateKeyAsiaQatar();
+    
+    const { data, error } = await supabase
+      .from("queues")
+      .select("*")
+      .eq("clinic_id", clinicId)
+      .eq("queue_date", today);
 
-  return {
-    total: data.length,
-    waiting: data.filter((d) => d.status === "waiting").length,
-    serving: data.filter((d) => d.status === "serving").length,
-    completed: data.filter((d) => d.status === "completed").length,
-  };
+    if (error) throw error;
+
+    const waiting = data.filter((d) => d.status === "waiting" || d.status === "WAITING");
+    const serving = data.filter((d) => ["called", "CALLED", "serving", "SERVING"].includes(d.status));
+    const completed = data.filter((d) => ["completed", "COMPLETED", "done", "DONE"].includes(d.status));
+
+    return {
+      total: data.length,
+      waiting: waiting.length,
+      serving: serving.length,
+      completed: completed.length,
+      dateKey: today
+    };
+  } catch (error) {
+    // console.error("Statistics Engine Error:", error);
+    return {
+      total: 0,
+      waiting: 0,
+      serving: 0,
+      completed: 0,
+      dateKey: new Date().toISOString().split('T')[0]
+    };
+  }
 }
