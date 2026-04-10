@@ -175,14 +175,11 @@ html[dir="rtl"] aside.fixed,
   right: 0 !important;
 }
 
-/* إخفاء القائمة في RTL - فقط على الشاشات الصغيرة */
-@media (max-width: 1023px) {
-  html[dir="rtl"] aside[data-sidebar="admin"].-translate-x-full,
-  html[dir="rtl"] aside.fixed.-translate-x-full,
-  [dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]),
-  [dir="rtl"] aside.fixed:not(.sidebar-open) {
-    transform: translateX(100%) !important;
-  }
+html[dir="rtl"] aside[data-sidebar="admin"].-translate-x-full,
+html[dir="rtl"] aside.fixed.-translate-x-full,
+[dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]),
+[dir="rtl"] aside.fixed:not(.sidebar-open) {
+  transform: translateX(100%) !important;
 }
 
 html[dir="rtl"] aside[data-sidebar="admin"].translate-x-0,
@@ -203,24 +200,19 @@ html[dir="rtl"] button[aria-label="Toggle Menu"],
    ====================================== */
 
 @media (min-width: 1024px) {
-  /* القائمة على اليمين في RTL - المحتوى يأخذ margin-right */
-  main {
-    margin-right: 24rem !important;
-    margin-left: 0 !important;
-  }
-  
-  main.lg\:mr-96 {
-    margin-right: 24rem !important;
-    margin-left: 0 !important;
-  }
-  
   main.lg\:mr-64 {
-    margin-right: 16rem !important;
-    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-left: 16rem !important;
   }
   
   main.lg\:ml-64 {
     margin-left: 16rem !important;
+  }
+  
+  html[dir="rtl"] main.lg\:mr-64,
+  [dir="rtl"] main.lg\:mr-64 {
+    margin-left: 0 !important;
+    margin-right: 16rem !important;
   }
 }
 
@@ -359,33 +351,17 @@ aside.fixed {
 /* ======================================
    RTL CRITICAL FIX - Sidebar Direction
    ====================================== */
-
-/* على الشاشات الكبيرة (lg+): القائمة ظاهرة دائماً */
-@media (min-width: 1024px) {
-  aside[data-sidebar="admin"],
-  [dir="rtl"] aside[data-sidebar="admin"] {
-    transform: translateX(0) !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    right: 0 !important;
-    left: auto !important;
-  }
+[dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]):not(.sidebar-open) {
+  transform: translateX(100%) !important;
+  visibility: hidden !important;
 }
 
-/* على الشاشات الصغيرة فقط: إخفاء/إظهار بحسب الحالة */
-@media (max-width: 1023px) {
-  [dir="rtl"] aside[data-sidebar="admin"]:not([data-mobile-open="true"]):not(.sidebar-open) {
-    transform: translateX(100%) !important;
-    visibility: hidden !important;
-  }
-
-  [dir="rtl"] aside[data-sidebar="admin"][data-mobile-open="true"],
-  [dir="rtl"] aside[data-sidebar="admin"].sidebar-open {
-    transform: translateX(0) !important;
-    visibility: visible !important;
-    right: 0 !important;
-    left: auto !important;
-  }
+[dir="rtl"] aside[data-sidebar="admin"][data-mobile-open="true"],
+[dir="rtl"] aside[data-sidebar="admin"].sidebar-open {
+  transform: translateX(0) !important;
+  visibility: visible !important;
+  right: 0 !important;
+  left: auto !important;
 }
 
 /* منع overflow أفقي في الـ body عند فتح القائمة */

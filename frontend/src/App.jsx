@@ -2,7 +2,7 @@ import InteractiveElementReporter from './lib/interactive-element-reporter';
 import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
 import AdvancedAutoRepair from './lib/advanced-auto-repair';
-import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+import { supabase } from './lib/supabase-client';
 import './core/notification-engine.js';
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -29,7 +29,6 @@ const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
 const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
-const DoctorDashboard = lazy(() => import('./components/DoctorDashboard').then(m => ({ default: m.DoctorDashboard })))
 
 // Preload المكونات عند بدء التطبيق لتسريع التنقل
 const preloadComponents = () => {
@@ -81,13 +80,6 @@ class AdminErrorBoundary extends React.Component {
 
 function App() {
   // ============= STATE MANAGEMENT =============
-  const [doctorSession, setDoctorSession] = useState(() => {
-    try {
-      const stored = localStorage.getItem('mmc_doctor_session')
-      return stored ? JSON.parse(stored) : null
-    } catch(e) { return null }
-  })
-
   const [clinicSession, setClinicSession] = useState(() => {
     try {
       const stored = localStorage.getItem('mmc_clinic_session')
@@ -188,16 +180,6 @@ function App() {
       return;
     }
 
-    // Priority 2.5: Doctor routes
-    if (path === '/doctor' || path.startsWith('/doctor/')) {
-      if (doctorSession) {
-        setCurrentView('doctor');
-      } else {
-        setCurrentView('login');
-      }
-      return;
-    }
-
     // Priority 3: Clinic routes
     if (path === '/clinic/login' || path === '/clinic/login/') {
       setCurrentView('clinic_login');
@@ -221,7 +203,7 @@ function App() {
     // Default: Login
     console.log('[App] Default to login view');
     setCurrentView('login');
-  }, [language, isAdmin, patientData, clinicSession, doctorSession])
+  }, [language, isAdmin, patientData, clinicSession])
 
   // ============= THEME MANAGEMENT =============
   useEffect(() => {
@@ -263,7 +245,7 @@ function App() {
   const handleLogin = async ({ patientId, gender }) => {
     try {
       // التحقق من عدم استخدام نفس الجهاز لإدخال رقم جديد في نفس اليوم - عبر قاعدة البيانات
-      // Use static imports to avoid TDZ errors
+      const { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } = await import('./lib/supabase-client.js');
 
       // التحقق من تفعيل نظام منع الجهاز
       const deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
@@ -345,52 +327,10 @@ function App() {
   const handleLogout = () => {
     setPatientData(null)
     setIsAdmin(false)
-    setDoctorSession(null)
     setCurrentView('login')
     localStorage.removeItem('patientData')
     localStorage.removeItem('mmc_admin_session')
-    localStorage.removeItem('mmc_doctor_session')
     window.history.pushState({}, '', '/')
-  }
-
-  // ============= DOCTOR LOGIN HANDLER =============
-  const handleDoctorLogin = async (credentials) => {
-    try {
-      const [username, password] = credentials.split(':')
-      if (!username || !password) {
-        showNotification(language === 'ar' ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Please enter username and password', 'error')
-        return;
-      }
-
-      // Check if user is a doctor in the database
-      const { data: doctor, error } = await supabase
-        .from('doctors')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .single()
-
-      if (error || !doctor) {
-        showNotification(language === 'ar' ? '❌ بيانات الدخول غير صحيحة' : '❌ Invalid credentials', 'error')
-        return
-      }
-
-      const session = {
-        id: doctor.id,
-        name: doctor.name,
-        clinic_id: doctor.clinic_id,
-        clinic_name: doctor.clinic_name,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }
-
-      localStorage.setItem('mmc_doctor_session', JSON.stringify(session))
-      setDoctorSession(session)
-      setCurrentView('doctor')
-      showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success')
-    } catch (error) {
-      console.error('[App] Doctor login error:', error);
-      showNotification(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error')
-    }
   }
 
   // ============= LANGUAGE TOGGLE =============
@@ -426,7 +366,6 @@ function App() {
           <LoginPage
             onLogin={handleLogin}
             onAdminLogin={handleAdminLogin}
-            onDoctorLogin={handleDoctorLogin}
             currentTheme={currentTheme}
             onThemeChange={setCurrentTheme}
             language={language}
@@ -448,29 +387,44 @@ function App() {
                 }
 
                 // ✅ إصلاح: ترتيب العيادات حسب الأقل ازدحاماً
-                // العيادات مرتبة بالفعل في getDynamicMedicalPathway
-                const firstClinic = clinics[0];
+                let firstClinic = clinics[0].id;
+                try {
+                  const queueCounts = await Promise.all(
+                    clinics.map(async (clinic) => {
+                      const count = await api.getQueueCount(clinic.id);
+                      return { id: clinic.id, count: count || 0, clinic };
+                    })
+                  );
+                  // ترتيب العيادات حسب الأقل ازدحاماً
+                  queueCounts.sort((a, b) => a.count - b.count);
+                  firstClinic = queueCounts[0].id;
+                  console.log('[App] Weighted clinic selection:', queueCounts.map(q => `${q.clinic.nameAr}: ${q.count}`), 'Selected:', firstClinic);
+                } catch (weightError) {
+                  console.warn('[App] Weight calculation failed, using first clinic:', weightError);
+                }
 
-                console.log('[App] Selected first clinic:', firstClinic);
+                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
 
-                // ✅ إنشاء Queue entry بدون تسجيل تلقائي
-                // PatientPage سيتعامل مع الحصول على الرقم
-                const updatedPatientData = {
-                  ...patientData,
-                  queueType: examType,
-                  currentClinic: firstClinic?.id,
-                  clinicIds: clinics.map(c => c.id), // جميع معرفات العيادات في المسار
-                  pathway: clinics, // كامل بيانات المسار
-                  isAutoEnter: false // لا تدخل تلقائي - PatientPage ستحصل على الرقم
-                };
+                if (queueRes.success) {
+                  const updatedPatientData = {
+                    ...patientData,
+                    queueType: examType,
+                    currentClinic: firstClinic,
+                    queueNumber: queueRes.display_number || queueRes.number,
+                    ahead: queueRes.ahead || 0,
+                    pathway: clinics
+                  };
 
-                setPatientData(updatedPatientData)
-                localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
-                setCurrentView('patient')
-                showNotification(language === 'ar' ? 'تم تحديد المسار الطبي بنجاح' : 'Medical pathway selected successfully', 'success')
+                  setPatientData(updatedPatientData)
+                  localStorage.setItem('patientData', JSON.stringify(updatedPatientData))
+                  setCurrentView('patient')
+                  showNotification(language === 'ar' ? 'تم التسجيل بنجاح' : 'Registered successfully', 'success')
+                } else {
+                  throw new Error(queueRes.error || 'Failed to enter queue')
+                }
               } catch (error) {
                 console.error('[App] Exam select error:', error);
-                showNotification(language === 'ar' ? 'فشل تحديد المسار الطبي' : 'Failed to select medical pathway', 'error')
+                showNotification(language === 'ar' ? 'فشل التسجيل' : 'Registration failed', 'error')
               }
             }}
             onBack={() => {
@@ -517,21 +471,6 @@ function App() {
             language={language}
             toggleLanguage={toggleLanguage}
           />
-        )}
-
-        {currentView === 'doctor' && doctorSession && (
-          <Suspense fallback={<LoadingFallback />}>
-            <DoctorDashboard
-              doctorData={doctorSession}
-              onLogout={() => {
-                setDoctorSession(null)
-                localStorage.removeItem('mmc_doctor_session')
-                setCurrentView('login')
-              }}
-              language={language}
-              toggleLanguage={toggleLanguage}
-            />
-          </Suspense>
         )}
 
         {currentView === 'clinic_dashboard' && clinicSession && (

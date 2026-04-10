@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
-
-import DoctorControl from './DoctorControl';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
   Settings, FileText, MapPin, Key, RefreshCw, Trash2, 
@@ -11,7 +9,7 @@ import {
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
   UserCheck, XCircle, Eye, Printer, Menu, X, Send, Palette, Type, Move, Timer, Square,
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
-  UserPlus, Zap, FolderOpen, Stethoscope, UserX, AlertTriangle, Star, ArrowRight, ArrowLeft
+  UserPlus, Zap, FolderOpen
 } from 'lucide-react';
 
 // دالة عرض شعار النجاح
@@ -54,9 +52,8 @@ import AdvancedNotificationsManager from './AdvancedNotificationsManager';
 import FeatureControlPanel from './FeatureControlPanel';
 import APIMonitor from './APIMonitor';
 import SmartDiagnosticsPanel from './SmartDiagnosticsPanel';
-import QARepairPanel from './QARepairPanel';
 import FilesCenter from './FilesCenter';
-import { supabase, getSystemSetting, setSystemSetting } from '../lib/supabase-client';
+import { supabase } from '../lib/supabase-client';
 
 // دالة تسجيل النشاطات - تسجل كل عملية في التطبيق
 const logActivity = async (actionType, description, userId = null, metadata = {}) => {
@@ -97,9 +94,9 @@ const QueueManagement = ({ language, t }) => {
     loadQueues();
     loadClinics();
     
-    // اشتراك Real-time لتحديثات الطوابير اللحظية - استخدام unified_queue
+    // اشتراك Real-time لتحديثات الطوابير اللحظية
     const subscription = supabase
-      .channel('unified_queue_changes')
+      .channel('queues_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue' }, (payload) => {
         loadQueues();
       })
@@ -126,34 +123,22 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
-  /**
-   * جلب الطوابير لليوم الحالي مع الرقم الحقيقي للمريض
-   * يجلب patient_id الحقيقي (الرقم العسكري/الشخصي) من جدول patients
-   * يستخدم unified_queue كجدول أساسي
-   */
   const loadQueues = async () => {
     try {
       setLoading(true);
+      // ✅ جلب الطوابير لليوم الحالي فقط باستخدام queue_date
       const today = new Date().toISOString().split('T')[0];
-
-      // جلب الطوابير من unified_queue
+      
       const { data, error } = await supabase
         .from('unified_queue')
         .select('*')
-        .eq('queue_date', today)
+        .eq('queue_date', today) // ✅ فلترة دقيقة بالتاريخ
         .order('display_number', { ascending: true });
-
+      
       if (!error && data) {
         setQueues(data);
       } else {
-        // Fallback: محاولة جدول queues القديم
-        const { data: fallbackData } = await supabase
-          .from('unified_queue')
-          .select('*')
-          .eq('queue_date', today)
-          .order('display_number', { ascending: true });
-        if (fallbackData) setQueues(fallbackData);
-        console.error('Error loading unified_queue, using fallback:', error);
+        console.error('Error loading queues:', error);
       }
     } catch (e) {
       console.error('Error loading queues:', e);
@@ -175,19 +160,10 @@ const QueueManagement = ({ language, t }) => {
       }
       
       const nextPatient = waitingQueue[0];
-      // تحديث في unified_queue أولاً، fallback لـ queues
-      let { error } = await supabase
+      const { error } = await supabase
         .from('unified_queue')
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
-
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
-          .from('unified_queue')
-          .update({ status: 'called', called_at: new Date().toISOString() })
-          .eq('id', nextPatient.id);
-      }
       
       if (!error) {
         showSuccessToast(t(`تم استدعاء الرقم: ${nextPatient.display_number}`, `Called number: ${nextPatient.display_number}`));
@@ -202,73 +178,73 @@ const QueueManagement = ({ language, t }) => {
     }
   };
 
-  // إكمال فحص المريض (تحديث الحالة إلى مكتمل)
   const completePatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
-      // تحديث في unified_queue أولاً
-      let { error } = await supabase
+      const { error } = await supabase
         .from('unified_queue')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', queueId);
-
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
-          .from('unified_queue')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', queueId);
-      }
-
+      
       if (!error) {
         showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
         await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
         loadQueues();
-      } else {
-        showErrorToast(t('حدث خطأ أثناء إكمال الفحص', 'Error completing examination'));
       }
     } catch (e) {
       console.error('Error completing patient:', e);
-      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
     }
   };
 
-  // تخطي المريض (إعادة إلى الانتظار)
   const skipPatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
-      // تحديث في unified_queue أولاً
-      let { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'waiting', updated_at: new Date().toISOString() })
-        .eq('id', queueId);
-
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
+      const postponeCount = (queue?.postpone_count || 0) + 1;
+      
+      // إذا تجاوز الحد الأقصى للترحيلات، يتم الإلغاء
+      const maxPostpones = 3;
+      if (postponeCount >= maxPostpones) {
+        const { error } = await supabase
           .from('unified_queue')
-          .update({ status: 'waiting', updated_at: new Date().toISOString() })
+          .update({ status: 'cancelled', postpone_count: postponeCount })
           .eq('id', queueId);
+        
+        if (!error) {
+          showErrorToast(t('تم إلغاء المراجع بعد تجاوز الحد الأقصى', 'Patient cancelled after max postpones'));
+          await logActivity('queue_cancel', `تم إلغاء الرقم ${queue?.display_number} بعد ${postponeCount} ترحيلات`);
+        }
+      } else {
+        // ترحيل لنهاية الدور برقم جديد
+        const { data: maxQueue } = await supabase
+          .from('unified_queue')
+          .select('display_number')
+          .eq('clinic_id', queue?.clinic_id)
+          .order('display_number', { ascending: false })
+          .limit(1)
+          .single();
+        
+        const newDisplayNumber = (maxQueue?.display_number || 0) + 1;
+        
+        const { error } = await supabase
+          .from('unified_queue')
+          .update({ 
+            status: 'waiting', 
+            display_number: newDisplayNumber,
+            postpone_count: postponeCount,
+            called_at: null
+          })
+          .eq('id', queueId);
+        
+        if (!error) {
+          showSuccessToast(t(`تم ترحيل المراجع للرقم ${newDisplayNumber}`, `Patient moved to number ${newDisplayNumber}`));
+          await logActivity('queue_postpone', `تم ترحيل الرقم ${queue?.display_number} إلى ${newDisplayNumber}`);
+        }
       }
-
-      if (!error) {
-        showSuccessToast(t('تم تخطي المريض وإعادته للانتظار', 'Patient skipped and returned to waiting'));
-        await logActivity('queue_skip', `تم تخطي الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
-        loadQueues();
-      }
+      loadQueues();
     } catch (e) {
       console.error('Error skipping patient:', e);
     }
   };
-
 
   // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
   const priorityCallPatient = async () => {
@@ -279,14 +255,14 @@ const QueueManagement = ({ language, t }) => {
 
     try {
       setPriorityLoading(true);
-
-      // البحث عن المراجع في قائمة الانتظار في unified_queue
+      
+      // البحث عن المراجع في قائمة الانتظار
       const { data: patientQueue, error: searchError } = await supabase
         .from('unified_queue')
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
-        .or(`patient_id.eq.${priorityPatientId},patient_name.ilike.%${priorityPatientId}%`)
+        .or(`patient_id.eq.${priorityPatientId},military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId}`)
         .single();
 
       if (searchError || !patientQueue) {
@@ -294,7 +270,7 @@ const QueueManagement = ({ language, t }) => {
         const { data: patient, error: patientError } = await supabase
           .from('patients')
           .select('*')
-          .or(`patient_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
+          .or(`military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
           .single();
 
         if (patientError || !patient) {
@@ -302,19 +278,20 @@ const QueueManagement = ({ language, t }) => {
           return;
         }
 
-        // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى" في unified_queue
+        // إضافة المراجع مباشرة إلى الطابور بحالة "يستدعى"
         const { error: insertError } = await supabase
           .from('unified_queue')
           .insert({
             clinic_id: priorityClinicId,
-            patient_id: patient.patient_id || patient.id,
-            patient_name: patient.name || 'مراجع أولوية',
+            patient_id: patient.id,
+            military_id: patient.military_id,
+            personal_id: patient.personal_id,
             status: 'called',
             called_at: new Date().toISOString(),
-            queue_number_int: 999,
-            display_number: 999,
-            queue_number: '999',
-            queue_date: new Date().toISOString().split('T')[0]
+            is_priority: true,
+            priority_reason: 'تمرير دور مباشر',
+            queue_number: `P-${Date.now().toString().slice(-4)}`,
+            display_number: `أولوية`
           });
 
         if (insertError) {
@@ -330,7 +307,9 @@ const QueueManagement = ({ language, t }) => {
           .from('unified_queue')
           .update({ 
             status: 'called', 
-            called_at: new Date().toISOString()
+            called_at: new Date().toISOString(),
+            is_priority: true,
+            priority_reason: 'تمرير دور من الإدارة'
           })
           .eq('id', patientQueue.id);
 
@@ -378,7 +357,7 @@ const QueueManagement = ({ language, t }) => {
       // تحديث الرقم في unified_queue
       const { error: queueError } = await supabase
         .from('unified_queue')
-        .update({ patient_id: newPatientId })
+        .update({ patient_id: newPatientId.trim() })
         .eq('id', editingPatient.id);
 
       if (queueError) {
@@ -505,10 +484,7 @@ const QueueManagement = ({ language, t }) => {
                       <div key={q.id} className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold">{q.display_number || q.queue_number}</span>
-                          {/* عرض الرقم الحقيقي للمريض (عسكري/شخصي) */}
-                          <span className="text-xs text-gray-400 truncate max-w-[80px]">
-                            {q.real_patient_id || q.patient_id || ''}
-                          </span>
+                          <span className="text-xs text-gray-500">({q.patient_id})</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -690,6 +666,377 @@ const QueueManagement = ({ language, t }) => {
   );
 };
 
+// مكون إدارة الأرقام السرية - محسّن
+const PINManagement = ({ language, t }) => {
+  const [pins, setPins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showBulkGenerate, setShowBulkGenerate] = useState(false);
+  const [newPin, setNewPin] = useState({ pin_code: '', clinic_id: '', max_uses: 100 });
+  const [clinics, setClinics] = useState([]);
+  const [generatingBulk, setGeneratingBulk] = useState(false);
+
+  useEffect(() => {
+    loadPins();
+    loadClinics();
+    
+    // Real-time subscription
+    const subscription = supabase
+      .channel('pins_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pins' }, () => {
+        loadPins();
+      })
+      .subscribe();
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadClinics = async () => {
+    const { data } = await supabase.from('clinics').select('*').order('name_ar');
+    if (data) setClinics(data);
+  };
+
+  const loadPins = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('pins')
+        .select('*')
+        .order('clinic_code', { ascending: true })
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) setPins(data);
+    } catch (e) {
+      console.error('Error loading pins:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generatePin = () => {
+    // PIN من رقمين فقط (10-99)
+    return Math.floor(10 + Math.random() * 90).toString();
+  };
+
+  const generateUniquePin = (existingPins) => {
+    let pin;
+    let attempts = 0;
+    do {
+      pin = generatePin();
+      attempts++;
+    } while (existingPins.includes(pin) && attempts < 100);
+    return pin;
+  };
+
+  const addPin = async () => {
+    try {
+      if (!newPin.clinic_id) {
+        showErrorToast(t('يرجى اختيار العيادة', 'Please select a clinic'));
+        return;
+      }
+      
+      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
+      const pinCode = newPin.pin_code || generateUniquePin(existingPins);
+      
+      // التحقق من عدم تكرار الرقم لنفس العيادة
+      if (existingPins.includes(pinCode)) {
+        showErrorToast(t('هذا الرقم موجود بالفعل لهذه العيادة', 'This PIN already exists for this clinic'));
+        return;
+      }
+      
+      const { error } = await supabase.from('pins').insert({
+        pin: pinCode,
+        clinic_code: newPin.clinic_id,
+        is_active: true,
+        generated_at: new Date().toISOString(),
+        expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        created_at: new Date().toISOString(),
+        max_uses: newPin.max_uses || 100,
+        used_count: 0
+      });
+      
+      if (!error) {
+        showSuccessToast(t(`تم إنشاء الرقم السري: ${pinCode}`, `PIN created: ${pinCode}`));
+        await logActivity('pin_created', `تم إنشاء رقم سري ${pinCode} للعيادة ${newPin.clinic_id}`);
+        loadPins();
+        setShowAddForm(false);
+        setNewPin({ pin_code: '', clinic_id: '', max_uses: 100 });
+      } else {
+        showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN'));
+      }
+    } catch (e) {
+      console.error('Error adding pin:', e);
+    }
+  };
+
+  // توليد أرقام سرية لجميع العيادات
+  const generateBulkPins = async () => {
+    try {
+      setGeneratingBulk(true);
+      const existingPinsByClinic = {};
+      pins.forEach(p => {
+        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
+        existingPinsByClinic[p.clinic_code].push(p.pin);
+      });
+      
+      const newPins = [];
+      for (const clinic of clinics) {
+        const existingPins = existingPinsByClinic[clinic.id] || [];
+        const pinCode = generateUniquePin(existingPins);
+        newPins.push({
+          pin: pinCode,
+          clinic_code: clinic.id,
+          is_active: true,
+          generated_at: new Date().toISOString(),
+          expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+          created_at: new Date().toISOString(),
+          max_uses: 100,
+          used_count: 0
+        });
+      }
+      
+      const { error } = await supabase.from('pins').insert(newPins);
+      
+      if (!error) {
+        showSuccessToast(t(`تم توليد ${newPins.length} رقم سري`, `Generated ${newPins.length} PINs`));
+        await logActivity('pins_bulk_generated', `تم توليد ${newPins.length} رقم سري لجميع العيادات`);
+        loadPins();
+      }
+    } catch (e) {
+      console.error('Error generating bulk pins:', e);
+      showErrorToast(t('حدث خطأ', 'Error occurred'));
+    } finally {
+      setGeneratingBulk(false);
+      setShowBulkGenerate(false);
+    }
+  };
+
+  // حذف جميع الأرقام المنتهية الصلاحية
+  const deleteExpiredPins = async () => {
+    try {
+      const now = new Date().toISOString();
+      const { error, count } = await supabase
+        .from('pins')
+        .delete()
+        .lt('expires_at', now);
+      
+      if (!error) {
+        showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
+        loadPins();
+      }
+    } catch (e) {
+      console.error('Error deleting expired pins:', e);
+    }
+  };
+
+  const togglePinStatus = async (pinId, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('pins')
+        .update({ is_active: !currentStatus })
+        .eq('id', pinId);
+      
+      if (!error) {
+        showSuccessToast(t(!currentStatus ? 'تم التفعيل' : 'تم التعطيل', !currentStatus ? 'Activated' : 'Deactivated'));
+        loadPins();
+      }
+    } catch (e) {
+      console.error('Error toggling pin:', e);
+    }
+  };
+
+  const deletePin = async (pinId) => {
+    if (!window.confirm(t('هل أنت متأكد من حذف هذا الرقم؟', 'Are you sure you want to delete this PIN?'))) return;
+    try {
+      const { error } = await supabase.from('pins').delete().eq('id', pinId);
+      if (!error) {
+        showSuccessToast(t('تم الحذف', 'Deleted'));
+        loadPins();
+      }
+    } catch (e) {
+      console.error('Error deleting pin:', e);
+    }
+  };
+
+  const getClinicName = (clinicCode) => {
+    const clinic = clinics.find(c => c.id === clinicCode);
+    return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicCode;
+  };
+
+  const isPinExpired = (expiresAt) => {
+    return new Date(expiresAt) < new Date();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h3 className="text-xl font-bold">{t('إدارة الأرقام السرية', 'PIN Management')}</h3>
+        <div className="flex gap-2 flex-wrap">
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
+          >
+            <Plus size={18} />
+            {t('إضافة', 'Add')}
+          </button>
+          <button 
+            onClick={generateBulkPins}
+            disabled={generatingBulk}
+            className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            {generatingBulk ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
+            {t('توليد للكل', 'Generate All')}
+          </button>
+          <button 
+            onClick={deleteExpiredPins}
+            className="px-4 py-2 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/30 transition-all flex items-center gap-2"
+          >
+            <Trash2 size={18} />
+            {t('حذف المنتهية', 'Delete Expired')}
+          </button>
+          <button 
+            onClick={loadPins}
+            className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
+          >
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* إحصائيات سريعة */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
+          <div className="text-2xl font-bold text-[#C9A54C]">{pins.length}</div>
+          <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
+          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
+          <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
+          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
+          <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
+          <div className="text-2xl font-bold text-blue-400">{clinics.length}</div>
+          <div className="text-sm text-gray-400">{t('العيادات', 'Clinics')}</div>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
+          <h4 className="font-bold mb-4">{t('إضافة رقم سري جديد', 'Add New PIN')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('الرقم السري', 'PIN Code')}</label>
+              <input
+                type="text"
+                value={newPin.pin_code}
+                onChange={(e) => setNewPin({...newPin, pin_code: e.target.value})}
+                placeholder={t('اتركه فارغاً للتوليد التلقائي', 'Leave empty for auto-generate')}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('العيادة', 'Clinic')}</label>
+              <select
+                value={newPin.clinic_id}
+                onChange={(e) => setNewPin({...newPin, clinic_id: e.target.value})}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              >
+                <option value="">{t('اختر العيادة', 'Select Clinic')}</option>
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t('رقم المريض', 'Patient ID')}</label>
+              <input
+                type="text"
+                value={newPin.patient_id}
+                onChange={(e) => setNewPin({...newPin, patient_id: e.target.value})}
+                placeholder={t('اختياري', 'Optional')}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={addPin}
+              className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
+            >
+              {t('حفظ', 'Save')}
+            </button>
+            <button
+              onClick={() => setShowAddForm(false)}
+              className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all"
+            >
+              {t('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-white/5">
+            <tr>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الرقم السري', 'PIN')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('العيادة', 'Clinic')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('التاريخ', 'Date')}</th>
+              <th className="text-right p-4 text-gray-400 font-medium">{t('الإجراءات', 'Actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pins.map(pin => (
+              <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
+                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
+                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
+                <td className="p-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
+                  </span>
+                </td>
+                <td className="p-4 text-gray-400 text-sm">
+                  {new Date(pin.created_at).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                </td>
+                <td className="p-4">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
+                      className={`p-2 rounded-lg transition-all ${
+                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                      }`}
+                    >
+                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
+                    </button>
+                    <button
+                      onClick={() => deletePin(pin.id)}
+                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {pins.length === 0 && (
+          <div className="p-8 text-center text-gray-400">
+            {t('لا توجد أرقام سرية', 'No PINs found')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// مكون التقارير - محدث لاستخدام حساب الأوزان
 const ReportsSection = ({ language, t }) => {
   const [stats, setStats] = useState({
     todayPatients: 0,
@@ -1648,493 +1995,6 @@ const ClinicsManagement = ({ language, t }) => {
   );
 };
 
-// مكون إدارة الأطباء - للعرض والتحكم بالإطباء في لوحة الإدارة
-const DoctorManagement = ({ language, t }) => {
-  const [selectedClinic, setSelectedClinic] = useState(null);
-  const [clinics, setClinics] = useState([]);
-  const [doctorStats, setDoctorStats] = useState({});
-  const [waitingPatients, setWaitingPatients] = useState([]);
-  const [completedToday, setCompletedToday] = useState([]);
-  const [missedToday, setMissedToday] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [vipPatientId, setVipPatientId] = useState('');
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // تحميل العيادات
-  useEffect(() => {
-    loadClinics();
-  }, []);
-
-  // تحميل بيانات الطبيب عند اختيار العيادة
-  useEffect(() => {
-    if (selectedClinic) {
-      loadDoctorData(selectedClinic);
-    }
-  }, [selectedClinic, filterDate]);
-
-  const loadClinics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('is_active', true)
-        .order('name_ar');
-      if (!error && data) {
-        setClinics(data);
-        if (data.length > 0 && !selectedClinic) {
-          setSelectedClinic(data[0].id);
-        }
-      }
-    } catch (e) {
-      console.error('Error loading clinics:', e);
-    }
-  };
-
-  const loadDoctorData = async (clinicId) => {
-    setLoading(true);
-    try {
-      // جلب المنتظرين
-      const { data: waiting } = await supabase
-        .from('unified_queue')
-        .select('*, patients(patient_id, military_id, personal_id, gender)')
-        .eq('clinic_id', clinicId)
-        .in('status', ['waiting', 'called', 'serving'])
-        .eq('queue_date', filterDate)
-        .order('queue_number_int', { ascending: true });
-
-      // جلب المكتمل اليوم
-      const { data: completed } = await supabase
-        .from('unified_queue')
-        .select('*, patients(patient_id, military_id, personal_id, gender)')
-        .eq('clinic_id', clinicId)
-        .eq('status', 'completed')
-        .eq('queue_date', filterDate)
-        .order('completed_at', { ascending: false });
-
-      // جلب المتغيبين
-      const { data: missed } = await supabase
-        .from('unified_queue')
-        .select('*, patients(patient_id, military_id, personal_id, gender)')
-        .eq('clinic_id', clinicId)
-        .eq('status', 'no_show')
-        .eq('queue_date', filterDate)
-        .order('called_at', { ascending: false });
-
-      setWaitingPatients(waiting || []);
-      setCompletedToday(completed || []);
-      setMissedToday(missed || []);
-
-      // حساب إحصائيات العيادة
-      const totalWaiting = (waiting || []).length;
-      const totalCompleted = (completed || []).length;
-      const totalMissed = (missed || []).length;
-
-      // حساب متوسط مدة البقاء
-      let avgStayTime = 0;
-      const withStayTime = (completed || []).filter(q => q.called_at && q.completed_at);
-      if (withStayTime.length > 0) {
-        const totalStay = withStayTime.reduce((acc, q) => {
-          return acc + (new Date(q.completed_at) - new Date(q.called_at));
-        }, 0);
-        avgStayTime = Math.round(totalStay / withStayTime.length / 60000);
-      }
-
-      setDoctorStats({
-        waiting: totalWaiting,
-        completed: totalCompleted,
-        missed: totalMissed,
-        avgStayTime
-      });
-    } catch (e) {
-      console.error('Error loading doctor data:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // استدعاء المريض التالي
-  const callNext = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'called',
-          called_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t(`تم استدعاء الرقم: ${patient.queue_number}`, `Called number: ${patient.queue_number}`));
-        await logActivity('doctor_call', `الطبيب استدعى الرقم ${patient.queue_number}`);
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ أثناء الاستدعاء', 'Error calling patient'));
-    }
-  };
-
-  // بدء فحص المريض
-  const startExam = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'serving',
-          entered_clinic_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t(`بدأ فحص الرقم: ${patient.queue_number}`, `Started exam for: ${patient.queue_number}`));
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // إكمال فحص المريض
-  const completeExam = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t(`اكتمل فحص الرقم: ${patient.queue_number}`, `Completed: ${patient.queue_number}`));
-        await logActivity('doctor_complete', `اكتمل فحص الرقم ${patient.queue_number}`);
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // تمرير الدور (نقل لآخر الصف)
-  const passTurn = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'waiting',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t('تم تمرير الدور', 'Turn passed'));
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // تسجيل كـ VIP
-  const markAsVip = async () => {
-    if (!vipPatientId.trim()) {
-      alert(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter ID'));
-      return;
-    }
-    try {
-      const { data: patient } = await supabase
-        .from('patients')
-        .select('*')
-        .or(`patient_id.eq.${vipPatientId},military_id.eq.${vipPatientId},personal_id.eq.${vipPatientId}`)
-        .single();
-
-      if (!patient) {
-        alert(t('لم يتم العثور على المراجع', 'Patient not found'));
-        return;
-      }
-
-      // إضافة كـ VIP
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          is_vip: true,
-          status: 'called',
-          called_at: new Date().toISOString()
-        })
-        .eq('patient_id', patient.patient_id)
-        .eq('clinic_id', selectedClinic)
-        .eq('queue_date', filterDate);
-
-      if (!error) {
-        showSuccessToast(t('تم تسجيل المراجع كـ VIP', 'Marked as VIP'));
-        setShowVipModal(false);
-        setVipPatientId('');
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // إلغاء الدور
-  const cancelTurn = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t('تم إلغاء الدور', 'Turn cancelled'));
-        await logActivity('doctor_cancel', `تم إلغاء الرقم ${patient.queue_number}`);
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // تسجيل كـ متغيب
-  const markAsMissed = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'no_show',
-          marked_missed_at: new Date().toISOString()
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t('تم تسجيل المراجع كمتغيب', 'Marked as absent'));
-        await logActivity('doctor_missed', `تم تسجيل الرقم ${patient.queue_number} كمتغيب`);
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // إعادة الدور
-  const restoreTurn = async (patient) => {
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'waiting',
-          called_at: null
-        })
-        .eq('id', patient.id);
-
-      if (!error) {
-        showSuccessToast(t('تم إعادة الدور', 'Turn restored'));
-        loadDoctorData(selectedClinic);
-      }
-    } catch (e) {
-      showErrorToast(t('حدث خطأ', 'Error'));
-    }
-  };
-
-  // الحصول على الرقم الحقيقي للمريض
-  const getRealPatientId = (patient) => {
-    if (patient.patients) {
-      return patient.patients.patient_id || patient.patients.military_id || patient.patients.personal_id || patient.patient_id;
-    }
-    return patient.patient_id;
-  };
-
-  // الحصول على جنس المريض
-  const getGender = (patient) => {
-    if (patient.patients?.gender) {
-      return patient.patients.gender === 'male' ? t('ذكر', 'Male') : t('أنثى', 'Female');
-    }
-    return '-';
-  };
-
-  // حساب مدة البقاء
-  const getStayDuration = (entered, exited) => {
-    if (!entered) return '-';
-    const end = exited ? new Date(exited) : new Date();
-    const start = new Date(entered);
-    const mins = Math.round((end - start) / 60000);
-    return `${mins} ${t('دقيقة', 'min')}`;
-  };
-
-  const selectedClinicName = clinics.find(c => c.id === selectedClinic)?.name_ar || '';
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold flex items-center gap-2">
-          <Stethoscope size={24} className="text-[#C9A54C]" />
-          {t('إدارة الأطباء', 'Doctor Management')}
-        </h3>
-        <div className="flex gap-3 items-center">
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-          />
-          <button
-            onClick={() => loadDoctorData(selectedClinic)}
-            className="p-2 bg-[#8A1538] text-white rounded-lg hover:bg-[#6B0F2A] transition-all"
-          >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {/* اختيار العيادة */}
-      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-        <label className="block text-sm text-gray-400 mb-2">{t('اختر العيادة', 'Select Clinic')}</label>
-        <select
-          value={selectedClinic || ''}
-          onChange={(e) => setSelectedClinic(e.target.value)}
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
-        >
-          <option value="">{t('اختر عيادة', 'Select clinic')}</option>
-          {clinics.map(clinic => (
-            <option key={clinic.id} value={clinic.id}>
-              {language === 'ar' ? clinic.name_ar : clinic.name_en}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selectedClinic && (
-        <>
-          {/* إحصائيات سريعة */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users size={20} className="text-yellow-400" />
-                <span className="text-gray-400 text-sm">{t('منتظر', 'Waiting')}</span>
-              </div>
-              <div className="text-3xl font-bold text-yellow-400">{doctorStats.waiting}</div>
-            </div>
-            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle size={20} className="text-green-400" />
-                <span className="text-gray-400 text-sm">{t('مكتمل', 'Completed')}</span>
-              </div>
-              <div className="text-3xl font-bold text-green-400">{doctorStats.completed}</div>
-            </div>
-            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <UserX size={20} className="text-red-400" />
-                <span className="text-gray-400 text-sm">{t('متغيب', 'Absent')}</span>
-              </div>
-              <div className="text-3xl font-bold text-red-400">{doctorStats.missed}</div>
-            </div>
-            <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Timer size={20} className="text-blue-400" />
-                <span className="text-gray-400 text-sm">{t('متوسط البقاء', 'Avg Stay')}</span>
-              </div>
-              <div className="text-3xl font-bold text-blue-400">{doctorStats.avgStayTime} {t('دقيقة', 'min')}</div>
-            </div>
-          </div>
-
-          {/* أزرار الإجراءات */}
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={() => setShowVipModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-all"
-            >
-              <Star size={18} />
-              {t('إضافة VIP', 'Add VIP')}
-            </button>
-          </div>
-
-
-        </>
-      )}
-
-      {/* Modal إضافة VIP */}
-      {showVipModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
-            <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Star className="text-purple-400" size={20} />
-              {t('إضافة مراجع VIP', 'Add VIP Patient')}
-            </h4>
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">{t('الرقم العسكري أو الشخصي', 'Military/Personal ID')}</label>
-              <input
-                type="text"
-                value={vipPatientId}
-                onChange={(e) => setVipPatientId(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white"
-                placeholder={t('أدخل الرقم', 'Enter ID')}
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowVipModal(false);
-                  setVipPatientId('');
-                }}
-                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
-              >
-                {t('إلغاء', 'Cancel')}
-              </button>
-              <button
-                onClick={markAsVip}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium"
-              >
-                <Star size={16} className="inline ml-2" />
-                {t('إضافة VIP', 'Add VIP')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal تأكيد الإلغاء */}
-      {showCancelModal && selectedPatient && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-          <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6 w-full max-w-md">
-            <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <AlertTriangle className="text-red-400" size={20} />
-              {t('تأكيد إلغاء الدور', 'Confirm Cancel')}
-            </h4>
-            <p className="text-gray-300 mb-4">
-              {t('هل أنت متأكد من إلغاء دور الرقم', 'Are you sure to cancel queue number')} <strong>{selectedPatient.queue_number}</strong>؟
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowCancelModal(false);
-                  setSelectedPatient(null);
-                }}
-                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
-              >
-                {t('لا', 'No')}
-              </button>
-              <button
-                onClick={() => {
-                  cancelTurn(selectedPatient);
-                  setShowCancelModal(false);
-                  setSelectedPatient(null);
-                }}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium"
-              >
-                {t('نعم، إلغاء', 'Yes, Cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // مكون إدارة الإشعارات - متكامل
 
 const RoutesManagement = ({ language, t }) => {
@@ -2821,20 +2681,19 @@ const SystemStatus = ({ language, t }) => {
     setLoading(true);
     const results = {};
     
-    // قائمة الجداول للفحص - تصحيح أسماء الجداول
+    // قائمة الجداول للفحص
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queues', label: t('الطوابير', 'Queues') },
-      { name: 'patients', label: t('المرضى', 'Patients') },
-      { name: 'doctors', label: t('الأطباء', 'Doctors') },
-      { name: 'admin_users', label: t('مستخدمي الإدارة', 'Admin Users') },
-      { name: 'notifications', label: t('الإشعارات', 'Notifications') },
-      { name: 'routes', label: t('المسارات', 'Routes') },
+      { name: 'queue', label: t('الطابور (queue)', 'Queue') },
+      { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
       { name: 'pins', label: t('الأرقام السرية', 'PINs') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },
-      { name: 'system_settings', label: t('إعدادات النظام', 'System Settings') },
-      { name: 'unified_queue', label: t('الطابور الموحد', 'Unified Queue') },
-      { name: 'activity_logs', label: t('سجلات النشاط', 'Activity Logs') },
+      { name: 'notifications', label: t('الإشعارات', 'Notifications') },
+      { name: 'routes', label: t('المسارات', 'Routes') },
+      { name: 'patients', label: t('المرضى', 'Patients') },
+      { name: 'admins', label: t('المسؤولين', 'Admins') },
+      { name: 'users', label: t('المستخدمين', 'Users') },
+      { name: 'sessions', label: t('الجلسات', 'Sessions') },
     ];
 
     for (const table of tables) {
@@ -2988,19 +2847,18 @@ const SettingsSection = ({ language, t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('system_settings')
+        .from('settings')
         .select('*');
       
       const settingsObj = {};
       if (!error && data) {
-        data.forEach(s => { 
-          try {
-            settingsObj[s.id] = JSON.parse(s.value);
-          } catch {
-            settingsObj[s.id] = s.value;
-          }
-        });
+        data.forEach(s => { settingsObj[s.key] = s.value; });
       }
+      
+      // جلب إعداد device_restriction من system_settings
+      const { getSystemSetting } = await import('../lib/supabase-client.js');
+      const deviceRestriction = await getSystemSetting('device_restriction_enabled', false);
+      settingsObj.device_restriction_enabled = deviceRestriction;
       
       setSettings(settingsObj);
       setLocalValues(settingsObj);
@@ -3013,14 +2871,33 @@ const SettingsSection = ({ language, t }) => {
 
   const updateSetting = async (key, value) => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert({ 
-          id: key, 
-          value: typeof value === 'string' ? value : JSON.stringify(value), 
-          updated_at: new Date().toISOString(),
-          description: `إعداد ${key}`
-        }, { onConflict: 'id' });
+      // التحقق من وجود الإعداد أولاً
+      const { data: existing } = await supabase
+        .from('settings')
+        .select('id')
+        .eq('key', key)
+        .single();
+      
+      let error;
+      if (existing) {
+        // تحديث الإعداد الموجود
+        const result = await supabase
+          .from('settings')
+          .update({ value: value, updated_at: new Date().toISOString() })
+          .eq('key', key);
+        error = result.error;
+      } else {
+        // إنشاء إعداد جديد
+        const result = await supabase
+          .from('settings')
+          .insert({ 
+            key, 
+            value: value, 
+            updated_at: new Date().toISOString(),
+            is_public: false
+          });
+        error = result.error;
+      }
       
       if (!error) {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -3136,7 +3013,14 @@ const SettingsSection = ({ language, t }) => {
               <p className="text-sm text-gray-400">{t('ربط الجهاز بالرقم العسكري الأول فقط لنفس اليوم', 'Lock device to first military ID for the day')}</p>
             </div>
             <button
-              onClick={() => updateSetting('device_restriction_enabled', !settings.device_restriction_enabled)}
+              onClick={async () => {
+                const newValue = !settings.device_restriction_enabled;
+                // تحديث في system_settings
+                const { setSystemSetting } = await import('../lib/supabase-client.js');
+                await setSystemSetting('device_restriction_enabled', newValue, 'تفعيل/إيقاف نظام منع الجهاز من استخدام رقم مختلف');
+                setSettings(prev => ({ ...prev, device_restriction_enabled: newValue }));
+                showSuccessToast(newValue ? t('تم تفعيل نظام ربط الجهاز', 'Device restriction enabled') : t('تم إيقاف نظام ربط الجهاز', 'Device restriction disabled'));
+              }}
               className={`w-14 h-8 rounded-full transition-all ${
                 settings.device_restriction_enabled ? 'bg-orange-500' : 'bg-white/20'
               }`}
@@ -3500,9 +3384,6 @@ const UsersManagement = ({ language, t }) => {
     { id: 'database', label: t('قاعدة البيانات', 'Database') }
   ];
   const [editingUser, setEditingUser] = useState(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordTargetUser, setPasswordTargetUser] = useState(null);
-  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -3627,27 +3508,6 @@ const UsersManagement = ({ language, t }) => {
     }
   };
 
-  const updatePassword = async () => {
-    if (!passwordTargetUser || !newPassword) return;
-    try {
-      const { error } = await supabase
-        .from('admin_users')
-        .update({ password_hash: newPassword })
-        .eq('id', passwordTargetUser.id);
-      
-      if (!error) {
-        setShowPasswordModal(false);
-        setPasswordTargetUser(null);
-        setNewPassword('');
-        showSuccessToast(t('تم تحديث الرقم السري بنجاح', 'Password updated successfully'));
-      } else {
-        showErrorToast(t('فشل تحديث الرقم السري', 'Failed to update password'));
-      }
-    } catch (e) {
-      console.error('Error updating password:', e);
-    }
-  };
-
   const deleteUser = async (userId) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
@@ -3723,17 +3583,7 @@ const UsersManagement = ({ language, t }) => {
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <button onClick={() => setEditingUser(user)} className="p-2 hover:bg-white/10 rounded-lg">
-                        <Edit size={16} className="text-[#C9A54C]" />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setPasswordTargetUser(user);
-                        setShowPasswordModal(true);
-                      }} 
-                      className="p-2 hover:bg-white/10 rounded-lg"
-                      title={t('تعديل الرقم السري', 'Edit Password')}
-                    >
-                      <Key size={16} className="text-blue-400" />
+                      <Edit size={16} className="text-[#C9A54C]" />
                     </button>
                     <button onClick={() => deleteUser(user.id)} className="p-2 hover:bg-white/10 rounded-lg">
                       <Trash2 size={16} className="text-red-400" />
@@ -3898,43 +3748,6 @@ const UsersManagement = ({ language, t }) => {
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
               >
                 {t('حفظ', 'Save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal تعديل الرقم السري */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-sm border border-white/10">
-            <h4 className="text-lg font-bold mb-4">{t('تعديل الرقم السري', 'Edit Password')}: {passwordTargetUser?.username}</h4>
-            <div className="space-y-4">
-              <input
-                type="password"
-                placeholder={t('الرقم السري الجديد', 'New Password')}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
-              />
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordTargetUser(null);
-                  setNewPassword('');
-                }}
-                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
-              >
-                {t('إلغاء', 'Cancel')}
-              </button>
-              <button
-                onClick={updatePassword}
-                disabled={!newPassword}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl disabled:opacity-50"
-              >
-                {t('تحديث', 'Update')}
               </button>
             </div>
           </div>
@@ -5364,13 +5177,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
-
-  useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     loadAllData();
@@ -5397,13 +5203,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .from('clinics')
         .select('id, name_ar, name_en');
 
-      // عدد الأرقام السرية النشطة غير المنتهية
-      const now = new Date().toISOString();
+      // Active PINs
       const { count: pinCount } = await supabase
         .from('pins')
         .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .gte('expires_at', now);
+        .eq('is_active', true);
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
@@ -5506,8 +5310,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
-    { id: 'doctors', icon: Stethoscope, label: t('إدارة الأطباء', 'Doctor Management') },
-    { id: 'doctor_control', icon: Stethoscope, label: t('شاشة الطبيب', 'Doctor Control') },
+    { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
     { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
@@ -5515,8 +5318,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
     { id: 'settings', icon: Settings, label: t('الإعدادات', 'Settings') },
     { id: 'users', icon: UserCog, label: t('إدارة المستخدمين', 'Users') },
-    { id: 'qa_repair', icon: Zap, label: t('الفحص والإصلاح', 'QA & Repair') },
-    { id: 'smart_system', icon: Zap, label: t('النظام الذكي', 'Smart System') },
     { id: 'activity', icon: History, label: t('سجل النشاطات', 'Activity Log') },
     { id: 'backup', icon: Database, label: t('النسخ والتصدير', 'Backup & Export') },
     { id: 'offline', icon: Wifi, label: t('العمل أوفلاين', 'Offline Mode') },
@@ -5525,6 +5326,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     { id: 'database', icon: Database, label: t('قاعدة البيانات', 'Database') },
     { id: 'features', icon: Settings, label: t('التحكم بالميزات', 'Feature Control') },
     { id: 'apimonitor', icon: Activity, label: t('مراقبة API', 'API Monitor') },
+    { id: 'smart', icon: Zap, label: t('النظام الذكي', 'Smart System') },
     { id: 'files', icon: FolderOpen, label: t('مركز الملفات', 'Files Center') },
   ];
 
@@ -5543,11 +5345,12 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       <aside 
         data-sidebar="admin"
         data-mobile-open={mobileMenuOpen}
-        className="fixed right-0 top-0 h-full w-64 sm:w-72 md:w-80 lg:w-96 bg-[#12121a] border-l border-white/5 z-[100] transition-transform duration-300 flex flex-col"
+        className={`fixed right-0 top-0 h-full w-72 sm:w-80 bg-[#12121a] border-l border-white/5 z-[100] transform transition-transform duration-300 flex flex-col ${
+          mobileMenuOpen ? 'translate-x-0 sidebar-open' : 'translate-x-full lg:translate-x-0'
+        }`}
         style={{ 
           WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y',
-          transform: (mobileMenuOpen || isDesktop) ? 'translateX(0)' : 'translateX(100%)'
+          touchAction: 'pan-y'
         }}
       >
         {/* Header */}
@@ -5651,7 +5454,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       )}
 
       {/* Main Content */}
-      <main className="lg:mr-96 p-3 sm:p-4 lg:p-8 pt-16 sm:pt-20 lg:pt-8 min-h-screen overflow-x-hidden">
+      <main className="lg:mr-64 lg:ml-0 p-3 sm:p-4 lg:p-8 pt-16 sm:pt-20 lg:pt-8 min-h-screen overflow-x-hidden">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
@@ -5698,7 +5501,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                 { label: t('إجمالي المرضى', 'Total Patients'), value: stats.totalPatients, icon: Users, color: 'blue' },
                 { label: t('في الانتظار', 'Waiting'), value: stats.waiting, icon: Clock, color: 'yellow' },
                 { label: t('زيارات مكتملة', 'Completed Visits'), value: stats.completed, icon: CheckCircle, color: 'green' },
-                { label: t('العيادات النشطة', 'Active Clinics'), value: Object.keys(stats.clinicStats || {}).length, icon: Activity, color: 'purple' },
+                { label: t('الأرقام السرية', 'Active PINs'), value: stats.activePins, icon: Key, color: 'purple' },
               ].map((stat, i) => (
                 <div key={i} className="bg-[#12121a] p-4 lg:p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
                   <div className="flex items-center justify-between mb-4">
@@ -5824,8 +5627,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         )}
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
-        {activeTab === 'doctors' && <DoctorManagement language={language} t={t} />}
-        {activeTab === 'doctor_control' && <DoctorControl language={language} t={t} />}
+        {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}
@@ -5842,8 +5644,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         {activeTab === 'database' && <DatabaseManagement language={language} t={t} />}
         {activeTab === 'features' && <FeatureControlPanel language={language} t={t} />}
         {activeTab === 'apimonitor' && <APIMonitor language={language} t={t} />}
-        {activeTab === 'qa_repair' && <QARepairPanel language={language} t={t} />}
-        {activeTab === 'smart_system' && <SmartDiagnosticsPanel language={language} t={t} />}
+        {activeTab === 'smart_system' && <SmartSystemPanel language={language} t={t} />}
         {activeTab === 'files' && <FilesCenter language={language} t={t} />}
         {activeTab === 'advanced-notifications' && <AdvancedNotificationsManager language={language} t={t} />}
       </main>
