@@ -1,30 +1,47 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Globe, LogOut, Users, Clock, CheckCircle, SkipForward, UserCheck, Calendar, TrendingUp, Activity } from 'lucide-react'
+import { 
+  Globe, LogOut, Users, Clock, CheckCircle, SkipForward, 
+  UserCheck, Calendar, TrendingUp, Activity, Star, 
+  ArrowRightLeft, UserX, Timer, RotateCcw, Building2, ShieldCheck
+} from 'lucide-react'
 import { supabase } from '../lib/supabase-client'
 import { formatTime, formatDuration } from '../lib/utils'
 import NotificationSystem, { useNotifications } from './NotificationSystem'
-import eventBus from '../core/event-bus'
+import api from '../lib/api-unified'
 
 export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage }) {
   const [patients, setPatients] = useState([])
+  const [clinics, setClinics] = useState([])
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState({
     totalToday: 0,
     completedToday: 0,
     waitingNow: 0,
-    avgExamTime: 0
+    absentCount: 0
   })
   const [currentPatient, setCurrentPatient] = useState(null)
-  const [examStartTime, setExamStartTime] = useState(null)
+  const [examTimer, setExamTimer] = useState('00:00')
+  const timerRef = useRef(null)
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
   const clinicId = doctorData?.clinic_id
   const clinicName = doctorData?.clinic_name || (language === 'ar' ? 'العيادة' : 'Clinic')
 
-  // Fetch patients for this clinic
+  // Fetch all clinics for transfer functionality
+  const fetchClinics = async () => {
+    try {
+      const { data, error } = await supabase.from('clinics').select('id, name_ar, name_en')
+      if (error) throw error
+      setClinics(data || [])
+    } catch (err) {
+      console.error('Error fetching clinics:', err)
+    }
+  }
+
+  // Fetch patients and stats
   const fetchPatients = async () => {
     if (!clinicId) return
     try {
@@ -33,58 +50,62 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
         .from('unified_queue')
         .select('*')
         .eq('clinic_id', clinicId)
-        .gte('created_at', today)
+        .eq('queue_date', today)
         .order('display_number', { ascending: true })
 
       if (error) throw error
 
       const waiting = data?.filter(p => p.status === 'waiting' || p.status === 'called') || []
       const completed = data?.filter(p => p.status === 'completed') || []
+      const absent = data?.filter(p => p.status === 'absent' || p.status === 'no_show') || []
       const inProgress = data?.find(p => p.status === 'in_progress')
 
       setPatients(waiting)
-
-      // Calculate stats
-      const totalExamTime = completed.reduce((sum, p) => {
-        if (p.exam_start_time && p.exam_end_time) {
-          return sum + (new Date(p.exam_end_time) - new Date(p.exam_start_time))
-        }
-        return sum
-      }, 0)
-
-      const avgTime = completed.length > 0 ? totalExamTime / completed.length : 0
-
       setStats({
         totalToday: data?.length || 0,
         completedToday: completed.length,
         waitingNow: waiting.length,
-        avgExamTime: avgTime
+        absentCount: absent.length
       })
 
       if (inProgress) {
         setCurrentPatient(inProgress)
-        setExamStartTime(inProgress.exam_start_time ? new Date(inProgress.exam_start_time) : new Date())
       } else {
         setCurrentPatient(null)
-        setExamStartTime(null)
       }
     } catch (err) {
       console.error('Error fetching patients:', err)
     }
   }
 
+  // Timer logic
+  useEffect(() => {
+    if (currentPatient && currentPatient.exam_start_time) {
+      const startTime = new Date(currentPatient.exam_start_time).getTime()
+      
+      if (timerRef.current) clearInterval(timerRef.current)
+      
+      timerRef.current = setInterval(() => {
+        const now = new Date().getTime()
+        const diff = now - startTime
+        const minutes = Math.floor(diff / 60000)
+        const seconds = Math.floor((diff % 60000) / 1000)
+        setExamTimer(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+      }, 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+      setExamTimer('00:00')
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [currentPatient])
+
   useEffect(() => {
     fetchPatients()
-    const interval = setInterval(fetchPatients, 5000)
-    return () => clearInterval(interval)
-  }, [clinicId])
-
-  // Real-time subscription
-  useEffect(() => {
-    if (!clinicId) return
-
+    fetchClinics()
+    
+    // Real-time subscription
     const channel = supabase
-      .channel(`clinic_queue_${clinicId}`)
+      .channel(`doctor_dashboard_${clinicId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -98,386 +119,368 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
     return () => { supabase.removeChannel(channel) }
   }, [clinicId])
 
-  // Call next patient
-  const handleCallNext = async () => {
-    if (!clinicId || patients.length === 0) return
+  const translate = (ar, en) => (language === 'ar' ? ar : en)
 
+  // Actions
+  const handleAction = async (actionType, patientId, payload = {}) => {
     setLoading(true)
     try {
-      const nextPatient = patients[0]
+      let result;
+      const patient = patients.find(p => p.id === patientId) || currentPatient;
+      
+      switch (actionType) {
+        case 'CALL_NEXT':
+          // Using the unified API for calling next
+          result = await api.callNextPatient(clinicId, doctorData?.pin || '0000');
+          break;
+        case 'START_EXAM':
+          result = await supabase.from('unified_queue').update({
+            status: 'in_progress',
+            exam_start_time: new Date().toISOString()
+          }).eq('id', patientId);
+          break;
+        case 'FINISH_EXAM':
+          result = await supabase.from('unified_queue').update({
+            status: 'completed',
+            exam_end_time: new Date().toISOString()
+          }).eq('id', patientId);
+          break;
+        case 'MARK_VIP':
+          result = await supabase.from('unified_queue').update({
+            is_vip: true,
+            priority_score: 100
+          }).eq('id', patientId);
+          break;
+        case 'MOVE_TO_LAST':
+          const { data: lastPatient } = await supabase.from('unified_queue')
+            .select('display_number')
+            .eq('clinic_id', clinicId)
+            .order('display_number', { ascending: false })
+            .limit(1).single();
+          result = await supabase.from('unified_queue').update({
+            display_number: (lastPatient?.display_number || 0) + 1
+          }).eq('id', patientId);
+          break;
+        case 'TRANSFER_CLINIC':
+          result = await supabase.from('unified_queue').update({
+            clinic_id: payload.targetClinicId,
+            status: 'waiting',
+            called_at: null,
+            exam_start_time: null
+          }).eq('id', patientId);
+          break;
+        case 'MILITARY_COMMITTEE':
+          // Assuming a specific clinic ID or flag for military committee
+          result = await supabase.from('unified_queue').update({
+            is_military_committee: true,
+            status: 'waiting'
+          }).eq('id', patientId);
+          break;
+        case 'ABSENT':
+          result = await supabase.from('unified_queue').update({
+            status: 'absent',
+            marked_absent_at: new Date().toISOString()
+          }).eq('id', patientId);
+          break;
+        default:
+          throw new Error('Unknown action');
+      }
 
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'called',
-          called_at: new Date().toISOString()
-        })
-        .eq('id', nextPatient.id)
-
-      if (error) throw error
+      if (result.error) throw result.error;
 
       pushNotif({
         type: 'success',
-        title: language === 'ar' ? 'تم الاستدعاء' : 'Patient Called',
-        message: language === 'ar' 
-          ? `تم استدعاء المراجع رقم ${nextPatient.display_number}`
-          : `Called patient number ${nextPatient.display_number}`
+        title: translate('تمت العملية', 'Action Successful'),
+        message: translate('تم تحديث حالة المراجع بنجاح', 'Patient status updated successfully')
       })
-
       fetchPatients()
     } catch (err) {
       pushNotif({
         type: 'error',
-        message: language === 'ar' ? 'فشل الاستدعاء' : 'Failed to call patient'
+        message: translate('فشل الإجراء: ', 'Action failed: ') + err.message
       })
     } finally {
       setLoading(false)
     }
-  }
-
-  // Start examination
-  const handleStartExam = async (patient) => {
-    if (!clinicId) return
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'in_progress',
-          exam_start_time: new Date().toISOString()
-        })
-        .eq('id', patient.id)
-
-      if (error) throw error
-
-      setCurrentPatient(patient)
-      setExamStartTime(new Date())
-
-      pushNotif({
-        type: 'success',
-        title: language === 'ar' ? 'بدء الفحص' : 'Exam Started',
-        message: language === 'ar' 
-          ? `بدء فحص المراجع رقم ${patient.display_number}`
-          : `Started exam for patient ${patient.display_number}`
-      })
-
-      fetchPatients()
-    } catch (err) {
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل بدء الفحص' : 'Failed to start exam'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Complete examination
-  const handleCompleteExam = async () => {
-    if (!currentPatient) return
-
-    setLoading(true)
-    try {
-      const examEndTime = new Date().toISOString()
-      const examDuration = examStartTime ? new Date() - new Date(examStartTime) : 0
-
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'completed',
-          exam_end_time: examEndTime,
-          exam_duration_seconds: Math.floor(examDuration / 1000)
-        })
-        .eq('id', currentPatient.id)
-
-      if (error) throw error
-
-      pushNotif({
-        type: 'success',
-        title: language === 'ar' ? 'تم إكمال الفحص' : 'Exam Completed',
-        message: language === 'ar' 
-          ? `تم إكمال فحص المراجع رقم ${currentPatient.display_number}`
-          : `Completed exam for patient ${currentPatient.display_number}`
-      })
-
-      setCurrentPatient(null)
-      setExamStartTime(null)
-      fetchPatients()
-    } catch (err) {
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل إكمال الفحص' : 'Failed to complete exam'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Skip patient
-  const handleSkipPatient = async (patient) => {
-    if (!clinicId) return
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'skipped',
-          skipped_at: new Date().toISOString()
-        })
-        .eq('id', patient.id)
-
-      if (error) throw error
-
-      pushNotif({
-        type: 'warning',
-        title: language === 'ar' ? 'تم التخطي' : 'Patient Skipped',
-        message: language === 'ar' 
-          ? `تم تخطي المراجع رقم ${patient.display_number}`
-          : `Skipped patient number ${patient.display_number}`
-      })
-
-      fetchPatients()
-    } catch (err) {
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل التخطي' : 'Failed to skip patient'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cancel patient
-  const handleCancelPatient = async (patient) => {
-    if (!clinicId) return
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', patient.id)
-
-      if (error) throw error
-
-      pushNotif({
-        type: 'info',
-        title: language === 'ar' ? 'تم الإلغاء' : 'Patient Cancelled',
-        message: language === 'ar' 
-          ? `تم إلغاء المراجع رقم ${patient.display_number}`
-          : `Cancelled patient number ${patient.display_number}`
-      })
-
-      fetchPatients()
-    } catch (err) {
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل الإلغاء' : 'Failed to cancel patient'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getExamDuration = () => {
-    if (!examStartTime) return '00:00'
-    const duration = new Date() - new Date(examStartTime)
-    const minutes = Math.floor(duration / 60000)
-    const seconds = Math.floor((duration % 60000) / 1000)
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
   return (
-    <div className="h-screen max-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" style={{overflowY: "auto", overflowX: "hidden"}}>
+    <div className="min-h-screen bg-[#0f1115] text-white p-4 sm:p-6 overflow-x-hidden">
       <NotificationSystem notifications={notifList} onDismiss={dismissNotif} />
 
-      <div className="w-full max-w-4xl mx-auto space-y-4 sm:space-y-5">
-        {/* Header */}
-        <div className="absolute top-4 left-4">
-          <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-gray-800/50" onClick={toggleLanguage}>
-            <Globe className="icon icon-md me-2" />
-            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
-          </Button>
-        </div>
-
-        <div className="absolute top-4 right-4">
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-900/30" onClick={onLogout}>
-            <LogOut className="icon icon-md me-2" />
-            {language === 'ar' ? 'خروج' : 'Logout'}
-          </Button>
-        </div>
-
-        <div className="text-center space-y-2 pt-4">
-          <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-20 h-20 object-contain" />
-          <div className="space-y-0.5">
-            <h1 className="text-xl font-bold text-white">{language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}</h1>
-            <p className="text-sm text-[#C9A54C] font-semibold">{clinicName}</p>
-            <p className="text-gray-400 text-xs">{language === 'ar' ? `د. ${doctorData?.name || ''}` : `Dr. ${doctorData?.name || ''}`}</p>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900/40 p-6 rounded-2xl border border-white/5">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-[#C9A54C] to-[#8A1538] rounded-2xl flex items-center justify-center shadow-lg shadow-red-900/20">
+              <img src="/mms-logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">{translate('اللجنة الطبية العسكرية', 'Military Medical Committee')}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="px-2 py-0.5 bg-[#C9A54C]/10 text-[#C9A54C] text-xs font-bold rounded-full border border-[#C9A54C]/20 uppercase">
+                  {clinicName}
+                </span>
+                <span className="text-gray-400 text-sm">د. {doctorData?.name || 'غير معروف'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={toggleLanguage} className="text-gray-400 hover:text-white">
+              <Globe className="w-4 h-4 me-2" />
+              {language === 'ar' ? 'English' : 'العربية'}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={onLogout} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20">
+              <LogOut className="w-4 h-4 me-2" />
+              {translate('خروج', 'Logout')}
+            </Button>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="bg-gray-800/50 border-gray-700">
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto text-blue-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{stats.totalToday}</div>
-              <div className="text-xs text-gray-400">{language === 'ar' ? 'إجمالي اليوم' : 'Total Today'}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-800/50 border-gray-700">
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="w-6 h-6 mx-auto text-green-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{stats.completedToday}</div>
-              <div className="text-xs text-gray-400">{language === 'ar' ? 'مكتمل' : 'Completed'}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-800/50 border-gray-700">
-            <CardContent className="p-4 text-center">
-              <Activity className="w-6 h-6 mx-auto text-yellow-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{stats.waitingNow}</div>
-              <div className="text-xs text-gray-400">{language === 'ar' ? 'في الانتظار' : 'Waiting'}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-800/50 border-gray-700">
-            <CardContent className="p-4 text-center">
-              <Clock className="w-6 h-6 mx-auto text-purple-400 mb-2" />
-              <div className="text-2xl font-bold text-white">{formatDuration(stats.avgExamTime)}</div>
-              <div className="text-xs text-gray-400">{language === 'ar' ? 'متوسط الفحص' : 'Avg Exam'}</div>
-            </CardContent>
-          </Card>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: translate('المنتظرين', 'Waiting'), value: stats.waitingNow, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+            { label: translate('المنتهين', 'Completed'), value: stats.completedToday, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
+            { label: translate('المتغيبين', 'Absent'), value: stats.absentCount, icon: UserX, color: 'text-red-400', bg: 'bg-red-400/10' },
+            { label: translate('الإجمالي', 'Total'), value: stats.totalToday, icon: Activity, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+          ].map((stat, i) => (
+            <Card key={i} className="bg-gray-900/40 border-white/5 overflow-hidden relative group">
+              <div className={`absolute top-0 right-0 w-16 h-16 ${stat.bg} rounded-bl-full -mr-8 -mt-8 transition-all group-hover:scale-110`} />
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">{stat.label}</p>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Current Patient Card */}
-        {currentPatient && (
-          <Card className="bg-gradient-to-br from-green-900/30 to-blue-900/30 border-green-500/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-green-400" />
-                {language === 'ar' ? 'المراجع الحالي' : 'Current Patient'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-4xl font-black text-yellow-400">{currentPatient.display_number}</div>
-                  <div className="text-sm text-gray-400">{language === 'ar' ? 'رقم الدور' : 'Queue Number'}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-white">{getExamDuration()}</div>
-                  <div className="text-sm text-gray-400">{language === 'ar' ? 'مدة الفحص' : 'Exam Duration'}</div>
-                </div>
-              </div>
-              <Button
-                variant="gradientPrimary"
-                onClick={handleCompleteExam}
-                disabled={loading}
-                className="w-full py-3 text-lg font-bold"
-              >
-                <CheckCircle className="icon icon-md me-2" />
-                {language === 'ar' ? '✓ إكمال الفحص' : '✓ Complete Exam'}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Waiting List */}
-        <Card className="bg-gray-800/50 border-gray-700">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-white text-lg font-bold flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              {language === 'ar' ? 'قائمة الانتظار' : 'Waiting List'}
-              <span className="ml-auto text-sm font-normal text-gray-400">({patients.length})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!currentPatient && patients.length > 0 && (
-              <Button
-                variant="gradientSecondary"
-                onClick={handleCallNext}
-                disabled={loading}
-                className="w-full py-3 text-lg font-bold mb-4"
-              >
-                <TrendingUp className="icon icon-md me-2" />
-                {language === 'ar' ? '▶ استدعاء التالي' : '▶ Call Next'}
-              </Button>
-            )}
-
-            {patients.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                {language === 'ar' ? 'لا يوجد مراجعين في الانتظار' : 'No patients waiting'}
-              </div>
-            ) : (
-              patients.map((patient, index) => (
-                <Card key={patient.id} className={`border ${patient.status === 'called' ? 'bg-yellow-900/20 border-yellow-500/30' : 'bg-gray-700/40 border-gray-600/60'}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          patient.status === 'called' ? 'bg-yellow-500/20' : 'bg-blue-500/20'
-                        }`}>
-                          <span className="text-lg font-bold text-white">{patient.display_number}</span>
-                        </div>
-                        <div>
-                          <div className="text-white font-semibold">
-                            {language === 'ar' ? `مراجع رقم ${patient.display_number}` : `Patient ${patient.display_number}`}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {patient.status === 'called' 
-                              ? (language === 'ar' ? 'تم الاستدعاء' : 'Called')
-                              : (language === 'ar' ? 'في الانتظار' : 'Waiting')
-                            }
-                          </div>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Action Area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Current Patient Card */}
+            <Card className="bg-gradient-to-br from-gray-900 to-black border-white/10 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C9A54C] via-[#8A1538] to-[#C9A54C]" />
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-[#C9A54C]" />
+                    {translate('المراجع الحالي', 'Current Patient')}
+                  </span>
+                  {currentPatient && (
+                    <div className="flex items-center gap-2 bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
+                      <Timer className="w-4 h-4 animate-pulse" />
+                      <span className="font-mono font-bold text-lg">{examTimer}</span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {currentPatient ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5">
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-400 uppercase tracking-wider">{translate('رقم الدور', 'Queue Number')}</p>
+                        <h2 className="text-5xl font-black text-white">{currentPatient.display_number}</h2>
                       </div>
-                      <div className="flex gap-2">
-                        {patient.status === 'called' ? (
-                          <Button
-                            variant="gradientPrimary"
-                            size="sm"
-                            onClick={() => handleStartExam(patient)}
-                            disabled={loading || currentPatient !== null}
-                          >
-                            <UserCheck className="icon icon-sm me-1" />
-                            {language === 'ar' ? 'بدء' : 'Start'}
-                          </Button>
-                        ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSkipPatient(patient)}
-                              disabled={loading}
-                              className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
-                            >
-                              <SkipForward className="icon icon-sm me-1" />
-                              {language === 'ar' ? 'تخطي' : 'Skip'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCancelPatient(patient)}
-                              disabled={loading}
-                              className="border-red-600 text-red-400 hover:bg-red-900/30"
-                            >
-                              {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                            </Button>
-                          </>
+                      <div className="text-right space-y-2">
+                        <p className="text-sm text-gray-400">{translate('نوع الفحص', 'Exam Type')}</p>
+                        <p className="text-xl font-bold text-[#C9A54C]">{currentPatient.exam_type || translate('عام', 'General')}</p>
+                        {currentPatient.is_vip && (
+                          <span className="inline-flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-xs font-bold border border-yellow-500/20">
+                            <Star className="w-3 h-3 fill-current" /> VIP
+                          </span>
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </CardContent>
-        </Card>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <Button 
+                        variant="gradient" 
+                        className="h-14 font-bold" 
+                        onClick={() => handleAction('FINISH_EXAM', currentPatient.id)}
+                        disabled={loading}
+                      >
+                        <CheckCircle className="w-5 h-5 me-2" />
+                        {translate('إنهاء الفحص', 'Finish')}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-14 border-white/10 hover:bg-white/5"
+                        onClick={() => handleAction('ABSENT', currentPatient.id)}
+                        disabled={loading}
+                      >
+                        <UserX className="w-5 h-5 me-2 text-red-400" />
+                        {translate('عدم حضور', 'Absent')}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-14 border-white/10 hover:bg-white/5"
+                        onClick={() => handleAction('MOVE_TO_LAST', currentPatient.id)}
+                        disabled={loading}
+                      >
+                        <RotateCcw className="w-5 h-5 me-2 text-blue-400" />
+                        {translate('ترحيل للأخير', 'Last')}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-14 border-white/10 hover:bg-white/5"
+                        onClick={() => handleAction('MILITARY_COMMITTEE', currentPatient.id)}
+                        disabled={loading}
+                      >
+                        <ShieldCheck className="w-5 h-5 me-2 text-purple-400" />
+                        {translate('اللجنة العسكرية', 'Military')}
+                      </Button>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-white/5">
+                      <p className="text-xs text-gray-500 mb-3 uppercase font-bold tracking-widest">{translate('تحويل لعيادة أخرى', 'Transfer to Clinic')}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {clinics.filter(c => c.id !== clinicId).slice(0, 4).map(clinic => (
+                          <Button 
+                            key={clinic.id} 
+                            variant="ghost" 
+                            size="sm" 
+                            className="bg-white/5 hover:bg-[#C9A54C]/20 text-xs border border-white/5"
+                            onClick={() => handleAction('TRANSFER_CLINIC', currentPatient.id, { targetClinicId: clinic.id })}
+                          >
+                            <Building2 className="w-3 h-3 me-1" />
+                            {language === 'ar' ? clinic.name_ar : clinic.name_en}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center space-y-4">
+                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/5">
+                      <Users className="w-10 h-10 text-gray-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-bold text-gray-400">{translate('لا يوجد مراجع حالي', 'No Active Patient')}</h3>
+                      <p className="text-sm text-gray-500">{translate('قم باستدعاء المراجع التالي من القائمة', 'Call the next patient from the waiting list')}</p>
+                    </div>
+                    <Button 
+                      variant="gradientSecondary" 
+                      size="lg" 
+                      className="mt-4 px-12 h-14 text-lg font-black shadow-xl shadow-red-900/20"
+                      onClick={() => handleAction('CALL_NEXT')}
+                      disabled={loading || patients.length === 0}
+                    >
+                      <TrendingUp className="w-6 h-6 me-3" />
+                      {translate('استدعاء المراجع التالي', 'Call Next Patient')}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Waiting List Sidebar */}
+          <div className="space-y-6">
+            <Card className="bg-gray-900/40 border-white/5 h-full flex flex-col">
+              <CardHeader className="border-b border-white/5 pb-4">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-400" />
+                    {translate('قائمة الانتظار', 'Waiting List')}
+                  </span>
+                  <span className="bg-blue-400/10 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-400/20">
+                    {patients.length}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-grow overflow-y-auto max-h-[600px] custom-scrollbar">
+                {patients.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500 italic">
+                    {translate('القائمة فارغة', 'List is empty')}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {patients.map((patient) => (
+                      <div key={patient.id} className={`p-4 hover:bg-white/5 transition-colors group ${patient.status === 'called' ? 'bg-yellow-500/5' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl border shadow-inner ${
+                              patient.status === 'called' 
+                                ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-500' 
+                                : 'bg-gray-800 border-white/10 text-white'
+                            }`}>
+                              {patient.display_number}
+                            </div>
+                            <div>
+                              <div className="font-bold flex items-center gap-2">
+                                {translate(`مراجع رقم ${patient.display_number}`, `Patient #${patient.display_number}`)}
+                                {patient.is_vip && <Star className="w-3 h-3 text-yellow-500 fill-current" />}
+                              </div>
+                              <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                {new Date(patient.entered_at || patient.created_at).toLocaleTimeString(language === 'ar' ? 'ar-QA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {patient.status === 'called' ? (
+                              <Button 
+                                size="sm" 
+                                variant="gradient" 
+                                className="h-8 text-xs font-bold"
+                                onClick={() => handleAction('START_EXAM', patient.id)}
+                                disabled={loading || currentPatient}
+                              >
+                                <UserCheck className="w-3 h-3 me-1" /> {translate('بدء', 'Start')}
+                              </Button>
+                            ) : (
+                              <div className="flex gap-1">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0 bg-white/5 hover:bg-yellow-500/20 text-yellow-500"
+                                  onClick={() => handleAction('MARK_VIP', patient.id)}
+                                  title={translate('تمييز VIP', 'Mark VIP')}
+                                >
+                                  <Star className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0 bg-white/5 hover:bg-red-500/20 text-red-500"
+                                  onClick={() => handleAction('ABSENT', patient.id)}
+                                  title={translate('غياب', 'Absent')}
+                                >
+                                  <UserX className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              <div className="p-4 bg-black/20 border-t border-white/5">
+                <p className="text-[10px] text-center text-gray-600 uppercase tracking-widest font-bold">
+                  {translate('نظام إدارة طوابير اللجنة الطبية', 'MMC Queue Management System')}
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
+      
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+      `}} />
     </div>
   )
 }

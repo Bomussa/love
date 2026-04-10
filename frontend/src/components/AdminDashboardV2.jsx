@@ -3500,6 +3500,9 @@ const UsersManagement = ({ language, t }) => {
     { id: 'database', label: t('قاعدة البيانات', 'Database') }
   ];
   const [editingUser, setEditingUser] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordTargetUser, setPasswordTargetUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -3624,6 +3627,27 @@ const UsersManagement = ({ language, t }) => {
     }
   };
 
+  const updatePassword = async () => {
+    if (!passwordTargetUser || !newPassword) return;
+    try {
+      const { error } = await supabase
+        .from('admin_users')
+        .update({ password_hash: newPassword })
+        .eq('id', passwordTargetUser.id);
+      
+      if (!error) {
+        setShowPasswordModal(false);
+        setPasswordTargetUser(null);
+        setNewPassword('');
+        showSuccessToast(t('تم تحديث الرقم السري بنجاح', 'Password updated successfully'));
+      } else {
+        showErrorToast(t('فشل تحديث الرقم السري', 'Failed to update password'));
+      }
+    } catch (e) {
+      console.error('Error updating password:', e);
+    }
+  };
+
   const deleteUser = async (userId) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
@@ -3699,7 +3723,17 @@ const UsersManagement = ({ language, t }) => {
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <button onClick={() => setEditingUser(user)} className="p-2 hover:bg-white/10 rounded-lg">
-                      <Edit size={16} className="text-[#C9A54C]" />
+                        <Edit size={16} className="text-[#C9A54C]" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setPasswordTargetUser(user);
+                        setShowPasswordModal(true);
+                      }} 
+                      className="p-2 hover:bg-white/10 rounded-lg"
+                      title={t('تعديل الرقم السري', 'Edit Password')}
+                    >
+                      <Key size={16} className="text-blue-400" />
                     </button>
                     <button onClick={() => deleteUser(user.id)} className="p-2 hover:bg-white/10 rounded-lg">
                       <Trash2 size={16} className="text-red-400" />
@@ -3864,6 +3898,43 @@ const UsersManagement = ({ language, t }) => {
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl"
               >
                 {t('حفظ', 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal تعديل الرقم السري */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
+          <div className="bg-[#1a1a24] rounded-2xl p-6 w-full max-w-sm border border-white/10">
+            <h4 className="text-lg font-bold mb-4">{t('تعديل الرقم السري', 'Edit Password')}: {passwordTargetUser?.username}</h4>
+            <div className="space-y-4">
+              <input
+                type="password"
+                placeholder={t('الرقم السري الجديد', 'New Password')}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordTargetUser(null);
+                  setNewPassword('');
+                }}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-xl"
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                onClick={updatePassword}
+                disabled={!newPassword}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#B8943D] text-black font-medium rounded-xl disabled:opacity-50"
+              >
+                {t('تحديث', 'Update')}
               </button>
             </div>
           </div>
