@@ -1,0 +1,26 @@
+name: Deploy to Vercel Production
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install & Build
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          npm run build
+      - name: Deploy via Vercel CLI
+        run: |
+          npm install -g vercel@latest
+          vercel pull --yes --environment=production --token=NJ7LJFyyeQTxlPW4aaiHrQ6I
+          vercel build --prod --token=NJ7LJFyyeQTxlPW4aaiHrQ6I
+          vercel deploy --prebuilt --prod --token=NJ7LJFyyeQTxlPW4aaiHrQ6I
+        env:
+          VERCEL_ORG_ID: team_aFtFTvzgabqENB5bOxn4SiO7
+          VERCEL_PROJECT_ID: prj_nX8UT2Imd958Pq7W2iZLJzI3RmAu
