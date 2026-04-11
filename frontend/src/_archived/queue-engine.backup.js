@@ -18,7 +18,6 @@ class QueueEngine {
   checkDailyReset() {
     const now = new Date();
     const qatarTime = new Date(now.toLocaleString('en-US', { timeZone: settings.REGION }));
-    const resetTime = settings.PIN_RESET_TIME.split(':');
     const resetHour = parseInt(resetTime[0]);
     const resetMinute = parseInt(resetTime[1]);
 

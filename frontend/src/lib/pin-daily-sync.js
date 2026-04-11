@@ -1,9 +1,6 @@
 /**
- * نظام التزامن اليومي لأرقام PIN (Daily PIN Synchronization System)
- * يضمن تحديث أرقام PIN بشكل صحيح يومياً وعرضها محدثة على شاشة الإدارة
  */
 
-class PINDailySync {
   constructor(supabase) {
     this.supabase = supabase;
     this.lastSyncTime = null;
@@ -24,7 +21,6 @@ class PINDailySync {
    * بدء نظام التزامن اليومي
    */
   startDailySync() {
-    console.log('🔄 نظام التزامن اليومي لأرقام PIN: جاري البدء');
 
     // فحص فوري عند البدء
     this.performDailySync();
@@ -76,20 +72,13 @@ class PINDailySync {
     try {
       console.log('🔄 بدء التزامن اليومي الشامل...');
 
-      // 1. حذف أرقام PIN المنتهية الصلاحية
-      await this.deleteExpiredPins();
 
-      // 2. تحديث صلاحية أرقام PIN الحالية
-      await this.updatePinExpiry();
 
       // 3. التحقق من صحة البيانات
-      await this.validatePinData();
 
       // 4. إعادة تعيين عدادات الاستخدام إذا لزم الأمر
       await this.resetUsageCounters();
 
-      // 5. توليد أرقام PIN جديدة للعيادات التي لا تملك أرقام
-      await this.generateMissingPins();
 
       // تسجيل النجاح
       this.healthStatus.lastSync = syncStartTime;
@@ -114,30 +103,23 @@ class PINDailySync {
   }
 
   /**
-   * حذف أرقام PIN المنتهية الصلاحية
    */
-  async deleteExpiredPins() {
     try {
       const now = new Date().toISOString();
       const { data, error, count } = await this.supabase
-        .from('pins')
         .delete()
         .lt('expires_at', now);
 
       if (error) throw error;
 
-      console.log(`🗑️ تم حذف ${count} أرقام PIN منتهية الصلاحية`);
       return count;
     } catch (error) {
-      console.error('❌ خطأ في حذف أرقام PIN المنتهية:', error);
       throw error;
     }
   }
 
   /**
-   * تحديث صلاحية أرقام PIN الحالية
    */
-  async updatePinExpiry() {
     try {
       const today = new Date();
       const tomorrow = new Date(today);
@@ -145,7 +127,6 @@ class PINDailySync {
       tomorrow.setHours(23, 59, 59, 999);
 
       const { data, error, count } = await this.supabase
-        .from('pins')
         .update({
           expires_at: tomorrow.toISOString()
         })
@@ -154,61 +135,43 @@ class PINDailySync {
 
       if (error) throw error;
 
-      console.log(`📅 تم تحديث صلاحية ${count} أرقام PIN`);
       return count;
     } catch (error) {
-      console.error('❌ خطأ في تحديث صلاحية PIN:', error);
       throw error;
     }
   }
 
   /**
-   * التحقق من صحة بيانات PIN
    */
-  async validatePinData() {
     try {
-      const { data: pins, error } = await this.supabase
-        .from('pins')
         .select('*');
 
       if (error) throw error;
 
       let validationIssues = 0;
 
-      for (const pin of pins) {
-        // التحقق من أن PIN ليس فارغاً
-        if (!pin.pin) {
           validationIssues++;
           continue;
         }
 
         // التحقق من أن clinic_code موجود
-        if (!pin.clinic_code) {
           validationIssues++;
           continue;
         }
 
         // التحقق من أن is_active موجود
-        if (pin.is_active === null || pin.is_active === undefined) {
           await this.supabase
-            .from('pins')
             .update({ is_active: true })
-            .eq('id', pin.id);
         }
 
         // التحقق من أن expires_at في المستقبل
-        if (new Date(pin.expires_at) < new Date()) {
           await this.supabase
-            .from('pins')
             .update({
               expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
             })
-            .eq('id', pin.id);
         }
       }
 
-      console.log(`✔️ تم التحقق من ${pins.length} أرقام PIN (${validationIssues} مشاكل)`);
-      return { total: pins.length, issues: validationIssues };
     } catch (error) {
       console.error('❌ خطأ في التحقق من صحة البيانات:', error);
       throw error;
@@ -220,8 +183,6 @@ class PINDailySync {
    */
   async resetUsageCounters() {
     try {
-      const { data: pins, error } = await this.supabase
-        .from('pins')
         .select('*')
         .eq('is_active', true);
 
@@ -229,13 +190,9 @@ class PINDailySync {
 
       let resetCount = 0;
 
-      for (const pin of pins) {
         // إعادة تعيين عداد الاستخدام إذا تجاوز الحد الأقصى
-        if (pin.used_count >= (pin.max_uses || 100)) {
           await this.supabase
-            .from('pins')
             .update({ used_count: 0 })
-            .eq('id', pin.id);
           resetCount++;
         }
       }
@@ -249,9 +206,7 @@ class PINDailySync {
   }
 
   /**
-   * توليد أرقام PIN جديدة للعيادات التي لا تملك أرقام
    */
-  async generateMissingPins() {
     try {
       // الحصول على قائمة العيادات
       const { data: clinics, error: clinicsError } = await this.supabase
@@ -261,25 +216,14 @@ class PINDailySync {
 
       if (clinicsError) throw clinicsError;
 
-      // الحصول على قائمة العيادات التي لديها أرقام PIN
-      const { data: clinicsWithPins, error: pinsError } = await this.supabase
-        .from('pins')
         .select('clinic_code')
         .eq('is_active', true);
 
-      if (pinsError) throw pinsError;
 
-      const clinicsWithPinIds = new Set(clinicsWithPins.map(p => p.clinic_code));
-      const clinicsNeedingPins = clinics.filter(c => !clinicsWithPinIds.has(c.id));
 
-      if (clinicsNeedingPins.length === 0) {
-        console.log('✔️ جميع العيادات لديها أرقام PIN');
         return 0;
       }
 
-      // توليد أرقام PIN للعيادات المفقودة
-      const newPins = clinicsNeedingPins.map(clinic => ({
-        pin: this.generateUniquePin(),
         clinic_code: clinic.id,
         is_active: true,
         generated_at: new Date().toISOString(),
@@ -290,15 +234,10 @@ class PINDailySync {
       }));
 
       const { error: insertError } = await this.supabase
-        .from('pins')
-        .insert(newPins);
 
       if (insertError) throw insertError;
 
-      console.log(`✨ تم توليد ${newPins.length} أرقام PIN جديدة للعيادات المفقودة`);
-      return newPins.length;
     } catch (error) {
-      console.error('❌ خطأ في توليد أرقام PIN المفقودة:', error);
       throw error;
     }
   }
@@ -308,16 +247,11 @@ class PINDailySync {
    */
   async performHourlyCheck() {
     try {
-      // التحقق من وجود أرقام PIN منتهية الصلاحية
-      const { data: expiredPins, error } = await this.supabase
-        .from('pins')
         .select('count(*)')
         .lt('expires_at', new Date().toISOString());
 
       if (error) throw error;
 
-      if (expiredPins && expiredPins[0]?.count > 0) {
-        console.warn(`⚠️ تم اكتشاف ${expiredPins[0].count} أرقام PIN منتهية الصلاحية`);
         // تشغيل تزامن فوري
         await this.performDailySync();
       }
@@ -327,9 +261,7 @@ class PINDailySync {
   }
 
   /**
-   * توليد رقم PIN فريد
    */
-  generateUniquePin() {
     return Math.floor(10 + Math.random() * 90).toString();
   }
 
@@ -386,4 +318,3 @@ class PINDailySync {
   }
 }
 
-export default PINDailySync;

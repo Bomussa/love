@@ -3,27 +3,19 @@ import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 
 /**
- * Admin PIN Monitor Component
- * Displays current PIN for clinic
  * ✅ يستخدم api-unified الموحد
  */
-export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval = 30000 }) {
-    const [pinData, setPinData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [issuing, setIssuing] = useState(false)
     const [lastRefresh, setLastRefresh] = useState(null)
 
-    const fetchCurrentPin = async () => {
         try {
             setLoading(true)
             setError(null)
 
-            const data = await api.getCurrentPin(clinicId)
             if (data.success) {
-                setPinData(data)
             } else {
-                throw new Error(data.error || 'فشل في جلب PIN')
             }
             setLastRefresh(new Date())
         } catch (err) {
@@ -33,18 +25,13 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
         }
     }
 
-    const issueNewPin = async () => {
         try {
             setIssuing(true)
             setError(null)
 
-            const data = await api.issuePin(clinicId)
             if (!data.success) {
-                throw new Error(data.error || 'فشل في إصدار PIN')
             }
 
-            // Refresh to show new PIN
-            await fetchCurrentPin()
         } catch (err) {
             setError(err.message)
         } finally {
@@ -53,32 +40,21 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
     }
 
     useEffect(() => {
-        fetchCurrentPin()
 
         if (autoRefresh) {
-            const interval = setInterval(fetchCurrentPin, refreshInterval)
             return () => clearInterval(interval)
         }
     }, [clinicId, autoRefresh, refreshInterval])
 
-    if (loading && !pinData) {
         return (
-            <div className="text-center p-4" data-test="pin-monitor-loading">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-2 text-gray-600">{t('Loading PIN...')}</p>
             </div>
         )
     }
 
-    if (error && !pinData) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded p-4" data-test="pin-monitor-error">
-                <p className="text-red-800 font-medium">{t('Error loading PIN')}</p>
                 <p className="text-red-600 text-sm mt-1">{error}</p>
                 <button
-                    onClick={fetchCurrentPin}
                     className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                    data-test="pin-monitor-retry"
                 >
                     {t('Retry')}
                 </button>
@@ -86,12 +62,9 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
         )
     }
 
-    if (!pinData) return null
 
-    const { currentPin, totalIssued, dateKey, allPins = [] } = pinData
 
     return (
-        <div className="space-y-4" data-test="pin-monitor">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -104,34 +77,22 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={fetchCurrentPin}
                         disabled={loading}
                         className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-                        data-test="pin-monitor-refresh"
                     >
                         {loading ? t('Refreshing...') : t('Refresh')}
                     </button>
                     <button
-                        onClick={issueNewPin}
                         disabled={issuing || loading}
                         className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                        data-test="pin-monitor-issue"
                     >
-                        {issuing ? t('Issuing...') : t('Issue New PIN')}
                     </button>
                 </div>
             </div>
 
-            {/* Current PIN Display */}
             <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
-                <p className="text-sm font-medium mb-2">{t('Current PIN')}</p>
-                {currentPin ? (
-                    <p className="text-6xl font-bold text-center" data-test="current-pin">
-                        {currentPin}
                     </p>
                 ) : (
-                    <p className="text-2xl text-center opacity-75" data-test="no-pin">
-                        {t('No PINs issued today')}
                     </p>
                 )}
             </div>
@@ -145,28 +106,16 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
                     </p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-600">{t('Next PIN')}</p>
-                    <p className="text-2xl font-bold" data-test="next-pin">
-                        {currentPin ? String(Number(currentPin) + 1).padStart(2, '0') : '01'}
                     </p>
                 </div>
             </div>
 
-            {/* PIN History */}
-            {allPins.length > 0 && (
-                <div data-test="pin-history">
-                    <h4 className="font-medium mb-2">{t('Today\'s PINs')} ({allPins.length})</h4>
                     <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded">
-                        {allPins.map((pin, index) => (
                             <span
-                                key={`pin-${index}`}
-                                className={`px-3 py-1 rounded text-sm font-medium ${pin === currentPin
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-200 text-gray-700'
                                     }`}
-                                data-test={`history-pin-${pin}`}
                             >
-                                {pin}
                             </span>
                         ))}
                     </div>
@@ -175,7 +124,6 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
 
             {/* Error Display */}
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded p-3" data-test="pin-error">
                     <p className="text-red-800 text-sm">{error}</p>
                 </div>
             )}
@@ -190,4 +138,3 @@ export function AdminPINMonitor({ clinicId, autoRefresh = false, refreshInterval
     )
 }
 
-export default AdminPINMonitor

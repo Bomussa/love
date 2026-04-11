@@ -211,7 +211,6 @@ const LiveStatisticsPanel = ({ isOpen, onClose, clinics = [], examTypes = [] }) 
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
     
-    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-cyan-500'];
     const total = sortedExams.reduce((sum, [_, v]) => sum + v, 0);
     
     return (
@@ -303,7 +302,6 @@ const LiveStatisticsPanel = ({ isOpen, onClose, clinics = [], examTypes = [] }) 
               className="p-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-colors mr-auto"
               title="تحديث"
             >
-              <RefreshCw className={`w-4 h-4 text-gray-400 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -312,7 +310,6 @@ const LiveStatisticsPanel = ({ isOpen, onClose, clinics = [], examTypes = [] }) 
         <div className="p-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
             </div>
           ) : stats ? (
             <div className="space-y-4">
@@ -376,7 +373,6 @@ const LiveStatisticsPanel = ({ isOpen, onClose, clinics = [], examTypes = [] }) 
                   title="إناث"
                   value={stats.byGender.female}
                   subtitle={`${stats.uniquePatients > 0 ? Math.round((stats.byGender.female / stats.uniquePatients) * 100) : 0}%`}
-                  color="pink"
                 />
               </div>
               

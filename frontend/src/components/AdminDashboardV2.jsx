@@ -3,7 +3,6 @@ import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   LayoutDashboard, Users, Clock, CheckCircle, Activity, 
-  Settings, FileText, MapPin, Key, RefreshCw, Trash2, 
   Edit, Plus, LogOut, Home, AlertCircle, ChevronRight,
   Search, Filter, Download, MoreVertical, Shield, Play,
   Pause, SkipForward, Phone, Bell, BarChart3, Calendar,
@@ -242,7 +241,6 @@ const QueueManagement = ({ language, t }) => {
       }
       loadQueues();
     } catch (e) {
-      console.error('Error skipping patient:', e);
     }
   };
 
@@ -418,7 +416,6 @@ const QueueManagement = ({ language, t }) => {
           onClick={loadQueues}
           className="p-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
         >
-          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
@@ -566,7 +563,6 @@ const QueueManagement = ({ language, t }) => {
                   className="flex-1 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {priorityLoading ? (
-                    <RefreshCw className="animate-spin" size={20} />
                   ) : (
                     <>
                       <Play size={20} />
@@ -649,7 +645,6 @@ const QueueManagement = ({ language, t }) => {
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {editPatientLoading ? (
-                    <RefreshCw className="animate-spin" size={20} />
                   ) : (
                     <>
                       <Save size={20} />
@@ -667,24 +662,17 @@ const QueueManagement = ({ language, t }) => {
 };
 
 // مكون إدارة الأرقام السرية - محسّن
-const PINManagement = ({ language, t }) => {
-  const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkGenerate, setShowBulkGenerate] = useState(false);
-  const [newPin, setNewPin] = useState({ pin_code: '', clinic_id: '', max_uses: 100 });
   const [clinics, setClinics] = useState([]);
   const [generatingBulk, setGeneratingBulk] = useState(false);
 
   useEffect(() => {
-    loadPins();
     loadClinics();
     
     // Real-time subscription
     const subscription = supabase
-      .channel('pins_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pins' }, () => {
-        loadPins();
       })
       .subscribe();
     
@@ -696,95 +684,58 @@ const PINManagement = ({ language, t }) => {
     if (data) setClinics(data);
   };
 
-  const loadPins = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('pins')
         .select('*')
         .order('clinic_code', { ascending: true })
         .order('created_at', { ascending: false });
       
-      if (!error && data) setPins(data);
     } catch (e) {
-      console.error('Error loading pins:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  const generatePin = () => {
-    // PIN من رقمين فقط (10-99)
     return Math.floor(10 + Math.random() * 90).toString();
   };
 
-  const generateUniquePin = (existingPins) => {
-    let pin;
     let attempts = 0;
     do {
-      pin = generatePin();
       attempts++;
-    } while (existingPins.includes(pin) && attempts < 100);
-    return pin;
   };
 
-  const addPin = async () => {
     try {
-      if (!newPin.clinic_id) {
         showErrorToast(t('يرجى اختيار العيادة', 'Please select a clinic'));
         return;
       }
       
-      const existingPins = pins.filter(p => p.clinic_code === newPin.clinic_id).map(p => p.pin);
-      const pinCode = newPin.pin_code || generateUniquePin(existingPins);
       
       // التحقق من عدم تكرار الرقم لنفس العيادة
-      if (existingPins.includes(pinCode)) {
-        showErrorToast(t('هذا الرقم موجود بالفعل لهذه العيادة', 'This PIN already exists for this clinic'));
         return;
       }
       
-      const { error } = await supabase.from('pins').insert({
-        pin: pinCode,
-        clinic_code: newPin.clinic_id,
         is_active: true,
         generated_at: new Date().toISOString(),
         expires_at: new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
         created_at: new Date().toISOString(),
-        max_uses: newPin.max_uses || 100,
         used_count: 0
       });
       
       if (!error) {
-        showSuccessToast(t(`تم إنشاء الرقم السري: ${pinCode}`, `PIN created: ${pinCode}`));
-        await logActivity('pin_created', `تم إنشاء رقم سري ${pinCode} للعيادة ${newPin.clinic_id}`);
-        loadPins();
         setShowAddForm(false);
-        setNewPin({ pin_code: '', clinic_id: '', max_uses: 100 });
       } else {
-        showErrorToast(t('حدث خطأ أثناء الإنشاء', 'Error creating PIN'));
       }
     } catch (e) {
-      console.error('Error adding pin:', e);
     }
   };
 
   // توليد أرقام سرية لجميع العيادات
-  const generateBulkPins = async () => {
     try {
       setGeneratingBulk(true);
-      const existingPinsByClinic = {};
-      pins.forEach(p => {
-        if (!existingPinsByClinic[p.clinic_code]) existingPinsByClinic[p.clinic_code] = [];
-        existingPinsByClinic[p.clinic_code].push(p.pin);
       });
       
-      const newPins = [];
       for (const clinic of clinics) {
-        const existingPins = existingPinsByClinic[clinic.id] || [];
-        const pinCode = generateUniquePin(existingPins);
-        newPins.push({
-          pin: pinCode,
           clinic_code: clinic.id,
           is_active: true,
           generated_at: new Date().toISOString(),
@@ -795,15 +746,10 @@ const PINManagement = ({ language, t }) => {
         });
       }
       
-      const { error } = await supabase.from('pins').insert(newPins);
       
       if (!error) {
-        showSuccessToast(t(`تم توليد ${newPins.length} رقم سري`, `Generated ${newPins.length} PINs`));
-        await logActivity('pins_bulk_generated', `تم توليد ${newPins.length} رقم سري لجميع العيادات`);
-        loadPins();
       }
     } catch (e) {
-      console.error('Error generating bulk pins:', e);
       showErrorToast(t('حدث خطأ', 'Error occurred'));
     } finally {
       setGeneratingBulk(false);
@@ -812,49 +758,34 @@ const PINManagement = ({ language, t }) => {
   };
 
   // حذف جميع الأرقام المنتهية الصلاحية
-  const deleteExpiredPins = async () => {
     try {
       const now = new Date().toISOString();
       const { error, count } = await supabase
-        .from('pins')
         .delete()
         .lt('expires_at', now);
       
       if (!error) {
-        showSuccessToast(t('تم حذف الأرقام المنتهية', 'Expired PINs deleted'));
-        loadPins();
       }
     } catch (e) {
-      console.error('Error deleting expired pins:', e);
     }
   };
 
-  const togglePinStatus = async (pinId, currentStatus) => {
     try {
       const { error } = await supabase
-        .from('pins')
         .update({ is_active: !currentStatus })
-        .eq('id', pinId);
       
       if (!error) {
         showSuccessToast(t(!currentStatus ? 'تم التفعيل' : 'تم التعطيل', !currentStatus ? 'Activated' : 'Deactivated'));
-        loadPins();
       }
     } catch (e) {
-      console.error('Error toggling pin:', e);
     }
   };
 
-  const deletePin = async (pinId) => {
-    if (!window.confirm(t('هل أنت متأكد من حذف هذا الرقم؟', 'Are you sure you want to delete this PIN?'))) return;
     try {
-      const { error } = await supabase.from('pins').delete().eq('id', pinId);
       if (!error) {
         showSuccessToast(t('تم الحذف', 'Deleted'));
-        loadPins();
       }
     } catch (e) {
-      console.error('Error deleting pin:', e);
     }
   };
 
@@ -863,14 +794,12 @@ const PINManagement = ({ language, t }) => {
     return clinic ? (language === 'ar' ? clinic.name_ar : clinic.name_en) : clinicCode;
   };
 
-  const isPinExpired = (expiresAt) => {
     return new Date(expiresAt) < new Date();
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h3 className="text-xl font-bold">{t('إدارة الأرقام السرية', 'PIN Management')}</h3>
         <div className="flex gap-2 flex-wrap">
           <button 
             onClick={() => setShowAddForm(true)}
@@ -880,25 +809,20 @@ const PINManagement = ({ language, t }) => {
             {t('إضافة', 'Add')}
           </button>
           <button 
-            onClick={generateBulkPins}
             disabled={generatingBulk}
             className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all flex items-center gap-2 disabled:opacity-50"
           >
-            {generatingBulk ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
             {t('توليد للكل', 'Generate All')}
           </button>
           <button 
-            onClick={deleteExpiredPins}
             className="px-4 py-2 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/30 transition-all flex items-center gap-2"
           >
             <Trash2 size={18} />
             {t('حذف المنتهية', 'Delete Expired')}
           </button>
           <button 
-            onClick={loadPins}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -906,15 +830,11 @@ const PINManagement = ({ language, t }) => {
       {/* إحصائيات سريعة */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-[#C9A54C]">{pins.length}</div>
-          <div className="text-sm text-gray-400">{t('إجمالي الأرقام', 'Total PINs')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-green-400">{pins.filter(p => p.is_active).length}</div>
           <div className="text-sm text-gray-400">{t('نشطة', 'Active')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
-          <div className="text-2xl font-bold text-red-400">{pins.filter(p => isPinExpired(p.expires_at)).length}</div>
           <div className="text-sm text-gray-400">{t('منتهية', 'Expired')}</div>
         </div>
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4">
@@ -925,14 +845,10 @@ const PINManagement = ({ language, t }) => {
 
       {showAddForm && (
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-6">
-          <h4 className="font-bold mb-4">{t('إضافة رقم سري جديد', 'Add New PIN')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('الرقم السري', 'PIN Code')}</label>
               <input
                 type="text"
-                value={newPin.pin_code}
-                onChange={(e) => setNewPin({...newPin, pin_code: e.target.value})}
                 placeholder={t('اتركه فارغاً للتوليد التلقائي', 'Leave empty for auto-generate')}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
               />
@@ -940,8 +856,6 @@ const PINManagement = ({ language, t }) => {
             <div>
               <label className="block text-sm text-gray-400 mb-2">{t('العيادة', 'Clinic')}</label>
               <select
-                value={newPin.clinic_id}
-                onChange={(e) => setNewPin({...newPin, clinic_id: e.target.value})}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
               >
                 <option value="">{t('اختر العيادة', 'Select Clinic')}</option>
@@ -954,8 +868,6 @@ const PINManagement = ({ language, t }) => {
               <label className="block text-sm text-gray-400 mb-2">{t('رقم المريض', 'Patient ID')}</label>
               <input
                 type="text"
-                value={newPin.patient_id}
-                onChange={(e) => setNewPin({...newPin, patient_id: e.target.value})}
                 placeholder={t('اختياري', 'Optional')}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white"
               />
@@ -963,7 +875,6 @@ const PINManagement = ({ language, t }) => {
           </div>
           <div className="flex gap-2 mt-4">
             <button
-              onClick={addPin}
               className="px-6 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all"
             >
               {t('حفظ', 'Save')}
@@ -982,7 +893,6 @@ const PINManagement = ({ language, t }) => {
         <table className="w-full">
           <thead className="bg-white/5">
             <tr>
-              <th className="text-right p-4 text-gray-400 font-medium">{t('الرقم السري', 'PIN')}</th>
               <th className="text-right p-4 text-gray-400 font-medium">{t('العيادة', 'Clinic')}</th>
               <th className="text-right p-4 text-gray-400 font-medium">{t('الحالة', 'Status')}</th>
               <th className="text-right p-4 text-gray-400 font-medium">{t('التاريخ', 'Date')}</th>
@@ -990,32 +900,21 @@ const PINManagement = ({ language, t }) => {
             </tr>
           </thead>
           <tbody>
-            {pins.map(pin => (
-              <tr key={pin.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-mono text-lg font-bold text-[#B8943D]">{pin.pin}</td>
-                <td className="p-4">{clinics.find(c => c.id === pin.clinic_code)?.name_ar || pin.clinic_code}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    pin.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {pin.is_active ? t('نشط', 'Active') : t('معطل', 'Inactive')}
                   </span>
                 </td>
                 <td className="p-4 text-gray-400 text-sm">
-                  {new Date(pin.created_at).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
                 </td>
                 <td className="p-4">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => togglePinStatus(pin.id, pin.is_active)}
                       className={`p-2 rounded-lg transition-all ${
-                        pin.is_active ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                       }`}
                     >
-                      {pin.is_active ? <Pause size={16} /> : <Play size={16} />}
                     </button>
                     <button
-                      onClick={() => deletePin(pin.id)}
                       className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all"
                     >
                       <Trash2 size={16} />
@@ -1026,9 +925,7 @@ const PINManagement = ({ language, t }) => {
             ))}
           </tbody>
         </table>
-        {pins.length === 0 && (
           <div className="p-8 text-center text-gray-400">
-            {t('لا توجد أرقام سرية', 'No PINs found')}
           </div>
         )}
       </div>
@@ -1685,7 +1582,6 @@ const ClinicsManagement = ({ language, t }) => {
             onClick={loadClinics}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -2310,7 +2206,6 @@ const RoutesManagement = ({ language, t }) => {
             onClick={loadRoutes}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -2407,14 +2302,12 @@ const RoutesManagement = ({ language, t }) => {
 
       {routes.length === 0 && !loading && (
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 p-8 text-center text-gray-400">
-          <MapPin size={48} className="mx-auto mb-4 opacity-50" />
           <p>{t('لا توجد مسارات. اضغط على "إضافة مسار" لإنشاء مسار جديد.', 'No routes found. Click "Add Route" to create a new route.')}</p>
         </div>
       )}
 
       {loading && (
         <div className="flex justify-center py-8">
-          <RefreshCw size={32} className="animate-spin text-[#C9A54C]" />
         </div>
       )}
     </div>
@@ -2533,7 +2426,6 @@ const FloorDirectionsManager = ({ language, t }) => {
 
   if (loading) return (
     <div className="flex justify-center items-center py-12">
-      <RefreshCw size={32} className="animate-spin text-[#C9A54C]" />
     </div>
   );
 
@@ -2686,7 +2578,6 @@ const SystemStatus = ({ language, t }) => {
       { name: 'clinics', label: t('العيادات', 'Clinics') },
       { name: 'queue', label: t('الطابور (queue)', 'Queue') },
       { name: 'queues', label: t('الطوابير (queues)', 'Queues') },
-      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
       { name: 'settings', label: t('الإعدادات', 'Settings') },
       { name: 'notifications', label: t('الإشعارات', 'Notifications') },
       { name: 'routes', label: t('المسارات', 'Routes') },
@@ -2726,7 +2617,6 @@ const SystemStatus = ({ language, t }) => {
           onClick={checkSystemStatus}
           className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl hover:bg-[#B8943D] transition-all flex items-center gap-2"
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           {t('تحديث', 'Refresh')}
         </button>
       </div>
@@ -3098,29 +2988,20 @@ const SettingsSection = ({ language, t }) => {
 
         {/* إعدادات البن التلقائي */}
         <div className="mt-6 pt-6 border-t border-white/10">
-          <h4 className="text-lg font-bold mb-4">{t('إعدادات البن التلقائي', 'Auto PIN Settings')}</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('وقت إصدار البن (توقيت الدوحة)', 'PIN Generate Time (Doha Time)')}</label>
               <input
                 type="time"
-                value={settings.pin_auto_generate_time || '05:00'}
-                onChange={(e) => updateSetting('pin_auto_generate_time', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               />
-              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإصدار أرقام البن الجديدة', 'Daily time to generate new PIN codes')}</p>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('وقت حذف البن', 'PIN Delete Time')}</label>
               <input
                 type="time"
-                value={settings.pin_auto_delete_time || '00:00'}
-                onChange={(e) => updateSetting('pin_auto_delete_time', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
               />
-              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لحذف أرقام البن القديمة', 'Daily time to delete old PIN codes')}</p>
             </div>
 
             <div>
@@ -3200,17 +3081,13 @@ const SettingsSection = ({ language, t }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* نظام البن كود */}
             <div className="bg-white/5 rounded-xl p-4">
-              <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام البن كود', 'PIN Code System')}</h5>
               
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <span className="text-sm">{t('تفعيل النظام', 'Enable System')}</span>
                 </div>
                 <button
-                  onClick={() => updateSetting('pin_system_enabled', settings.pin_system_enabled === 'true' ? 'false' : 'true')}
-                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
                 >
-                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
                 </button>
               </div>
               
@@ -3219,10 +3096,7 @@ const SettingsSection = ({ language, t }) => {
                   <span className="text-sm">{t('إظهار في الواجهة', 'Show in UI')}</span>
                 </div>
                 <button
-                  onClick={() => updateSetting('pin_system_visible', settings.pin_system_visible === 'true' ? 'false' : 'true')}
-                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
                 >
-                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
@@ -3367,7 +3241,6 @@ const UsersManagement = ({ language, t }) => {
   const allPermissions = [
     { id: 'dashboard', label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', label: t('إدارة الطوابير', 'Queue Management') },
-    { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', label: t('الإشعارات', 'Notifications') },
     { id: 'routes', label: t('المسارات', 'Routes') },
     { id: 'floor_directions', label: t('توجيه الطوابق', 'Floor Directions') },
@@ -4169,7 +4042,6 @@ const OfflineSettings = ({ language, t }) => {
             disabled={syncStatus === 'syncing'}
             className="px-4 py-2 bg-[#C9A54C] text-black font-medium rounded-xl flex items-center gap-2"
           >
-            <RefreshCw size={16} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
             {t('مزامنة الآن', 'Sync Now')}
           </button>
         </div>
@@ -4343,7 +4215,6 @@ const ContentManagement = ({ language, t }) => {
       <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
             {t('جاري التحميل...', 'Loading...')}
           </div>
         ) : (
@@ -4766,8 +4637,6 @@ const DatabaseManagement = ({ language, t }) => {
     { name: 'queues', label: t('الطوابير', 'Queues'), icon: Users },
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
-    { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
-    { name: 'pins', label: t('الأرقام السرية', 'PINs'), icon: Key },
   ];
 
   useEffect(() => {
@@ -4888,7 +4757,6 @@ const DatabaseManagement = ({ language, t }) => {
         <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
-              <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
               {t('جاري التحميل...', 'Loading...')}
             </div>
           ) : tableData.length === 0 ? (
@@ -5084,7 +4952,6 @@ const SmartSystemPanel = ({ language, t }) => {
           disabled={running}
           className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${running ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}
         >
-          {running ? <RefreshCw className="animate-spin" /> : <Play />}
           {t('تشغيل فحص عميق الآن', 'Run Deep QA Now')}
         </button>
       </div>
@@ -5171,7 +5038,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     waiting: 0,
     completed: 0,
     avgWaitTime: 0,
-    activePins: 0,
     systemHealth: 100
   });
   const [loading, setLoading] = useState(true);
@@ -5203,9 +5069,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .from('clinics')
         .select('id, name_ar, name_en');
 
-      // Active PINs
-      const { count: pinCount } = await supabase
-        .from('pins')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
@@ -5254,7 +5117,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
       setStats(prev => ({
         ...prev,
-        activePins: pinCount || 0,
         systemHealth: 100,
         clinicStats
       }));
@@ -5310,9 +5172,7 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', icon: Users, label: t('إدارة الطوابير', 'Queues') },
-    { id: 'pins', icon: Key, label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', icon: Bell, label: t('الإشعارات', 'Notifications') },
-    { id: 'routes', icon: MapPin, label: t('المسارات', 'Routes') },
     { id: 'reports', icon: FileText, label: t('التقارير', 'Reports') },
     { id: 'clinics', icon: Activity, label: t('العيادات', 'Clinics') },
     { id: 'system', icon: Shield, label: t('حالة النظام', 'System Status') },
@@ -5480,7 +5340,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
               className="p-2 bg-yellow-500 text-black rounded-xl hover:bg-yellow-400 transition-all shadow-lg shadow-yellow-500/20"
               title={t('تحديث البيانات', 'Refresh Data')}
             >
-              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
               onClick={handleResetStats}
@@ -5501,7 +5360,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
                 { label: t('إجمالي المرضى', 'Total Patients'), value: stats.totalPatients, icon: Users, color: 'blue' },
                 { label: t('في الانتظار', 'Waiting'), value: stats.waiting, icon: Clock, color: 'yellow' },
                 { label: t('زيارات مكتملة', 'Completed Visits'), value: stats.completed, icon: CheckCircle, color: 'green' },
-                { label: t('الأرقام السرية', 'Active PINs'), value: stats.activePins, icon: Key, color: 'purple' },
               ].map((stat, i) => (
                 <div key={i} className="bg-[#12121a] p-4 lg:p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
                   <div className="flex items-center justify-between mb-4">
@@ -5627,7 +5485,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         )}
 
         {activeTab === 'queues' && <QueueManagement language={language} t={t} />}
-        {activeTab === 'pins' && <PINManagement language={language} t={t} />}
         {activeTab === 'notifications' && <NotificationsManagementV2 language={language} t={t} />}
         {activeTab === 'routes' && <RoutesManagement language={language} t={t} />}
         {activeTab === 'floor_directions' && <FloorDirectionsManager language={language} t={t} />}

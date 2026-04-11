@@ -11,7 +11,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Settings, Power, Eye, EyeOff, Save, RefreshCw,
-  Users, Bell, MapPin, Key, BarChart3, Clock,
   Building2, FileText, Shield, Database, Wifi,
   Check, X, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
@@ -29,11 +28,7 @@ const SYSTEM_FEATURES = [
     category: 'core'
   },
   {
-    id: 'pin_system',
     name: 'نظام الأرقام السرية',
-    nameEn: 'PIN System',
-    description: 'إصدار وإدارة أرقام PIN',
-    descriptionEn: 'Generate and manage PIN codes',
     icon: Key,
     category: 'core'
   },
@@ -52,7 +47,6 @@ const SYSTEM_FEATURES = [
     nameEn: 'Routes System',
     description: 'توجيه المراجعين للعيادات',
     descriptionEn: 'Guide patients to clinics',
-    icon: MapPin,
     category: 'core'
   },
   {
@@ -92,11 +86,6 @@ const SYSTEM_FEATURES = [
     category: 'system'
   },
   {
-    id: 'auto_pin_generate',
-    name: 'إصدار PIN تلقائي',
-    nameEn: 'Auto PIN Generate',
-    description: 'إصدار أرقام PIN يومياً',
-    descriptionEn: 'Generate PIN codes daily',
     icon: Clock,
     category: 'automation'
   },
@@ -269,7 +258,6 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="animate-spin text-[#C9A54C]" size={32} />
       </div>
     );
   }
@@ -312,7 +300,6 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
                 : 'bg-white/10 text-gray-400 cursor-not-allowed'
             }`}
           >
-            {saving ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
             {tr('حفظ التغييرات', 'Save Changes')}
           </button>
         </div>

@@ -253,7 +253,6 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
           {/* حالة التحقق */}
           {status === 'validating' && (
             <div className="flex items-center justify-center gap-2 py-4">
-              <Loader className="w-5 h-5 animate-spin" />
               <span>{t('validating')}</span>
             </div>
           )}
@@ -268,7 +267,6 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
               
               {redirecting && (
                 <div className="flex items-center justify-center gap-2 py-2">
-                  <Loader className="w-4 h-4 animate-spin" />
                   <span className="text-sm text-gray-400">{t('redirecting')}</span>
                 </div>
               )}

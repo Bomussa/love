@@ -14,8 +14,6 @@ const PATTERNS = {
   // الرقم العسكري: 2-12 رقم
   MILITARY_ID: /^\d{2,12}$/,
 
-  // رقم PIN: 4-6 أرقام
-  PIN: /^\d{4,6}$/,
 
   // البريد الإلكتروني
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -65,19 +63,11 @@ export function validateMilitaryId(id) {
 }
 
 /**
- * التحقق من رقم PIN
- * @param {string} pin - رقم PIN
  * @returns {{ isValid: boolean, error?: string }}
  */
-export function validatePin(pin) {
-  if (!pin || typeof pin !== 'string') {
-    return { isValid: false, error: 'رقم PIN مطلوب' };
   }
 
-  const trimmed = pin.trim();
 
-  if (!PATTERNS.PIN.test(trimmed)) {
-    return { isValid: false, error: 'رقم PIN يجب أن يكون 4-6 أرقام' };
   }
 
   return { isValid: true };
@@ -223,7 +213,6 @@ export { PATTERNS };
 
 export default {
   validateMilitaryId,
-  validatePin,
   validateGender,
   validateUUID,
   validateName,

@@ -3,9 +3,6 @@ declare module '../../config/constants.json' {
     TIMEZONE: string;
     SERVICE_DAY_PIVOT: string;
     QUEUE_INTERVAL_SECONDS: number;
-    PIN_LATE_MINUTES: number;
-    PIN_DIGITS: number;
-    PIN_RANGE_PER_CLINIC: [string, string];
     MOBILE_QR_ONLY: boolean;
     DESKTOP_BASIC_AUTH: boolean;
     NOTIFY_NEAR_AHEAD: number;

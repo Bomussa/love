@@ -12,7 +12,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Bell, Plus, RefreshCw, Edit, Trash2, Send, Eye, EyeOff,
-  Play, Pause, Save, Clock, MapPin, Type, Palette, Image,
   User, Search, Filter, X, Check, AlertCircle, Settings
 } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
@@ -446,7 +445,6 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm text-gray-400 mb-2">
-              <MapPin size={14} className="inline ml-1" />
               {tr('موقع الإشعار', 'Position')}
             </label>
             <select
@@ -668,7 +666,6 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
             onClick={loadNotifications}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -728,7 +725,6 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
       <div className="space-y-4">
         {loading ? (
           <div className="text-center py-8 text-gray-400">
-            <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
             {tr('جاري التحميل...', 'Loading...')}
           </div>
         ) : filteredNotifications.length === 0 ? (

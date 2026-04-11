@@ -627,7 +627,6 @@ const NotificationsManagementV2 = ({ language, t }) => {
             onClick={loadNotifications}
             className="p-2 bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] border border-white/10 rounded-xl hover:bg-[#8A1538] transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>

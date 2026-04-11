@@ -312,9 +312,6 @@ export function LoginPage({ onLogin, onAdminLogin, currentTheme, onThemeChange, 
 
                 {/* إشعار خاص للنساء */}
                 {gender === 'female' && (
-                  <div className="bg-pink-900/30 border-2 border-pink-500/50 rounded-xl p-4 text-center">
-                    <div className="text-pink-300 text-lg font-bold mb-2">⚠️ ملاحظة مهمة للعنصر النسائي</div>
-                    <div className="text-pink-200 text-sm leading-relaxed">
                       يرجى التسجيل في <span className="font-bold">استقبال المركز الطبي التخصصي العسكري الرئيسي</span> قبل البدء بالفحوصات
                     </div>
                   </div>

@@ -15,8 +15,6 @@ export const NOTIFICATION_REFRESH_INTERVAL = 5000;
 // فترة تحديث الإحصائيات (30 ثانية - محسّن من 60)
 export const STATS_REFRESH_INTERVAL = 30000;
 
-// فترة تحديث PIN (15 ثانية - محسّن من 30)
-export const PIN_REFRESH_INTERVAL = 15000;
 
 // فترة التحديث اللحظي (3 ثواني - محسّن من 5)
 export const REALTIME_REFRESH_INTERVAL = 3000;
@@ -35,7 +33,6 @@ export default {
   QUEUE_REFRESH_INTERVAL,
   NOTIFICATION_REFRESH_INTERVAL,
   STATS_REFRESH_INTERVAL,
-  PIN_REFRESH_INTERVAL,
   REALTIME_REFRESH_INTERVAL,
   NEAR_TURN_REFRESH_INTERVAL,
   DISPLAY_REFRESH_INTERVAL,

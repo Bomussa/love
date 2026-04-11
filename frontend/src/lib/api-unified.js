@@ -1,5 +1,4 @@
 import { supabase } from './supabase-client';
-import PINDailySync from './pin-daily-sync';
 import { GDS, initGDS } from './guaranteed-data-system';
 
 /**
@@ -261,34 +260,24 @@ const api = {
     }
   },
 
-  async queueDone(clinicId, patientId, pin, skipPinCheck = false) {
     try {
       // ✅ التحقق من البن كود
-      if (!skipPinCheck) {
-        if (!pin) {
-          return { success: false, error: 'يرجى إدخال رقم PIN' };
         }
 
-        // 1. محاولة التحقق من جدول pins
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const { data: validPin, error: pinError } = await supabase
-          .from('pins')
           .select('*')
           .eq('clinic_code', clinicId)
-          .eq('pin', pin)
           .eq('is_active', true)
           .gte('expires_at', today.toISOString())
           .maybeSingle();
 
-        if (!validPin) {
           // 2. إذا لم يوجد في الجدول، نحاول التحقق عبر الـ API (الذي يحتوي على المنطق البرمجي)
           try {
             const response = await fetch('/api/v1/queue/done', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ clinicId, patientId, pin })
             });
             const result = await response.json();
             if (result && (result.success || !result.error)) {
@@ -297,18 +286,13 @@ const api = {
           } catch (e) {
           }
           
-          return { success: false, error: 'رقم PIN غير صحيح أو منتهي الصلاحية' };
         }
 
         // تحديث عداد استخدام البن كود إذا وجد في الجدول
-        if (validPin) {
           await supabase
-            .from('pins')
             .update({
-              used_count: (validPin.used_count || 0) + 1,
               last_used_at: new Date().toISOString(),
             })
-            .eq('id', validPin.id);
         }
       }
 
@@ -318,7 +302,6 @@ const api = {
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          completed_by_pin: pin,
         })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
@@ -334,7 +317,6 @@ const api = {
     }
   },
 
-  async callNextPatient(clinicId, pin) {
     try {
       // 1. Complete current
       await supabase
@@ -370,14 +352,9 @@ const api = {
     }
   },
 
-  // --- Clinics & PIN ---
   /**
-   * جلب حالة العيادات النشطة (بدون PIN - لأسباب أمنية)
-   * PIN لا يتم إرساله للواجهة الأمامية أبداً
    */
-  async getPinStatus() {
     try {
-      // جلب العيادات النشطة فقط (بدون PIN)
       const { data, error } = await supabase
         .from('clinics')
         .select('id, name, is_active')
@@ -385,7 +362,6 @@ const api = {
 
       if (error) throw error;
 
-      // إرجاع قائمة العيادات النشطة فقط (بدون PIN)
       const activeClinics = {};
       if (data && data.length > 0) {
         data.forEach((clinic) => {
@@ -395,37 +371,25 @@ const api = {
 
       return { success: true, clinics: activeClinics };
     } catch (error) {
-      console.error('Get PIN Status Error:', error);
       return { success: false, error: error.message, clinics: {} };
     }
   },
 
   /**
-   * التحقق من صحة PIN بشكل آمن - لا يتم إرجاع PIN للواجهة الأمامية
-   * يستخدم دالة verify_clinic_pin_secure من قاعدة البيانات
    */
-  async verifyPin(clinicId, pin) {
     try {
-      // استخدام دالة RPC الآمنة للتحقق من PIN
-      const { data, error } = await supabase.rpc('verify_clinic_pin', {
         p_clinic_id: clinicId,
-        p_pin: pin,
       });
 
       if (error) {
         // في حال فشل RPC، نستخدم الطريقة البديلة مع التحقق فقط
-        const { data: pinData, error: pinError } = await supabase
-          .from('pins')
           .select('id, clinic_code, is_active, expires_at')
           .eq('clinic_code', clinicId)
-          .eq('pin', pin)
           .eq('is_active', true)
           .gte('expires_at', new Date().toISOString())
           .maybeSingle();
 
-        if (pinError) throw pinError;
 
-        if (pinData) {
           return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
         }
         return { success: true, isValid: false };
@@ -437,7 +401,6 @@ const api = {
 
       return { success: true, isValid: false };
     } catch (error) {
-      console.error('Verify PIN Error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -860,7 +823,6 @@ const api = {
   /**
    * ترحيل المراجع المتأخر واستدعاء التالي تلقائياً
    */
-  async postponeAndCallNext(clinicId, patientId, pin, reason = 'تأخر عن الحضور', maxPostpones = 3) {
     try {
       // 1. ترحيل المراجع المتأخر
       const postponeResult = await this.postponePatient(clinicId, patientId, reason, maxPostpones);
@@ -870,7 +832,6 @@ const api = {
 
       // 2. إذا تم إلغاء المراجع نهائياً، استدعاء التالي فقط
       if (postponeResult.cancelled) {
-        const callResult = await this.callNextPatient(clinicId, pin);
         return {
           success: true,
           cancelled: true,
@@ -881,7 +842,6 @@ const api = {
       }
 
       // 3. استدعاء المراجع التالي
-      const callResult = await this.callNextPatient(clinicId, pin);
 
       return {
         success: true,
@@ -1078,19 +1038,14 @@ const api = {
   },
 
   /**
-   * إنشاء رقم PIN جديد للعيادة
    */
-  async generatePIN(clinicId) {
     try {
-      const pin = Math.floor(1000 + Math.random() * 9000).toString();
       const expiresAt = new Date();
       expiresAt.setHours(23, 59, 59, 999);
 
       const { data, error } = await supabase
-        .from('pins')
         .upsert({
           clinic_code: clinicId,
-          pin,
           is_active: true,
           expires_at: expiresAt.toISOString(),
           created_at: new Date().toISOString(),
@@ -1099,9 +1054,7 @@ const api = {
         .single();
 
       if (error) throw error;
-      return { success: true, pin: data.pin, expiresAt: data.expires_at };
     } catch (error) {
-      console.error('Generate PIN Error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -1186,39 +1139,27 @@ const api = {
   },
 
   /**
-   * جلب أرقام PIN النشطة
    */
-  async getActivePins() {
     try {
       const { data, error } = await supabase
-        .from('pins')
-        .select('clinic_code, pin, expires_at, is_active')
         .eq('is_active', true)
         .gte('expires_at', new Date().toISOString());
 
       if (error) throw error;
 
-      const pinsMap = {};
       if (data) {
         data.forEach((p) => {
-          pinsMap[p.clinic_code] = { pin: p.pin, expiresAt: p.expires_at };
         });
       }
 
-      return { success: true, pins: pinsMap };
     } catch (error) {
-      console.error('Get Active Pins Error:', error);
-      return { success: false, pins: {} };
     }
   },
 
   /**
-   * إلغاء تفعيل رقم PIN
    */
-  async deactivatePIN(clinicId) {
     try {
       const { data, error } = await supabase
-        .from('pins')
         .update({ is_active: false })
         .eq('clinic_code', clinicId)
         .select();
@@ -1226,7 +1167,6 @@ const api = {
       if (error) throw error;
       return { success: true, data };
     } catch (error) {
-      console.error('Deactivate PIN Error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -1381,24 +1321,17 @@ const api = {
   },
 
   // ============================================================================
-  // PIN Management - إدارة رموز PIN
   // ============================================================================
 
   /**
-   * جلب رمز PIN الحالي للعيادة
    * @param {string} clinicId - معرف العيادة
-   * @returns {Promise<Object>} بيانات PIN
    */
-  async getCurrentPin(clinicId) {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
 
-      // 1. جلب PIN النشط الحالي
       const { data: current, error: currentError } = await supabase
-        .from('pins')
-        .select('id, clinic_code, pin, is_active, generated_at, expires_at')
         .eq('clinic_code', clinicId)
         .eq('is_active', true)
         .order('generated_at', { ascending: false })
@@ -1407,10 +1340,7 @@ const api = {
 
       if (currentError) throw currentError;
 
-      // 2. جلب جميع PINs الصادرة اليوم
       const { data: allToday, error: allTodayError } = await supabase
-        .from('pins')
-        .select('pin')
         .eq('clinic_code', clinicId)
         .gte('generated_at', todayISO)
         .order('generated_at', { ascending: true });
@@ -1419,47 +1349,33 @@ const api = {
 
       return {
         success: true,
-        currentPin: current ? current.pin : null,
-        pinId: current ? current.id : null,
         clinicCode: current ? current.clinic_code : clinicId,
         isActive: current ? current.is_active : false,
         generatedAt: current ? current.generated_at : null,
         expiresAt: current ? current.expires_at : null,
         totalIssued: allToday ? allToday.length : 0,
-        allPins: allToday ? allToday.map((p) => p.pin) : [],
         dateKey: today.toLocaleDateString(),
       };
     } catch (error) {
-      console.error('[api-unified] getCurrentPin error:', error);
       return { success: false, error: error.message };
     }
   },
 
   /**
-   * إصدار رمز PIN جديد
    * @param {string} clinicId - معرف العيادة
-   * @returns {Promise<Object>} بيانات PIN الجديد
    */
-  async issuePin(clinicId) {
     try {
-      // توليد PIN جديد من 4 أرقام
-      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const now = new Date();
       const expiresAt = new Date(now);
       expiresAt.setHours(23, 59, 59, 999);
 
-      // تعطيل جميع الـ PINs السابقة لهذه العيادة
       await supabase
-        .from('pins')
         .update({ is_active: false })
         .eq('clinic_code', clinicId);
 
-      // إضافة PIN جديد
       const { data, error } = await supabase
-        .from('pins')
         .insert([{
           clinic_code: clinicId,
-          pin: newPin,
           is_active: true,
           generated_at: now.toISOString(),
           expires_at: expiresAt.toISOString(),
@@ -1471,12 +1387,8 @@ const api = {
 
       return {
         success: true,
-        currentPin: data.pin,
-        pinId: data.id,
-        message: 'تم توليد رمز PIN جديد بنجاح',
       };
     } catch (error) {
-      console.error('[api-unified] issuePin error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -1513,10 +1425,8 @@ const api = {
   },
 
   /**
-   * جلب جميع العيادات مع رموز PIN
    * @returns {Promise<Object>} قائمة العيادات
    */
-  async getClinicsWithPins() {
     try {
       // جلب العيادات أولاً
       const { data: clinics, error: clinicsError } = await supabase
@@ -1526,32 +1436,23 @@ const api = {
 
       if (clinicsError) throw clinicsError;
 
-      // جلب الـ PINs النشطة اليوم
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const { data: pins, error: pinsError } = await supabase
-        .from('pins')
         .select('*')
         .eq('is_active', true)
         .gte('expires_at', today.toISOString());
 
-      if (pinsError) throw pinsError;
 
       // دمج البيانات
       const combinedData = clinics.map(clinic => {
-        const pinEntry = pins.find(p => p.clinic_code === clinic.id);
         return {
           ...clinic,
-          pin_code: pinEntry ? pinEntry.pin : null,
-          pin_expires_at: pinEntry ? pinEntry.expires_at : null,
-          pin_status: pinEntry ? 'active' : 'none'
         };
       });
 
       return { success: true, data: combinedData };
     } catch (error) {
-      console.error('[api-unified] getClinicsWithPins error:', error);
       return { success: false, data: [], error: error.message };
     }
   },
@@ -2011,7 +1912,6 @@ export const queueQueries = {
 
 export const adminQueries = {
   extendTime: (patientId, minutes) => api.extendTime(patientId, minutes),
-  getClinicsWithPins: () => api.getClinicsWithPins(),
 };
 
 export const eventsQueries = {
@@ -2054,14 +1954,7 @@ export const settingsQueries = {
 
 // للتوافق مع supabase-api.js
 export const supabaseApi = {
-  getCurrentPin: (clinicId) => api.getCurrentPin(clinicId),
-  issuePin: (clinicId) => api.issuePin(clinicId),
-  verifyPin: (clinicId, pin) => api.verifyPin(clinicId, pin),
-  getAllPins: () => api.getActivePins(),
 };
 
-// تفعيل نظام التزامن اليومي لأرقام PIN
-const pinDailySync = new PINDailySync(supabase);
-pinDailySync.startDailySync();
 export default api;
 export { api };

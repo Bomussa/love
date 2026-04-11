@@ -84,9 +84,7 @@
   padding: 4px 10px !important;
 }
 
-/* حقل إدخال PIN */
 [data-test="patient-page"] input[type="text"],
-[data-test="patient-page"] input[placeholder*="PIN"],
 [data-test="patient-page"] input[placeholder*="رقم"] {
   font-size: var(--font-sm) !important;
   padding: 10px 14px !important;

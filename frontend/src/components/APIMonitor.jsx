@@ -11,15 +11,12 @@ import { supabase } from '../lib/supabase-client';
 const ALL_TABLES = [
   'activity_log', 'activity_logs', 'admins', 'api_logs', 'api_status', 'app_settings',
   'audit_log', 'audit_logs', 'cache_logs', 'call_engine_state', 'chart_data',
-  'clinic_counters', 'clinic_members', 'clinic_pins', 'clinic_queue_reservations',
   'clinic_visits', 'clinics', 'comprehensive_statistics', 'daily_activity_logs',
   'daily_barcode_usage', 'daily_queue_counters', 'db_column_management',
   'db_policy_management', 'db_table_management', 'dead_letter_audit', 'dead_letters',
   'dead_letters_actions', 'device_logins', 'error_log', 'events', 'fallback_responses',
-  'ip_sessions', 'kv_admin', 'kv_cache', 'kv_events', 'kv_locks', 'kv_pins', 'kv_queues',
   'notifications', 'operation_progress', 'operation_queue', 'organization',
   'partial_results', 'pathways', 'patient_queue_numbers', 'patient_routes',
-  'patient_sessions', 'patient_visits', 'patients', 'permanent_audit_logs', 'pins',
   'queue', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending',
   'queue_resettle', 'queues', 'rate_limits', 'reports', 'roles', 'route_steps',
   'routes', 'scheduler_jobs', 'sessions', 'settings', 'stats_daily', 'system_config',
@@ -38,8 +35,6 @@ const ALL_FUNCTIONS = [
   'enqueue_patient_resilient', 'ensure_clinic_sequence', 'ensure_clinic_sequence_name',
   'enter_clinic', 'enter_queue_v2', 'enter_unified_queue', 'enter_unified_queue_safe',
   'event_trigger_fn', 'exit_clinic', 'fetch_and_lock_dead_letters',
-  'finalize_dead_letter', 'generate_daily_pins', 'generate_pin_safe',
-  'get_current_pins', 'get_fallback_response', 'get_next_display_number',
   'get_next_queue_number', 'get_next_queue_number_atomic', 'get_patient_visit_report',
   'get_queue_config', 'get_queue_position', 'handle_operation_timeout',
   'increment_event_attempt', 'is_admin', 'is_clinic_member', 'is_clinic_staff',
@@ -50,12 +45,10 @@ const ALL_FUNCTIONS = [
   'retry_failed_operations', 'retry_pending_process', 'save_partial_result',
   'select_dead_letters_for_processing', 'set_display_number', 'start_patient_visit',
   'touch_updated_at', 'update_api_last_used', 'update_operation_progress',
-  'update_updated_at_column', 'verify_clinic_pin', 'verify_clinic_pin_secure'
 ];
 
 // تصنيفات الجداول
 const TABLE_CATEGORIES = {
-  'core': ['clinics', 'patients', 'unified_queue', 'pins', 'settings', 'routes', 'route_steps'],
   'queue': ['queue', 'queues', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending', 'queue_resettle'],
   'logs': ['activity_log', 'activity_logs', 'audit_log', 'audit_logs', 'api_logs', 'cache_logs', 'error_log'],
   'system': ['system_config', 'system_settings', 'app_settings', 'scheduler_jobs'],
@@ -66,7 +59,6 @@ const TABLE_CATEGORIES = {
 // تصنيفات الدوال
 const FUNCTION_CATEGORIES = {
   'queue': ['call_next_patient', 'enqueue_patient', 'enter_unified_queue', 'get_queue_position', 'postpone_patient_secure'],
-  'auth': ['is_admin', 'is_clinic_member', 'is_clinic_staff', 'verify_clinic_pin', 'current_auth_user_id'],
   'cleanup': ['auto_daily_cleanup', 'daily_cleanup', 'cleanup_daily_logs', 'cleanup_old_operations'],
   'system': ['get_queue_config', 'get_fallback_response', 'handle_operation_timeout'],
   'other': []
@@ -474,7 +466,6 @@ const APIMonitor = ({ language = 'ar', t }) => {
             disabled={isLoading}
             className="px-4 py-2 bg-[#C9A54C]/20 text-[#C9A54C] rounded-lg flex items-center gap-2 hover:bg-[#C9A54C]/30 transition-all disabled:opacity-50"
           >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
             {isRTL ? 'فحص الآن' : 'Check Now'}
           </button>
           

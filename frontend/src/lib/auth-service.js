@@ -22,7 +22,6 @@ export const USER_ROLES = {
     permissions: [
       'dashboard',
       'queue_management',
-      'pin_management',
       'reports',
       'clinic_configuration',
       'settings',

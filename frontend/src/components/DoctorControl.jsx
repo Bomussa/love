@@ -393,7 +393,6 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
             onClick={loadPatients}
             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"
           >
-            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>

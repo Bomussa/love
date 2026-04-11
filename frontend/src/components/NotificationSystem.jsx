@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MapPin, Bell, CheckCircle, AlertTriangle, ArrowRight, Navigation, Clock, Info } from 'lucide-react'
 
 /**
  * NotificationSystem - نظام الإشعارات اللحظي
@@ -81,7 +80,6 @@ function NotificationCard({ notification, onDismiss }) {
             <p className={`text-sm leading-relaxed ${style.msgColor}`}>{notification.message}</p>
             {notification.clinic && (
               <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium ${style.iconColor}`}>
-                <MapPin size={13} />
                 <span>{notification.clinic}</span>
               </div>
             )}

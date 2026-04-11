@@ -42,7 +42,6 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
     if (loading && !queueData) {
         return (
             <div className="text-center p-4" data-test="queue-monitor-loading">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
                 <p className="mt-2 text-gray-600">{t('Loading queue...')}</p>
             </div>
         )

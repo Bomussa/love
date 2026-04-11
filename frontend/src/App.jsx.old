@@ -180,15 +180,11 @@ function App() {
     }
   }
 
-  const handleClinicLogin = async (clinicId, pin) => {
-    const result = await api.verifyPin(clinicId, pin)
     if (result.success) {
-      const session = { clinicId, pin, loginTime: Date.now() }
       setClinicSession(session)
       localStorage.setItem('mmc_clinic_session', JSON.stringify(session))
       showNotification(language === 'ar' ? 'تم الدخول بنجاح' : 'Login successful', 'success')
     } else {
-      showNotification(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN', 'error')
     }
   }
 
@@ -233,7 +229,6 @@ function App() {
         {currentView === 'patient' && patientData && <PatientPage patientData={patientData} onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage} />}
         {currentView === 'clinic_login' && <ClinicLoginPage onLogin={handleClinicLogin} language={language} toggleLanguage={toggleLanguage} />}
         {currentView === 'clinic_dashboard' && clinicSession && (
-          <ClinicDashboard clinicId={clinicSession.clinicId} pin={clinicSession.pin} onLogout={() => { setClinicSession(null); localStorage.removeItem('mmc_clinic_session'); }} language={language} />
         )}
         {currentView === 'display' && <DisplayPage clinicId={window.location.pathname.split('/')[2]} language={language} />}
         {currentView === 'admin' && isAdmin && (

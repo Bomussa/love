@@ -33,7 +33,6 @@ export const ServiceTypes = {
   CLINICS: 'clinics',
   PATIENTS: 'patients',
   NOTIFICATIONS: 'notifications',
-  PINS: 'pins',
   ROUTES: 'routes',
   STATS: 'stats',
   ADMIN: 'admin',
@@ -412,11 +411,7 @@ export async function safeNotificationsQuery(queryFn) {
 }
 
 // استعلام آمن للأرقام السرية
-export async function safePinsQuery(queryFn) {
-  const manager = connectionManager.getService(ServiceTypes.PINS);
   return manager.executeWithRetry(
-    (client) => queryFn(client.from('pins')),
-    { tableName: 'pins' },
   );
 }
 
@@ -434,7 +429,6 @@ export async function safeQuery(tableName, queryFn) {
   const serviceType = tableName.includes('queue') ? ServiceTypes.QUEUES
     : tableName.includes('clinic') ? ServiceTypes.CLINICS
       : tableName.includes('notification') ? ServiceTypes.NOTIFICATIONS
-        : tableName.includes('pin') ? ServiceTypes.PINS
           : tableName.includes('route') ? ServiceTypes.ROUTES
             : ServiceTypes.ADMIN;
 

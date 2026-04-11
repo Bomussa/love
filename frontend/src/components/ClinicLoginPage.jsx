@@ -11,7 +11,6 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
   const [clinics, setClinics] = useState([])
   const [selectedClinic, setSelectedClinic] = useState('')
-  const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -32,17 +31,14 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!selectedClinic || !pin) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const response = await api.verifyPin(selectedClinic, pin)
       if (response.success && response.isValid) {
         onLogin(response.session)
       } else {
-        setError(language === 'ar' ? 'PIN غير صحيح' : 'Invalid PIN')
       }
     } catch (err) {
       setError(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error')
@@ -83,14 +79,11 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                PIN
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
                   className="pl-10 bg-gray-700 border-gray-600 text-white"
                   placeholder="00"
                   maxLength={2}
@@ -109,7 +102,6 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
               type="submit"
               variant="gradient"
               className="w-full"
-              disabled={loading || !selectedClinic || !pin}
             >
               {loading ? (
                 <span className="animate-pulse">...</span>

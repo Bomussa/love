@@ -251,7 +251,6 @@ const FILE_CONTENT = {
 ## الهدف من النظام
 نظام إدارة اللجنة الطبية العسكرية (MMC-MMS) هو منظومة رقمية متكاملة تُدير:
 - طوابير المرضى في 18 عيادة
-- الأرقام السرية (PIN) للتحقق من هوية المراجعين
 - المسارات الطبية متعددة العيادات
 - الإشعارات والتنبيهات الفورية
 - سجلات النشاط والتدقيق
@@ -259,7 +258,6 @@ const FILE_CONTENT = {
 ## التبويبات الرئيسية (18 تبويب)
 1. لوحة التحكم — Dashboard
 2. إدارة الطوابير — Queues
-3. الأرقام السرية — PIN Codes
 4. الإشعارات — Notifications
 5. المسارات — Routes
 6. توجيه الطوابق — Floor Directions
@@ -287,10 +285,6 @@ const FILE_CONTENT = {
 - إلغاء المريض: PATCH /api/v1/admin/queues/:id
 - الجدول: unified_queue (11 سجل، 24 عمود)
 
-### نظام PIN
-- إنشاء PIN: POST /api/v1/admin/pins
-- التحقق: POST /api/v1/pin/validate
-- الجدول: pins (18 سجل، 10 أعمدة)
 
 ### إدارة العيادات
 - 18 عيادة نشطة
@@ -300,7 +294,6 @@ const FILE_CONTENT = {
 ### الإعدادات (25 مفتاح)
 - center_name, working_hours_end, working_days
 - exam_duration, max_daily_patients, max_postpones
-- queue_system_enabled, pin_system_enabled
 - notifications_enabled, reset_queue_daily
 - prevent_duplicate_patient_daily, prevent_duplicate_device_daily
 
@@ -355,11 +348,9 @@ const FILE_CONTENT = {
 | exam_type | text | نوع الفحص |
 السجلات الحالية: 18
 
-### pins — الأرقام السرية
 | العمود | النوع | الوصف |
 |--------|-------|-------|
 | id | uuid | معرف فريد |
-| pin_code | text | الرقم السري |
 | clinic_id | uuid | العيادة المرتبطة |
 | is_active | bool | نشط/غير نشط |
 | max_uses | int4 | الحد الأقصى للاستخدام |
@@ -420,8 +411,6 @@ DELETE /api/v1/admin/queues/:id — حذف من الطابور
 POST /api/v1/admin/queues/move-to-end — ترحيل لآخر الطابور
 
 ### Admin — Other
-GET /api/v1/admin/pins — قائمة الأرقام السرية
-POST /api/v1/admin/pins/regenerate — إعادة توليد
 GET /api/v1/admin/reports/stats — إحصائيات التقارير
 GET /api/v1/admin/notifications — قائمة الإشعارات
 POST /api/v1/admin/notifications — إرسال إشعار
@@ -434,8 +423,6 @@ PATCH /api/v1/settings — تحديث إعداد
 GET /api/v1/settings/calculate-wait — حساب وقت الانتظار
 
 ### Patient & Queue
-POST /api/v1/pin/generate — توليد رقم PIN
-POST /api/v1/pin/validate — التحقق من PIN
 POST /api/v1/patients/login — تسجيل دخول المريض
 POST /api/v1/queue/get-number — الحصول على رقم طابور
 POST /api/v1/queue/enter — دخول الطابور
@@ -557,7 +544,6 @@ Frontend → Supabase مباشرة:
 ### شهرياً
 - نسخة احتياطية كاملة من Supabase
 - مراجعة إعدادات الأمان
-- تحديث الأرقام السرية (pins)
 - مراجعة أداء الـ API
 
 ## إصلاح المشكلات الشائعة
@@ -568,9 +554,7 @@ Frontend → Supabase مباشرة:
 2. تشغيل reconnect() من supabase-client.js
 3. إعادة تحميل الصفحة
 
-### مشكلة: رقم PIN لا يعمل
 الحل:
-1. التحقق من is_active = true في جدول pins
 2. التحقق من use_count < max_uses
 3. التحقق من clinic_id صحيح
 
@@ -590,7 +574,6 @@ Frontend → Supabase مباشرة:
 | المشكلة | الملف | السطر |
 |---------|-------|-------|
 | الطابور | AdminDashboardV2.jsx | 134-239 |
-| PIN | AdminDashboardV2.jsx | 732-835 |
 | الإعدادات | AdminDashboardV2.jsx | 3049-3250 |
 | الاتصال | supabase-client.js | 148-203 |
 | المصادقة | auth-service.js | 11-50 |
@@ -680,8 +663,6 @@ Response: { "data": { "patient": { ... }, "display_number": 5 } }
 Body: { "queue_id": "int" }
 Response: { "success": true }
 
-### POST /api/v1/pin/validate
-Body: { "pin_code": "string", "clinic_code": "string" }
 Response: { "valid": true/false, "clinic": { ... } }
 
 ### GET /api/v1/settings
@@ -725,7 +706,6 @@ SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ## الهدف
 نظام رقمي متكامل لإدارة اللجنة الطبية العسكرية يشمل:
 - إدارة طوابير المرضى في 18 عيادة
-- نظام الأرقام السرية (PIN) للتحقق
 - المسارات الطبية متعددة العيادات
 - لوحة إدارة شاملة بـ 21 تبويب
 - نظام ذكي للتشخيص والإصلاح التلقائي

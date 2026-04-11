@@ -208,7 +208,6 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
           {translate('إدارة الأطباء', 'Doctor Management')}
         </h2>
         <div className="flex items-center gap-3">
-          <button onClick={loadDoctors} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><RefreshCw size={20} className={loading ? 'animate-spin' : ''} /></button>
           <button onClick={openAddModal} className="px-4 py-2 bg-gradient-to-r from-[#C9A54C] to-[#8A1538] hover:from-[#D4B55D] hover:to-[#9A2548] text-white rounded-lg font-medium flex items-center gap-2 transition-all"><UserPlus size={20} />{translate('إضافة طبيب', 'Add Doctor')}</button>
         </div>
       </div>

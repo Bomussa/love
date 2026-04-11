@@ -125,7 +125,6 @@ const OperationalNotificationsManager = ({ language, t }) => {
           className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
           title={t('تحديث', 'Refresh')}
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin text-[#C9A54C]' : 'text-gray-400'} />
         </button>
       </div>
 
@@ -156,7 +155,6 @@ const OperationalNotificationsManager = ({ language, t }) => {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw size={32} className="animate-spin text-[#C9A54C]" />
         </div>
       )}
 
@@ -352,7 +350,6 @@ const OperationalNotificationsManager = ({ language, t }) => {
                         disabled={saving}
                         className="px-4 py-2 bg-[#C9A54C] text-black rounded-xl text-sm font-semibold hover:bg-[#B8943D] transition-all flex items-center gap-2 disabled:opacity-50"
                       >
-                        {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
                         {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}
                       </button>
                     </div>

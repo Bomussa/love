@@ -86,7 +86,6 @@ const NOTIFICATION_TYPES = {
   CLINIC_OPENED: 'CLINIC_OPENED',
   CLINIC_CLOSED: 'CLINIC_CLOSED',
   QUEUE_UPDATE: 'QUEUE_UPDATE',
-  PIN_GENERATED: 'PIN_GENERATED',
 };
 
 class RealtimeNotificationEngine {
@@ -420,13 +419,10 @@ class RealtimeNotificationEngine {
   /**
    * إشعار: تم فتح عيادة
    */
-  sendClinicOpened(clinicName, pin) {
     this.notifyAdmin({
       type: NOTIFICATION_TYPES.CLINIC_OPENED,
       title: '🟢 فتح عيادة',
-      message: `تم فتح ${clinicName}${pin ? ` - PIN: ${pin}` : ''}`,
       clinicName,
-      pin,
       priority: 'normal',
     });
   }
@@ -445,15 +441,9 @@ class RealtimeNotificationEngine {
   }
 
   /**
-   * إشعار: تم إنشاء PIN جديد
    */
-  sendPINGenerated(clinicName, pin) {
     this.notifyAdmin({
-      type: NOTIFICATION_TYPES.PIN_GENERATED,
-      title: '🔑 PIN جديد',
-      message: `تم إنشاء PIN لـ ${clinicName}: ${pin}`,
       clinicName,
-      pin,
       priority: 'high',
     });
   }
@@ -592,9 +582,7 @@ class RealtimeNotificationEngine {
   setupEventBusListeners() {
     // الاستماع لأحداث النظام العامة وتحويلها لإشعارات
     eventBus.on('system:reset', () => this.sendResetDone());
-    eventBus.on('clinic:opened', (data) => this.sendClinicOpened(data.name, data.pin));
     eventBus.on('clinic:closed', (data) => this.sendClinicClosed(data.name));
-    eventBus.on('pin:generated', (data) => this.sendPINGenerated(data.clinicName, data.pin));
   }
 }
 

@@ -128,12 +128,9 @@ export const adminQueries = {
   },
 
   /**
-   * Get all clinics with PIN codes
    */
-  async getClinicsWithPins() {
     const { data, error } = await supabase
       .from('clinics')
-      .select('id, name, name_ar, pin_code, updated_at')
       .order('name');
 
     if (error) throw error;

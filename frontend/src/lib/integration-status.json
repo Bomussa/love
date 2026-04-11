@@ -5,7 +5,6 @@
   "mmsCoreEnabled": true,
   "fallbackToLocal": true,
   "features": {
-    "pinSystem": true,
     "queueSystem": true,
     "routeSystem": true,
     "sseEvents": true,

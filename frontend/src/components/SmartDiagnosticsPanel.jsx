@@ -443,7 +443,6 @@ const SmartDiagnosticsPanelInner = ({ language, t: tProp }) => {
           </button>
           <button onClick={runScan} disabled={scanning}
             className="flex items-center gap-1.5 px-4 py-2 bg-[#C9A54C] text-black rounded-xl text-sm font-bold hover:bg-[#B8943D] transition-all disabled:opacity-50">
-            <RefreshCw size={14} className={scanning ? 'animate-spin' : ''} />
             {scanning ? t('جاري الفحص...', 'Scanning...') : t('فحص الآن', 'Scan Now')}
           </button>
         </div>
@@ -531,7 +530,6 @@ const SmartDiagnosticsPanelInner = ({ language, t: tProp }) => {
                       {item.fixable ? (
                         <button onClick={e => { e.stopPropagation(); applyFix(item); }} disabled={fixingId === item.id}
                           className="flex items-center gap-1 px-2.5 py-1 bg-[#C9A54C]/20 text-[#C9A54C] border border-[#C9A54C]/30 rounded-lg text-xs hover:bg-[#C9A54C]/30 transition-all disabled:opacity-50">
-                          {fixingId === item.id ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
                           {t('إصلاح', 'Fix')}
                         </button>
                       ) : <span className="text-gray-600 text-xs">—</span>}

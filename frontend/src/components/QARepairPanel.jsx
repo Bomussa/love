@@ -211,7 +211,6 @@ const QARepairPanel = ({ language = 'ar', t }) => {
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
           }`}
         >
-          {running ? <RefreshCw className="animate-spin" size={20} /> : <Play size={20} />}
           {t('تشغيل فحص عميق الآن', 'Run Deep QA Now')}
         </button>
       </div>
@@ -323,7 +322,6 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         <div className="divide-y divide-white/5">
           {loading ? (
             <div className="p-8 text-center text-slate-400">
-              <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
               {t('جاري التحميل...', 'Loading...')}
             </div>
           ) : filteredFindings.length === 0 ? (

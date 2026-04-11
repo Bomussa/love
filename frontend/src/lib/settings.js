@@ -80,7 +80,6 @@ export async function getSystemConfig() {
     const notifications = await getSetting('enable_notifications', 'true');
     const workingHoursStart = await getSetting('working_hours_start', '07:00');
     const workingHoursEnd = await getSetting('working_hours_end', '15:00');
-    const emergencyPin = await getSetting('emergency_pin', '999');
 
     return {
       graceMinutes: parseInt(graceMinutes, 10),
@@ -92,7 +91,6 @@ export async function getSystemConfig() {
         start: workingHoursStart,
         end: workingHoursEnd,
       },
-      emergencyPin,
     };
   } catch (error) {
     // console.error('Error getting system config:', error);
@@ -106,7 +104,6 @@ export async function getSystemConfig() {
         start: '07:00',
         end: '15:00',
       },
-      emergencyPin: '999',
     };
   }
 }

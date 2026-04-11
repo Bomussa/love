@@ -17,10 +17,8 @@ import { supabase } from '../lib/supabase-client'
 
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
   const [stations, setStations] = useState([])
-  const [pinInput, setPinInput] = useState('')
   const [selectedStation, setSelectedStation] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [clinicPins, setClinicPins] = useState({}) // أرقام البن كود اليومية
   const [activeTicket, setActiveTicket] = useState(null)
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
@@ -30,8 +28,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   // إعدادات النظام - التحكم في إظهار/إخفاء وتفعيل/إيقاف الميزات
   const [systemSettings, setSystemSettings] = useState({
-    pin_system_enabled: true,
-    pin_system_visible: true,
     queue_system_enabled: true,
     queue_system_visible: true
   })
@@ -43,8 +39,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         const response = await api.getSettings()
         if (response && response.settings) {
           setSystemSettings({
-            pin_system_enabled: response.settings.pin_system_enabled !== 'false',
-            pin_system_visible: response.settings.pin_system_visible !== 'false',
             queue_system_enabled: response.settings.queue_system_enabled !== 'false',
             queue_system_visible: response.settings.queue_system_visible !== 'false'
           })
@@ -160,26 +154,20 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   // جلب أرقام البن كود اليومية من API
   useEffect(() => {
-    const fetchDailyPins = async () => {
       if (document.hidden) return;
       try {
-        const data = await api.getPinStatus()
         if (data && data.success && data.clinics) {
           // تحويل البيانات إلى صيغة { clinic_id: clinic_info }
           const clinicsMap = {}
           Object.keys(data.clinics).forEach(key => {
             clinicsMap[key] = data.clinics[key]
           })
-          setClinicPins(clinicsMap)
         }
       } catch (err) {
-        // console.error('Failed to fetch daily PINs:', err)
       }
     }
 
-    fetchDailyPins()
     // تحديث كل 5 دقائق
-    const interval = setInterval(() => { if (!document.hidden) fetchDailyPins() }, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -546,21 +534,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     try {
       setLoading(true)
 
-      // التحقق من إدخال PIN
-      if (!pinInput || !pinInput.trim()) {
         pushNotif({
           type: 'warning',
-          message: language === 'ar' ? 'الرجاء إدخال رقم PIN' : 'Please enter PIN'
         })
         setLoading(false)
         return
       }
 
       // استدعاء API للخروج
-      const exitResult = await api.queueDone(station.id, patientData.id, pinInput)
 
       if (!exitResult || !exitResult.success) {
-        const errorMsg = exitResult?.error || (language === 'ar' ? 'رقم PIN غير صحيح' : 'Incorrect PIN')
         pushNotif({
           type: 'error',
           message: errorMsg
@@ -668,7 +651,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         });;
       }
 
-      setPinInput('')
       setSelectedStation(null)
     } catch (e) {
       console.error('Complete clinic failed', e)
@@ -681,8 +663,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
-  // الخروج بدون PIN
-  const handleClinicExitWithoutPin = async (station) => {
     try {
       setLoading(true)
       const exitResult = await api.queueDone(station.id, patientData.id, null, true)
@@ -1038,21 +1018,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   {station.status === 'ready' && station.isEntered && (
                     <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
                       {/* عرض حقل البن كود فقط إذا كان النظام مفعل ومرئي */}
-                      {systemSettings.pin_system_enabled && systemSettings.pin_system_visible ? (
                         <div className="flex flex-wrap gap-2 items-center">
                           <Input
                             type="text"
-                            placeholder={`${t('enterPIN', language)} (${t('ticketNumber', language)})`}
-                            value={selectedStation?.id === station.id ? pinInput : ''}
-                            onChange={(e) => { setSelectedStation(station); setPinInput(e.target.value) }}
                             className="bg-gray-600 border-gray-500 text-white"
                             maxLength={6}
-                            data-test="pin-input"
                           />
                           <Button
                             variant="gradientSecondary"
                             onClick={() => handleClinicExit(station)}
-                            disabled={loading || !pinInput || !pinInput.trim()}
                             title={t('exitClinic', language)}
                             data-test="exit-clinic-btn"
                           >
@@ -1060,25 +1034,21 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                             {t('exitClinic', language)}
                           </Button>
                         </div>
-                      ) : !systemSettings.pin_system_enabled ? (
                         /* إذا كان النظام موقف - يمكن الخروج بدون بن كود */
                         <div className="flex flex-wrap gap-2 items-center">
                           <Button
                             variant="gradientSecondary"
-                            onClick={() => handleClinicExitWithoutPin(station)}
                             disabled={loading}
                             title={t('exitClinic', language)}
                             data-test="exit-clinic-btn"
                             className="w-full"
                           >
                             <LogOut className="icon icon-md me-2" />
-                            {t('exitClinic', language)} - {language === 'ar' ? 'بدون رقم سري' : 'Without PIN'}
                           </Button>
                         </div>
                       ) : null}
 
                       {/* إذا كان النظام مخفي فقط (لكن مفعل) - الخروج يتم تلقائياً بواسطة الطبيب */}
-                      {systemSettings.pin_system_enabled && !systemSettings.pin_system_visible && (
                         <div className="text-center text-sm text-gray-400 p-3 bg-gray-700/50 rounded">
                           {language === 'ar' ? 'سيتم إنهاء الفحص بواسطة الطبيب' : 'Exam will be completed by the doctor'}
                         </div>

@@ -160,7 +160,6 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
     if (!clinicId) return;
     try {
       setLoading(true);
-      const result = await api.callNextPatient(clinicId, doctorData?.pin || doctorData?.password || '0000');
       if (!result?.success) throw new Error(result?.error || translate('لا يوجد دور متاح', 'No patient available'));
       push({ type: 'success', title: translate('تم النداء', 'Called'), message: translate('تم استدعاء الدور التالي', 'Next patient called') });
       await fetchPatients();

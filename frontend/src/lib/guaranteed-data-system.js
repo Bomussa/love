@@ -69,10 +69,7 @@ const DEFAULT_FEATURES_CONFIG = {
     realtime: true,
     priority: 3,
   },
-  pins: {
-    id: 'pins',
     name: 'الأرقام السرية',
-    nameEn: 'PIN Codes',
     enabled: true,
     visible: true,
     realtime: false,
@@ -551,14 +548,11 @@ class GuaranteedDataSystem {
    * الحصول على معرف الميزة من اسم الجدول
    */
   getFeatureIdFromTable(tableName) {
-    const mapping = {
       queues: 'queues',
       clinics: 'clinics',
       notifications: 'notifications',
-      pins: 'pins',
       patient_routes: 'routes',
     };
-    return mapping[tableName] || null;
   }
 
   /**
@@ -641,8 +635,6 @@ export async function getRoutes(patientId = null) {
 }
 
 // جلب الأرقام السرية
-export async function getPins(clinicId = null) {
-  return GDS.fetchGuaranteed('pins', {
     filters: clinicId ? { clinic_id: clinicId } : {},
   });
 }

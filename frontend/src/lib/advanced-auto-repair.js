@@ -384,7 +384,6 @@ class AdvancedAutoRepair {
    * فحص الجداول
    */
   async checkTables() {
-    const tables = ['clinics', 'pins', 'unified_queue', 'patients', 'roles'];
 
     for (const table of tables) {
       try {
@@ -400,7 +399,6 @@ class AdvancedAutoRepair {
    * فحص الدوال
    */
   async checkFunctions() {
-    const functions = ['verify_clinic_pin', 'update_operation_progress', 'start_patient_visit'];
 
     for (const func of functions) {
       try {
