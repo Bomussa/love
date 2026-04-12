@@ -410,9 +410,9 @@ export async function safeNotificationsQuery(queryFn) {
   );
 }
 
-// استعلام آمن للأرقام السرية
-  return manager.executeWithRetry(
-  );
+// استعلام آمن للأرقام السرية - تم إزالته
+export async function safePinsQuery(queryFn) {
+  return [];
 }
 
 // استعلام آمن للمسارات

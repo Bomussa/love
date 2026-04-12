@@ -330,41 +330,6 @@ const api = {
     }
   },
 
-  async validateClinicPin(clinicId, pin) {
-    try {
-      const { data, error } = await supabase.rpc('validate_clinic_pin', {
-        p_clinic_id: clinicId,
-        p_pin: pin
-      });
-
-      if (error) {
-        // Fallback if RPC fails
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const { data: pinRecord } = await supabase
-          .from('clinic_pins')
-          .select('*')
-          .eq('clinic_code', clinicId)
-          .eq('pin_code', pin)
-          .eq('is_active', true)
-          .gte('expires_at', today.toISOString())
-          .maybeSingle();
-
-        if (pinRecord) {
-          return { success: true, isValid: true, session: { clinicId, expiresAt: pinRecord.expires_at } };
-        }
-        return { success: true, isValid: false };
-      }
-
-      if (data === true) {
-        return { success: true, isValid: true, session: { clinicId, expiresAt: new Date(Date.now() + 8 * 3600000).toISOString() } };
-      }
-
-      return { success: true, isValid: false };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
 
   async getClinics() {
     try {

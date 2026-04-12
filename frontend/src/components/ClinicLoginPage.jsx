@@ -10,24 +10,10 @@ import { enhancedMedicalThemes } from '../lib/enhanced-themes'
 
 export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
   const [clinics, setClinics] = useState([])
-  const [selectedClinic, setSelectedClinic] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-
-  useEffect(() => {
-    loadClinics()
-  }, [])
-
-  const loadClinics = async () => {
-    try {
-      const response = await api.getClinics()
-      if (response.success) {
-        setClinics(response.clinics)
-      }
-    } catch (err) {
-      console.error('Failed to load clinics', err)
-    }
-  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -36,9 +22,14 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     setError(null)
 
     try {
-      if (response.success && response.isValid) {
+      // استخدام authService لتسجيل الدخول
+      const authService = (await import('../lib/auth-service')).default
+      const response = await authService.login(username, password)
+      
+      if (response.success) {
         onLogin(response.session)
       } else {
+        setError(language === 'ar' ? 'اسم المستخدم أو كلمة المرور غير صحيحة' : 'Invalid username or password')
       }
     } catch (err) {
       setError(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error')
@@ -60,33 +51,30 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                {language === 'ar' ? 'العيادة' : 'Clinic'}
+                {language === 'ar' ? 'اسم المستخدم' : 'Username'}
               </label>
-              <select
-                value={selectedClinic}
-                onChange={(e) => setSelectedClinic(e.target.value)}
-                className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2"
+              <Input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white"
+                placeholder={language === 'ar' ? 'اسم المستخدم' : 'Username'}
                 required
-              >
-                <option value="">{language === 'ar' ? 'اختر العيادة...' : 'Select Clinic...'}</option>
-                {clinics.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {language === 'ar' ? c.name_ar : c.name_en}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
+                {language === 'ar' ? 'كلمة المرور' : 'Password'}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 bg-gray-700 border-gray-600 text-white"
-                  placeholder="00"
-                  maxLength={2}
+                  placeholder="••••••••"
                   required
                 />
               </div>

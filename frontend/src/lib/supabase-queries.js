@@ -128,9 +128,12 @@ export const adminQueries = {
   },
 
   /**
+   * Get all clinics
    */
+  async getAllClinics() {
     const { data, error } = await supabase
       .from('clinics')
+      .select('*')
       .order('name');
 
     if (error) throw error;

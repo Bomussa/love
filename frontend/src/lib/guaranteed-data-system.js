@@ -69,12 +69,6 @@ const DEFAULT_FEATURES_CONFIG = {
     realtime: true,
     priority: 3,
   },
-    name: 'الأرقام السرية',
-    enabled: true,
-    visible: true,
-    realtime: false,
-    priority: 4,
-  },
   routes: {
     id: 'routes',
     name: 'المسارات',
@@ -548,11 +542,13 @@ class GuaranteedDataSystem {
    * الحصول على معرف الميزة من اسم الجدول
    */
   getFeatureIdFromTable(tableName) {
-      queues: 'queues',
+    const mapping = {
+      unified_queue: 'queues',
       clinics: 'clinics',
       notifications: 'notifications',
       patient_routes: 'routes',
     };
+    return mapping[tableName] || tableName;
   }
 
   /**
@@ -634,9 +630,9 @@ export async function getRoutes(patientId = null) {
   });
 }
 
-// جلب الأرقام السرية
-    filters: clinicId ? { clinic_id: clinicId } : {},
-  });
+// جلب الأرقام السرية - تم إزالته
+export async function getPins(clinicId = null) {
+  return [];
 }
 
 // حفظ في الطابور

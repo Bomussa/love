@@ -57,7 +57,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         // حساب عدد المنتظرين أمام المراجع
         let ahead = 0
-        if (queueEntry && queueEntry.status === 'waiting') {
+        if (queueEntry && (queueEntry.status === 'waiting' || queueEntry.status === 'called')) {
           const { count } = await supabase
             .from('unified_queue')
             .select('*', { count: 'exact', head: true })
@@ -68,12 +68,33 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           ahead = count || 0
         }
 
+        // تحديد الحالة البصرية بناءً على البيانات الحقيقية
+        let visualStatus = 'locked'
+        if (queueEntry) {
+          if (['done', 'completed'].includes(queueEntry.status)) {
+            visualStatus = 'completed'
+          } else {
+            visualStatus = 'ready'
+          }
+        } else {
+          // إذا لم يدخل الطابور بعد، نتحقق إذا كانت العيادة السابقة مكتملة
+          const prevStation = index > 0 ? examStations[index - 1] : null
+          if (!prevStation) {
+            visualStatus = 'ready' // أول عيادة دائماً جاهزة
+          } else {
+            const prevQueueEntry = queueData?.find(q => q.clinic_id === prevStation.id)
+            if (prevQueueEntry && ['done', 'completed'].includes(prevQueueEntry.status)) {
+              visualStatus = 'ready'
+            }
+          }
+        }
+
         return {
           ...station,
           yourNumber: queueEntry?.display_number || '-',
           current: currentData?.display_number || '-',
-          ahead: queueEntry ? ahead : '-',
-          status: queueEntry ? (['done', 'completed'].includes(queueEntry.status) ? 'completed' : 'ready') : (index === 0 ? 'ready' : 'locked'),
+          ahead: (queueEntry && (queueEntry.status === 'waiting' || queueEntry.status === 'called')) ? ahead : (queueEntry && ['serving', 'in_progress'].includes(queueEntry.status) ? 0 : '-'),
+          status: visualStatus,
           isEntered: !!queueEntry && !['done', 'completed'].includes(queueEntry.status),
           dbStatus: queueEntry?.status
         }
