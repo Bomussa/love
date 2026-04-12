@@ -25,7 +25,6 @@ import { performanceOptimizer } from './lib/performance-optimizer'
 import { instantUpdateBroadcaster } from './lib/instant-update-broadcaster'
 
 // Lazy Loading للمكونات الثقيلة
-const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })))
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
 const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
@@ -265,7 +264,7 @@ function App() {
       const res = await api.patientLogin(patientId, gender)
 
       if (res.success) {
-        // تسجيل الجهاز في قاعدة البيانات
+        // تسجيل دخول الجهاز
         await registerDeviceLogin(patientId);
 
         // تسجيل النشاط اليومي
@@ -448,15 +447,18 @@ function App() {
         {currentView === 'admin' && isAdmin && (
           <Suspense fallback={<LoadingFallback />}>
             <HealthAlertBanner language={language} />
-      <AdminErrorBoundary>
-              <AdminDashboardV2
-                onLogout={handleLogout}
-                language={language}
-                toggleLanguage={toggleLanguage}
-                currentTheme={currentTheme}
-                onThemeChange={setCurrentTheme}
-              />
-            </AdminErrorBoundary>
+            <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-4">لوحة الإدارة قيد التحديث</h2>
+                <p className="text-gray-400">تمت إزالة لوحة الإدارة القديمة كجزء من عملية التنظيف الشاملة. يرجى استخدام لوحة الإدارة الجديدة.</p>
+                <button 
+                  onClick={handleLogout}
+                  className="mt-6 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all"
+                >
+                  تسجيل الخروج
+                </button>
+              </div>
+            </div>
           </Suspense>
         )}
 
