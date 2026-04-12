@@ -411,7 +411,7 @@ export async function safeNotificationsQuery(queryFn) {
 }
 
 // استعلام آمن للأرقام السرية - تم إزالته
-export async function safePinsQuery() { return []; }
+export async function safePinsQuery() {
   return [];
 }
 
