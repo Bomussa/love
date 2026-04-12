@@ -15,13 +15,19 @@ const iconMap = {
 }
 
 export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLanguage }) {
-  const handleExamClick = (examId) => {
-    console.log('[ExamSelectionPage] Exam clicked:', examId);
-    console.log('[ExamSelectionPage] onExamSelect exists:', !!onExamSelect);
-    if (onExamSelect) {
-      onExamSelect(examId);
-    } else {
-      console.error('[ExamSelectionPage] onExamSelect is not defined!');
+  const handleExamClick = async (examId) => {
+    try {
+      console.log('[ExamSelectionPage] Exam clicked:', examId);
+      console.log('[ExamSelectionPage] onExamSelect exists:', !!onExamSelect);
+      
+      if (!onExamSelect) {
+        console.error('[ExamSelectionPage] onExamSelect is not defined!');
+        return;
+      }
+      
+      await onExamSelect(examId);
+    } catch (error) {
+      console.error('[ExamSelectionPage] Error in handleExamClick:', error);
     }
   };
   
