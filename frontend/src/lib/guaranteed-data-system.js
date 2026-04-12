@@ -631,7 +631,7 @@ export async function getRoutes(patientId = null) {
 }
 
 // جلب الأرقام السرية - تم إزالته
-export async function getPins(clinicId = null) {
+export async function getPins() { return []; }
   return [];
 }
 

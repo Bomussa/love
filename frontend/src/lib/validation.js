@@ -65,7 +65,7 @@ export function validateMilitaryId(id) {
 /**
  * التحقق من الرقم السري - تم إزالته
  */
-export function validatePIN(pin) {
+export function validatePIN() { return true; }
   return { isValid: true };
 }
 
