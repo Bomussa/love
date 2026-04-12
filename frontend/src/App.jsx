@@ -402,7 +402,7 @@ function App() {
                   console.warn('[App] Weight calculation failed, using first clinic:', weightError);
                 }
 
-                const queueRes = await api.enterQueue(firstClinic, patientData.id, false)
+                const queueRes = await api.enterQueue(firstClinic, patientData.patient_id || patientData.id, false)
 
                 if (queueRes.success) {
                   const updatedPatientData = {
