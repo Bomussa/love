@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
@@ -7,6 +6,7 @@ import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import { AdminQueueMonitor } from './AdminQueueMonitor'
 
+export const ClinicDashboard = ({ clinicId, onLogout }) => {
   const [currentTicket, setCurrentTicket] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -21,7 +21,7 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
       const status = await api.getQueueStatus(clinicId)
       if (status.success) {
         // Find the currently serving ticket
-        const serving = status.queue.find(q => q.status === 'called' || q.status === 'in_service')
+        const serving = status.in && status.in.length > 0 ? status.in[0] : null
         setCurrentTicket(serving || null)
       }
     } catch (err) {
@@ -33,9 +33,9 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
     setLoading(true)
     setError(null)
     try {
+      const result = await api.callNext(clinicId)
       if (result.success) {
         refreshStatus()
-        // Play sound?
       } else {
         setError(result.error || 'Failed to call next')
       }
@@ -50,6 +50,7 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
     if (!currentTicket) return
     setLoading(true)
     try {
+      const result = await api.queueDone(clinicId, currentTicket.visitId)
       if (result.success) {
         setCurrentTicket(null)
         refreshStatus()
@@ -65,8 +66,8 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
     if (!currentTicket) return
     setLoading(true)
     try {
-      // تحديث حالة المراجع إلى "no_show" والانتقال للتالي
-      const result = await api.updateQueueStatus(clinicId, currentTicket.patient_id, 'no_show')
+      // تحديث حالة المراجع إلى "skipped" والانتقال للتالي
+      const result = await api.updateQueueStatus(clinicId, currentTicket.visitId, 'skipped')
       if (result.success) {
         setCurrentTicket(null)
         refreshStatus()
@@ -92,9 +93,6 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
           </div>
         </div>
         <div className="flex gap-4 items-center">
-            <div className="bg-gray-700 px-3 py-1 rounded">
-            </div>
-            
           <Button variant="outline" onClick={onLogout} className="flex gap-2 text-red-400 border-red-900/50 hover:bg-red-900/20">
             <LogOut className="w-4 h-4" />
             {t('Logout')}
@@ -119,10 +117,10 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
                 {currentTicket ? (
                   <>
                     <div className="text-6xl font-bold text-blue-400 mb-2">
-                      {currentTicket.ticket_number}
+                      {currentTicket.ticket}
                     </div>
                     <p className="text-sm text-gray-500">
-                        {currentTicket.patient_id}
+                        {currentTicket.visitId}
                     </p>
                   </>
                 ) : (
@@ -137,9 +135,7 @@ import { AdminQueueMonitor } from './AdminQueueMonitor'
                 variant="gradient" 
                 className="w-full h-16 text-xl" 
                 onClick={handleCallNext}
-                disabled={loading || !!currentTicket} // Disable if someone is currently in service? Or allow overriding?
-                // Usually allow calling next if current is done.
-                // If currentTicket exists, we should probably 'Finish' first.
+                disabled={loading || !!currentTicket}
               >
                 {loading ? '...' : t('Call Next')}
               </Button>

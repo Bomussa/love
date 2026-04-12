@@ -419,6 +419,7 @@ class RealtimeNotificationEngine {
   /**
    * إشعار: تم فتح عيادة
    */
+  sendClinicOpened(clinicName) {
     this.notifyAdmin({
       type: NOTIFICATION_TYPES.CLINIC_OPENED,
       title: '🟢 فتح عيادة',
@@ -441,7 +442,9 @@ class RealtimeNotificationEngine {
   }
 
   /**
+   * إشعار: تنبيه عيادة عالي الأولوية
    */
+  sendHighPriorityClinicAlert(clinicName) {
     this.notifyAdmin({
       clinicName,
       priority: 'high',
