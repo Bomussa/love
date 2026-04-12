@@ -16,7 +16,13 @@ const iconMap = {
 
 export function ExamSelectionPage({ onExamSelect, onBack, language, toggleLanguage }) {
   const handleExamClick = (examId) => {
-    if (onExamSelect) onExamSelect(examId);
+    console.log('[ExamSelectionPage] Exam clicked:', examId);
+    console.log('[ExamSelectionPage] onExamSelect exists:', !!onExamSelect);
+    if (onExamSelect) {
+      onExamSelect(examId);
+    } else {
+      console.error('[ExamSelectionPage] onExamSelect is not defined!');
+    }
   };
   
   return (
