@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from './Card'
 import { Button } from './Button'
-import { Lock, LogOut, CheckCircle, AlertCircle, Clock, MapPin } from 'lucide-react'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
 import { supabase } from '../lib/supabase-client'
