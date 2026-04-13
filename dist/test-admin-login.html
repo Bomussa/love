@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار دخول الإدارة</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-box {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background: #333;
+            color: white;
+        }
+        #log {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 اختبار دخول الإدارة</h1>
+    
+    <div class="test-box">
+        <h2>تسجيل الدخول</h2>
+        <input type="text" id="username" value="Bomussa" placeholder="اسم المستخدم">
+        <input type="password" id="password" value="14490" placeholder="كلمة المرور">
+        <button onclick="testLogin()">اختبار الدخول</button>
+    </div>
+
+    <div class="test-box">
+        <h2>📋 السجل (Console Log)</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString('ar-QA');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '📝';
+            logDiv.innerHTML += `${time} ${icon} ${msg}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            log(`🔐 محاولة الدخول باسم: ${username}`);
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                log('📤 إرسال الطلب...');
+
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString(),
+                    credentials: 'include'
+                });
+
+                log(`📡 Status: ${response.status} ${response.statusText}`);
+                log(`📡 Redirected: ${response.redirected}`);
+                log(`📡 URL: ${response.url}`);
+                log(`📡 OK: ${response.ok}`);
+
+                if (response.ok || response.redirected || response.url.includes('/admin/dashboard')) {
+                    log('✅ نجح الدخول!', 'success');
+                    log('سيتم الانتقال للوحة الإدارة...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/admin/dashboard';
+                    }, 1000);
+                } else {
+                    const text = await response.text();
+                    log(`❌ فشل الدخول: ${response.status}`, 'error');
+                    log(`الرد: ${text.substring(0, 100)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ خطأ: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        log('✅ صفحة الاختبار جاهزة');
+        log(`ℹ️ البيانات الافتراضية: Bomussa / 14490`);
+    </script>
+</body>
+</html>
