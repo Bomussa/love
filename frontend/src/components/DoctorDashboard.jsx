@@ -130,60 +130,72 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
       
       switch (actionType) {
         case 'CALL_NEXT':
-          // Using the unified API for calling next
-          result = await api.callNextPatient(clinicId, doctorData?.pin || '0000');
+          // استدعاء المريض التالي عبر RPC (بدون PIN)
+          const { data: callData, error: callError } = await supabase.rpc('call_next_patient', {
+            p_clinic_id: clinicId,
+            p_mark_current_done: true
+          });
+          if (callError) throw callError;
+          result = { data: callData, error: null };
           break;
         case 'START_EXAM':
           result = await supabase.from('unified_queue').update({
-            status: 'in_progress',
+            status: 'serving',
+            entered_clinic_at: new Date().toISOString(),
             exam_start_time: new Date().toISOString()
           }).eq('id', patientId);
           break;
         case 'FINISH_EXAM':
           result = await supabase.from('unified_queue').update({
-            status: 'completed',
+            status: 'done',
+            completed_at: new Date().toISOString(),
             exam_end_time: new Date().toISOString()
           }).eq('id', patientId);
           break;
         case 'MARK_VIP':
           result = await supabase.from('unified_queue').update({
             is_vip: true,
-            priority_score: 100
+            is_priority: true,
+            priority_reason: 'VIP'
           }).eq('id', patientId);
           break;
         case 'MOVE_TO_LAST':
-          const { data: lastPatient } = await supabase.from('unified_queue')
+          const { data: lastPat } = await supabase.from('unified_queue')
             .select('display_number')
             .eq('clinic_id', clinicId)
             .order('display_number', { ascending: false })
-            .limit(1).single();
+            .limit(1).maybeSingle();
           result = await supabase.from('unified_queue').update({
-            display_number: (lastPatient?.display_number || 0) + 1
+            display_number: (lastPat?.display_number || 0) + 1,
+            status: 'waiting'
           }).eq('id', patientId);
           break;
         case 'TRANSFER_CLINIC':
           result = await supabase.from('unified_queue').update({
             clinic_id: payload.targetClinicId,
             status: 'waiting',
+            transferred_from: clinicId,
+            transfer_reason: payload.reason || null,
             called_at: null,
             exam_start_time: null
           }).eq('id', patientId);
           break;
         case 'MILITARY_COMMITTEE':
-          // Assuming a specific clinic ID or flag for military committee
           result = await supabase.from('unified_queue').update({
             is_military_committee: true,
+            is_priority: true,
+            priority_reason: 'لجنة عسكرية',
             status: 'waiting'
           }).eq('id', patientId);
           break;
         case 'ABSENT':
           result = await supabase.from('unified_queue').update({
-            status: 'absent',
-            marked_absent_at: new Date().toISOString()
+            status: 'no_show',
+            notes: 'غياب - ' + new Date().toLocaleTimeString('ar-SA')
           }).eq('id', patientId);
           break;
         default:
-          throw new Error('Unknown action');
+          throw new Error('Unknown action: ' + actionType);
       }
 
       if (result.error) throw result.error;
