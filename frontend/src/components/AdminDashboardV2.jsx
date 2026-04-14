@@ -3368,25 +3368,33 @@ const SettingsSection = ({ language, t }) => {
 
   const updateSetting = async (key, value) => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert({ 
-          id: key, 
-          value: typeof value === 'string' ? value : JSON.stringify(value), 
-          updated_at: new Date().toISOString(),
-          description: `إعداد ${key}`
-        }, { onConflict: 'id' });
-      
-      if (!error) {
+      // استخدام RPC upsert_setting المضمونة (تعمل حتى مع أنواع مختلفة)
+      let jsonValue;
+      if (typeof value === 'boolean') jsonValue = value;
+      else if (typeof value === 'number') jsonValue = value;
+      else if (typeof value === 'string') {
+        // محاولة parse كـ JSON أولاً
+        try { jsonValue = JSON.parse(value); } catch { jsonValue = value; }
+      } else jsonValue = value;
+
+      const { data, error } = await supabase.rpc('upsert_setting', {
+        p_key: key,
+        p_value: jsonValue,
+        p_description: `إعداد ${key}`
+      });
+
+      if (!error && data?.success) {
         setSettings(prev => ({ ...prev, [key]: value }));
-        showSuccessToast(t('تم حفظ الإعدادات', 'Settings saved'));
+        setLocalValues(prev => ({ ...prev, [key]: value }));
+        showSuccessToast(t('✅ تم حفظ الإعداد', '✅ Setting saved'));
       } else {
-        console.error('Error saving setting:', error);
-        showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving settings'));
+        const errMsg = error?.message || data?.error || 'unknown';
+        console.error('upsert_setting error:', errMsg);
+        showErrorToast(t('خطأ في الحفظ: ' + errMsg, 'Save error: ' + errMsg));
       }
     } catch (e) {
-      console.error('Error updating setting:', e);
-      showErrorToast(t('حدث خطأ أثناء الحفظ', 'Error saving settings'));
+      console.error('updateSetting exception:', e);
+      showErrorToast(t('خطأ: ' + (e.message || ''), 'Error: ' + (e.message || '')));
     }
   };
 
