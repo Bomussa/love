@@ -3342,25 +3342,23 @@ const SettingsSection = ({ language, t }) => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*');
-      
-      const settingsObj = {};
-      if (!error && data) {
-        data.forEach(s => { 
-          try {
-            settingsObj[s.id] = JSON.parse(s.value);
-          } catch {
-            settingsObj[s.id] = s.value;
-          }
+      // استخدام RPC get_all_settings للحصول على كل الإعدادات دفعة واحدة
+      const { data, error } = await supabase.rpc('get_all_settings');
+      if (!error && data?.success && data?.settings) {
+        setSettings(data.settings);
+        setLocalValues(data.settings);
+      } else {
+        // fallback: قراءة مباشرة
+        const { data: rows } = await supabase.from('system_settings').select('*');
+        const obj = {};
+        (rows || []).forEach(s => {
+          try { obj[s.id] = JSON.parse(s.value); } catch { obj[s.id] = s.value; }
         });
+        setSettings(obj);
+        setLocalValues(obj);
       }
-      
-      setSettings(settingsObj);
-      setLocalValues(settingsObj);
     } catch (e) {
-      console.error('Error loading settings:', e);
+      console.error('loadSettings error:', e);
     } finally {
       setLoading(false);
     }
