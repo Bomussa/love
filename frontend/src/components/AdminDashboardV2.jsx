@@ -5752,13 +5752,8 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
         .from('clinics')
         .select('id, name_ar, name_en');
 
-      // عدد الأرقام السرية النشطة غير المنتهية
-      const now = new Date().toISOString();
-      const { count: pinCount } = await supabase
-        .from('pins')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .gte('expires_at', now);
+      // pins table removed — always 0
+      const pinCount = 0;
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
