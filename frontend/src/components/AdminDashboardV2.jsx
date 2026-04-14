@@ -1648,8 +1648,363 @@ const ClinicsManagement = ({ language, t }) => {
   );
 };
 
-// مكون إدارة الأطباء - للعرض والتحكم بالإطباء في لوحة الإدارة
+// مكون إدارة حسابات الأطباء - CRUD كامل (إضافة/تعديل/حذف/تجميد/كلمة مرور)
 const DoctorManagement = ({ language, t }) => {
+  const [doctors, setDoctors] = useState([]);
+  const [clinics, setClinics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [newDoctor, setNewDoctor] = useState({ name:'', username:'', password:'', clinic_id:'', role:'DOCTOR', specialty:'', phone:'', email:'' });
+
+  useEffect(() => { loadDoctors(); loadClinics(); }, []);
+
+  const loadClinics = async () => {
+    const { data } = await supabase.from('clinics').select('id, name_ar, name_en').eq('is_active',true).order('name_ar');
+    if (data) setClinics(data);
+  };
+
+  const loadDoctors = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('doctors')
+        .select('id, name, username, clinic_id, role, specialty, phone, email, is_active, created_at')
+        .order('name');
+      if (!error && data) setDoctors(data);
+      else if (error) console.error('loadDoctors:', error);
+    } catch(e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const addDoctor = async () => {
+    if (!newDoctor.name.trim() || !newDoctor.username.trim() || !newDoctor.password.trim()) {
+      showErrorToast(t('يرجى ملء الاسم واسم المستخدم وكلمة المرور','Name, username and password required'));
+      return;
+    }
+    const { error } = await supabase.from('doctors').insert([{
+      name: newDoctor.name.trim(), username: newDoctor.username.trim().toLowerCase(),
+      password: newDoctor.password, clinic_id: newDoctor.clinic_id || null,
+      role: newDoctor.role || 'DOCTOR', specialty: newDoctor.specialty || null,
+      phone: newDoctor.phone || null, email: newDoctor.email || null, is_active: true
+    }]);
+    if (!error) {
+      showSuccessToast(t('تم إضافة الطبيب بنجاح','Doctor added successfully'));
+      setShowAddModal(false);
+      setNewDoctor({ name:'', username:'', password:'', clinic_id:'', role:'DOCTOR', specialty:'', phone:'', email:'' });
+      loadDoctors();
+      logActivity('doctor_added', 'Doctor: ' + newDoctor.name);
+    } else { showErrorToast(error.message); }
+  };
+
+  const updateDoctor = async () => {
+    if (!editingDoctor) return;
+    const { error } = await supabase.from('doctors').update({
+      name: editingDoctor.name,
+      username: editingDoctor.username ? editingDoctor.username.toLowerCase() : '',
+      clinic_id: editingDoctor.clinic_id || null, role: editingDoctor.role,
+      specialty: editingDoctor.specialty || null, phone: editingDoctor.phone || null,
+      email: editingDoctor.email || null, updated_at: new Date().toISOString()
+    }).eq('id', editingDoctor.id);
+    if (!error) {
+      showSuccessToast(t('تم حفظ التعديلات','Changes saved'));
+      setEditingDoctor(null); loadDoctors();
+    } else { showErrorToast(error.message); }
+  };
+
+  const toggleStatus = async (doc) => {
+    const ns = !doc.is_active;
+    const { error } = await supabase.from('doctors').update({ is_active: ns, updated_at: new Date().toISOString() }).eq('id', doc.id);
+    if (!error) {
+      showSuccessToast(ns ? t('تم تفعيل الطبيب','Doctor activated') : t('تم تجميد الطبيب','Doctor frozen'));
+      loadDoctors();
+    } else { showErrorToast(error.message); }
+  };
+
+  const deleteDoc = async (doc) => {
+    if (!window.confirm(t('حذف الطبيب ' + doc.name + '؟','Delete doctor ' + doc.name + '?'))) return;
+    const { error } = await supabase.from('doctors').delete().eq('id', doc.id);
+    if (!error) { showSuccessToast(t('تم الحذف','Deleted')); loadDoctors(); }
+    else showErrorToast(error.message);
+  };
+
+  const updatePwd = async () => {
+    if (!passwordTarget || !newPassword.trim()) { showErrorToast(t('أدخل كلمة المرور','Enter password')); return; }
+    const { error } = await supabase.from('doctors').update({ password: newPassword.trim(), updated_at: new Date().toISOString() }).eq('id', passwordTarget.id);
+    if (!error) { showSuccessToast(t('تم تحديث كلمة المرور','Password updated')); setShowPasswordModal(false); setPasswordTarget(null); setNewPassword(''); }
+    else showErrorToast(error.message);
+  };
+
+  const getClinicName = (doc) => {
+    const c = clinics.find(x => x.id === doc.clinic_id);
+    return c ? (language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)) : (doc.clinic_id || '—');
+  };
+
+  const filtered = doctors.filter(d =>
+    !searchTerm ||
+    (d.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (d.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (d.clinic_id || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const IC = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:border-[#C9A54C] outline-none transition-all';
+  const SC = 'w-full bg-[#1a1a2e] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <Stethoscope size={24} className="text-[#C9A54C]" />
+          {t('إدارة حسابات الأطباء','Doctor Accounts Management')}
+        </h3>
+        <div className="flex gap-2">
+          <button onClick={loadDoctors} className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-all">
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-[#C9A54C] text-black rounded-xl font-medium hover:bg-[#B8943D] transition-all">
+            <UserPlus size={18} />{t('إضافة طبيب','Add Doctor')}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4 text-center">
+          <div className="text-2xl font-bold text-blue-400">{doctors.length}</div>
+          <div className="text-xs text-gray-400 mt-1">{t('الإجمالي','Total')}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4 text-center">
+          <div className="text-2xl font-bold text-green-400">{doctors.filter(d => d.is_active).length}</div>
+          <div className="text-xs text-gray-400 mt-1">{t('نشطون','Active')}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-xl border border-white/10 p-4 text-center">
+          <div className="text-2xl font-bold text-red-400">{doctors.filter(d => !d.is_active).length}</div>
+          <div className="text-xs text-gray-400 mt-1">{t('مجمدون','Frozen')}</div>
+        </div>
+      </div>
+
+      <input
+        type="text"
+        className={IC}
+        placeholder={t('بحث بالاسم أو اسم المستخدم أو العيادة...','Search...')}
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+      />
+
+      <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center"><RefreshCw className="animate-spin mx-auto text-[#C9A54C]" size={24} /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-black/20 border-b border-white/10">
+                <tr>
+                  <th className="px-4 py-3 text-right font-medium text-gray-300">{t('الاسم','Name')}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-300">{t('المستخدم','Username')}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-300">{t('العيادة','Clinic')}</th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-300">{t('الدور','Role')}</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-300">{t('الحالة','Status')}</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-300">{t('إجراءات','Actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map(doc => (
+                  <tr key={doc.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{doc.name}</div>
+                      {doc.specialty && <div className="text-xs text-gray-400">{doc.specialty}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <code className="text-[#C9A54C] text-sm bg-black/20 px-2 py-0.5 rounded">{doc.username || '—'}</code>
+                    </td>
+                    <td className="px-4 py-3 text-gray-300 text-sm">{getClinicName(doc)}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 text-xs rounded-full bg-white/10 text-gray-300">{doc.role || 'DOCTOR'}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => toggleStatus(doc)}
+                        className={doc.is_active
+                          ? 'px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400 transition-all'
+                          : 'px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 hover:bg-green-500/20 hover:text-green-400 transition-all'
+                        }
+                      >
+                        {doc.is_active ? t('نشط','Active') : t('مجمد','Frozen')}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => setEditingDoctor({...doc})} className="p-1.5 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-all" title={t('تعديل','Edit')}><Edit size={15} /></button>
+                        <button onClick={() => { setPasswordTarget(doc); setShowPasswordModal(true); }} className="p-1.5 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-all" title={t('كلمة المرور','Password')}><Key size={15} /></button>
+                        <button onClick={() => deleteDoc(doc)} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-all" title={t('حذف','Delete')}><Trash2 size={15} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <div className="p-8 text-center text-gray-400">
+                {searchTerm ? t('لا توجد نتائج','No results') : t('لا يوجد أطباء مسجلون','No doctors registered')}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[120] p-4">
+          <div className="bg-[#12121a] rounded-2xl border border-white/10 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h4 className="text-lg font-bold flex items-center gap-2">
+                <UserPlus className="text-[#C9A54C]" size={20} />
+                {t('إضافة طبيب جديد','Add New Doctor')}
+              </h4>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-white/10 rounded-lg"><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الاسم الكامل','Full Name')} <span className="text-red-400">*</span></label>
+                <input className={IC} value={newDoctor.name} onChange={e => setNewDoctor(p => ({...p, name: e.target.value}))} placeholder={t('د. محمد أحمد','Dr. John Smith')} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('اسم المستخدم','Username')} <span className="text-red-400">*</span></label>
+                <input className={IC} value={newDoctor.username} onChange={e => setNewDoctor(p => ({...p, username: e.target.value.toLowerCase()}))} placeholder="bio, lab, eye..." />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('كلمة المرور','Password')} <span className="text-red-400">*</span></label>
+                <input type="password" className={IC} value={newDoctor.password} onChange={e => setNewDoctor(p => ({...p, password: e.target.value}))} placeholder="Doctor@2025" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('العيادة','Clinic')}</label>
+                <select className={SC} value={newDoctor.clinic_id} onChange={e => setNewDoctor(p => ({...p, clinic_id: e.target.value}))}>
+                  <option value="">{t('بدون تعيين','No assignment')}</option>
+                  {clinics.map(c => <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الدور','Role')}</label>
+                <select className={SC} value={newDoctor.role} onChange={e => setNewDoctor(p => ({...p, role: e.target.value}))}>
+                  <option value="DOCTOR">{t('طبيب','Doctor')}</option>
+                  <option value="NURSE">{t('ممرض','Nurse')}</option>
+                  <option value="TECHNICIAN">{t('فني','Technician')}</option>
+                  <option value="SPECIALIST">{t('أخصائي','Specialist')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('التخصص','Specialty')}</label>
+                <input className={IC} value={newDoctor.specialty} onChange={e => setNewDoctor(p => ({...p, specialty: e.target.value}))} placeholder={t('جراحة عامة...','Surgery...')} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الجوال','Phone')}</label>
+                <input className={IC} value={newDoctor.phone} onChange={e => setNewDoctor(p => ({...p, phone: e.target.value}))} placeholder="974-XXXXXXXX" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowAddModal(false)} className="flex-1 py-2.5 bg-white/10 rounded-xl hover:bg-white/20 transition-all">{t('إلغاء','Cancel')}</button>
+              <button onClick={addDoctor} className="flex-1 py-2.5 bg-[#C9A54C] text-black font-bold rounded-xl hover:bg-[#B8943D] transition-all flex items-center justify-center gap-2">
+                <UserPlus size={16} />{t('إضافة','Add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingDoctor && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[120] p-4">
+          <div className="bg-[#12121a] rounded-2xl border border-white/10 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h4 className="text-lg font-bold flex items-center gap-2">
+                <Edit className="text-blue-400" size={20} />
+                {t('تعديل بيانات الطبيب','Edit Doctor')}: {editingDoctor.name}
+              </h4>
+              <button onClick={() => setEditingDoctor(null)} className="p-2 hover:bg-white/10 rounded-lg"><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الاسم الكامل','Full Name')}</label>
+                <input className={IC} value={editingDoctor.name || ''} onChange={e => setEditingDoctor(p => ({...p, name: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('اسم المستخدم','Username')}</label>
+                <input className={IC} value={editingDoctor.username || ''} onChange={e => setEditingDoctor(p => ({...p, username: e.target.value.toLowerCase()}))} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('العيادة','Clinic')}</label>
+                <select className={SC} value={editingDoctor.clinic_id || ''} onChange={e => setEditingDoctor(p => ({...p, clinic_id: e.target.value}))}>
+                  <option value="">{t('بدون تعيين','No assignment')}</option>
+                  {clinics.map(c => <option key={c.id} value={c.id}>{language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الدور','Role')}</label>
+                <select className={SC} value={editingDoctor.role || 'DOCTOR'} onChange={e => setEditingDoctor(p => ({...p, role: e.target.value}))}>
+                  <option value="DOCTOR">{t('طبيب','Doctor')}</option>
+                  <option value="NURSE">{t('ممرض','Nurse')}</option>
+                  <option value="TECHNICIAN">{t('فني','Technician')}</option>
+                  <option value="SPECIALIST">{t('أخصائي','Specialist')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('التخصص','Specialty')}</label>
+                <input className={IC} value={editingDoctor.specialty || ''} onChange={e => setEditingDoctor(p => ({...p, specialty: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('الجوال','Phone')}</label>
+                <input className={IC} value={editingDoctor.phone || ''} onChange={e => setEditingDoctor(p => ({...p, phone: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t('البريد الإلكتروني','Email')}</label>
+                <input type="email" className={IC} value={editingDoctor.email || ''} onChange={e => setEditingDoctor(p => ({...p, email: e.target.value}))} />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingDoctor(null)} className="flex-1 py-2.5 bg-white/10 rounded-xl hover:bg-white/20 transition-all">{t('إلغاء','Cancel')}</button>
+              <button onClick={updateDoctor} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                <Save size={16} />{t('حفظ','Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPasswordModal && passwordTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[120] p-4">
+          <div className="bg-[#12121a] rounded-2xl border border-white/10 p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-5">
+              <h4 className="text-lg font-bold flex items-center gap-2">
+                <Key className="text-yellow-400" size={20} />
+                {t('تغيير كلمة المرور','Change Password')}
+              </h4>
+              <button onClick={() => { setShowPasswordModal(false); setNewPassword(''); }} className="p-2 hover:bg-white/10 rounded-lg"><X size={18} /></button>
+            </div>
+            <div className="bg-white/5 rounded-xl p-3 mb-4 text-sm text-gray-300">
+              <p>{t('الطبيب:','Doctor:')} <strong className="text-white">{passwordTarget.name}</strong></p>
+              <p>{t('المستخدم:','Username:')} <code className="text-[#C9A54C]">{passwordTarget.username}</code></p>
+            </div>
+            <input
+              type="password"
+              className={IC + ' mb-4'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder={t('كلمة المرور الجديدة','New password')}
+            />
+            <div className="flex gap-3">
+              <button onClick={() => { setShowPasswordModal(false); setNewPassword(''); }} className="flex-1 py-2.5 bg-white/10 rounded-xl">{t('إلغاء','Cancel')}</button>
+              <button onClick={updatePwd} className="flex-1 py-2.5 bg-yellow-600 text-white font-bold rounded-xl hover:bg-yellow-700 flex items-center justify-center gap-2">
+                <Key size={16} />{t('تحديث','Update')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+// OLD DoctorManagement (view-only) starts below — disabled
+const _OldDoctorManagement_ViewOnly = ({ language, t }) => {
   const [selectedClinic, setSelectedClinic] = useState(null);
   const [clinics, setClinics] = useState([]);
   const [doctorStats, setDoctorStats] = useState({});
