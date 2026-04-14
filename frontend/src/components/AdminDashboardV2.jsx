@@ -3174,21 +3174,47 @@ const SystemStatus = ({ language, t }) => {
 
   const checkSystemStatus = async () => {
     setLoading(true);
+    try {
+      // استخدام get_system_health RPC — بيانات حقيقية مباشرة من Supabase
+      const { data: health, error } = await supabase.rpc('get_system_health');
+      if (error) throw error;
+
+      const results = {};
+      (health?.tables || []).forEach(tbl => {
+        results[tbl.name] = {
+          label: tbl.name,
+          status: tbl.status,
+          count: tbl.count,
+          message: tbl.error || null
+        };
+      });
+      // إضافة معلومات النظام العامة
+      results['__summary__'] = {
+        label: t('ملخص النظام', 'System Summary'),
+        status: health?.tables_error === 0 ? 'ok' : 'error',
+        count: health?.total_rows || 0,
+        today_patients: health?.today_patients || 0,
+        today_waiting: health?.today_waiting || 0,
+        active_clinics: health?.active_clinics || 0,
+        total_doctors: health?.total_doctors || 0,
+        checked_at: health?.checked_at
+      };
+
+      setStatus(results);
+      setLoading(false);
+      return; // انتهى بنجاح
+    } catch(rpcErr) {
+      console.warn('get_system_health RPC failed, fallback to direct queries:', rpcErr.message);
+    }
+
+    // Fallback: direct queries
     const results = {};
-    
-    // قائمة الجداول للفحص - تصحيح أسماء الجداول
     const tables = [
       { name: 'clinics', label: t('العيادات', 'Clinics') },
-      { name: 'queues', label: t('الطوابير', 'Queues') },
+      { name: 'unified_queue', label: t('الطابور الموحد', 'Unified Queue') },
       { name: 'patients', label: t('المرضى', 'Patients') },
       { name: 'doctors', label: t('الأطباء', 'Doctors') },
-      { name: 'admin_users', label: t('مستخدمي الإدارة', 'Admin Users') },
-      { name: 'notifications', label: t('الإشعارات', 'Notifications') },
-      { name: 'routes', label: t('المسارات', 'Routes') },
-      { name: 'pins', label: t('الأرقام السرية', 'PINs') },
-      { name: 'settings', label: t('الإعدادات', 'Settings') },
       { name: 'system_settings', label: t('إعدادات النظام', 'System Settings') },
-      { name: 'unified_queue', label: t('الطابور الموحد', 'Unified Queue') },
       { name: 'activity_logs', label: t('سجلات النشاط', 'Activity Logs') },
     ];
 
