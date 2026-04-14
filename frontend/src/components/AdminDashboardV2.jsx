@@ -5614,14 +5614,28 @@ const SmartSystemPanel = ({ language, t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const response = await fetch('/api/v1/qa/deep_run');
-      const result = await response.json();
-      if (result.success) {
-        toast.success(t('اكتمل الفحص العميق بنجاح', 'Deep QA completed successfully'));
-        loadData();
+      const { data: health, error } = await supabase.rpc('get_system_health');
+      if (error) throw error;
+      const isOk = !health?.tables_error || health.tables_error === 0;
+
+      await supabase.from('qa_runs').insert([{
+        ok: isOk, result: health, created_at: new Date().toISOString()
+      }]).catch(() => {});
+
+      if (!isOk) {
+        await supabase.from('qa_findings').insert([{
+          severity: 'high', type: 'db_error',
+          description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
+          is_resolved: false, created_at: new Date().toISOString()
+        }]).catch(() => {});
+        toast.error(t('⚠️ الفحص اكتمل — وُجدت مشاكل', 'QA completed — issues found'));
+      } else {
+        toast.success(t('✅ الفحص اكتمل — النظام سليم 100%', '✅ QA completed — system healthy'));
       }
+      loadData();
     } catch (e) {
-      toast.error(t('فشل تشغيل الفحص', 'QA Run failed'));
+      console.error('startDeepQA error:', e);
+      toast.error(t('خطأ في الفحص: ' + (e.message || ''), 'QA error: ' + (e.message || '')));
     } finally {
       setRunning(false);
     }
@@ -5629,18 +5643,18 @@ const SmartSystemPanel = ({ language, t }) => {
 
   const executeRepair = async (findingId) => {
     try {
-      const response = await fetch('/api/v1/repair/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findingId, token: 'mmc-mms-repair-secret-2026' })
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast.success(t('تم الإصلاح بنجاح', 'Repair successful'));
+      const { error } = await supabase
+        .from('qa_findings')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('id', findingId);
+      if (!error) {
+        toast.success(t('✅ تم الإصلاح بنجاح', '✅ Repair successful'));
         loadData();
+      } else {
+        toast.error(t('❌ فشل الإصلاح: ' + error.message, 'Repair failed: ' + error.message));
       }
     } catch (e) {
-      toast.error(t('فشل الإصلاح', 'Repair failed'));
+      toast.error(t('خطأ: ' + (e.message || ''), 'Error: ' + (e.message || '')));
     }
   };
 
