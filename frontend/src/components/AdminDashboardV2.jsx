@@ -1685,34 +1685,53 @@ const DoctorManagement = ({ language, t }) => {
       showErrorToast(t('يرجى ملء الاسم واسم المستخدم وكلمة المرور','Name, username and password required'));
       return;
     }
-    const { error } = await supabase.from('doctors').insert([{
-      name: newDoctor.name.trim(), username: newDoctor.username.trim().toLowerCase(),
-      password: newDoctor.password, clinic_id: newDoctor.clinic_id || null,
-      role: newDoctor.role || 'DOCTOR', specialty: newDoctor.specialty || null,
-      phone: newDoctor.phone || null, email: newDoctor.email || null, is_active: true
-    }]);
-    if (!error) {
-      showSuccessToast(t('تم إضافة الطبيب بنجاح','Doctor added successfully'));
-      setShowAddModal(false);
-      setNewDoctor({ name:'', username:'', password:'', clinic_id:'', role:'DOCTOR', specialty:'', phone:'', email:'' });
-      loadDoctors();
-      logActivity('doctor_added', 'Doctor: ' + newDoctor.name);
-    } else { showErrorToast(error.message); }
+    try {
+      // upsert_doctor RPC — يتجاوز قيود NOT NULL ويدعم clinic_id اختياري
+      const { data, error } = await supabase.rpc('upsert_doctor', {
+        p_name:      newDoctor.name.trim(),
+        p_username:  newDoctor.username.trim().toLowerCase(),
+        p_password:  newDoctor.password,
+        p_clinic_id: newDoctor.clinic_id || null,
+        p_role:      newDoctor.role || 'DOCTOR',
+        p_specialty: newDoctor.specialty || null,
+        p_phone:     newDoctor.phone || null,
+        p_email:     newDoctor.email || null,
+        p_is_active: true
+      });
+      if (!error && data?.success) {
+        showSuccessToast(t('✅ تم إضافة الطبيب بنجاح','✅ Doctor added successfully'));
+        setShowAddModal(false);
+        setNewDoctor({ name:'', username:'', password:'', clinic_id:'', role:'DOCTOR', specialty:'', phone:'', email:'' });
+        loadDoctors();
+        logActivity('doctor_added', 'Doctor: ' + newDoctor.name);
+      } else {
+        showErrorToast((error?.message || data?.error || t('حدث خطأ غير معروف','Unknown error')));
+      }
+    } catch(e) { showErrorToast(e.message); }
   };
 
   const updateDoctor = async () => {
     if (!editingDoctor) return;
-    const { error } = await supabase.from('doctors').update({
-      name: editingDoctor.name,
-      username: editingDoctor.username ? editingDoctor.username.toLowerCase() : '',
-      clinic_id: editingDoctor.clinic_id || null, role: editingDoctor.role,
-      specialty: editingDoctor.specialty || null, phone: editingDoctor.phone || null,
-      email: editingDoctor.email || null, updated_at: new Date().toISOString()
-    }).eq('id', editingDoctor.id);
-    if (!error) {
-      showSuccessToast(t('تم حفظ التعديلات','Changes saved'));
-      setEditingDoctor(null); loadDoctors();
-    } else { showErrorToast(error.message); }
+    try {
+      // upsert_doctor RPC للتحديث
+      const { data, error } = await supabase.rpc('upsert_doctor', {
+        p_id:        editingDoctor.id,
+        p_name:      editingDoctor.name,
+        p_username:  editingDoctor.username ? editingDoctor.username.toLowerCase() : null,
+        p_clinic_id: editingDoctor.clinic_id || null,
+        p_role:      editingDoctor.role,
+        p_specialty: editingDoctor.specialty || null,
+        p_phone:     editingDoctor.phone || null,
+        p_email:     editingDoctor.email || null,
+        p_is_active: editingDoctor.is_active
+      });
+      if (!error && data?.success) {
+        showSuccessToast(t('✅ تم حفظ التعديلات','✅ Changes saved'));
+        setEditingDoctor(null); loadDoctors();
+      } else {
+        showErrorToast(error?.message || data?.error || t('حدث خطأ','Error'));
+      }
+    } catch(e) { showErrorToast(e.message); }
   };
 
   const toggleStatus = async (doc) => {
