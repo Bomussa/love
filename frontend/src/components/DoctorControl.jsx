@@ -96,39 +96,21 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
       
-      // Fetch queue with patient details
+      // جلب الطابور من unified_queue (المصدر الصحيح)
       const { data, error } = await supabase
-        .from('queues')
-        .select(`
-          *,
-          patients:patient_id (
-            id,
-            patient_id,
-            military_id,
-            personal_id,
-            name,
-            gender
-          )
-        `)
+        .from('unified_queue')
+        .select('*')
         .eq('clinic_id', selectedClinic)
         .eq('queue_date', today)
         .order('display_number', { ascending: true });
 
       if (error) throw error;
 
-      // Enrich patient data
-      const enrichedData = (data || []).map(q => ({
-        ...q,
-        real_patient_id: q.patients?.military_id || q.patients?.personal_id || q.patients?.patient_id || q.patient_id,
-        patient_name: q.patients?.name || translate('مريض', 'Patient'),
-        patient_gender: q.patients?.gender || 'male'
-      }));
-
-      setPatients(enrichedData);
-      calculateStats(enrichedData);
+      setPatients(data || []);
+      calculateStats(data || []);
       
-      // Set current patient (in_progress)
-      const current = enrichedData.find(p => p.status === 'in_progress');
+      // المريض الحالي: serving أو called
+      const current = (data || []).find(p => ['serving','called','in_progress'].includes(p.status));
       setCurrentPatient(current || null);
 
     } catch (e) {
