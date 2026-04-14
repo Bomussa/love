@@ -194,12 +194,8 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   const completePatient = async (patient) => {
     try {
       const { error } = await supabase
-        .from('queues')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .from('unified_queue')
+        .update({ status: 'done', completed_at: new Date().toISOString(), exam_end_time: new Date().toISOString() })
         .eq('id', patient.id);
 
       if (error) throw error;
