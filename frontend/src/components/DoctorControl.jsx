@@ -47,17 +47,15 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
       loadPatients();
     }
     
-    // Real-time subscription for queue updates
+    // Real-time subscription — unified_queue
     const subscription = supabase
-      .channel('queues_changes')
+      .channel('unified_queue_doctor_control_' + (selectedClinic || 'all'))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'queues',
+        table: 'unified_queue',
         filter: selectedClinic ? `clinic_id=eq.${selectedClinic}` : undefined
-      }, (payload) => {
-        loadPatients();
-      })
+      }, () => { loadPatients(); })
       .subscribe();
 
     // Auto-refresh every 10 seconds
