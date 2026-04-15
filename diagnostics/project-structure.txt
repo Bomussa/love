@@ -1,0 +1,67 @@
+.
+├── archive
+│   ├── old_docs
+│   └── old_reports
+├── assets
+├── config
+├── data
+│   ├── admin
+│   ├── pins
+│   └── settings
+├── db
+│   └── init
+├── deploy
+│   ├── cloudflared
+│   └── systemd
+├── diagnostics
+├── docs
+├── functions
+│   ├── _shared
+│   ├── admin
+│   ├── api
+│   │   └── v1
+│   └── config
+├── img
+├── infra
+│   ├── mms-api
+│   │   └── src
+│   └── worker-api
+│       └── src
+├── js
+├── mms-core
+│   ├── config
+│   ├── data
+│   │   ├── pins
+│   │   ├── queues
+│   │   ├── routes
+│   │   └── status
+│   └── src
+│       ├── api
+│       ├── core
+│       └── utils
+├── public
+│   ├── img
+│   └── js
+├── scripts
+├── src
+│   ├── api
+│   ├── components
+│   ├── config
+│   ├── core
+│   │   ├── config
+│   │   └── routing
+│   ├── hooks
+│   ├── lib
+│   ├── pages
+│   │   └── api
+│   ├── types
+│   └── utils
+├── theme
+└── tools
+    ├── audit
+    ├── cleanup
+    ├── deploy
+    ├── lockdown
+    └── verify
+
+64 directories

@@ -1,0 +1,251 @@
+{
+  "migration_mapping": {
+    "description": "خريطة ربط مفاتيح Cloudflare KV بجداول Supabase PostgreSQL",
+    "source": "Cloudflare KV (Key-Value Store)",
+    "target": "Supabase PostgreSQL (Relational Database)",
+    "total_kv_patterns": 14,
+    "total_target_tables": 9
+  },
+  "mappings": [
+    {
+      "kv_pattern": "admin:credentials",
+      "target_table": "users",
+      "description": "بيانات اعتماد المسؤولين",
+      "transformation": "تحويل من JSON إلى صفوف في جدول users مع role='admin'",
+      "fields_mapping": {
+        "username": "users.username",
+        "password": "users.password_hash",
+        "email": "users.email"
+      }
+    },
+    {
+      "kv_pattern": "admin:sessions",
+      "target_table": "sessions",
+      "description": "جلسات المسؤولين النشطة",
+      "transformation": "تحويل من JSON إلى صفوف في جدول sessions",
+      "fields_mapping": {
+        "token": "sessions.token",
+        "user_id": "sessions.user_id",
+        "expires": "sessions.expires_at"
+      }
+    },
+    {
+      "kv_pattern": "pin:*",
+      "target_table": "clinics",
+      "description": "رموز PIN للعيادات",
+      "transformation": "دمج في جدول clinics (حقول pin_code و pin_expires_at)",
+      "fields_mapping": {
+        "pin": "clinics.pin_code",
+        "expires": "clinics.pin_expires_at"
+      },
+      "example_keys": [
+        "pin:reception",
+        "pin:laboratory",
+        "pin:radiology"
+      ]
+    },
+    {
+      "kv_pattern": "clinic:*:settings",
+      "target_table": "clinics",
+      "description": "إعدادات العيادات",
+      "transformation": "دمج في جدول clinics",
+      "fields_mapping": {
+        "name": "clinics.name",
+        "name_ar": "clinics.name_ar",
+        "call_interval": "clinics.call_interval",
+        "is_active": "clinics.is_active"
+      },
+      "example_keys": [
+        "clinic:reception:settings",
+        "clinic:laboratory:settings"
+      ]
+    },
+    {
+      "kv_pattern": "queue:*",
+      "target_table": "queue",
+      "description": "بيانات الطوابير الرئيسية",
+      "transformation": "تحويل من JSON إلى صفوف في جدول queue",
+      "fields_mapping": {
+        "patient_id": "queue.patient_id",
+        "patient_name": "queue.patient_name",
+        "clinic_id": "queue.clinic_id",
+        "exam_type": "queue.exam_type",
+        "status": "queue.status",
+        "position": "queue.position",
+        "entered_at": "queue.entered_at"
+      },
+      "example_keys": [
+        "queue:reception",
+        "queue:laboratory",
+        "queue:radiology"
+      ]
+    },
+    {
+      "kv_pattern": "patient:*:position",
+      "target_table": "queue",
+      "description": "موقع المريض في الطابور",
+      "transformation": "دمج في جدول queue (حقل position)",
+      "fields_mapping": {
+        "position": "queue.position",
+        "clinic": "queue.clinic_id"
+      },
+      "example_keys": [
+        "patient:P001:position",
+        "patient:P002:position"
+      ]
+    },
+    {
+      "kv_pattern": "clinic:*:queue",
+      "target_table": "queue",
+      "description": "طابور كل عيادة",
+      "transformation": "تحويل من array إلى صفوف منفصلة في queue",
+      "fields_mapping": {
+        "patients[]": "queue rows (multiple)"
+      },
+      "example_keys": [
+        "clinic:reception:queue",
+        "clinic:laboratory:queue"
+      ]
+    },
+    {
+      "kv_pattern": "notifications:*",
+      "target_table": "notifications",
+      "description": "إشعارات المرضى",
+      "transformation": "تحويل من JSON إلى صفوف في notifications",
+      "fields_mapping": {
+        "patient_id": "notifications.patient_id",
+        "type": "notifications.type",
+        "title": "notifications.title",
+        "message": "notifications.message",
+        "sent_at": "notifications.sent_at"
+      },
+      "example_keys": [
+        "notifications:P001",
+        "notifications:broadcast"
+      ]
+    },
+    {
+      "kv_pattern": "report:daily:*",
+      "target_table": "reports",
+      "description": "التقارير اليومية",
+      "transformation": "تحويل إلى صفوف في reports مع type='daily'",
+      "fields_mapping": {
+        "date": "reports.period_start",
+        "total": "reports.total_patients",
+        "completed": "reports.completed_patients",
+        "data": "reports.data (JSONB)"
+      },
+      "example_keys": [
+        "report:daily:2025-10-24",
+        "report:daily:2025-10-23"
+      ]
+    },
+    {
+      "kv_pattern": "report:weekly:*",
+      "target_table": "reports",
+      "description": "التقارير الأسبوعية",
+      "transformation": "تحويل إلى صفوف في reports مع type='weekly'",
+      "fields_mapping": {
+        "week": "reports.period_start",
+        "data": "reports.data (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "report:monthly:*",
+      "target_table": "reports",
+      "description": "التقارير الشهرية",
+      "transformation": "تحويل إلى صفوف في reports مع type='monthly'",
+      "fields_mapping": {
+        "month": "reports.period_start",
+        "data": "reports.data (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "stats:*",
+      "target_table": "reports",
+      "description": "إحصائيات عامة",
+      "transformation": "تحويل إلى صفوف في reports أو دمج في data (JSONB)",
+      "fields_mapping": {
+        "stats": "reports.data (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "settings:*",
+      "target_table": "settings",
+      "description": "إعدادات النظام العامة",
+      "transformation": "تحويل من key-value إلى صفوف في settings",
+      "fields_mapping": {
+        "key": "settings.key",
+        "value": "settings.value (JSONB)"
+      },
+      "example_keys": [
+        "settings:theme",
+        "settings:language",
+        "settings:auto_call"
+      ]
+    },
+    {
+      "kv_pattern": "config:*",
+      "target_table": "settings",
+      "description": "تكوينات النظام",
+      "transformation": "دمج مع settings",
+      "fields_mapping": {
+        "key": "settings.key",
+        "value": "settings.value (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "cache:*",
+      "target_table": "cache_logs",
+      "description": "بيانات الكاش",
+      "transformation": "تحويل إلى سجلات في cache_logs",
+      "fields_mapping": {
+        "resource": "cache_logs.resource_type",
+        "data": "cache_logs.data (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "log:*",
+      "target_table": "cache_logs",
+      "description": "سجلات الأحداث",
+      "transformation": "تحويل إلى صفوف في cache_logs",
+      "fields_mapping": {
+        "event": "cache_logs.event_type",
+        "data": "cache_logs.data (JSONB)"
+      }
+    },
+    {
+      "kv_pattern": "route:*",
+      "target_table": "routes",
+      "description": "مسارات الفحوصات",
+      "transformation": "تحويل من JSON إلى صفوف في routes",
+      "fields_mapping": {
+        "exam_type": "routes.exam_type",
+        "clinics": "routes.clinics (JSONB array)",
+        "order": "routes.order_sequence"
+      },
+      "example_keys": [
+        "route:comprehensive",
+        "route:basic"
+      ]
+    },
+    {
+      "kv_pattern": "exam:*:path",
+      "target_table": "routes",
+      "description": "مسار كل نوع فحص",
+      "transformation": "دمج مع routes",
+      "fields_mapping": {
+        "path": "routes.clinics (JSONB)",
+        "exam": "routes.exam_type"
+      }
+    }
+  ],
+  "migration_notes": [
+    "جميع المفاتيح في KV يجب قراءتها باستخدام list() ثم get() لكل مفتاح",
+    "البيانات المخزنة كـ JSON في KV يجب تحويلها إلى صفوف منفصلة في PostgreSQL",
+    "استخدام JSONB في PostgreSQL للبيانات الديناميكية أو المعقدة",
+    "يجب التحقق من صحة البيانات قبل الإدراج (validation)",
+    "استخدام transactions للتأكد من نقل البيانات بشكل آمن"
+  ]
+}
+

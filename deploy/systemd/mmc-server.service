@@ -1,0 +1,14 @@
+[Unit]
+Description=MMC MMS Server
+After=network-online.target
+
+[Service]
+User=node
+WorkingDirectory=/opt/mmc/app
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm run start:resilient
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

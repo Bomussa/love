@@ -1,0 +1,14 @@
+{
+  "LAB": { "id": "LAB", "name": "المختبر", "floor": "M" },
+  "EYE": { "id": "EYE", "name": "العيون", "floor": "2" },
+  "INT": { "id": "INT", "name": "الباطنية", "floor": "2" },
+  "SUR": { "id": "SUR", "name": "الجراحة العامة", "floor": "2" },
+  "ENT": { "id": "ENT", "name": "أنف وأذن وحنجرة", "floor": "2" },
+  "DER": { "id": "DER", "name": "الجلدية", "floor": "3" },
+  "PSY": { "id": "PSY", "name": "الطب النفسي", "floor": "2" },
+  "DNT": { "id": "DNT", "name": "الأسنان", "floor": "2" },
+  "AUD": { "id": "AUD", "name": "قياس السمع", "floor": "2" },
+  "ECG": { "id": "ECG", "name": "تخطيط القلب", "floor": "2" },
+  "BIO": { "id": "BIO", "name": "القياسات الحيوية", "floor": "2" },
+  "XR":  { "id": "XR",  "name": "الأشعة", "floor": "M" }
+}

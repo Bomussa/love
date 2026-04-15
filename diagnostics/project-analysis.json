@@ -1,0 +1,654 @@
+{
+  "frontend": {
+    "status": "✅",
+    "files": [
+      {
+        "path": "App.jsx",
+        "size": 13821
+      },
+      {
+        "path": "api/index.ts",
+        "size": 3689
+      },
+      {
+        "path": "components/AdminPINMonitor.jsx",
+        "size": 7326
+      },
+      {
+        "path": "components/AdminPage.jsx",
+        "size": 29287
+      },
+      {
+        "path": "components/AdminQrManager.jsx",
+        "size": 11012
+      },
+      {
+        "path": "components/AdminQueueMonitor.jsx",
+        "size": 9356
+      },
+      {
+        "path": "components/Button.jsx",
+        "size": 1425
+      },
+      {
+        "path": "components/Card.jsx",
+        "size": 1490
+      },
+      {
+        "path": "components/ClinicsConfiguration.jsx",
+        "size": 14417
+      },
+      {
+        "path": "components/CompletePage.jsx",
+        "size": 6595
+      },
+      {
+        "path": "components/CountdownTimer.jsx",
+        "size": 5240
+      },
+      {
+        "path": "components/EnhancedAdminDashboard.jsx",
+        "size": 14233
+      },
+      {
+        "path": "components/EnhancedThemeSelector.jsx",
+        "size": 12685
+      },
+      {
+        "path": "components/ExamSelectionPage.jsx",
+        "size": 3473
+      },
+      {
+        "path": "components/Header.jsx",
+        "size": 2143
+      },
+      {
+        "path": "components/Input.jsx",
+        "size": 708
+      },
+      {
+        "path": "components/LoginPage.jsx",
+        "size": 11940
+      },
+      {
+        "path": "components/NotificationPanel.jsx",
+        "size": 8377
+      },
+      {
+        "path": "components/NotificationSystem.jsx",
+        "size": 13357
+      },
+      {
+        "path": "components/NotificationsPage.jsx",
+        "size": 13451
+      },
+      {
+        "path": "components/PatientPage.jsx",
+        "size": 34885
+      },
+      {
+        "path": "components/PatientsManagement.jsx",
+        "size": 13059
+      },
+      {
+        "path": "components/QrScanPage.jsx",
+        "size": 9987
+      },
+      {
+        "path": "components/SystemSettingsPanel.jsx",
+        "size": 13699
+      },
+      {
+        "path": "components/ZFDTicketDisplay.jsx",
+        "size": 7082
+      },
+      {
+        "path": "config/admin-credentials.js",
+        "size": 1364
+      },
+      {
+        "path": "core/config/refresh.constants.js",
+        "size": 109
+      },
+      {
+        "path": "core/event-bus.js",
+        "size": 5484
+      },
+      {
+        "path": "core/notification-engine.js",
+        "size": 16413
+      },
+      {
+        "path": "core/path-engine.js",
+        "size": 6353
+      },
+      {
+        "path": "core/pin-engine.js",
+        "size": 4644
+      },
+      {
+        "path": "core/pinService.ts",
+        "size": 1700
+      },
+      {
+        "path": "core/queue-engine.backup.js",
+        "size": 5231
+      },
+      {
+        "path": "core/queue-engine.js",
+        "size": 5231
+      },
+      {
+        "path": "core/queueManager.ts",
+        "size": 3098
+      },
+      {
+        "path": "core/routing/routeMapService.ts",
+        "size": 247
+      },
+      {
+        "path": "core/routing/routeService.ts",
+        "size": 3248
+      },
+      {
+        "path": "hooks/useQueueWatcher.js",
+        "size": 2850
+      },
+      {
+        "path": "hooks/useSmartUpdater.js",
+        "size": 1180
+      },
+      {
+        "path": "lib/api-adapter.js",
+        "size": 6264
+      },
+      {
+        "path": "lib/api-unified.js",
+        "size": 7252
+      },
+      {
+        "path": "lib/api.js",
+        "size": 17146
+      },
+      {
+        "path": "lib/db.js",
+        "size": 1628
+      },
+      {
+        "path": "lib/dynamic-pathways.js",
+        "size": 3848
+      },
+      {
+        "path": "lib/enhanced-api.js",
+        "size": 14060
+      },
+      {
+        "path": "lib/enhanced-themes.js",
+        "size": 9001
+      },
+      {
+        "path": "lib/i18n.js",
+        "size": 6916
+      },
+      {
+        "path": "lib/local-api.js",
+        "size": 11528
+      },
+      {
+        "path": "lib/mms-core-api.js",
+        "size": 4039
+      },
+      {
+        "path": "lib/offline-storage.js",
+        "size": 12740
+      },
+      {
+        "path": "lib/queueManager.js",
+        "size": 14001
+      },
+      {
+        "path": "lib/routingManager.js",
+        "size": 14135
+      },
+      {
+        "path": "lib/settings.js",
+        "size": 6674
+      },
+      {
+        "path": "lib/unified-storage.js",
+        "size": 9358
+      },
+      {
+        "path": "lib/utils.js",
+        "size": 24849
+      },
+      {
+        "path": "lib/workflow.js",
+        "size": 15416
+      },
+      {
+        "path": "main.jsx",
+        "size": 295
+      },
+      {
+        "path": "pages/api/admin/settings.js",
+        "size": 3360
+      },
+      {
+        "path": "pages/api/patient/enqueue.js",
+        "size": 2164
+      },
+      {
+        "path": "pages/api/queue/call-next.js",
+        "size": 1802
+      },
+      {
+        "path": "pages/api/queue/complete.js",
+        "size": 2331
+      },
+      {
+        "path": "pages/api/queue/status.js",
+        "size": 2013
+      },
+      {
+        "path": "pages/api/system/tick.js",
+        "size": 4880
+      },
+      {
+        "path": "types/config.d.ts",
+        "size": 948
+      },
+      {
+        "path": "utils/fs-atomic.ts",
+        "size": 492
+      },
+      {
+        "path": "utils/logger.ts",
+        "size": 437
+      },
+      {
+        "path": "utils/time.ts",
+        "size": 777
+      },
+      {
+        "path": "_middleware-www.js",
+        "size": 674
+      },
+      {
+        "path": "_middleware.js",
+        "size": 3740
+      },
+      {
+        "path": "_shared/activity-logger.js",
+        "size": 6086
+      },
+      {
+        "path": "_shared/db-validator.js",
+        "size": 7000
+      },
+      {
+        "path": "_shared/lock-manager.js",
+        "size": 5480
+      },
+      {
+        "path": "_shared/utils.js",
+        "size": 2928
+      },
+      {
+        "path": "_shared/weights.js",
+        "size": 5444
+      },
+      {
+        "path": "admin/login.js",
+        "size": 3984
+      },
+      {
+        "path": "api/v1/admin/clinic-stats.js",
+        "size": 2592
+      },
+      {
+        "path": "api/v1/admin/edit-patient.js",
+        "size": 6265
+      },
+      {
+        "path": "api/v1/admin/export-report.js",
+        "size": 5109
+      },
+      {
+        "path": "api/v1/admin/live-feed.js",
+        "size": 2257
+      },
+      {
+        "path": "api/v1/admin/regenerate-pins.js",
+        "size": 3506
+      },
+      {
+        "path": "api/v1/admin/set-call-interval.js",
+        "size": 1607
+      },
+      {
+        "path": "api/v1/admin/status.js",
+        "size": 1603
+      },
+      {
+        "path": "api/v1/admin/system-settings/reset.js",
+        "size": 2458
+      },
+      {
+        "path": "api/v1/admin/system-settings.js",
+        "size": 5700
+      },
+      {
+        "path": "api/v1/cron/auto-call-next.js",
+        "size": 7591
+      },
+      {
+        "path": "api/v1/cron/daily-report.js",
+        "size": 3878
+      },
+      {
+        "path": "api/v1/cron/daily-reset.js",
+        "size": 3205
+      },
+      {
+        "path": "api/v1/cron/notify-poller.js",
+        "size": 3597
+      },
+      {
+        "path": "api/v1/cron/timeout-handler.js",
+        "size": 7811
+      },
+      {
+        "path": "api/v1/events/stream.js",
+        "size": 6808
+      },
+      {
+        "path": "api/v1/health/status.js",
+        "size": 2073
+      },
+      {
+        "path": "api/v1/notify/status.js",
+        "size": 1902
+      },
+      {
+        "path": "api/v1/path/choose.js",
+        "size": 3913
+      },
+      {
+        "path": "api/v1/patient/login.js",
+        "size": 7017
+      },
+      {
+        "path": "api/v1/patient/my-position.js",
+        "size": 2726
+      },
+      {
+        "path": "api/v1/patient/record.js",
+        "size": 2293
+      },
+      {
+        "path": "api/v1/patient/status.js",
+        "size": 4217
+      },
+      {
+        "path": "api/v1/patient/verify-pin.js",
+        "size": 10390
+      },
+      {
+        "path": "api/v1/pin/assign.js",
+        "size": 5928
+      },
+      {
+        "path": "api/v1/pin/generate.js",
+        "size": 2948
+      },
+      {
+        "path": "api/v1/pin/reset.js",
+        "size": 3059
+      },
+      {
+        "path": "api/v1/pin/status.js",
+        "size": 3041
+      },
+      {
+        "path": "api/v1/queue/call.js",
+        "size": 3013
+      },
+      {
+        "path": "api/v1/queue/done.js",
+        "size": 4906
+      },
+      {
+        "path": "api/v1/queue/enter-updated.js",
+        "size": 6075
+      },
+      {
+        "path": "api/v1/queue/enter.js",
+        "size": 5219
+      },
+      {
+        "path": "api/v1/queue/position.js",
+        "size": 3967
+      },
+      {
+        "path": "api/v1/queue/status.js",
+        "size": 1937
+      },
+      {
+        "path": "api/v1/route/create.js",
+        "size": 6273
+      },
+      {
+        "path": "api/v1/route/get.js",
+        "size": 1359
+      },
+      {
+        "path": "api/v1/stats/dashboard.js",
+        "size": 2623
+      },
+      {
+        "path": "api/v1/stats/queues.js",
+        "size": 3246
+      },
+      {
+        "path": "config/clinic-pins.js",
+        "size": 1591
+      }
+    ],
+    "issues": []
+  },
+  "backend": {
+    "status": "✅",
+    "files": [],
+    "issues": []
+  },
+  "endpoints": [
+    {
+      "path": "/api/v1/admin/clinic-stats",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/edit-patient",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/export-report",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/live-feed",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/regenerate-pins",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/set-call-interval",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/system-settings",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/cron/auto-call-next",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/cron/daily-report",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/cron/daily-reset",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/cron/notify-poller",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/cron/timeout-handler",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/events/stream",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/health/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/notify/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/path/choose",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/patient/login",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/patient/my-position",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/patient/record",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/patient/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/patient/verify-pin",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/pin/assign",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/pin/generate",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/pin/reset",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/pin/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/call",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/done",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/enter-updated",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/enter",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/position",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/queue/status",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/route/create",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/route/get",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/stats/dashboard",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/stats/queues",
+      "status": "يعمل",
+      "method": "متعدد"
+    },
+    {
+      "path": "/api/v1/admin/system-settings/reset",
+      "status": "يعمل",
+      "method": "متعدد"
+    }
+  ],
+  "duplicates": [],
+  "recommendations": []
+}

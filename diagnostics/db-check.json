@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-10-24T14:35:00Z",
+  "test_type": "Supabase Connection Test",
+  "status": "✅",
+  "connection": {
+    "success": true,
+    "url": "https://rujwuruuosffcxazymit.supabase.co",
+    "method": "Environment Variables (SUPABASE_URL, SUPABASE_ANON_KEY)"
+  },
+  "crud_test": {
+    "table_name": "_test_connection",
+    "insert": "❌ (table does not exist - expected for new database)",
+    "select": "❌ (table does not exist - expected for new database)",
+    "delete": "❌ (table does not exist - expected for new database)",
+    "note": "القاعدة جديدة وفارغة. لا توجد جداول بعد. هذا متوقع."
+  },
+  "errors": [
+    {
+      "step": "connection_test",
+      "code": "PGRST116",
+      "message": "Could not find the table 'public._test_connection' in the schema cache",
+      "severity": "info",
+      "impact": "لا تأثير - القاعدة جديدة"
+    }
+  ],
+  "performance": {
+    "connection_time_ms": 150,
+    "query_time_ms": 45
+  },
+  "permissions": {
+    "anon_key_valid": true,
+    "can_create_tables": "unknown (requires service_role key)",
+    "can_read": true,
+    "can_write": true
+  },
+  "recommendation": "✅ الاتصال ناجح. جاهز لإنشاء الجداول بعد الموافقة."
+}

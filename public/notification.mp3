@@ -1,0 +1,8 @@
+This is a placeholder for the notification sound file.
+Since I cannot create actual audio files, please replace this with a short notification sound MP3 file.
+You can:
+1. Download a free notification sound from freesound.org or similar
+2. Use any short beep/notification sound you have
+3. The sound should be short (1-2 seconds) and clear
+
+For now, I'll create a workaround using the Web Audio API in the code instead.

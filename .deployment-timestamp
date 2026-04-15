@@ -1,0 +1,4 @@
+Deployment triggered at: 2025-10-22T11:10:00Z
+Reason: Force redeploy to fix KV TTL issues
+Commit: Fix queue/enter TTL validation
+

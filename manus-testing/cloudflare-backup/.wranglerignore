@@ -1,0 +1,51 @@
+# Wrangler Ignore File
+# منع نشر ملفات ومجلدات غير ضرورية
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Infrastructure folders (لا تنشر)
+infra/
+mms-core/
+
+# Development files
+.git/
+.github/
+.vscode/
+*.log
+*.md
+!README.md
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Documentation
+docs/
+CHANGES.md
+CLOUDFLARE_COMPLETE_SETTINGS.md
+DYNAMIC_ROUTES_FIX.md
+PIN_VALIDATION_FIX.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+dist/
+build/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+*.old
+

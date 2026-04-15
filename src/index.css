@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 10%; /* Dark Blue */
+    --foreground: 210 40% 98%; /* White */
+    --card: 220 20% 15%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 210 40% 98%; /* White */
+    --popover: 220 20% 15%; /* Popover background */
+    --popover-foreground: 210 40% 98%; /* Popover text */
+    --primary: 345 76% 32%; /* Official Maroon #8A1538 */
+    --primary-foreground: 210 40% 98%; /* White */
+    --secondary: 43 48% 54%; /* Official Gold #C9A54C */
+    --secondary-foreground: 210 40% 98%; /* White */
+    --muted: 220 15% 25%; /* Muted dark blue */
+    --muted-foreground: 215 20.2% 65.1%; /* Gray */
+    --accent: 38 40% 82%; /* Light Beige #E8DABE */
+    --accent-foreground: 210 40% 98%; /* White */
+    --destructive: 0 62.8% 30.6%; /* Red */
+    --destructive-foreground: 210 40% 98%; /* White */
+    --border: 220 15% 25%; /* Border color */
+    --input: 220 15% 20%; /* Input background */
+    --ring: 200 80% 50%; /* Ring color */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%);
+    min-height: 100vh;
+  }
+}
+
+/* Icon system: أحجام/ألوان/هوامش موحّدة لكل الأيقونات */
+@layer components {
+  /* أحجام الأيقونات */
+  .icon { display: inline-block; vertical-align: middle; }
+  .icon-sm { @apply w-4 h-4; }
+  .icon-md { @apply w-5 h-5; }
+  .icon-lg { @apply w-6 h-6; }
+  .icon-xl { @apply w-8 h-8; }
+
+  /* ألوان الأيقونات وفق الثيم الطبي */
+  .icon-brand { color: var(--theme-primary); }
+  .icon-secondary { color: var(--theme-secondary); }
+  .icon-accent { color: var(--theme-accent); }
+  .icon-muted { @apply text-gray-400; }
+  .icon-success { @apply text-green-500; }
+  .icon-warning { @apply text-yellow-500; }
+  .icon-danger { @apply text-red-500; }
+
+  /* هوامش منطقية تدعم RTL/LTR */
+  .me-1 { margin-inline-end: 0.25rem; }
+  .me-2 { margin-inline-end: 0.5rem; }
+  .me-3 { margin-inline-end: 0.75rem; }
+  .ms-1 { margin-inline-start: 0.25rem; }
+  .ms-2 { margin-inline-start: 0.5rem; }
+  .ms-3 { margin-inline-start: 0.75rem; }
+}
+
+/* Custom gradients for buttons */
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 50%, hsl(var(--primary)) 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--secondary)) 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary)) 50%, hsl(var(--secondary)) 100%);
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, hsl(var(--destructive)) 0%, hsl(var(--destructive)) 50%, hsl(var(--destructive)) 100%);
+}
+
+/* Theme colors */
+.theme-classic {
+  --theme-primary: #ef4444;
+  --theme-secondary: #fbbf24;
+}
+
+.theme-mint {
+  --theme-primary: #10b981;
+  --theme-secondary: #fbbf24;
+}
+
+.theme-navy {
+  --theme-primary: #3b82f6;
+  --theme-secondary: #fbbf24;
+}
+
+.theme-desert {
+  --theme-primary: #fbbf24;
+  --theme-secondary: #ef4444;
+}
+
+.theme-rose {
+  --theme-primary: #ef4444;
+  --theme-secondary: #fbbf24;
+}
+
+.theme-night {
+  --theme-primary: #fbbf24;
+  --theme-secondary: #ef4444;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.7);
+}

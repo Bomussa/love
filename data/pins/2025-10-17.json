@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "tz": "Asia/Qatar",
+    "version": 1
+  },
+  "pins": {
+    "clinic1:2025-10-17": [
+      "01"
+    ]
+  }
+}

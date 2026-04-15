@@ -1,0 +1,20 @@
+{
+  "name": "mms-api-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secrets": "echo Use wrangler secret put BACKEND_ORIGIN; echo Use wrangler secret put ADMIN_BASIC_USER; echo Use wrangler secret put ADMIN_BASIC_PASS; echo Use wrangler secret put JWT_SECRET; echo Optionally SECONDARY_ORIGIN",
+    "test:health": "node test/health-check.js",
+    "test:proxy": "node test/proxy-check.js",
+    "test:all": "node test/run-all.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "wrangler": "^4.42.2",
+    "@cloudflare/workers-types": "^4.20240903.0"
+  },
+  "dependencies": {}
+}
