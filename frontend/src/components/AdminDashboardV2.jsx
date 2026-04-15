@@ -5637,9 +5637,9 @@ const SmartSystemPanel = ({ language, t }) => {
       if (error) throw error;
       const isOk = !health?.tables_error || health.tables_error === 0;
 
-      await supabase.from('qa_runs').insert([{
+      try { await supabase.from('qa_runs').insert([{
         ok: isOk, result: health, created_at: new Date().toISOString()
-      }]).catch(() => {});
+      }]); } catch(_e) {}
 
       if (!isOk) {
         await supabase.from('qa_findings').insert([{
