@@ -1,47 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { Input } from './Input'
-import { 
-  Globe, LogOut, Users, Clock, CheckCircle, SkipForward, 
-  UserCheck, Calendar, TrendingUp, Activity, Star, 
-  ArrowRightLeft, UserX, Timer, RotateCcw, Building2, ShieldCheck
+import {
+  Globe, LogOut, Users, Clock, CheckCircle, SkipForward,
+  UserCheck, Calendar, TrendingUp, Activity, Star,
+  ArrowRightLeft, UserX, Timer, RotateCcw, Building2, ShieldCheck,
+  Phone, RefreshCw, ChevronRight, AlertCircle, Stethoscope
 } from 'lucide-react'
 import { supabase } from '../lib/supabase-client'
-import { formatTime, formatDuration } from '../lib/utils'
 import NotificationSystem, { useNotifications } from './NotificationSystem'
-import api from '../lib/api-unified'
 
 export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage }) {
   const [patients, setPatients] = useState([])
   const [clinics, setClinics] = useState([])
   const [loading, setLoading] = useState(false)
-  const [stats, setStats] = useState({
-    totalToday: 0,
-    completedToday: 0,
-    waitingNow: 0,
-    absentCount: 0
-  })
+  const [actionLoading, setActionLoading] = useState(null)
+  const [stats, setStats] = useState({ totalToday: 0, completedToday: 0, waitingNow: 0, absentCount: 0, avgWait: 0 })
   const [currentPatient, setCurrentPatient] = useState(null)
   const [examTimer, setExamTimer] = useState('00:00')
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [filterTab, setFilterTab] = useState('all')
   const timerRef = useRef(null)
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
   const clinicId = doctorData?.clinic_id
-  const clinicName = doctorData?.clinic_name || (language === 'ar' ? 'العيادة' : 'Clinic')
+  const clinicName = doctorData?.clinic_name || doctorData?.name || (language === 'ar' ? 'العيادة' : 'Clinic')
+  const t = (ar, en) => language === 'ar' ? ar : en
 
-  // Fetch all clinics for transfer functionality
+  /* ─── جلب العيادات ─── */
   const fetchClinics = async () => {
     try {
-      const { data, error } = await supabase.from('clinics').select('id, name_ar, name_en')
-      if (error) throw error
+      const { data } = await supabase.from('clinics').select('id, name_ar, name_en').eq('is_active', true).order('name_ar')
       setClinics(data || [])
-    } catch (err) {
-      console.error('Error fetching clinics:', err)
-    }
+    } catch (e) { console.error('fetchClinics:', e) }
   }
 
-  // Fetch patients and stats
+  /* ─── جلب المرضى والإحصائيات ─── */
   const fetchPatients = async () => {
     if (!clinicId) return
     try {
@@ -52,447 +46,475 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .order('display_number', { ascending: true })
-
       if (error) throw error
 
-      const waiting = data?.filter(p => p.status === 'waiting' || p.status === 'called') || []
-      const completed = data?.filter(p => p.status === 'completed') || []
-      const absent = data?.filter(p => p.status === 'absent' || p.status === 'no_show') || []
-      const inProgress = data?.find(p => p.status === 'in_progress')
+      const all = data || []
+      // المريض الحالي: serving / called / in_progress
+      const current = all.find(p => ['serving', 'called', 'in_progress'].includes(p.status)) || null
+      // قائمة الانتظار: waiting فقط
+      const waiting = all.filter(p => p.status === 'waiting')
+      const completed = all.filter(p => ['done', 'completed'].includes(p.status))
+      const absent = all.filter(p => ['no_show', 'absent'].includes(p.status))
 
+      // حساب متوسط الانتظار
+      let avgWait = 0
+      const withWait = completed.filter(p => p.entered_at && p.called_at)
+      if (withWait.length > 0) {
+        const total = withWait.reduce((s, p) => s + (new Date(p.called_at) - new Date(p.entered_at)), 0)
+        avgWait = Math.round(total / withWait.length / 60000)
+      }
+
+      setCurrentPatient(current)
       setPatients(waiting)
       setStats({
-        totalToday: data?.length || 0,
+        totalToday: all.length,
         completedToday: completed.length,
         waitingNow: waiting.length,
-        absentCount: absent.length
+        absentCount: absent.length,
+        avgWait
       })
-
-      if (inProgress) {
-        setCurrentPatient(inProgress)
-      } else {
-        setCurrentPatient(null)
-      }
     } catch (err) {
-      console.error('Error fetching patients:', err)
+      console.error('fetchPatients:', err)
+      pushNotif({ type: 'error', message: t('خطأ في تحميل البيانات', 'Error loading data') + ': ' + err.message })
     }
   }
 
-  // Timer logic
+  /* ─── مؤقت الفحص ─── */
   useEffect(() => {
-    if (currentPatient && currentPatient.exam_start_time) {
-      const startTime = new Date(currentPatient.exam_start_time).getTime()
-      
-      if (timerRef.current) clearInterval(timerRef.current)
-      
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (currentPatient?.exam_start_time) {
+      const start = new Date(currentPatient.exam_start_time).getTime()
       timerRef.current = setInterval(() => {
-        const now = new Date().getTime()
-        const diff = now - startTime
-        const minutes = Math.floor(diff / 60000)
-        const seconds = Math.floor((diff % 60000) / 1000)
-        setExamTimer(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+        const diff = Date.now() - start
+        const m = Math.floor(diff / 60000)
+        const s = Math.floor((diff % 60000) / 1000)
+        setExamTimer(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
       }, 1000)
     } else {
-      if (timerRef.current) clearInterval(timerRef.current)
       setExamTimer('00:00')
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [currentPatient])
+  }, [currentPatient?.id])
 
+  /* ─── Real-time + تحميل أولي ─── */
   useEffect(() => {
     fetchPatients()
     fetchClinics()
-    
-    // Real-time subscription
-    const channel = supabase
-      .channel(`doctor_dashboard_${clinicId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'unified_queue',
-        filter: `clinic_id=eq.${clinicId}`
-      }, () => {
-        fetchPatients()
-      })
+    const ch = supabase
+      .channel(`dd_${clinicId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue',
+        filter: `clinic_id=eq.${clinicId}` }, fetchPatients)
       .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+    const iv = setInterval(fetchPatients, 15000)
+    return () => { supabase.removeChannel(ch); clearInterval(iv) }
   }, [clinicId])
 
-  const translate = (ar, en) => (language === 'ar' ? ar : en)
-
-  // Actions
+  /* ─── تنفيذ الإجراءات ─── */
   const handleAction = async (actionType, patientId, payload = {}) => {
-    setLoading(true)
+    setActionLoading(actionType + patientId)
     try {
-      let result;
-      const patient = patients.find(p => p.id === patientId) || currentPatient;
-      
+      const patient = currentPatient?.id === patientId ? currentPatient : patients.find(p => p.id === patientId)
+
       switch (actionType) {
-        case 'CALL_NEXT':
-          // استدعاء المريض التالي عبر RPC (بدون PIN)
-          const { data: callData, error: callError } = await supabase.rpc('call_next_patient', {
-            p_clinic_id: clinicId,
-            p_mark_current_done: true
-          });
-          if (callError) throw callError;
-          result = { data: callData, error: null };
-          break;
-        case 'START_EXAM':
-          result = await supabase.from('unified_queue').update({
+
+        case 'CALL_NEXT': {
+          const { data: cd, error: ce } = await supabase.rpc('call_next_patient', {
+            p_clinic_id: clinicId, p_mark_current_done: false
+          })
+          if (ce) throw ce
+          if (cd?.data) {
+            pushNotif({ type: 'success', title: t('تم الاستدعاء','Called'),
+              message: t('رقم: ','#') + cd.data.display_number })
+          } else {
+            pushNotif({ type: 'info', message: t('لا يوجد مرضى في الانتظار','No patients waiting') })
+          }
+          break
+        }
+
+        case 'START_EXAM': {
+          const { error } = await supabase.from('unified_queue').update({
             status: 'serving',
             entered_clinic_at: new Date().toISOString(),
             exam_start_time: new Date().toISOString()
-          }).eq('id', patientId);
-          break;
-        case 'FINISH_EXAM':
-          result = await supabase.from('unified_queue').update({
+          }).eq('id', patientId)
+          if (error) throw error
+          pushNotif({ type: 'success', message: t('بدأ الفحص','Exam started') })
+          break
+        }
+
+        case 'FINISH_EXAM': {
+          // 1) أنهِ الفحص
+          const { error: fe } = await supabase.from('unified_queue').update({
             status: 'done',
             completed_at: new Date().toISOString(),
             exam_end_time: new Date().toISOString()
-          }).eq('id', patientId);
-          break;
-        case 'MARK_VIP':
-          result = await supabase.from('unified_queue').update({
-            is_vip: true,
-            is_priority: true,
-            priority_reason: 'VIP'
-          }).eq('id', patientId);
-          break;
-        case 'MOVE_TO_LAST':
-          const { data: lastPat } = await supabase.from('unified_queue')
-            .select('display_number')
-            .eq('clinic_id', clinicId)
-            .order('display_number', { ascending: false })
-            .limit(1).maybeSingle();
-          result = await supabase.from('unified_queue').update({
-            display_number: (lastPat?.display_number || 0) + 1,
-            status: 'waiting'
-          }).eq('id', patientId);
-          break;
-        case 'TRANSFER_CLINIC':
-          result = await supabase.from('unified_queue').update({
-            clinic_id: payload.targetClinicId,
-            status: 'waiting',
-            transferred_from: clinicId,
-            transfer_reason: payload.reason || null,
-            called_at: null,
-            exam_start_time: null
-          }).eq('id', patientId);
-          break;
-        case 'MILITARY_COMMITTEE':
-          result = await supabase.from('unified_queue').update({
-            is_military_committee: true,
-            is_priority: true,
-            priority_reason: 'لجنة عسكرية',
-            status: 'waiting'
-          }).eq('id', patientId);
-          break;
-        case 'ABSENT':
-          result = await supabase.from('unified_queue').update({
+          }).eq('id', patientId)
+          if (fe) throw fe
+
+          // 2) حاول الانتقال للمحطة التالية في المسار
+          if (patient?.patient_id) {
+            const { data: adv } = await supabase.rpc('advance_patient_route', {
+              p_patient_id: patient.patient_id,
+              p_clinic_id: clinicId
+            })
+            if (adv?.success && !adv?.completed) {
+              pushNotif({
+                type: 'success',
+                title: t('✅ تم إنهاء الفحص','✅ Exam Done'),
+                message: t(
+                  `انتقل المراجع إلى ${adv.next_clinic_name} — رقم ${adv.next_display_number}`,
+                  `Patient moved to ${adv.next_clinic_name} — #${adv.next_display_number}`
+                )
+              })
+            } else if (adv?.completed) {
+              pushNotif({ type: 'success', message: t('✅ اكتمل المسار الطبي كاملاً','✅ Medical route completed') })
+            } else {
+              pushNotif({ type: 'success', message: t('✅ تم إنهاء الفحص','✅ Exam completed') })
+            }
+          } else {
+            pushNotif({ type: 'success', message: t('✅ تم إنهاء الفحص','✅ Exam completed') })
+          }
+          break
+        }
+
+        case 'ABSENT': {
+          const { error } = await supabase.from('unified_queue').update({
             status: 'no_show',
-            notes: 'غياب - ' + new Date().toLocaleTimeString('ar-SA')
-          }).eq('id', patientId);
-          break;
-        default:
-          throw new Error('Unknown action: ' + actionType);
+            notes: t('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA')
+          }).eq('id', patientId)
+          if (error) throw error
+          pushNotif({ type: 'warning', message: t('تم تسجيل الغياب','Absence recorded') })
+          break
+        }
+
+        case 'MOVE_TO_LAST': {
+          const { data: last } = await supabase.from('unified_queue')
+            .select('display_number').eq('clinic_id', clinicId)
+            .order('display_number', { ascending: false }).limit(1).maybeSingle()
+          const { error } = await supabase.from('unified_queue').update({
+            display_number: (last?.display_number || 0) + 1,
+            status: 'waiting', called_at: null
+          }).eq('id', patientId)
+          if (error) throw error
+          pushNotif({ type: 'info', message: t('تم نقل المراجع لآخر القائمة','Patient moved to end') })
+          break
+        }
+
+        case 'MILITARY_COMMITTEE': {
+          const { error } = await supabase.from('unified_queue').update({
+            is_military_committee: true, is_priority: true,
+            priority_reason: t('لجنة عسكرية','Military Committee'), status: 'waiting'
+          }).eq('id', patientId)
+          if (error) throw error
+          pushNotif({ type: 'success', message: t('تم تحديد للجنة العسكرية','Marked for Military Committee') })
+          break
+        }
+
+        case 'TRANSFER_CLINIC': {
+          const { error } = await supabase.from('unified_queue').update({
+            clinic_id: payload.targetClinicId, status: 'waiting',
+            transferred_from: clinicId, transfer_reason: payload.reason || null,
+            called_at: null, exam_start_time: null
+          }).eq('id', patientId)
+          if (error) throw error
+          const tName = clinics.find(c => c.id === payload.targetClinicId)
+          pushNotif({ type: 'success', message: t(`تم التحويل إلى ${tName?.name_ar || ''}`, `Transferred to ${tName?.name_en || ''}`) })
+          setShowTransfer(false)
+          break
+        }
+
+        case 'VIP': {
+          const { error } = await supabase.from('unified_queue').update({
+            is_vip: true, is_priority: true, priority_reason: 'VIP'
+          }).eq('id', patientId)
+          if (error) throw error
+          pushNotif({ type: 'success', message: t('تم تحديد VIP','Marked as VIP') })
+          break
+        }
+
+        default: throw new Error('Unknown action: ' + actionType)
       }
 
-      if (result.error) throw result.error;
-
-      pushNotif({
-        type: 'success',
-        title: translate('تمت العملية', 'Action Successful'),
-        message: translate('تم تحديث حالة المراجع بنجاح', 'Patient status updated successfully')
-      })
-      fetchPatients()
+      await fetchPatients()
     } catch (err) {
-      pushNotif({
-        type: 'error',
-        message: translate('فشل الإجراء: ', 'Action failed: ') + err.message
-      })
+      console.error('handleAction error:', err)
+      pushNotif({ type: 'error', message: t('خطأ: ','Error: ') + (err.message || String(err)) })
     } finally {
-      setLoading(false)
+      setActionLoading(null)
     }
   }
 
+  /* ─── مكوّن: زر أيقونة مع tooltip ─── */
+  const IconBtn = ({ action, patientId, payload, icon: Icon, label, color, disabled }) => {
+    const isLoading = actionLoading === action + patientId
+    return (
+      <button
+        title={label}
+        aria-label={label}
+        disabled={disabled || isLoading || loading}
+        onClick={() => handleAction(action, patientId, payload || {})}
+        className={`relative flex items-center justify-center w-11 h-11 rounded-xl transition-all
+          hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed
+          border border-white/10 ${color}`}
+      >
+        {isLoading
+          ? <RefreshCw className="w-4 h-4 animate-spin" />
+          : <Icon className="w-5 h-5" />
+        }
+        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] bg-black/80
+          text-white px-1.5 py-0.5 rounded whitespace-nowrap opacity-0
+          group-hover:opacity-100 pointer-events-none z-10">
+          {label}
+        </span>
+      </button>
+    )
+  }
+
+  /* ─── بطاقة المريض في القائمة ─── */
+  const PatientRow = ({ patient, isCurrentPatient }) => (
+    <div className={`group px-4 py-3 border-b border-white/5 last:border-0 transition-all
+      ${isCurrentPatient ? 'bg-[#C9A54C]/10 border-[#C9A54C]/20' : 'hover:bg-white/5'}
+    `}>
+      <div className="flex items-center justify-between gap-2">
+        {/* رقم الدور + اسم */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0
+            ${isCurrentPatient ? 'bg-[#C9A54C] text-black' : 'bg-white/10 text-white'}`}>
+            {patient.display_number}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">
+              {patient.patient_name || patient.patient_id}
+              {patient.is_vip && <span className="ml-1 text-yellow-400 text-xs">★</span>}
+              {patient.is_military_committee && <span className="ml-1 text-purple-400 text-xs">🛡</span>}
+            </p>
+            <p className="text-xs text-gray-500">
+              {patient.patient_id}
+              {patient.gender === 'female' ? ' · أنثى' : ' · ذكر'}
+              {patient.exam_type ? ` · ${patient.exam_type}` : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* أيقونات الإجراءات - جنب بعض */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isCurrentPatient ? (
+            <>
+              <IconBtn action="FINISH_EXAM" patientId={patient.id}
+                icon={CheckCircle} label={t('إنهاء الفحص','Finish Exam')}
+                color="bg-green-500/20 text-green-400 hover:bg-green-500/30" />
+              <IconBtn action="ABSENT" patientId={patient.id}
+                icon={UserX} label={t('متغيب','Absent')}
+                color="bg-red-500/20 text-red-400 hover:bg-red-500/30" />
+              <IconBtn action="MOVE_TO_LAST" patientId={patient.id}
+                icon={RotateCcw} label={t('نقل للأخير','Move to End')}
+                color="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30" />
+              <IconBtn action="MILITARY_COMMITTEE" patientId={patient.id}
+                icon={ShieldCheck} label={t('لجنة عسكرية','Military Committee')}
+                color="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30" />
+              <button
+                title={t('تحويل عيادة','Transfer')}
+                onClick={() => setShowTransfer(showTransfer === patient.id ? null : patient.id)}
+                className="flex items-center justify-center w-11 h-11 rounded-xl
+                  bg-orange-500/20 text-orange-400 hover:bg-orange-500/30
+                  border border-white/10 transition-all hover:scale-105"
+              >
+                <ArrowRightLeft className="w-5 h-5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <IconBtn action="START_EXAM" patientId={patient.id}
+                icon={Stethoscope} label={t('بدء الفحص','Start Exam')}
+                color="bg-[#C9A54C]/20 text-[#C9A54C] hover:bg-[#C9A54C]/30" />
+              <IconBtn action="VIP" patientId={patient.id}
+                icon={Star} label={t('VIP','VIP')}
+                color="bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" />
+              <IconBtn action="ABSENT" patientId={patient.id}
+                icon={UserX} label={t('متغيب','Absent')}
+                color="bg-red-500/20 text-red-400 hover:bg-red-500/30" />
+              <IconBtn action="MOVE_TO_LAST" patientId={patient.id}
+                icon={RotateCcw} label={t('نقل للأخير','Move to End')}
+                color="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30" />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* تحويل العيادة - يظهر عند الضغط */}
+      {showTransfer === patient.id && (
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <p className="text-xs text-gray-400 mb-2">{t('اختر العيادة للتحويل:','Select target clinic:')}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {clinics.filter(c => c.id !== clinicId).map(clinic => (
+              <button key={clinic.id}
+                onClick={() => handleAction('TRANSFER_CLINIC', patient.id, { targetClinicId: clinic.id })}
+                className="px-3 py-1.5 text-xs bg-white/10 hover:bg-[#C9A54C]/20
+                  text-white rounded-lg border border-white/10 transition-all">
+                {language === 'ar' ? clinic.name_ar : clinic.name_en}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  /* ─── الواجهة الرئيسية ─── */
   return (
-    <div className="min-h-screen bg-[#0f1115] text-white p-4 sm:p-6 overflow-x-hidden">
+    <div className="min-h-screen bg-[#0b0b0f] text-white overflow-x-hidden">
       <NotificationSystem notifications={notifList} onDismiss={dismissNotif} />
 
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-900/40 p-6 rounded-2xl border border-white/5">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#C9A54C] to-[#8A1538] rounded-2xl flex items-center justify-center shadow-lg shadow-red-900/20">
-              <img src="/mms-logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-[#0b0b0f]/95 backdrop-blur border-b border-white/5 px-4 py-3">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#C9A54C] to-[#8A1538] rounded-xl
+              flex items-center justify-center">
+              <img src="/mms-logo.png" alt="MMC" className="w-7 h-7 object-contain" onError={e => { e.target.style.display='none' }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">{translate('اللجنة الطبية العسكرية', 'Military Medical Committee')}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="px-2 py-0.5 bg-[#C9A54C]/10 text-[#C9A54C] text-xs font-bold rounded-full border border-[#C9A54C]/20 uppercase">
-                  {clinicName}
-                </span>
-                <span className="text-gray-400 text-sm">د. {doctorData?.name || 'غير معروف'}</span>
+              <h1 className="text-sm font-bold leading-tight">
+                {t('لوحة تحكم الطبيب','Doctor Dashboard')}
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-[#C9A54C] font-bold uppercase">{clinicName}</span>
+                <span className="text-[10px] text-gray-500">{doctorData?.name || ''}</span>
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={toggleLanguage} className="text-gray-400 hover:text-white">
-              <Globe className="w-4 h-4 me-2" />
-              {language === 'ar' ? 'English' : 'العربية'}
-            </Button>
-            <Button variant="destructive" size="sm" onClick={onLogout} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20">
-              <LogOut className="w-4 h-4 me-2" />
-              {translate('خروج', 'Logout')}
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: translate('المنتظرين', 'Waiting'), value: stats.waitingNow, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-            { label: translate('المنتهين', 'Completed'), value: stats.completedToday, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
-            { label: translate('المتغيبين', 'Absent'), value: stats.absentCount, icon: UserX, color: 'text-red-400', bg: 'bg-red-400/10' },
-            { label: translate('الإجمالي', 'Total'), value: stats.totalToday, icon: Activity, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          ].map((stat, i) => (
-            <Card key={i} className="bg-gray-900/40 border-white/5 overflow-hidden relative group">
-              <div className={`absolute top-0 right-0 w-16 h-16 ${stat.bg} rounded-bl-full -mr-8 -mt-8 transition-all group-hover:scale-110`} />
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${stat.bg}`}>
-                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Action Area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Current Patient Card */}
-            <Card className="bg-gradient-to-br from-gray-900 to-black border-white/10 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C9A54C] via-[#8A1538] to-[#C9A54C]" />
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-[#C9A54C]" />
-                    {translate('المراجع الحالي', 'Current Patient')}
-                  </span>
-                  {currentPatient && (
-                    <div className="flex items-center gap-2 bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20">
-                      <Timer className="w-4 h-4 animate-pulse" />
-                      <span className="font-mono font-bold text-lg">{examTimer}</span>
-                    </div>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {currentPatient ? (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5">
-                      <div className="space-y-1">
-                        <p className="text-sm text-gray-400 uppercase tracking-wider">{translate('رقم الدور', 'Queue Number')}</p>
-                        <h2 className="text-5xl font-black text-white">{currentPatient.display_number}</h2>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <p className="text-sm text-gray-400">{translate('نوع الفحص', 'Exam Type')}</p>
-                        <p className="text-xl font-bold text-[#C9A54C]">{currentPatient.exam_type || translate('عام', 'General')}</p>
-                        {currentPatient.is_vip && (
-                          <span className="inline-flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-xs font-bold border border-yellow-500/20">
-                            <Star className="w-3 h-3 fill-current" /> VIP
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <Button 
-                        variant="gradient" 
-                        className="h-14 font-bold" 
-                        onClick={() => handleAction('FINISH_EXAM', currentPatient.id)}
-                        disabled={loading}
-                      >
-                        <CheckCircle className="w-5 h-5 me-2" />
-                        {translate('إنهاء الفحص', 'Finish')}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-14 border-white/10 hover:bg-white/5"
-                        onClick={() => handleAction('ABSENT', currentPatient.id)}
-                        disabled={loading}
-                      >
-                        <UserX className="w-5 h-5 me-2 text-red-400" />
-                        {translate('عدم حضور', 'Absent')}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-14 border-white/10 hover:bg-white/5"
-                        onClick={() => handleAction('MOVE_TO_LAST', currentPatient.id)}
-                        disabled={loading}
-                      >
-                        <RotateCcw className="w-5 h-5 me-2 text-blue-400" />
-                        {translate('ترحيل للأخير', 'Last')}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="h-14 border-white/10 hover:bg-white/5"
-                        onClick={() => handleAction('MILITARY_COMMITTEE', currentPatient.id)}
-                        disabled={loading}
-                      >
-                        <ShieldCheck className="w-5 h-5 me-2 text-purple-400" />
-                        {translate('اللجنة العسكرية', 'Military')}
-                      </Button>
-                    </div>
-                    
-                    <div className="pt-4 border-t border-white/5">
-                      <p className="text-xs text-gray-500 mb-3 uppercase font-bold tracking-widest">{translate('تحويل لعيادة أخرى', 'Transfer to Clinic')}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {clinics.filter(c => c.id !== clinicId).slice(0, 4).map(clinic => (
-                          <Button 
-                            key={clinic.id} 
-                            variant="ghost" 
-                            size="sm" 
-                            className="bg-white/5 hover:bg-[#C9A54C]/20 text-xs border border-white/5"
-                            onClick={() => handleAction('TRANSFER_CLINIC', currentPatient.id, { targetClinicId: clinic.id })}
-                          >
-                            <Building2 className="w-3 h-3 me-1" />
-                            {language === 'ar' ? clinic.name_ar : clinic.name_en}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-12 text-center space-y-4">
-                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/5">
-                      <Users className="w-10 h-10 text-gray-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-gray-400">{translate('لا يوجد مراجع حالي', 'No Active Patient')}</h3>
-                      <p className="text-sm text-gray-500">{translate('قم باستدعاء المراجع التالي من القائمة', 'Call the next patient from the waiting list')}</p>
-                    </div>
-                    <Button 
-                      variant="gradientSecondary" 
-                      size="lg" 
-                      className="mt-4 px-12 h-14 text-lg font-black shadow-xl shadow-red-900/20"
-                      onClick={() => handleAction('CALL_NEXT')}
-                      disabled={loading || patients.length === 0}
-                    >
-                      <TrendingUp className="w-6 h-6 me-3" />
-                      {translate('استدعاء المراجع التالي', 'Call Next Patient')}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Waiting List Sidebar */}
-          <div className="space-y-6">
-            <Card className="bg-gray-900/40 border-white/5 h-full flex flex-col">
-              <CardHeader className="border-b border-white/5 pb-4">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-400" />
-                    {translate('قائمة الانتظار', 'Waiting List')}
-                  </span>
-                  <span className="bg-blue-400/10 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-400/20">
-                    {patients.length}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 flex-grow overflow-y-auto max-h-[600px] custom-scrollbar">
-                {patients.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500 italic">
-                    {translate('القائمة فارغة', 'List is empty')}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-white/5">
-                    {patients.map((patient) => (
-                      <div key={patient.id} className={`p-4 hover:bg-white/5 transition-colors group ${patient.status === 'called' ? 'bg-yellow-500/5' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl border shadow-inner ${
-                              patient.status === 'called' 
-                                ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-500' 
-                                : 'bg-gray-800 border-white/10 text-white'
-                            }`}>
-                              {patient.display_number}
-                            </div>
-                            <div>
-                              <div className="font-bold flex items-center gap-2">
-                                {translate(`مراجع رقم ${patient.display_number}`, `Patient #${patient.display_number}`)}
-                                {patient.is_vip && <Star className="w-3 h-3 text-yellow-500 fill-current" />}
-                              </div>
-                              <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                                <Clock className="w-3 h-3" />
-                                {new Date(patient.entered_at || patient.created_at).toLocaleTimeString(language === 'ar' ? 'ar-QA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {patient.status === 'called' ? (
-                              <Button 
-                                size="sm" 
-                                variant="gradient" 
-                                className="h-8 text-xs font-bold"
-                                onClick={() => handleAction('START_EXAM', patient.id)}
-                                disabled={loading || currentPatient}
-                              >
-                                <UserCheck className="w-3 h-3 me-1" /> {translate('بدء', 'Start')}
-                              </Button>
-                            ) : (
-                              <div className="flex gap-1">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-8 w-8 p-0 bg-white/5 hover:bg-yellow-500/20 text-yellow-500"
-                                  onClick={() => handleAction('MARK_VIP', patient.id)}
-                                  title={translate('تمييز VIP', 'Mark VIP')}
-                                >
-                                  <Star className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-8 w-8 p-0 bg-white/5 hover:bg-red-500/20 text-red-500"
-                                  onClick={() => handleAction('ABSENT', patient.id)}
-                                  title={translate('غياب', 'Absent')}
-                                >
-                                  <UserX className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-              <div className="p-4 bg-black/20 border-t border-white/5">
-                <p className="text-[10px] text-center text-gray-600 uppercase tracking-widest font-bold">
-                  {translate('نظام إدارة طوابير اللجنة الطبية', 'MMC Queue Management System')}
-                </p>
-              </div>
-            </Card>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchPatients} disabled={loading}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#C9A54C]' : 'text-gray-400'}`} />
+            </button>
+            <button onClick={toggleLanguage}
+              className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 transition-all">
+              <Globe className="w-3.5 h-3.5 inline me-1" />
+              {language === 'ar' ? 'EN' : 'ع'}
+            </button>
+            <button onClick={onLogout}
+              className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500 text-red-400
+                hover:text-white rounded-lg border border-red-500/20 transition-all">
+              <LogOut className="w-3.5 h-3.5 inline me-1" />
+              {t('خروج','Logout')}
+            </button>
           </div>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-      `}} />
+
+      <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
+
+        {/* بطاقات الإحصائيات — أيقونة موحدة */}
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+          {[
+            { label: t('انتظار','Waiting'), val: stats.waitingNow,      icon: Users,        color: 'text-blue-400',   bg: 'bg-blue-500/10' },
+            { label: t('قيد الفحص','In Exam'), val: currentPatient ? 1 : 0, icon: Activity,     color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+            { label: t('مكتمل','Done'),      val: stats.completedToday, icon: CheckCircle,  color: 'text-green-400',  bg: 'bg-green-500/10' },
+            { label: t('غياب','Absent'),     val: stats.absentCount,    icon: UserX,        color: 'text-red-400',    bg: 'bg-red-500/10' },
+            { label: t('متوسط انتظار','Avg Wait'), val: stats.avgWait + t('د','m'), icon: Clock, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+          ].map((s,i) => (
+            <div key={i} className={`${s.bg} border border-white/10 rounded-xl p-3 text-center`}>
+              <s.icon className={`w-5 h-5 ${s.color} mx-auto mb-1`} />
+              <p className={`text-xl font-black ${s.color}`}>{s.val}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+          {/* المريض الحالي */}
+          <div className="lg:col-span-2">
+            <div className="bg-gradient-to-b from-[#12121a] to-[#0b0b0f] border border-white/10 rounded-2xl overflow-hidden">
+              <div className="h-0.5 bg-gradient-to-r from-[#C9A54C] via-[#8A1538] to-[#C9A54C]" />
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#C9A54C]" />
+                    {t('المراجع الحالي','Current Patient')}
+                  </h2>
+                  {currentPatient && (
+                    <div className="flex items-center gap-1.5 bg-red-500/10 text-red-400
+                      px-2.5 py-1 rounded-full border border-red-500/20 text-xs">
+                      <Timer className="w-3.5 h-3.5 animate-pulse" />
+                      <span className="font-mono font-bold">{examTimer}</span>
+                    </div>
+                  )}
+                </div>
+
+                {currentPatient ? (
+                  <PatientRow patient={currentPatient} isCurrentPatient={true} />
+                ) : (
+                  <div className="py-8 text-center">
+                    <Users className="w-12 h-12 text-gray-700 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500 mb-4">{t('لا يوجد مراجع حالي','No current patient')}</p>
+                    <button
+                      onClick={() => handleAction('CALL_NEXT', 'none')}
+                      disabled={stats.waitingNow === 0 || !!actionLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#C9A54C] text-black
+                        font-bold rounded-xl hover:bg-[#B8943D] transition-all mx-auto
+                        disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {actionLoading === 'CALL_NEXTnone'
+                        ? <RefreshCw className="w-4 h-4 animate-spin" />
+                        : <Phone className="w-4 h-4" />
+                      }
+                      {t('استدعاء التالي','Call Next')}
+                      {stats.waitingNow > 0 && (
+                        <span className="bg-black/20 text-black text-xs px-2 py-0.5 rounded-full font-bold">
+                          {stats.waitingNow}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* قائمة الانتظار */}
+          <div className="lg:col-span-3">
+            <div className="bg-[#12121a] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                <h2 className="text-sm font-bold flex items-center gap-2 text-gray-300">
+                  <Users className="w-4 h-4 text-blue-400" />
+                  {t('قائمة الانتظار','Waiting List')}
+                  <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-bold">
+                    {patients.length}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => handleAction('CALL_NEXT', 'none')}
+                  disabled={stats.waitingNow === 0 || !!actionLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A54C] text-black
+                    text-xs font-bold rounded-lg hover:bg-[#B8943D] transition-all
+                    disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {actionLoading === 'CALL_NEXTnone'
+                    ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    : <Phone className="w-3.5 h-3.5" />
+                  }
+                  {t('التالي','Next')}
+                </button>
+              </div>
+
+              <div className="overflow-y-auto max-h-[500px]">
+                {patients.length === 0 ? (
+                  <div className="py-12 text-center text-gray-600">
+                    <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">{t('القائمة فارغة','No patients waiting')}</p>
+                  </div>
+                ) : (
+                  patients.map(p => <PatientRow key={p.id} patient={p} isCurrentPatient={false} />)
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+
+export default DoctorDashboard
