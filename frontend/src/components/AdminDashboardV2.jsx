@@ -5642,11 +5642,11 @@ const SmartSystemPanel = ({ language, t }) => {
       }]); } catch(_e) {}
 
       if (!isOk) {
-        await supabase.from('qa_findings').insert([{
+        try { await supabase.from('qa_findings').insert([{
           severity: 'high', type: 'db_error',
           description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
           is_resolved: false, created_at: new Date().toISOString()
-        }]).catch(() => {});
+        }]); } catch(_e) {}
         toast.error(t('⚠️ الفحص اكتمل — وُجدت مشاكل', 'QA completed — issues found'));
       } else {
         toast.success(t('✅ الفحص اكتمل — النظام سليم 100%', '✅ QA completed — system healthy'));
