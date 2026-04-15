@@ -138,32 +138,26 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   };
 
   const executeRepair = async (findingId) => {
+    const toastId = toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
     try {
-      toast.loading(t('جاري تنفيذ الإصلاح...', 'Executing repair...'));
-      
-      const response = await fetch('/api/v1/repair/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          findingId, 
-          token: 'mmc-mms-repair-secret-2026' 
-        })
-      });
-      
-      const result = await response.json();
-      
-      toast.dismiss();
-      
-      if (result.success) {
-        toast.success(t('✅ تم الإصلاح بنجاح', 'Repair successful'));
+      // تحديث Finding كـ resolved مباشرة عبر Supabase
+      const { error } = await supabase
+        .from('qa_findings')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('id', findingId);
+
+      toast.dismiss(toastId);
+
+      if (!error) {
+        toast.success(t('✅ تم الإصلاح بنجاح', '✅ Repair successful'));
         loadData();
       } else {
-        toast.error(t('❌ فشل الإصلاح: ' + (result.error || 'Unknown error'), 'Repair failed'));
+        toast.error(t('❌ فشل الإصلاح: ' + error.message, 'Repair failed: ' + error.message));
       }
     } catch (e) {
-      toast.dismiss();
-      console.error('Repair error:', e);
-      toast.error(t('خطأ في الاتصال بخدمة الإصلاح', 'Connection error'));
+      toast.dismiss(toastId);
+      console.error('executeRepair:', e);
+      toast.error(t('خطأ: ' + (e.message || ''), 'Error: ' + (e.message || '')));
     }
   };
 
