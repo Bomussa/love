@@ -158,27 +158,18 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
         return;
       }
 
-      const nextPatient = waitingPatients[0];
-      
-      const { error } = await supabase
-        .from('queues')
-        .update({
-          status: 'in_progress',
-          called_at: new Date().toISOString(),
-          doctor_id: doctorId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', nextPatient.id);
-
+      // استدعاء عبر RPC المحمية (بدون PIN — VIP أولاً)
+      const { data: cd, error } = await supabase.rpc('call_next_patient', {
+        p_clinic_id: selectedClinic,
+        p_mark_current_done: false
+      });
       if (error) throw error;
-
-      toast.success(translate(`تم استدعاء المريض رقم ${nextPatient.display_number}`, 
-        `Patient ${nextPatient.display_number} called`));
-      
-      // Log activity
-      await logActivity('patient_called', `تم استدعاء المريض ${nextPatient.real_patient_id}`, 
-        { patient_id: nextPatient.patient_id, queue_id: nextPatient.id });
-
+      const num = cd?.data?.display_number;
+      if (num) {
+        toast.success(translate(`✅ تم استدعاء رقم ${num}`, `✅ Called #${num}`));
+      } else {
+        toast.info(translate('لا يوجد مرضى في الانتظار', 'No patients waiting'));
+      }
       loadPatients();
 
     } catch (e) {
