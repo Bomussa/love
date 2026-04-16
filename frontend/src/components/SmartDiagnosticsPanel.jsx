@@ -266,14 +266,16 @@ const SmartDiagnosticsPanelInner = ({ language, t: tProp }) => {
     }
 
     // --- الذاكرة ---
-    const mem = performance.memory;
-    const mb = mem ? Math.round(mem.usedJSHeapSize / 1048576) : null;
+    // performance.memory متاح فقط في Chrome/Edge — استخدام optional chaining
+    const mem = performance?.memory;
+    const mb = (mem && mem.usedJSHeapSize) ? Math.round(mem.usedJSHeapSize / 1048576) : null;
+    const lsKB = Math.round(JSON.stringify(localStorage).length * 2 / 1024);
     results.push({
       id: 'memory', category: t('الأداء', 'Performance'),
       name: t('استهلاك الذاكرة', 'Memory Usage'),
-      status: !mb ? 'ok' : mb < 150 ? 'ok' : mb < 250 ? 'warning' : 'error',
-      detail: mb ? `${mb} MB` : t('غير متاح', 'N/A'),
-      fixable: mb > 250, fixStrategy: 'clear_cache',
+      status: mb ? (mb < 150 ? 'ok' : mb < 250 ? 'warning' : 'error') : 'ok',
+      detail: mb ? `${mb} MB` : `localStorage: ${lsKB} KB`,
+      fixable: mb ? mb > 250 : false, fixStrategy: 'clear_cache',
     });
 
     // الإحصائيات
