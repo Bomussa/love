@@ -358,8 +358,13 @@ export async function getDynamicMedicalPathway(examType, gender) {
  * @param {Object[]} stations - مصفوفة المحطات
  * @returns {Object[]} - المحطات المحدثة
  */
-export function enrichStationsWithClinicData(stations) {
+export async function enrichStationsWithClinicData(stations) {
   if (!stations || !Array.isArray(stations)) return stations;
+
+  // Ensure clinicsData is loaded
+  if (!clinicsData) {
+    await loadConfigFiles();
+  }
 
   return stations.map((station) => {
     // البحث عن العيادة في clinicsData باستخدام id أو code

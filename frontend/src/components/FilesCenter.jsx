@@ -1095,10 +1095,22 @@ const FilesCenter = ({ language = 'ar', t }) => {
     setOpenMenu(null);
   };
 
-  const handleSaveEdit = () => {
-    showNotif(isAr ? `تم حفظ التعديلات على ${openFile.name}` : `Changes saved for ${openFile.name}`);
-    setEditMode(false);
-    if (openFile) setOpenFile({ ...openFile, content: editContent });
+  const handleSaveEdit = async () => {
+    if (!openFile) return;
+    showNotif(isAr ? 'جاري حفظ التعديلات...' : 'Saving changes...');
+    try {
+      const { error } = await supabase
+        .from('system_docs')
+        .update({ content: editContent, updated_at: new Date().toISOString() })
+        .eq('id', openFile.id);
+      if (error) throw error;
+      showNotif(isAr ? `تم حفظ التعديلات على ${openFile.name}` : `Changes saved for ${openFile.name}`);
+      setEditMode(false);
+      setOpenFile({ ...openFile, content: editContent });
+    } catch (e) {
+      console.error('Error saving file:', e);
+      showNotif(isAr ? 'فشل حفظ التعديلات: ' + (e.message || '') : 'Failed to save: ' + (e.message || ''));
+    }
   };
 
   // ===== تصميم الأيقونة =====

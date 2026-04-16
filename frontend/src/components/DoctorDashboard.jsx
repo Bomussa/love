@@ -42,7 +42,7 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
       const today = new Date().toISOString().split('T')[0]
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('*')
+        .select('id, display_number, patient_name, patient_id, status, entered_at, called_at, exam_start_time, completed_at, queue_date, clinic_id, route_id, current_station_index')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .order('display_number', { ascending: true })
@@ -111,6 +111,10 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
   /* ─── تنفيذ الإجراءات ─── */
   const handleAction = async (actionType, patientId, payload = {}) => {
+    if (!clinicId) {
+      pushNotif({ type: 'error', message: t('خطأ: معرف العيادة غير موجود', 'Error: Clinic ID is missing') })
+      return
+    }
     setActionLoading(actionType + patientId)
     try {
       const patient = currentPatient?.id === patientId ? currentPatient : patients.find(p => p.id === patientId)
@@ -237,8 +241,14 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
 
       await fetchPatients()
     } catch (err) {
-      console.error('handleAction error:', err)
-      pushNotif({ type: 'error', message: t('خطأ: ','Error: ') + (err.message || String(err)) })
+      console.error('handleAction error:', actionType, err)
+      let errMsg = err.message || String(err)
+      if (errMsg.includes('violates not-null')) {
+        errMsg = t('بيانات ناقصة، لا يمكن إتمام العملية', 'Incomplete data, cannot complete action')
+      } else if (errMsg.includes('TypeError')) {
+        errMsg = t('خطأ داخلي في التطبيق', 'Internal application error')
+      }
+      pushNotif({ type: 'error', title: t('فشل الإجراء', 'Action Failed'), message: errMsg })
     } finally {
       setActionLoading(null)
     }

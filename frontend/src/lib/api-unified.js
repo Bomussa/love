@@ -1,6 +1,7 @@
 
 import { supabase } from './supabase-client';
 import { initGDS } from './guaranteed-data-system';
+import { getDynamicMedicalPathway } from './dynamic-pathways';
 
 /**
  * Unified API Service - Direct Supabase Implementation (V2 - Excellence Standard)
@@ -462,18 +463,35 @@ const api = {
 
       const nextNumber = (lastEntry?.display_number || 0) + 1;
 
-      // Insert into unified_queue
+      // Get dynamic pathway for the patient
+      let pathway = [];
+      let firstClinicId = null;
+      try {
+        pathway = await getDynamicMedicalPathway(examType, gender);
+        if (pathway && pathway.length > 0) {
+          firstClinicId = pathway[0].id || null;
+        }
+      } catch (pathErr) {
+        console.warn('Dynamic pathway error, continuing without route:', pathErr);
+      }
+
+      // Insert into unified_queue with first clinic
+      const insertData = {
+        patient_id: patientId,
+        exam_type: examType,
+        gender: gender,
+        display_number: nextNumber,
+        status: 'waiting',
+        queue_date: today,
+        entered_at: new Date().toISOString()
+      };
+      if (firstClinicId) {
+        insertData.clinic_id = firstClinicId;
+      }
+
       const { data, error } = await supabase
         .from('unified_queue')
-        .insert([{
-          patient_id: patientId,
-          exam_type: examType,
-          gender: gender,
-          display_number: nextNumber,
-          status: 'waiting',
-          queue_date: today,
-          entered_at: new Date().toISOString()
-        }])
+        .insert([insertData])
         .select()
         .single();
 
@@ -483,12 +501,58 @@ const api = {
         data: {
           queueId: data.id,
           number: data.display_number,
-          clinicId: null,
-          path: []
+          clinicId: firstClinicId,
+          path: pathway
         }
       };
     } catch (error) {
       console.error('Create Queue Error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // --- Doctor Login ---
+  async doctorLogin(username, password) {
+    try {
+      const { data: doctor, error } = await supabase
+        .from('doctors')
+        .select('*')
+        .eq('username', username.toLowerCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (doctor) {
+        // Check password (plain or hash)
+        const passwordMatch = doctor.password_hash 
+          ? doctor.password_hash === password 
+          : doctor.password === password;
+        
+        if (passwordMatch) {
+          // Get clinic name
+          let clinic_name = doctor.clinic_id;
+          if (doctor.clinic_id) {
+            try {
+              const { data: clinic } = await supabase
+                .from('clinics')
+                .select('name, name_ar')
+                .eq('id', doctor.clinic_id)
+                .single();
+              if (clinic) clinic_name = clinic.name_ar || clinic.name;
+            } catch (_e) {}
+          }
+          return { 
+            success: true, 
+            role: doctor.role || 'DOCTOR', 
+            data: { ...doctor, clinic_name } 
+          };
+        }
+      }
+
+      return { success: false, message: 'Invalid credentials' };
+    } catch (error) {
+      console.error('Doctor Login Error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -509,12 +573,24 @@ const api = {
       const { data: doctor, error: docError } = await supabase
         .from('doctors')
         .select('*')
-        .eq('username', username)
-        .eq('password', password)
+        .eq('username', username.toLowerCase())
+        .eq('is_active', true)
         .maybeSingle();
 
       if (doctor) {
-        return { success: true, role: 'DOCTOR', data: doctor };
+        // Check password_hash if available, fallback to plain password
+        const passwordMatch = doctor.password_hash 
+          ? doctor.password_hash === password || doctor.password_hash === await (async () => {
+              const encoder = new TextEncoder();
+              const data = encoder.encode(password);
+              const hash = await crypto.subtle.digest('SHA-256', data);
+              return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+            })()
+          : doctor.password === password;
+        
+        if (passwordMatch) {
+          return { success: true, role: doctor.role || 'DOCTOR', data: doctor };
+        }
       }
 
       return { success: false, message: 'Invalid credentials' };

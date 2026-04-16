@@ -226,8 +226,17 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
         updated_at: new Date().toISOString()
       }));
 
-      for (const update of updates) {
-        await supabase.from('settings').upsert(update);
+      // Batch upsert all settings at once for better performance
+      const { error: upsertErr } = await supabase.from('settings').upsert(updates, { onConflict: 'key' });
+      if (upsertErr) {
+        // Fallback: try one by one if batch fails
+        console.warn('Batch upsert failed, trying individually:', upsertErr.message);
+        let failCount = 0;
+        for (const update of updates) {
+          const { error: singleErr } = await supabase.from('settings').upsert(update, { onConflict: 'key' });
+          if (singleErr) failCount++;
+        }
+        if (failCount > 0) throw new Error(`${failCount} settings failed to save`);
       }
 
       setHasChanges(false);

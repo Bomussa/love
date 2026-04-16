@@ -4642,6 +4642,14 @@ const BackupExport = ({ language, t }) => {
             <FileText size={18} /> {t('طباعة الطوابير', 'Print Queues')}
           </button>
           <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: t('تقرير الطوابير', 'Queue Report'), url: window.location.href });
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+                toast?.success?.(t('تم نسخ الرابط', 'Link copied'));
+              }
+            }}
             className="px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-2"
           >
             <Share2 size={18} /> {t('مشاركة', 'Share')}
@@ -5286,7 +5294,22 @@ const AppearanceManagement = ({ language, t }) => {
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mb-2"
                     placeholder="URL or path"
                   />
-                  <button className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setSettings({...settings, logoUrl: ev.target.result});
+                          reader.readAsDataURL(file);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2 hover:bg-white/20 transition-all cursor-pointer">
                     <Upload size={16} /> {t('رفع شعار', 'Upload Logo')}
                   </button>
                 </div>
@@ -5304,7 +5327,22 @@ const AppearanceManagement = ({ language, t }) => {
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 mb-2"
                     placeholder="URL or path"
                   />
-                  <button className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setSettings({...settings, faviconUrl: ev.target.result});
+                          reader.readAsDataURL(file);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="px-4 py-2 bg-white/10 rounded-lg text-sm flex items-center gap-2 hover:bg-white/20 transition-all cursor-pointer">
                     <Upload size={16} /> {t('رفع أيقونة', 'Upload Icon')}
                   </button>
                 </div>
@@ -5619,34 +5657,71 @@ const SmartSystemPanel = ({ language, t }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data: runs } = await supabase.from('qa_runs').select('*').order('created_at', { ascending: false }).limit(10);
-      const { data: fnd } = await supabase.from('qa_findings').select('*').order('created_at', { ascending: false }).limit(20);
-      setQaRuns(runs || []);
-      setFindings(fnd || []);
+      const { data: runs, error: runsErr } = await supabase.from('qa_runs').select('*').order('created_at', { ascending: false }).limit(10);
+      if (!runsErr) setQaRuns(runs || []);
+      else console.warn('qa_runs table not available:', runsErr.message);
     } catch (e) {
-      console.error('Error loading QA data:', e);
-    } finally {
-      setLoading(false);
+      console.warn('qa_runs load skipped:', e.message);
     }
+    try {
+      const { data: fnd, error: fndErr } = await supabase.from('qa_findings').select('*').order('created_at', { ascending: false }).limit(20);
+      if (!fndErr) setFindings(fnd || []);
+      else console.warn('qa_findings table not available:', fndErr.message);
+    } catch (e) {
+      console.warn('qa_findings load skipped:', e.message);
+    }
+    setLoading(false);
   };
 
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      const { data: health, error } = await supabase.rpc('get_system_health');
-      if (error) throw error;
-      const isOk = !health?.tables_error || health.tables_error === 0;
+      // Try RPC first, fallback to manual health check
+      let health = null;
+      let isOk = true;
+      try {
+        const { data: rpcHealth, error: rpcErr } = await supabase.rpc('get_system_health');
+        if (!rpcErr && rpcHealth) {
+          health = rpcHealth;
+          isOk = !health?.tables_error || health.tables_error === 0;
+        } else {
+          // Fallback: check tables manually
+          const tables = ['clinics', 'doctors', 'patients', 'unified_queue', 'system_settings'];
+          const results = {};
+          let errors = 0;
+          for (const table of tables) {
+            try {
+              const { count, error: tErr } = await supabase.from(table).select('*', { count: 'exact', head: true });
+              results[table] = { count: count || 0, ok: !tErr };
+              if (tErr) errors++;
+            } catch { results[table] = { count: 0, ok: false }; errors++; }
+          }
+          health = { tables: results, tables_error: errors, checked_at: new Date().toISOString() };
+          isOk = errors === 0;
+        }
+      } catch (rpcFail) {
+        console.warn('RPC and manual health check failed:', rpcFail);
+        health = { error: rpcFail.message, checked_at: new Date().toISOString() };
+        isOk = false;
+      }
 
-      try { await supabase.from('qa_runs').insert([{
-        ok: isOk, result: health, created_at: new Date().toISOString()
-      }]); } catch(_e) {}
+      // Try to save QA run (table may not exist)
+      try {
+        const { error: insertErr } = await supabase.from('qa_runs').insert([{
+          ok: isOk, result: health, created_at: new Date().toISOString()
+        }]);
+        if (insertErr) console.warn('qa_runs insert skipped:', insertErr.message);
+      } catch(_e) {}
 
       if (!isOk) {
-        try { await supabase.from('qa_findings').insert([{
-          severity: 'high', type: 'db_error',
-          description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
-          is_resolved: false, created_at: new Date().toISOString()
-        }]); } catch(_e) {}
+        try {
+          const { error: findingErr } = await supabase.from('qa_findings').insert([{
+            severity: 'high', type: 'db_error',
+            description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
+            is_resolved: false, created_at: new Date().toISOString()
+          }]);
+          if (findingErr) console.warn('qa_findings insert skipped:', findingErr.message);
+        } catch(_e) {}
         toast.error(t('⚠️ الفحص اكتمل — وُجدت مشاكل', 'QA completed — issues found'));
       } else {
         toast.success(t('✅ الفحص اكتمل — النظام سليم 100%', '✅ QA completed — system healthy'));

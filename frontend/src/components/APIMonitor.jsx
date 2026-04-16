@@ -150,7 +150,13 @@ const APIMonitor = ({ language = 'ar', t }) => {
       const startTime = Date.now();
       
       // محاولة استدعاء الدالة بدون معاملات للتحقق من وجودها
-      const { error } = await supabase.rpc(funcName, {}).catch(() => ({ error: null }));
+      let error = null;
+      try {
+        const result = await supabase.rpc(funcName, {});
+        error = result.error;
+      } catch (_e) {
+        error = null; // function exists but threw
+      }
       
       const responseTime = Date.now() - startTime;
       

@@ -218,6 +218,13 @@ function App() {
         firstClinic.id, patientId, false,
         patientData?.name, examType
       );
+      // Save route to database for PatientPage to retrieve later
+      try {
+        await api.createRoute(patientId, examType, patientData?.gender || 'male', clinics);
+      } catch (routeErr) {
+        console.warn('[App] Failed to save route:', routeErr);
+      }
+
       const updatedData = {
         ...patientData,
         queueType: examType,

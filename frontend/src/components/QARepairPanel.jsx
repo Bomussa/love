@@ -102,11 +102,28 @@ const QARepairPanel = ({ language = 'ar', t }) => {
   const startDeepQA = async () => {
     setRunning(true);
     try {
-      // استخدام Supabase مباشرة (لا يوجد /api/v1/qa/deep_run في Vercel)
-      const { data: health, error } = await supabase.rpc('get_system_health');
-      if (error) throw error;
-
-      const isOk = health?.tables_error === 0;
+      // Try RPC first, fallback to manual health check
+      let health = null;
+      let isOk = true;
+      const { data: rpcHealth, error: rpcErr } = await supabase.rpc('get_system_health');
+      if (!rpcErr && rpcHealth) {
+        health = rpcHealth;
+        isOk = !health?.tables_error || health.tables_error === 0;
+      } else {
+        // Fallback: check tables manually
+        const tables = ['clinics', 'doctors', 'patients', 'unified_queue', 'system_settings'];
+        const results = {};
+        let errors = 0;
+        for (const table of tables) {
+          try {
+            const { count, error: tErr } = await supabase.from(table).select('*', { count: 'exact', head: true });
+            results[table] = { count: count || 0, ok: !tErr };
+            if (tErr) errors++;
+          } catch { results[table] = { count: 0, ok: false }; errors++; }
+        }
+        health = { tables: results, tables_error: errors, checked_at: new Date().toISOString() };
+        isOk = errors === 0;
+      }
 
       // تسجيل نتيجة الفحص
       try {
