@@ -204,29 +204,19 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   };
 
   /**
-   * Mark patient as missed
+   * Mark patient as absent (unified_queue, status no_show)
    */
   const markMissed = async (patient) => {
     try {
       const { error } = await supabase
-        .from('queues')
-        .update({
-          status: 'missed',
-          updated_at: new Date().toISOString()
-        })
+        .from('unified_queue')
+        .update({ status: 'no_show', notes: translate('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA') })
         .eq('id', patient.id);
-
       if (error) throw error;
-
       toast.info(translate('تم تسجيل الغياب', 'Absence recorded'));
-      
-      await logActivity('patient_missed', `تم تسجيل غياب المريض ${patient.real_patient_id}`,
-        { patient_id: patient.patient_id, queue_id: patient.id });
-
       loadPatients();
-
     } catch (e) {
-      console.error('Error marking missed:', e);
+      console.error('markMissed:', e);
       toast.error(translate('خطأ في تسجيل الغياب', 'Error recording absence'));
     }
   };
@@ -236,61 +226,39 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
    */
   const moveToEnd = async (patient) => {
     try {
-      // Get max display number
-      const maxNumber = Math.max(...patients.map(p => p.display_number || 0), 0);
-      
+      const { data: last } = await supabase
+        .from('unified_queue')
+        .select('display_number')
+        .eq('clinic_id', selectedClinic)
+        .order('display_number', { ascending: false })
+        .limit(1).maybeSingle();
       const { error } = await supabase
-        .from('queues')
-        .update({
-          status: 'waiting',
-          display_number: maxNumber + 1,
-          called_at: null,
-          updated_at: new Date().toISOString()
-        })
+        .from('unified_queue')
+        .update({ status: 'waiting', display_number: (last?.display_number || 0) + 1, called_at: null })
         .eq('id', patient.id);
-
       if (error) throw error;
-
-      toast.success(translate('تم نقل المريض لآخر الصف', 'Patient moved to end of queue'));
-      
-      await logActivity('patient_moved', `تم نقل المريض ${patient.real_patient_id} لآخر الصف`,
-        { patient_id: patient.patient_id, queue_id: patient.id });
-
+      toast.success(translate('تم نقل المريض لآخر الصف', 'Patient moved to end'));
       loadPatients();
-
     } catch (e) {
-      console.error('Error moving patient:', e);
+      console.error('moveToEnd:', e);
       toast.error(translate('خطأ في نقل المريض', 'Error moving patient'));
     }
   };
 
   /**
-   * Return patient to queue (undo)
+   * Return patient to waiting status
    */
   const returnToQueue = async (patient) => {
     try {
       const { error } = await supabase
-        .from('queues')
-        .update({
-          status: 'waiting',
-          called_at: null,
-          entered_at: null,
-          completed_at: null,
-          updated_at: new Date().toISOString()
-        })
+        .from('unified_queue')
+        .update({ status: 'waiting', called_at: null })
         .eq('id', patient.id);
-
       if (error) throw error;
-
       toast.success(translate('تم إعادة المريض للصف', 'Patient returned to queue'));
-      
-      await logActivity('patient_returned', `تم إعادة المريض ${patient.real_patient_id} للصف`,
-        { patient_id: patient.patient_id, queue_id: patient.id });
-
       loadPatients();
-
     } catch (e) {
-      console.error('Error returning patient:', e);
+      console.error('returnToQueue:', e);
       toast.error(translate('خطأ في إعادة المريض', 'Error returning patient'));
     }
   };
