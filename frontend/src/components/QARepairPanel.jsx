@@ -109,21 +109,29 @@ const QARepairPanel = ({ language = 'ar', t }) => {
       const isOk = health?.tables_error === 0;
 
       // تسجيل نتيجة الفحص
-      await supabase.from('qa_runs').insert([{
-        ok: isOk,
-        result: health,
-        created_at: new Date().toISOString()
-      }]).catch(() => {});
+      try {
+        await supabase.from('qa_runs').insert([{
+          ok: isOk,
+          result: health,
+          created_at: new Date().toISOString()
+        }]);
+      } catch (insertErr) {
+        console.warn('Failed to insert qa_runs:', insertErr);
+      }
 
       // إذا وجدت مشاكل، سجل findings
       if (!isOk) {
-        await supabase.from('qa_findings').insert([{
-          severity: 'high',
-          type: 'db_error',
-          description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
-          is_resolved: false,
-          created_at: new Date().toISOString()
-        }]).catch(() => {});
+        try {
+          await supabase.from('qa_findings').insert([{
+            severity: 'high',
+            type: 'db_error',
+            description: `${health?.tables_error || 0} جدول يحتوي أخطاء`,
+            is_resolved: false,
+            created_at: new Date().toISOString()
+          }]);
+        } catch (findingErr) {
+          console.warn('Failed to insert qa_findings:', findingErr);
+        }
         toast.error(t('⚠️ اكتمل الفحص - وُجدت مشاكل', 'QA completed - Issues found'));
       } else {
         toast.success(t('✅ اكتمل الفحص - النظام سليم 100%', 'QA completed - System healthy'));

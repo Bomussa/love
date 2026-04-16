@@ -98,7 +98,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
       name: '',
       username: '',
       password: '',
-      clinic_id: clinics.length > 0 ? clinics[0].id : '',
+      clinic_id: '',
       specialty: '',
       phone: '',
       email: '',
@@ -147,6 +147,10 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
       }
       if (!editingDoctor && !formData.password.trim()) {
         toast.error(translate('كلمة المرور مطلوبة', 'Password is required'));
+        return;
+      }
+      if (!formData.clinic_id) {
+        toast.error(translate('يجب اختيار العيادة', 'Clinic is required'));
         return;
       }
 
@@ -290,7 +294,9 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
       (d.name || '').toLowerCase().includes(searchLower) ||
       (d.username || '').toLowerCase().includes(searchLower) ||
       (d.specialty || '').toLowerCase().includes(searchLower) ||
-      (d.phone || '').includes(searchTerm)
+      (d.phone || '').includes(searchTerm) ||
+      (d.clinics?.name_ar || '').toLowerCase().includes(searchLower) ||
+      (d.clinics?.name_en || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -346,7 +352,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder={translate('بحث باسم أو تخصص الطبيب...', 'Search by doctor name or specialty...')}
+          placeholder={translate('بحث بالاسم أو اسم المستخدم أو العيادة...', 'Search by name or username or clinic...')}
           className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500"
         />
       </div>
@@ -374,10 +380,10 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 <td className="p-4 font-mono text-sm">{doctor.username}</td>
                 <td className="p-4">
                   {language === 'ar' 
-                    ? doctor.clinics?.name_ar 
-                    : doctor.clinics?.name_en}
+                    ? (doctor.clinics?.name_ar || 'غير محدد') 
+                    : (doctor.clinics?.name_en || 'Not assigned')}
                 </td>
-                <td className="p-4 text-gray-400">{doctor.specialty || '-'}</td>
+                <td className="p-4 text-gray-400">{doctor.specialty || translate('غير محدد', 'Not specified')}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                     doctor.is_active !== false 
@@ -515,6 +521,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                   onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                 >
+                  <option value="">{translate('اختر العيادة...', 'Select clinic...')}</option>
                   {clinics.map(clinic => (
                     <option key={clinic.id} value={clinic.id}>
                       {language === 'ar' ? clinic.name_ar : clinic.name_en}

@@ -589,11 +589,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
                   {station.status !== 'completed' && (
                     <div className="grid grid-cols-2 gap-2.5 text-center" data-test="queue-info">
                       <div className="py-4 px-2 bg-yellow-500/15 rounded-xl border-2 border-yellow-500/40">
-                        <div className="text-4xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : '—'}</div>
+                        <div className="text-4xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : (station.status === 'ready' ? '...' : '')}</div>
                         <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
                       </div>
                       <div className="py-4 px-2 bg-gray-700/50 rounded-xl border border-gray-500/50">
-                        <div className="text-4xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">{station.ahead || 0}</div>
+                        <div className="text-4xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">{typeof station.ahead === 'number' ? station.ahead : (station.status === 'ready' ? '...' : 0)}</div>
                         <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
                       </div>
                     </div>
