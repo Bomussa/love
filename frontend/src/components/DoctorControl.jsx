@@ -122,24 +122,23 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   };
 
   /**
-   * Calculate queue statistics
+   * Calculate queue statistics — أعمدة الحالات الصحيحة من unified_queue
    */
   const calculateStats = (data) => {
-    const waiting = data.filter(p => p.status === 'waiting').length;
-    const inProgress = data.filter(p => p.status === 'in_progress').length;
-    const completed = data.filter(p => p.status === 'completed').length;
-    const missed = data.filter(p => p.status === 'missed').length;
+    const waiting   = data.filter(p => p.status === 'waiting').length;
+    const inProgress = data.filter(p => ['serving','called','in_progress'].includes(p.status)).length;
+    const completed = data.filter(p => ['done','completed'].includes(p.status)).length;
+    const missed    = data.filter(p => ['no_show','absent'].includes(p.status)).length;
     
-    // Calculate average wait time
-    const completedPatients = data.filter(p => p.status === 'completed' && p.entered_at && p.called_at);
+    // متوسط وقت الانتظار = called_at - entered_at (الفرق الصحيح)
+    const donePatients = data.filter(p => ['done','completed'].includes(p.status) && p.entered_at && p.called_at);
     let avgWaitTime = 0;
-    if (completedPatients.length > 0) {
-      const totalWait = completedPatients.reduce((sum, p) => {
-        const enter = new Date(p.entered_at).getTime();
-        const call = new Date(p.called_at).getTime();
-        return sum + (enter - call);
+    if (donePatients.length > 0) {
+      const totalWait = donePatients.reduce((sum, p) => {
+        const wait = Math.abs(new Date(p.called_at).getTime() - new Date(p.entered_at).getTime());
+        return sum + wait;
       }, 0);
-      avgWaitTime = Math.round(totalWait / completedPatients.length / 60000); // minutes
+      avgWaitTime = Math.round(totalWait / donePatients.length / 60000);
     }
 
     setStats({ waiting, inProgress, completed, missed, avgWaitTime });
