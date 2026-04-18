@@ -49,72 +49,43 @@ const api = {
   // --- Queue ---
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
     try {
+      // المصدر الوحيد: enter_queue_safe RPC — لا fallback يتجاوز الحمايات
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
-        p_clinic_id: clinicId,
-        p_patient_id: patientId,
+        p_clinic_id:    clinicId,
+        p_patient_id:   patientId,
         p_patient_name: patientName,
-        p_exam_type: examType,
+        p_exam_type:    examType,
       });
 
-      if (!rpcError && rpcResult) {
-        // RPC returns {status, clinic, user, number, message}
-        return { 
-          success: rpcResult.status === 'OK' || rpcResult.status === 'ALREADY_IN_QUEUE', 
-          ...rpcResult,
-          display_number: rpcResult.number,
-          alreadyExists: rpcResult.status === 'ALREADY_IN_QUEUE'
+      if (rpcError) {
+        console.error('enter_queue_safe RPC error:', rpcError.message);
+        return { success: false, error: rpcError.message };
+      }
+
+      if (!rpcResult) {
+        return { success: false, error: 'لا توجد استجابة من قاعدة البيانات' };
+      }
+
+      // الحالات المقبولة
+      const accepted = ['OK','ALREADY_IN_QUEUE','COMPLETED_BEFORE'];
+      if (!accepted.includes(rpcResult.status) && !rpcResult.success) {
+        // أخطاء الحماية (عيادتين / حد يومي)
+        return {
+          success: false,
+          error: rpcResult.error || rpcResult.status,
+          status: rpcResult.status,
+          active_clinic_id: rpcResult.active_clinic_id
         };
       }
 
-      if (rpcError) {
-        console.warn('RPC failed, using fallback:', rpcError.message);
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const { data: existingEntry } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .in('status', ['waiting', 'called', 'in_progress', 'serving'])
-        .limit(1)
-        .maybeSingle();
-
-      if (existingEntry) {
-        return { success: true, ...existingEntry, alreadyExists: true };
-      }
-
-      const { data: lastEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextNumber = (lastEntry ? lastEntry.display_number : 0) + 1;
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .insert([{
-          clinic_id: clinicId,
-          patient_id: patientId,
-          patient_name: patientName,
-          exam_type: examType,
-          display_number: nextNumber,
-          status: 'waiting',
-          queue_date: today,
-          entered_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, ...data };
+      return {
+        success: true,
+        ...rpcResult,
+        display_number: rpcResult.display_number || rpcResult.number,
+        alreadyExists:  rpcResult.status === 'ALREADY_IN_QUEUE'
+      };
     } catch (error) {
-      console.error('Enter Queue Error:', error);
+      console.error('enterQueue exception:', error);
       return { success: false, error: error.message };
     }
   },
