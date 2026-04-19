@@ -106,14 +106,17 @@ const SmartDiagnosticsPanelInner = ({ language, t: tProp }) => {
       // حفظ الأخطاء في smart_errors_log
       const errorItems = (data.checks || []).filter(c => c.status === 'error');
       for (const item of errorItems) {
-        await supabase.from('smart_errors_log').insert({
-          error_id:   `${item.id}_${Date.now()}`,
-          error_type: item.id,
-          severity:   'high',
-          message:    item.detail || item.name,
-          source:     item.category || 'SmartDiagnostics',
-          is_fixed:   false,
-        }).then(() => {}).catch(() => {});
+        try {
+          const { error: _logErr } = await supabase.from('smart_errors_log').insert({
+            error_id:   `${item.id}_${Date.now()}`,
+            error_type: item.id,
+            severity:   'high',
+            message:    item.detail || item.name,
+            source:     item.category || 'SmartDiagnostics',
+            is_fixed:   false,
+          });
+          if (_logErr) console.warn('smart_errors_log insert skipped:', _logErr.message);
+        } catch (_e) { /* table may not exist */ }
       }
 
       // إصلاح تلقائي إذا كان مفعّلاً
