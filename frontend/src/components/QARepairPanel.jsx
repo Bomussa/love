@@ -86,11 +86,10 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         .order('created_at', { ascending: false })
         .limit(30);
 
-      if (repairsError) throw repairsError;
-
+      // repair_runs جدول اختياري - تجاهل الخطأ إذا لم يكن موجوداً
       setQaRuns(runs || []);
       setFindings(fnd || []);
-      setRepairRuns(repairs || []);
+      setRepairRuns(repairsError ? [] : (repairs || []));
     } catch (e) {
       console.error('Error loading QA data:', e);
       toast.error(t('فشل تحميل البيانات', 'Failed to load data'));
