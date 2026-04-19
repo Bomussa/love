@@ -5394,7 +5394,7 @@ const DatabaseManagement = ({ language, t }) => {
 
   const availableTables = [
     { name: 'clinics', label: t('العيادات', 'Clinics'), icon: Activity },
-    { name: 'queues', label: t('الطوابير', 'Queues'), icon: Users },
+    { name: 'unified_queue', label: t('الطوابير', 'Queues'), icon: Users },
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
     { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
