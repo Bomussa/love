@@ -146,14 +146,7 @@ const QueueManagement = ({ language, t }) => {
       if (!error && data) {
         setQueues(data);
       } else {
-        // Fallback: محاولة جدول queues القديم
-        const { data: fallbackData } = await supabase
-          .from('unified_queue')
-          .select('*')
-          .eq('queue_date', today)
-          .order('display_number', { ascending: true });
-        if (fallbackData) setQueues(fallbackData);
-        console.error('Error loading unified_queue, using fallback:', error);
+        console.error('Error loading unified_queue:', error?.message);
       }
     } catch (e) {
       console.error('Error loading queues:', e);
@@ -181,13 +174,7 @@ const QueueManagement = ({ language, t }) => {
         .update({ status: 'called', called_at: new Date().toISOString() })
         .eq('id', nextPatient.id);
 
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
-          .from('unified_queue')
-          .update({ status: 'called', called_at: new Date().toISOString() })
-          .eq('id', nextPatient.id);
-      }
+
       
       if (!error) {
         showSuccessToast(t(`تم استدعاء الرقم: ${nextPatient.display_number}`, `Called number: ${nextPatient.display_number}`));
@@ -216,17 +203,7 @@ const QueueManagement = ({ language, t }) => {
         })
         .eq('id', queueId);
 
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
-          .from('unified_queue')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', queueId);
-      }
+
 
       if (!error) {
         showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
@@ -251,13 +228,7 @@ const QueueManagement = ({ language, t }) => {
         .update({ status: 'waiting', updated_at: new Date().toISOString() })
         .eq('id', queueId);
 
-      if (error) {
-        // Fallback: محاولة جدول queues القديم
-        await supabase
-          .from('unified_queue')
-          .update({ status: 'waiting', updated_at: new Date().toISOString() })
-          .eq('id', queueId);
-      }
+
 
       if (!error) {
         showSuccessToast(t('تم تخطي المريض وإعادته للانتظار', 'Patient skipped and returned to waiting'));
