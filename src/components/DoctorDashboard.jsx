@@ -342,7 +342,10 @@ export const DoctorDashboard = ({ doctorData, onLogout, language, t, toggleLangu
               <div key={p.id} className="grid grid-cols-12 px-5 py-3 items-center hover:bg-white/5 transition-all">
                 <span className="col-span-1 font-black text-[#C9A54C]">#{p.display_number}</span>
                 <span className="col-span-3 text-sm font-mono text-gray-400">{p.military_id||p.personal_id||'—'}</span>
-                <span className="col-span-4 font-medium">{p.patient_name||t('مراجع','Patient')}</span>
+                <span className="col-span-4 font-medium">
+                  <span>{p.patient_name||t('مراجع','Patient')}</span>
+                  {p.gender && <span className={`text-xs ml-1 ${p.gender==='female'?'text-pink-300':'text-blue-300'}`}>{p.gender==='female'?'👩':'👨'} {t(p.gender==='female'?'أنثى':'ذكر', p.gender==='female'?'Female':'Male')}</span>}
+                </span>
                 <span className="col-span-2">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${p.status==='called'?'bg-yellow-500/20 text-yellow-400':'bg-blue-500/20 text-blue-400'}`}>
                     {p.status==='called' ? t('مستدعى','Called') : t('انتظار','Waiting')}

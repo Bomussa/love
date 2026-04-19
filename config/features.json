@@ -1,0 +1,7 @@
+{
+  "features": {
+    "qr_enabled": false,
+    "notifications_enabled": true,
+    "doctor_login_enabled": true
+  }
+}
