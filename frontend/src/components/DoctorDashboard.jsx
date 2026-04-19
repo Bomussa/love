@@ -42,7 +42,7 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
       const today = new Date().toISOString().split('T')[0]
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('id, display_number, patient_name, patient_id, status, entered_at, called_at, exam_start_time, completed_at, queue_date, clinic_id, route_id, current_station_index')
+        .select('id, display_number, patient_name, patient_id, status, entered_at, called_at, exam_start_time, completed_at, queue_date, clinic_id, route_id, current_station_index, gender, exam_type')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .order('display_number', { ascending: true })
@@ -300,7 +300,7 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
             </p>
             <p className="text-xs text-gray-500">
               {patient.patient_id}
-              {patient.gender === 'female' ? ' · أنثى' : ' · ذكر'}
+              {patient.gender === 'female' ? (language === 'ar' ? ' · أنثى' : ' · Female') : (language === 'ar' ? ' · ذكر' : ' · Male')}
               {patient.exam_type ? ` · ${patient.exam_type}` : ''}
             </p>
           </div>
