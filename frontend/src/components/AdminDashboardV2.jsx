@@ -3990,10 +3990,13 @@ const UsersManagement = ({ language, t }) => {
         setShowAddModal(false);
         setNewUser({ username: '', password: '', role: 'STAFF', is_active: true, permissions: [], assigned_clinic: '' });
         loadUsers();
-        alert(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+        showSuccessToast(t('تم إضافة المستخدم بنجاح', 'User added successfully'));
+      } else {
+        showErrorToast(t('فشل الإضافة: ' + (error.message || ''), 'Add failed'));
       }
     } catch (e) {
       console.error('Error adding user:', e);
+      showErrorToast(t('حدث خطأ أثناء إضافة المستخدم', 'Error adding user'));
     }
   };
 
@@ -4011,11 +4014,16 @@ const UsersManagement = ({ language, t }) => {
 
   const updateUserStatus = async (userId, isActive) => {
     try {
-      await supabase
+      const { error: statusErr } = await supabase
         .from('admin_users')
         .update({ is_active: isActive })
         .eq('id', userId);
-      loadUsers();
+      if (!statusErr) {
+        loadUsers();
+        showSuccessToast(t(isActive ? 'تم تفعيل المستخدم' : 'تم تجميد المستخدم', isActive ? 'User activated' : 'User frozen'));
+      } else {
+        showErrorToast(t('فشل تحديث الحالة', 'Failed to update status'));
+      }
     } catch (e) {
       console.error('Error updating user:', e);
     }
@@ -4023,11 +4031,16 @@ const UsersManagement = ({ language, t }) => {
 
   const updateUserRole = async (userId, role) => {
     try {
-      await supabase
+      const { error: roleErr } = await supabase
         .from('admin_users')
         .update({ role })
         .eq('id', userId);
-      loadUsers();
+      if (!roleErr) {
+        loadUsers();
+        showSuccessToast(t('تم تحديث الدور', 'Role updated'));
+      } else {
+        showErrorToast(t('فشل تحديث الدور', 'Failed to update role'));
+      }
     } catch (e) {
       console.error('Error updating role:', e);
     }
@@ -4057,11 +4070,16 @@ const UsersManagement = ({ language, t }) => {
   const deleteUser = async (userId) => {
     if (!confirm(t('هل أنت متأكد من حذف هذا المستخدم؟', 'Are you sure you want to delete this user?'))) return;
     try {
-      await supabase
+      const { error: delErr } = await supabase
         .from('admin_users')
         .delete()
         .eq('id', userId);
-      loadUsers();
+      if (!delErr) {
+        loadUsers();
+        showSuccessToast(t('تم حذف المستخدم', 'User deleted'));
+      } else {
+        showErrorToast(t('فشل حذف المستخدم', 'Failed to delete user'));
+      }
     } catch (e) {
       console.error('Error deleting user:', e);
     }
