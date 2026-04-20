@@ -29,15 +29,6 @@ const SYSTEM_FEATURES = [
     category: 'core'
   },
   {
-    id: 'pin_system',
-    name: 'نظام الأرقام السرية',
-    nameEn: 'PIN System',
-    description: 'إصدار وإدارة أرقام PIN',
-    descriptionEn: 'Generate and manage PIN codes',
-    icon: Key,
-    category: 'core'
-  },
-  {
     id: 'notifications',
     name: 'نظام الإشعارات',
     nameEn: 'Notifications',
