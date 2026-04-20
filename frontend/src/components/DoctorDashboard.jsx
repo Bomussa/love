@@ -198,13 +198,22 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
           break
         }
 
-        // إنهاء الفحص + تقدم تلقائي للمسار
+        // إنهاء الفحص + إغلاق exam_record + حساب مدة الفحص + تقدم المسار
         case 'FINISH_EXAM': {
-          const { error: fe } = await supabase
-            .from('unified_queue')
-            .update({ status:'done', completed_at: new Date().toISOString(), exam_end_time: new Date().toISOString() })
-            .eq('id', patientId)
-          if (fe) throw fe
+          // يُغلق السجل الطبي ويحسب المدة تلقائياً
+          const { error: fe } = await supabase.rpc('finish_exam_record', {
+            p_queue_id: patientId,
+            p_result:   payload?.result || null,
+            p_notes:    payload?.notes  || null,
+            p_status:   'completed',
+          }).then(r => ({ error: r.error })).catch(e => ({ error: e }))
+          if (fe) {
+            // fallback مباشر
+            const { error: fe2 } = await supabase.from('unified_queue')
+              .update({ status:'done', completed_at: new Date().toISOString(), exam_end_time: new Date().toISOString() })
+              .eq('id', patientId)
+            if (fe2) throw fe2
+          }
 
           // تقدم المسار تلقائياً إذا كان المريض في مسار
           if (patient?.patient_id) {
