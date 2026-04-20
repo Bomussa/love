@@ -7,6 +7,7 @@ import { ClinicsConfiguration } from './ClinicsConfiguration'
 import { SystemSettingsPanel } from './SystemSettingsPanel'
 import {
   BarChart3,
+  Shield,
   Users,
   Settings,
   FileText,
@@ -282,8 +283,16 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
         >
           <Settings className="icon icon-md me-3" />
           الإعدادات
-        </Button>
-      </nav>
+          </Button>
+          <Button
+            variant={currentView === 'admins' ? 'secondary' : 'ghost'}
+            className="w-full justify-start"
+            onClick={() => setCurrentView('admins')}
+          >
+            <Shield className="icon icon-md me-3" />
+            إدارة المسؤولين
+          </Button>
+        </nav>
     </div>
   )
 
@@ -752,6 +761,13 @@ export function AdminPage({ onLogout, language, toggleLanguage, currentTheme, on
             <ClinicsConfiguration language={language} />
           )}
           {currentView === 'settings' && renderSettings()}
+            {currentView === 'admins' && (
+              <AdminDashboardV2
+                language={language}
+                onLogout={onLogout}
+                t={(ar, en) => language === 'ar' ? ar : (en || ar)}
+              />
+            )}
         </main>
       </div>
     </div>
