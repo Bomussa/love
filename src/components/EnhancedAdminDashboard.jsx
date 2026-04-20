@@ -1,381 +1,245 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from './Card'
-import { Button } from './Button'
-import {
-  Activity,
-  Users,
-  Clock,
-  TrendingUp,
-  Building2 as Hospital,
-  UserCheck,
-  AlertCircle,
-  BarChart3,
-  Settings,
-  Shield,
-  FileText,
-  Calendar,
-  Stethoscope,
-  MapPin,
-  Bell,
-  Hash,
-  QrCode,
-  Printer,
-  Download,
-  RefreshCw,
-  Eye,
-  Plus,
-  Edit,
-  Trash2,
-  Search,
-  Filter,
-  Menu,
-  X
-} from 'lucide-react'
-import { t } from '../lib/i18n'
-import api from '../lib/api'
-import AdminQueueMonitor from './AdminQueueMonitor'
-import AdminPINMonitor from './AdminPINMonitor'
-import { AdminQrManager } from './AdminQrManager'
+import React, { useState, useEffect, useCallback } from 'react'
+  import {
+    Activity, Users, Clock, TrendingUp,
+    AlertCircle, BarChart3, RefreshCw,
+    Eye, Filter
+  } from 'lucide-react'
+  import { supabase } from '../lib/supabase-client'
+  import AdminQueueMonitor from './AdminQueueMonitor'
+  import AdminPINMonitor from './AdminPINMonitor'
+  import { AdminQrManager } from './AdminQrManager'
 
-export function EnhancedAdminDashboard({ language, onLogout }) {
-  const [stats, setStats] = useState(null)
-  const [clinics, setClinics] = useState([])
-  const [queue, setQueue] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [lastUpdate, setLastUpdate] = useState(new Date())
+  /**
+   * EnhancedAdminDashboard - لوحة التحكم المحسّنة
+   * ✅ جميع البيانات من Supabase مباشرة - لا fallback وهمي
+   * ✅ تحديث لحظي عبر Realtime
+   */
+  export function EnhancedAdminDashboard({ language, onLogout }) {
+    const [stats, setStats] = useState(null)
+    const [clinics, setClinics] = useState([])
+    const [queue, setQueue] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [lastUpdate, setLastUpdate] = useState(new Date())
+    const [activeView, setActiveView] = useState('dashboard')
 
-  // تحديث البيانات من الخادم
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+    const t = (ar, en) => language === 'ar' ? ar : (en || ar)
 
-      // جلب الإحصائيات الحقيقية مع fallback
+    const fetchStats = useCallback(async () => {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error: err } = await supabase
+        .from('unified_queue')
+        .select('status, clinic_id')
+        .eq('queue_date', today)
+      if (err) throw err
+
+      const totalWaiting  = data.filter(q => q.status === 'waiting').length
+      const totalCalled   = data.filter(q => q.status === 'called').length
+      const totalDone     = data.filter(q => q.status === 'done' || q.status === 'completed').length
+      const activeQueues  = new Set(data.filter(q => q.status !== 'done' && q.status !== 'completed').map(q => q.clinic_id)).size
+
+      return { totalWaiting, totalCalled, completedToday: totalDone, activeQueues }
+    }, [])
+
+    const fetchClinics = useCallback(async () => {
+      const { data, error: err } = await supabase
+        .from('clinics')
+        .select('id, name_ar, name_en, is_active')
+        .order('name_ar')
+      if (err) throw err
+      return data || []
+    }, [])
+
+    const fetchQueue = useCallback(async () => {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error: err } = await supabase
+        .from('unified_queue')
+        .select('id, display_number, status, patient_id, clinic_id, created_at, patients(name, military_id), clinics(name_ar, name_en)')
+        .eq('queue_date', today)
+        .in('status', ['waiting', 'called'])
+        .order('display_number', { ascending: true })
+        .limit(30)
+      if (err) throw err
+      return data || []
+    }, [])
+
+    const fetchData = useCallback(async () => {
       try {
-        const statsData = await api.getDashboardStats()
-        if (statsData && statsData.stats) {
-          setStats({
-            currentPatients: statsData.stats.totalWaiting || 0,
-            completedToday: statsData.stats.completedToday || 0,
-            avgWaitTime: statsData.stats.avgWaitTime || 0,
-            throughputHour: statsData.stats.activeQueues || 0
-          })
-        } else {
-          setStats({
-            currentPatients: 0,
-            completedToday: 0,
-            avgWaitTime: 0,
-            throughputHour: 0
-          })
-        }
-      } catch (e) {
-
-        setStats({
-          currentPatients: 0,
-          completedToday: 0,
-          avgWaitTime: 0,
-          throughputHour: 0
-        })
+        setLoading(true)
+        setError(null)
+        const [statsData, clinicsData, queueData] = await Promise.all([
+          fetchStats(), fetchClinics(), fetchQueue()
+        ])
+        setStats(statsData)
+        setClinics(clinicsData)
+        setQueue(queueData)
+        setLastUpdate(new Date())
+      } catch (err) {
+        setError(err.message || t('خطأ في جلب البيانات', 'Data fetch error'))
+      } finally {
+        setLoading(false)
       }
+    }, [fetchStats, fetchClinics, fetchQueue])
 
-      // جلب بيانات العيادات الحقيقية مع fallback
-      try {
-        const clinicsData = await api.getClinicOccupancy()
-        setClinics(Array.isArray(clinicsData) ? clinicsData : [])
-      } catch (e) {
+    useEffect(() => {
+      fetchData()
+      const channel = supabase.channel('enhanced_admin_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clinics' }, () => fetchClinics().then(setClinics))
+        .subscribe()
+      return () => supabase.removeChannel(channel)
+    }, [])
 
-        setClinics([])
-      }
-
-      // جلب بيانات الطابور الحقيقية مع fallback
-      try {
-        const queueData = await api.getActiveQueue()
-        setQueue(Array.isArray(queueData) ? queueData : [])
-      } catch (e) {
-
-        setQueue([])
-      }
-
-      setLastUpdate(new Date())
-      setError(null) // Clear any previous errors
-    } catch (err) {
-      // console.error('خطأ في جلب البيانات:', err)
-      // Always set default stats to prevent blank screen
-      if (!stats) {
-        setStats({
-          currentPatients: 0,
-          completedToday: 0,
-          avgWaitTime: 0,
-          throughputHour: 0
-        })
-      }
-      setError('بعض البيانات غير متوفرة - يتم استخدام القيم الافتراضية')
-    } finally {
-      setLoading(false)
+    const getStatusText = (status) => {
+      const map = { queued: t('في الانتظار', 'Waiting'), waiting: t('في الانتظار', 'Waiting'), called: t('مستدعى', 'Called'), started: t('جارٍ الفحص', 'In Progress'), completed: t('مكتمل', 'Completed'), done: t('مكتمل', 'Completed') }
+      return map[status] || status
     }
-  }
 
-  useEffect(() => {
-    fetchData()
-
-    // Fallback polling كل 60 ثانية (لوحة الإحصائيات غير حرجة)
-    const interval = setInterval(fetchData, 60000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'queued': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'called': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'started': return 'bg-green-100 text-green-800 border-green-200'
-      case 'completed': return 'bg-gray-100 text-gray-800 border-gray-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    const getStatusColor = (status) => {
+      const map = { waiting: 'bg-blue-100 text-blue-800', queued: 'bg-blue-100 text-blue-800', called: 'bg-yellow-100 text-yellow-800', started: 'bg-green-100 text-green-800', completed: 'bg-gray-100 text-gray-600', done: 'bg-gray-100 text-gray-600' }
+      return map[status] || 'bg-gray-100 text-gray-600'
     }
-  }
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'queued': return 'في الانتظار'
-      case 'called': return 'تم الاستدعاء'
-      case 'started': return 'جاري الفحص'
-      case 'completed': return 'مكتمل'
-      default: return status
+    if (loading && !stats) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">{t('جاري تحميل البيانات من Supabase...', 'Loading from Supabase...')}</p>
+          </div>
+        </div>
+      )
     }
-  }
 
-  const getOccupancyColor = (percentage) => {
-    if (percentage >= 90) return 'bg-red-500'
-    if (percentage >= 75) return 'bg-yellow-500'
-    if (percentage >= 50) return 'bg-blue-500'
-    return 'bg-green-500'
-  }
-
-  if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">جاري تحميل البيانات...</p>
+      <div className="min-h-screen bg-gray-50 p-6" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="max-w-7xl mx-auto">
+
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-800 flex-1">{error}</p>
+              <button onClick={fetchData} className="px-3 py-1 border border-red-300 rounded text-red-700 hover:bg-red-100 text-sm flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" /> {t('إعادة المحاولة', 'Retry')}
+              </button>
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">{t('لوحة التحكم الإدارية', 'Admin Dashboard')}</h1>
+              <p className="text-gray-500 text-sm">{t('آخر تحديث:', 'Last update:')} {lastUpdate.toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}</p>
+            </div>
+            <button onClick={fetchData} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {t('تحديث', 'Refresh')}
+            </button>
+          </div>
+
+          {/* View Tabs */}
+          <div className="flex gap-2 mb-6 border-b border-gray-200">
+            {[
+              { id: 'dashboard', label: t('الإحصائيات', 'Statistics') },
+              { id: 'queue', label: t('الطابور', 'Queue') },
+              { id: 'qr', label: t('QR Manager', 'QR Manager') },
+            ].map(v => (
+              <button key={v.id} onClick={() => setActiveView(v.id)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeView === v.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          {activeView === 'dashboard' && stats && (
+            <>
+              {/* Stats Cards - Real Data Only */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: t('في الانتظار', 'Waiting'), value: stats.totalWaiting, icon: Clock, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+                  { label: t('مستدعون', 'Called'), value: stats.totalCalled, icon: Users, color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+                  { label: t('مكتملون اليوم', 'Completed Today'), value: stats.completedToday, icon: Activity, color: 'text-green-600 bg-green-50 border-green-200' },
+                  { label: t('عيادات نشطة', 'Active Clinics'), value: stats.activeQueues, icon: TrendingUp, color: 'text-purple-600 bg-purple-50 border-purple-200' },
+                ].map((s, i) => (
+                  <div key={i} className={`p-4 rounded-xl border ${s.color}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <s.icon className="h-5 w-5" />
+                      <span className="text-2xl font-bold">{s.value}</span>
+                    </div>
+                    <p className="text-sm font-medium">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Clinics Status */}
+              {clinics.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4">{t('حالة العيادات', 'Clinics Status')}</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {clinics.map(clinic => (
+                      <div key={clinic.id} className={`p-3 rounded-lg border ${clinic.is_active ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-sm">{language === 'ar' ? clinic.name_ar : clinic.name_en}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${clinic.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {clinic.is_active ? t('مفتوح', 'Open') : t('مغلق', 'Closed')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeView === 'queue' && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-gray-900">{t('طابور اليوم النشط', 'Today Active Queue')}</h2>
+                <span className="text-sm text-gray-500">{queue.length} {t('مراجع', 'patients')}</span>
+              </div>
+              {queue.length === 0 ? (
+                <div className="p-10 text-center text-gray-400">
+                  {t('لا يوجد طابور نشط حالياً', 'No active queue currently')}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">#</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">{t('المراجع', 'Patient')}</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">{t('العيادة', 'Clinic')}</th>
+                        <th className="px-4 py-3 text-right text-gray-500 font-medium">{t('الحالة', 'Status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {queue.map(q => (
+                        <tr key={q.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 font-bold text-blue-600">#{q.display_number}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium">{q.patients?.name || t('غير معروف', 'Unknown')}</div>
+                            <div className="text-xs text-gray-400 font-mono">{q.patients?.military_id || q.patient_id}</div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">{language === 'ar' ? q.clinics?.name_ar : q.clinics?.name_en}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(q.status)}`}>{getStatusText(q.status)}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeView === 'qr' && <AdminQrManager language={language} />}
         </div>
       </div>
     )
   }
 
-  // Show error as banner instead of blocking entire page
-  const ErrorBanner = () => error ? (
-    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-      <div className="flex-1">
-        <p className="text-red-800 font-medium">تحذير: بعض البيانات غير متوفرة</p>
-        <p className="text-red-600 text-sm">{error}</p>
-      </div>
-      <Button onClick={fetchData} variant="outline" size="sm">
-        <RefreshCw className="h-4 w-4 ml-2" />
-        إعادة المحاولة
-      </Button>
-    </div>
-  ) : null
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <div className="max-w-7xl mx-auto">
-        {/* Error Banner */}
-        <ErrorBanner />
-
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">لوحة التحكم الإدارية</h1>
-            <p className="text-gray-600">
-              آخر تحديث: {lastUpdate.toLocaleString('ar-SA')}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={fetchData} variant="outline" disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              تحديث
-            </Button>
-            <Button onClick={onLogout} variant="outline">
-              تسجيل الخروج
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المرضى الحاليون</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.currentPatients || 0}</div>
-              <p className="text-xs text-muted-foreground">في العيادات الآن</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المكتملون اليوم</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.completedToday || 0}</div>
-              <p className="text-xs text-muted-foreground">مريض مكتمل</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">متوسط الانتظار</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.avgWaitTime || 0}</div>
-              <p className="text-xs text-muted-foreground">دقيقة</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">الإنتاجية/ساعة</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.throughputHour || 0}</div>
-              <p className="text-xs text-muted-foreground">مريض/ساعة</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Enhanced Monitoring Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* PIN Monitor for Clinic 1 */}
-          <div data-test="admin-pin-section">
-            <AdminPINMonitor clinicId="clinic1" autoRefresh={false} />
-          </div>
-
-          {/* Queue Monitor for Clinic 1 */}
-          <div data-test="admin-queue-section">
-            <AdminQueueMonitor clinicId="clinic1" autoRefresh={true} refreshInterval={5000} />
-          </div>
-        </div>
-
-        {/* QR Code Manager */}
-        <div className="mb-8" data-test="admin-qr-section">
-          <AdminQrManager language={language} />
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Clinic Occupancy */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hospital className="h-5 w-5" />
-                إشغال العيادات
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {clinics.length > 0 ? (
-                  clinics.map((clinic) => (
-                    <div key={clinic.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{clinic.name_ar}</div>
-                        <div className="text-sm text-gray-500">{clinic.name_en}</div>
-                      </div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium">
-                          {clinic.current_load || 0}/{clinic.capacity || 0}
-                        </div>
-                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${clinic.occupancy_percent > 80 ? 'bg-red-100 text-red-800' :
-                          clinic.occupancy_percent > 60 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                          {clinic.occupancy_percent || 0}%
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    لا توجد بيانات عيادات متاحة
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Live Queue */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                الطابور المباشر
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {queue.length > 0 ? (
-                  queue.map((patient) => (
-                    <div key={patient.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{patient.reviewer_number}</div>
-                        <div className="text-sm text-gray-500">{patient.clinic_name}</div>
-                      </div>
-                      <div className="text-left">
-                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(patient.status)}`}>
-                          {getStatusText(patient.status)}
-                        </div>
-                        {patient.eta_minutes > 0 && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {patient.eta_minutes} دقيقة متبقية
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    لا توجد مرضى في الطابور حالياً
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* System Status */}
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                حالة النظام
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">الخادم متصل</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">قاعدة البيانات نشطة</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">التحديث التلقائي مفعل</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
-}
+  export default EnhancedAdminDashboard
+  
