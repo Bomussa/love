@@ -1,538 +1,439 @@
 /**
- * @fileoverview Doctor Control Dashboard Component
- * @description Main dashboard for doctors to manage patient queue
- * @version 2.0.0
+ * DoctorControl — لوحة تحكم الطبيب في شاشة الإدارة
+ * إصلاح كامل: أعمدة حقيقية، توقيت قطر، RPCs صحيحة، حالات صحيحة
  */
-
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Clock, CheckCircle, Activity, Phone, SkipForward, 
-  XCircle, RotateCcw, ArrowRight, ArrowLeft, UserCheck,
-  Calendar, Search, Filter, RefreshCw, AlertCircle, Timer,
-  Play, Pause, UserX, Star
+import {
+  Users, Clock, CheckCircle, Activity, Phone,
+  RotateCcw, UserCheck, Search, RefreshCw, UserX, Play
 } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
 import toast from 'react-hot-toast';
 
-/**
- * Doctor Control Dashboard - Main component for clinic queue management
- * @param {Object} props
- * @param {string} props.language - Current language ('ar' or 'en')
- * @param {Function} props.t - Translation function
- * @param {string} props.doctorId - Current doctor ID
- * @param {string} props.clinicId - Current clinic ID
- */
-const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId }) => {
-  const [patients, setPatients] = useState([]);
-  const [clinics, setClinics] = useState([]);
-  const [selectedClinic, setSelectedClinic] = useState(clinicId);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    waiting: 0,
-    inProgress: 0,
-    completed: 0,
-    missed: 0,
-    avgWaitTime: 0
-  });
+// توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
+const getQatarDate = () =>
+  new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) => {
+  const [patients,       setPatients]       = useState([]);
+  const [clinics,        setClinics]        = useState([]);
+  const [selectedClinic, setSelectedClinic] = useState(clinicId || '');
+  const [loading,        setLoading]        = useState(true);
+  const [stats,          setStats]          = useState({ waiting:0, inProgress:0, completed:0, missed:0, avgWaitTime:0 });
   const [currentPatient, setCurrentPatient] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm,     setSearchTerm]     = useState('');
+  const [filterStatus,   setFilterStatus]   = useState('all');
 
-  // Translation helper
-  const translate = (ar, en) => language === 'ar' ? ar : en;
+  const tr = (ar, en) => language === 'ar' ? ar : en;
 
-  useEffect(() => {
-    loadClinics();
-    if (selectedClinic) {
-      loadPatients();
-    }
-    
-    // Real-time subscription — unified_queue
-    const subscription = supabase
-      .channel('unified_queue_doctor_control_' + (selectedClinic || 'all'))
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'unified_queue',
-        filter: selectedClinic ? `clinic_id=eq.${selectedClinic}` : undefined
-      }, () => { loadPatients(); })
-      .subscribe();
-
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(loadPatients, 10000);
-
-    return () => {
-      clearInterval(interval);
-      subscription.unsubscribe();
-    };
-  }, [selectedClinic]);
-
-  /**
-   * Load clinics list
-   */
+  // ── تحميل العيادات ─────────────────────────────────────────
   const loadClinics = async () => {
     try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .order('name_ar');
-      
-      if (!error && data) {
+      const { data } = await supabase
+        .from('clinics').select('id,name_ar,name_en').eq('is_active', true).order('name_ar');
+      if (data) {
         setClinics(data);
-        if (!selectedClinic && data.length > 0) {
-          setSelectedClinic(data[0].id);
-        }
+        if (!selectedClinic && data.length > 0) setSelectedClinic(data[0].id);
       }
-    } catch (e) {
-      console.error('Error loading clinics:', e);
-    }
+    } catch (e) { console.error('loadClinics:', e); }
   };
 
-  /**
-   * Load patients queue with real data from Supabase
-   */
+  // ── تحميل المرضى — أعمدة حقيقية فقط ───────────────────────
   const loadPatients = async () => {
+    if (!selectedClinic) { setLoading(false); return; }
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
-      
-      // جلب الطابور من unified_queue (المصدر الصحيح)
+      const today = getQatarDate();   // توقيت قطر الصحيح
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('*')
+        .select([
+          'id','display_number','patient_name','patient_id',
+          'military_id','personal_id','gender','exam_type',
+          'status','entered_at','called_at','exam_start_time',
+          'exam_end_time','completed_at','is_vip','is_priority',
+          'is_military_committee','notes','queue_date'
+        ].join(','))
         .eq('clinic_id', selectedClinic)
         .eq('queue_date', today)
         .order('display_number', { ascending: true });
 
       if (error) throw error;
-
-      setPatients(data || []);
-      calculateStats(data || []);
-      
-      // المريض الحالي: serving أو called
-      const current = (data || []).find(p => ['serving','called','in_progress'].includes(p.status));
-      setCurrentPatient(current || null);
-
+      const all = data || [];
+      setPatients(all);
+      calcStats(all);
+      setCurrentPatient(all.find(p => ['serving','called','in_progress'].includes(p.status)) || null);
     } catch (e) {
-      console.error('Error loading patients:', e);
-      toast.error(translate('خطأ في تحميل البيانات', 'Error loading data'));
-    } finally {
-      setLoading(false);
-    }
+      console.error('loadPatients:', e);
+      toast.error(tr('خطأ في تحميل البيانات','Error loading data'));
+    } finally { setLoading(false); }
   };
 
-  /**
-   * Calculate queue statistics — أعمدة الحالات الصحيحة من unified_queue
-   */
-  const calculateStats = (data) => {
-    const waiting   = data.filter(p => p.status === 'waiting').length;
+  // ── حساب الإحصائيات — حالات DB الصحيحة ──────────────────
+  const calcStats = (data) => {
+    const waiting    = data.filter(p => p.status === 'waiting').length;
     const inProgress = data.filter(p => ['serving','called','in_progress'].includes(p.status)).length;
-    const completed = data.filter(p => ['done','completed'].includes(p.status)).length;
-    const missed    = data.filter(p => ['no_show','absent'].includes(p.status)).length;
-    
-    // متوسط وقت الانتظار = called_at - entered_at (الفرق الصحيح)
-    const donePatients = data.filter(p => ['done','completed'].includes(p.status) && p.entered_at && p.called_at);
+    const completed  = data.filter(p => ['done','completed'].includes(p.status)).length;
+    const missed     = data.filter(p => ['no_show','absent'].includes(p.status)).length;
+    const done = data.filter(p => ['done','completed'].includes(p.status) && p.entered_at && p.called_at);
     let avgWaitTime = 0;
-    if (donePatients.length > 0) {
-      const totalWait = donePatients.reduce((sum, p) => {
-        const wait = Math.abs(new Date(p.called_at).getTime() - new Date(p.entered_at).getTime());
-        return sum + wait;
-      }, 0);
-      avgWaitTime = Math.round(totalWait / donePatients.length / 60000);
+    if (done.length > 0) {
+      avgWaitTime = Math.round(
+        done.reduce((s,p) => s + Math.abs(new Date(p.called_at) - new Date(p.entered_at)), 0)
+        / done.length / 60000
+      );
     }
-
     setStats({ waiting, inProgress, completed, missed, avgWaitTime });
   };
 
-  /**
-   * Call next patient in queue
-   */
+  // ── استدعاء التالي عبر RPC المحمية ─────────────────────────
   const callNextPatient = async () => {
     try {
-      const waitingPatients = patients
-        .filter(p => p.status === 'waiting')
-        .sort((a, b) => (a.display_number || 0) - (b.display_number || 0));
-
-      if (waitingPatients.length === 0) {
-        toast.info(translate('لا يوجد مرضى في الانتظار', 'No patients waiting'));
-        return;
-      }
-
-      // استدعاء عبر RPC المحمية (بدون PIN — VIP أولاً)
       const { data: cd, error } = await supabase.rpc('call_next_patient', {
-        p_clinic_id: selectedClinic,
-        p_mark_current_done: false
+        p_clinic_id: selectedClinic, p_mark_current_done: false
       });
       if (error) throw error;
       const num = cd?.data?.display_number;
-      if (num) {
-        toast.success(translate(`✅ تم استدعاء رقم ${num}`, `✅ Called #${num}`));
-      } else {
-        toast.info(translate('لا يوجد مرضى في الانتظار', 'No patients waiting'));
-      }
+      num
+        ? toast.success(tr(`✅ تم استدعاء رقم ${num}`,`✅ Called #${num}`))
+        : toast.info(tr('لا يوجد مرضى في الانتظار','No patients waiting'));
       loadPatients();
-
     } catch (e) {
-      console.error('Error calling next patient:', e);
-      toast.error(translate('خطأ في استدعاء المريض', 'Error calling patient'));
+      toast.error(tr('خطأ في الاستدعاء','Error calling'));
     }
   };
 
-  /**
-   * Complete current patient examination
-   */
+  // ── إنهاء الفحص — يُسجَّل في exam_records + يُقدّم المسار ──
   const completePatient = async (patient) => {
     try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'done', completed_at: new Date().toISOString(), exam_end_time: new Date().toISOString() })
-        .eq('id', patient.id);
+      // 1) إغلاق سجل الفحص مع حساب المدة
+      const { error: re } = await supabase.rpc('finish_exam_record', {
+        p_queue_id: patient.id,
+        p_status:   'completed',
+        p_result:   null,
+        p_notes:    null,
+      });
+      if (re) {
+        // fallback مباشر إذا فشل RPC
+        await supabase.from('unified_queue').update({
+          status: 'done',
+          completed_at: new Date().toISOString(),
+          exam_end_time: new Date().toISOString(),
+        }).eq('id', patient.id);
+      }
 
-      if (error) throw error;
+      // 2) تقدم مسار المريض تلقائياً
+      if (patient.patient_id) {
+        await supabase.rpc('advance_patient_route', {
+          p_patient_id: patient.patient_id,
+          p_clinic_id:  selectedClinic,
+        }).catch(() => null);
+      }
 
-      toast.success(translate('تم إنهاء الفحص بنجاح', 'Examination completed'));
-      
-      await logActivity('patient_completed', `تم إنهاء فحص المريض ${patient.real_patient_id}`,
+      // 3) تسجيل النشاط
+      await logActivity('patient_completed',
+        `تم إنهاء فحص المريض ${patient.patient_id || patient.personal_id || patient.display_number}`,
         { patient_id: patient.patient_id, queue_id: patient.id });
 
+      toast.success(tr('✅ تم إنهاء الفحص بنجاح','✅ Examination completed'));
       loadPatients();
-
     } catch (e) {
-      console.error('Error completing patient:', e);
-      toast.error(translate('خطأ في إنهاء الفحص', 'Error completing examination'));
+      console.error('completePatient:', e);
+      toast.error(tr('حدث خطأ أثناء إكمال الفحص','Error completing examination'));
     }
   };
 
-  /**
-   * Mark patient as absent (unified_queue, status no_show)
-   */
+  // ── تسجيل الغياب ───────────────────────────────────────────
   const markMissed = async (patient) => {
     try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'no_show', notes: translate('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA') })
-        .eq('id', patient.id);
-      if (error) throw error;
-      toast.info(translate('تم تسجيل الغياب', 'Absence recorded'));
+      await supabase.rpc('finish_exam_record', {
+        p_queue_id: patient.id,
+        p_status:   'absent',
+        p_notes:    tr('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA'),
+      }).catch(() => null);
+
+      // fallback مباشر
+      await supabase.from('unified_queue').update({
+        status: 'no_show',
+        notes:  tr('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA'),
+      }).eq('id', patient.id);
+
+      toast.info(tr('تم تسجيل الغياب','Absence recorded'));
       loadPatients();
     } catch (e) {
-      console.error('markMissed:', e);
-      toast.error(translate('خطأ في تسجيل الغياب', 'Error recording absence'));
+      toast.error(tr('خطأ في تسجيل الغياب','Error recording absence'));
     }
   };
 
-  /**
-   * Move patient to end of queue
-   */
+  // ── نقل لآخر الدور ─────────────────────────────────────────
   const moveToEnd = async (patient) => {
     try {
       const { data: last } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('clinic_id', selectedClinic)
-        .order('display_number', { ascending: false })
+        .from('unified_queue').select('display_number')
+        .eq('clinic_id', selectedClinic).order('display_number', { ascending:false })
         .limit(1).maybeSingle();
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'waiting', display_number: (last?.display_number || 0) + 1, called_at: null })
-        .eq('id', patient.id);
-      if (error) throw error;
-      toast.success(translate('تم نقل المريض لآخر الصف', 'Patient moved to end'));
+      await supabase.from('unified_queue').update({
+        status: 'waiting', called_at: null,
+        display_number: (last?.display_number || 0) + 1,
+      }).eq('id', patient.id);
+      toast.success(tr('تم نقل المريض لآخر الصف','Patient moved to end'));
       loadPatients();
-    } catch (e) {
-      console.error('moveToEnd:', e);
-      toast.error(translate('خطأ في نقل المريض', 'Error moving patient'));
-    }
+    } catch (e) { toast.error(tr('خطأ في نقل المريض','Error moving patient')); }
   };
 
-  /**
-   * Return patient to waiting status
-   */
+  // ── إعادة للصف ─────────────────────────────────────────────
   const returnToQueue = async (patient) => {
     try {
-      const { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'waiting', called_at: null })
-        .eq('id', patient.id);
-      if (error) throw error;
-      toast.success(translate('تم إعادة المريض للصف', 'Patient returned to queue'));
+      await supabase.from('unified_queue').update({ status:'waiting', called_at:null }).eq('id', patient.id);
+      toast.success(tr('تم إعادة المريض للصف','Patient returned to queue'));
       loadPatients();
-    } catch (e) {
-      console.error('returnToQueue:', e);
-      toast.error(translate('خطأ في إعادة المريض', 'Error returning patient'));
-    }
+    } catch (e) { toast.error(tr('خطأ','Error')); }
   };
 
-  /**
-   * Log activity to database
-   */
+  // ── تسجيل النشاط ───────────────────────────────────────────
   const logActivity = async (actionType, description, metadata = {}) => {
     try {
       await supabase.from('activity_logs').insert([{
-        action_type: actionType,
-        description: description,
-        user_id: doctorId,
-        metadata: metadata,
-        created_at: new Date().toISOString()
+        action_type:  actionType,
+        description:  description,
+        // user_id يجب أن يكون UUID صالح أو null
+        user_id:      (doctorId && /^[0-9a-f-]{36}$/i.test(doctorId)) ? doctorId : null,
+        metadata:     metadata,
       }]);
-    } catch (e) {
-      console.error('Error logging activity:', e);
+    } catch (e) { /* النشاط اختياري — لا نوقف الإجراء */ }
+  };
+
+  // ── مدة الفحص ──────────────────────────────────────────────
+  const formatDuration = (start, end = new Date()) => {
+    if (!start) return '—';
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    const m = Math.floor(diff / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return `${m}:${String(s).padStart(2,'0')}`;
+  };
+
+  // ── Real-time + تحميل أولي ─────────────────────────────────
+  useEffect(() => {
+    loadClinics();
+  }, []);
+
+  useEffect(() => {
+    loadPatients();
+    if (!selectedClinic) return;
+    const ch = supabase
+      .channel(`dc_${selectedClinic}_${Date.now()}`)
+      .on('postgres_changes', { event:'*', schema:'public', table:'unified_queue',
+        filter:`clinic_id=eq.${selectedClinic}` }, loadPatients)
+      .subscribe();
+    const iv = setInterval(loadPatients, 10000);
+    return () => { supabase.removeChannel(ch); clearInterval(iv); };
+  }, [selectedClinic]);
+
+  // ── فلترة المرضى ───────────────────────────────────────────
+  // الحالة 'missed' في الـ UI = ['no_show','absent'] في DB
+  const filtered = patients.filter(p => {
+    const idStr  = `${p.patient_id||''} ${p.military_id||''} ${p.personal_id||''}`.toLowerCase();
+    const search = searchTerm.toLowerCase();
+    const matchSearch = idStr.includes(search)
+      || (p.patient_name||'').toLowerCase().includes(search)
+      || String(p.display_number||'').includes(search);
+
+    let matchStatus = filterStatus === 'all';
+    if (!matchStatus) {
+      if (filterStatus === 'waiting')     matchStatus = p.status === 'waiting';
+      if (filterStatus === 'in_progress') matchStatus = ['serving','called','in_progress'].includes(p.status);
+      if (filterStatus === 'completed')   matchStatus = ['done','completed'].includes(p.status);
+      if (filterStatus === 'missed')      matchStatus = ['no_show','absent'].includes(p.status);
     }
-  };
-
-  /**
-   * Format time duration
-   */
-  const formatDuration = (startTime, endTime = new Date()) => {
-    if (!startTime) return '-';
-    const diff = new Date(endTime).getTime() - new Date(startTime).getTime();
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // Filter patients
-  const filteredPatients = patients.filter(p => {
-    const matchesSearch = 
-      (p.real_patient_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.patient_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.display_number?.toString() || '').includes(searchTerm);
-    
-    const matchesStatus = filterStatus === 'all' || p.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
+    return matchSearch && matchStatus;
   });
 
+  // ── مساعد اسم المريض (أعمدة حقيقية) ───────────────────────
+  const patientId = (p) => p.military_id || p.personal_id || p.patient_id || '—';
+
+  // ════════════════════════════════════════════════════════════
+  // واجهة المستخدم
+  // ════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6">
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-2xl font-bold flex items-center gap-3">
           <UserCheck className="text-[#C9A54C]" size={28} />
-          {translate('لوحة تحكم الطبيب', 'Doctor Control Panel')}
+          {tr('لوحة تحكم الطبيب','Doctor Control Panel')}
         </h2>
         <div className="flex items-center gap-3">
           <select
             value={selectedClinic}
-            onChange={(e) => setSelectedClinic(e.target.value)}
-            className="bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2 text-white"
-          >
-            {clinics.map(clinic => (
-              <option key={clinic.id} value={clinic.id}>
-                {language === 'ar' ? clinic.name_ar : clinic.name_en}
+            onChange={e => setSelectedClinic(e.target.value)}
+            className="bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2 text-white">
+            {clinics.map(c => (
+              <option key={c.id} value={c.id}>
+                {language === 'ar' ? c.name_ar : (c.name_en || c.name_ar)}
               </option>
             ))}
           </select>
-          <button
-            onClick={loadPatients}
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"
-          >
+          <button onClick={loadPatients}
+            className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all">
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* إحصائيات موحدة */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard 
-          icon={<Users className="text-blue-400" />}
-          value={stats.waiting}
-          label={translate('في الانتظار', 'Waiting')}
-          color="blue"
-        />
-        <StatCard 
-          icon={<Activity className="text-yellow-400" />}
-          value={stats.inProgress}
-          label={translate('قيد الفحص', 'In Progress')}
-          color="yellow"
-        />
-        <StatCard 
-          icon={<CheckCircle className="text-green-400" />}
-          value={stats.completed}
-          label={translate('تم الفحص', 'Completed')}
-          color="green"
-        />
-        <StatCard 
-          icon={<UserX className="text-red-400" />}
-          value={stats.missed}
-          label={translate('تغيب', 'Missed')}
-          color="red"
-        />
-        <StatCard 
-          icon={<Clock className="text-purple-400" />}
-          value={`${stats.avgWaitTime}m`}
-          label={translate('متوسط الانتظار', 'Avg Wait')}
-          color="purple"
-        />
+        {[
+          { icon:<Users    className="text-blue-400"/>,   val:stats.waiting,    label:tr('في الانتظار','Waiting'),   cls:'from-blue-500/20 to-blue-600/10 border-blue-500/30' },
+          { icon:<Activity className="text-yellow-400"/>, val:stats.inProgress, label:tr('قيد الفحص','In Progress'),cls:'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30' },
+          { icon:<CheckCircle className="text-green-400"/>,val:stats.completed, label:tr('تم الفحص','Completed'),   cls:'from-green-500/20 to-green-600/10 border-green-500/30' },
+          { icon:<UserX    className="text-red-400"/>,    val:stats.missed,     label:tr('تغيب','Missed'),          cls:'from-red-500/20 to-red-600/10 border-red-500/30' },
+          { icon:<Clock    className="text-purple-400"/>, val:`${stats.avgWaitTime}m`, label:tr('متوسط الانتظار','Avg Wait'), cls:'from-purple-500/20 to-purple-600/10 border-purple-500/30' },
+        ].map((s,i) => (
+          <div key={i} className={`bg-gradient-to-br ${s.cls} rounded-xl p-4 border`}>
+            <div className="flex items-center justify-between mb-2">{s.icon}<span className="text-2xl font-bold">{s.val}</span></div>
+            <div className="text-sm text-gray-400">{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Current Patient Card */}
-      {currentPatient && (
+      {/* المريض الحالي */}
+      {currentPatient ? (
         <div className="bg-gradient-to-r from-[#C9A54C]/20 to-[#8A1538]/20 rounded-xl p-6 border border-[#C9A54C]/30">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Play className="text-green-400" size={20} />
-              {translate('المريض الحالي', 'Current Patient')}
+              {tr('المريض الحالي','Current Patient')}
             </h3>
-            <span className="text-3xl font-bold text-[#C9A54C]">
-              #{currentPatient.display_number}
-            </span>
+            <span className="text-3xl font-bold text-[#C9A54C]">#{currentPatient.display_number}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
-              <div className="text-sm text-gray-400">{translate('الرقم العسكري', 'Military ID')}</div>
-              <div className="font-mono text-lg">{currentPatient.real_patient_id}</div>
+              <div className="text-sm text-gray-400">{tr('الرقم العسكري/الشخصي','Military/Personal ID')}</div>
+              <div className="font-mono text-lg">{patientId(currentPatient)}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-400">{translate('الاسم', 'Name')}</div>
-              <div className="font-medium">{currentPatient.patient_name}</div>
+              <div className="text-sm text-gray-400">{tr('الاسم','Name')}</div>
+              <div className="font-medium">{currentPatient.patient_name || '—'}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-400">{translate('الجنس', 'Gender')}</div>
+              <div className="text-sm text-gray-400">{tr('الجنس','Gender')}</div>
               <div className="font-medium">
-                {currentPatient.patient_gender === 'male' ? translate('ذكر', 'Male') : translate('أنثى', 'Female')}
+                {currentPatient.gender === 'female' ? tr('أنثى','Female') : tr('ذكر','Male')}
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-400">{translate('مدة الفحص', 'Exam Duration')}</div>
+              <div className="text-sm text-gray-400">{tr('مدة الفحص','Exam Duration')}</div>
               <div className="font-mono text-lg text-[#C9A54C]">
-                {formatDuration(currentPatient.entered_at)}
+                {formatDuration(currentPatient.exam_start_time || currentPatient.called_at)}
               </div>
             </div>
           </div>
+          {currentPatient.is_vip && (
+            <span className="inline-block mb-3 text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full border border-yellow-500/30">
+              ⭐ VIP
+            </span>
+          )}
+          {currentPatient.is_military_committee && (
+            <span className="inline-block mb-3 ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30">
+              🛡 {tr('لجنة عسكرية','Military Committee')}
+            </span>
+          )}
           <div className="flex gap-3">
-            <button
-              onClick={() => completePatient(currentPatient)}
-              className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-all"
-            >
+            <button onClick={() => completePatient(currentPatient)}
+              className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-all">
               <CheckCircle size={20} />
-              {translate('إنهاء الفحص', 'Complete')}
+              {tr('إنهاء الفحص','Complete Exam')}
             </button>
-            <button
-              onClick={() => markMissed(currentPatient)}
-              className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium flex items-center gap-2 transition-all"
-            >
+            <button onClick={() => markMissed(currentPatient)}
+              className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium flex items-center gap-2 transition-all">
               <UserX size={20} />
-              {translate('تغيب', 'Missed')}
+              {tr('تغيب','Absent')}
             </button>
           </div>
         </div>
-      )}
-
-      {/* Call Next Button */}
-      {!currentPatient && (
-        <button
-          onClick={callNextPatient}
-          disabled={stats.waiting === 0}
-          className="w-full py-4 bg-gradient-to-r from-[#C9A54C] to-[#8A1538] hover:from-[#D4B55D] hover:to-[#9A2548] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+      ) : (
+        <button onClick={callNextPatient} disabled={stats.waiting === 0}
+          className="w-full py-4 bg-gradient-to-r from-[#C9A54C] to-[#8A1538] hover:from-[#D4B55D] hover:to-[#9A2548] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
           <Phone size={24} />
-          {translate('استدعاء المريض التالي', 'Call Next Patient')}
+          {tr('استدعاء المريض التالي','Call Next Patient')}
           {stats.waiting > 0 && (
             <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
-              {stats.waiting} {translate('في الانتظار', 'waiting')}
+              {stats.waiting} {tr('في الانتظار','waiting')}
             </span>
           )}
         </button>
       )}
 
-      {/* Search and Filter */}
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
+      {/* بحث + فلتر */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={translate('بحث برقم أو اسم المريض...', 'Search by patient number or name...')}
-            className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500"
-          />
+          <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+            placeholder={tr('بحث برقم أو اسم المريض...','Search by ID or name...')}
+            className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500" />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-3 text-white"
-        >
-          <option value="all">{translate('الكل', 'All')}</option>
-          <option value="waiting">{translate('في الانتظار', 'Waiting')}</option>
-          <option value="in_progress">{translate('قيد الفحص', 'In Progress')}</option>
-          <option value="completed">{translate('تم الفحص', 'Completed')}</option>
-          <option value="missed">{translate('تغيب', 'Missed')}</option>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-3 text-white">
+          <option value="all">{tr('الكل','All')}</option>
+          <option value="waiting">{tr('في الانتظار','Waiting')}</option>
+          <option value="in_progress">{tr('قيد الفحص','In Progress')}</option>
+          <option value="completed">{tr('تم الفحص','Completed')}</option>
+          <option value="missed">{tr('تغيب','Missed/Absent')}</option>
         </select>
       </div>
 
-      {/* Patients Table */}
+      {/* جدول المرضى */}
       <div className="bg-[#1A1A1A] rounded-xl overflow-hidden border border-white/10">
         <table className="w-full">
           <thead className="bg-white/5">
             <tr>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('الرقم', 'No.')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('الرقم العسكري', 'Military ID')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('الاسم', 'Name')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('الحالة', 'Status')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('وقت الاستدعاء', 'Called At')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('المدة', 'Duration')}</th>
-              <th className="text-right p-4 text-gray-400 font-medium">{translate('الإجراءات', 'Actions')}</th>
+              {[tr('الرقم','No.'), tr('الهوية','ID'), tr('الاسم','Name'),
+                tr('الجنس','Gender'), tr('الحالة','Status'),
+                tr('وقت الاستدعاء','Called At'), tr('المدة','Duration'), tr('إجراءات','Actions')
+              ].map((h,i) => (
+                <th key={i} className="text-right p-3 text-gray-400 font-medium text-sm">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filteredPatients.map((patient) => (
-              <tr key={patient.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                <td className="p-4 font-mono text-lg font-bold text-[#C9A54C]">
-                  #{patient.display_number}
+            {filtered.map(p => (
+              <tr key={p.id} className="border-t border-white/5 hover:bg-white/5 transition-all">
+                <td className="p-3 font-mono font-bold text-[#C9A54C]">#{p.display_number}</td>
+                <td className="p-3 font-mono text-sm">{patientId(p)}</td>
+                <td className="p-3">
+                  <div className="font-medium">{p.patient_name || '—'}</div>
+                  {p.exam_type && <div className="text-xs text-gray-500">{p.exam_type}</div>}
                 </td>
-                <td className="p-4 font-mono">{patient.real_patient_id}</td>
-                <td className="p-4">
-                  <div className="font-medium">{patient.patient_name}</div>
-                  <div className="text-sm text-gray-400">
-                    {patient.patient_gender === 'male' ? translate('ذكر', 'Male') : translate('أنثى', 'Female')}
-                  </div>
+                <td className="p-3 text-sm">
+                  {p.gender === 'female' ? tr('أنثى','Female') : tr('ذكر','Male')}
                 </td>
-                <td className="p-4">
-                  <StatusBadge status={patient.status} t={translate} />
+                <td className="p-3"><StatusBadge status={p.status} tr={tr} /></td>
+                <td className="p-3 text-gray-400 text-sm">
+                  {p.called_at ? new Date(p.called_at).toLocaleTimeString(language==='ar'?'ar-SA':'en-US',{hour:'2-digit',minute:'2-digit'}) : '—'}
                 </td>
-                <td className="p-4 text-gray-400">
-                  {patient.called_at 
-                    ? new Date(patient.called_at).toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-                    : '-'
-                  }
+                <td className="p-3 font-mono text-sm text-[#C9A54C]">
+                  {['serving','called','in_progress'].includes(p.status)
+                    ? formatDuration(p.exam_start_time || p.called_at)
+                    : (['done','completed'].includes(p.status) && p.exam_start_time && p.exam_end_time)
+                      ? formatDuration(p.exam_start_time, p.exam_end_time)
+                      : '—'}
                 </td>
-                <td className="p-4">
-                  {patient.status === 'in_progress' 
-                    ? <span className="font-mono text-[#C9A54C]">{formatDuration(patient.entered_at)}</span>
-                    : patient.status === 'completed' && patient.entered_at && patient.completed_at
-                      ? formatDuration(patient.entered_at, patient.completed_at)
-                      : '-'
-                  }
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    {patient.status === 'waiting' && (
+                <td className="p-3">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {p.status === 'waiting' && (
                       <>
-                        <button
-                          onClick={() => markMissed(patient)}
-                          className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
-                          title={translate('تسجيل غياب', 'Mark Missed')}
-                        >
-                          <UserX size={16} />
-                        </button>
-                        <button
-                          onClick={() => moveToEnd(patient)}
-                          className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-all"
-                          title={translate('نقل لآخر الصف', 'Move to End')}
-                        >
-                          <ArrowLeft size={16} />
-                        </button>
+                        <ActionBtn onClick={() => markMissed(p)} color="red" title={tr('غياب','Absent')}>
+                          <UserX size={14} />
+                        </ActionBtn>
+                        <ActionBtn onClick={() => moveToEnd(p)} color="blue" title={tr('نقل لآخر الدور','Move to end')}>
+                          <RotateCcw size={14} />
+                        </ActionBtn>
                       </>
                     )}
-                    {(patient.status === 'completed' || patient.status === 'missed') && (
-                      <button
-                        onClick={() => returnToQueue(patient)}
-                        className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-all"
-                        title={translate('إعادة للصف', 'Return to Queue')}
-                      >
-                        <RotateCcw size={16} />
-                      </button>
+                    {['done','completed','no_show','absent'].includes(p.status) && (
+                      <ActionBtn onClick={() => returnToQueue(p)} color="yellow" title={tr('إعادة للصف','Return to queue')}>
+                        <RotateCcw size={14} />
+                      </ActionBtn>
                     )}
                   </div>
                 </td>
@@ -540,11 +441,10 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
             ))}
           </tbody>
         </table>
-        
-        {filteredPatients.length === 0 && (
+        {filtered.length === 0 && (
           <div className="p-12 text-center text-gray-400">
-            <Users size={48} className="mx-auto mb-4 opacity-50" />
-            <p>{translate('لا يوجد مرضى', 'No patients found')}</p>
+            <Users size={48} className="mx-auto mb-4 opacity-30" />
+            <p>{loading ? tr('جارٍ التحميل...','Loading...') : tr('لا يوجد مرضى','No patients found')}</p>
           </div>
         )}
       </div>
@@ -552,45 +452,39 @@ const DoctorControl = ({ language = 'ar', t = (ar, en) => ar, doctorId, clinicId
   );
 };
 
-/**
- * Statistics Card Component
- */
-const StatCard = ({ icon, value, label, color }) => {
-  const colorClasses = {
-    blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
-    yellow: 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30',
-    green: 'from-green-500/20 to-green-600/10 border-green-500/30',
-    red: 'from-red-500/20 to-red-600/10 border-red-500/30',
-    purple: 'from-purple-500/20 to-purple-600/10 border-purple-500/30',
+// ── زر إجراء صغير ─────────────────────────────────────────────
+const ActionBtn = ({ onClick, color, title, children }) => {
+  const colors = {
+    red:    'bg-red-500/20 hover:bg-red-500/30 text-red-400',
+    blue:   'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400',
+    yellow: 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400',
+    green:  'bg-green-500/20 hover:bg-green-500/30 text-green-400',
   };
-
   return (
-    <div className={`bg-gradient-to-br ${colorClasses[color]} rounded-xl p-4 border`}>
-      <div className="flex items-center justify-between mb-2">
-        {icon}
-        <span className="text-2xl font-bold">{value}</span>
-      </div>
-      <div className="text-sm text-gray-400">{label}</div>
-    </div>
+    <button onClick={onClick} title={title}
+      className={`p-2 rounded-lg transition-all ${colors[color]||colors.blue}`}>
+      {children}
+    </button>
   );
 };
 
-/**
- * Status Badge Component
- */
-const StatusBadge = ({ status, t }) => {
-  const statusConfig = {
-    waiting: { color: 'bg-blue-500/20 text-blue-400', label: t('في الانتظار', 'Waiting') },
-    in_progress: { color: 'bg-yellow-500/20 text-yellow-400', label: t('قيد الفحص', 'In Progress') },
-    completed: { color: 'bg-green-500/20 text-green-400', label: t('تم الفحص', 'Completed') },
-    missed: { color: 'bg-red-500/20 text-red-400', label: t('تغيب', 'Missed') },
+// ── شارة الحالة — تغطي كل حالات DB ───────────────────────────
+const StatusBadge = ({ status, tr }) => {
+  const map = {
+    waiting:     { cls:'bg-blue-500/20 text-blue-400',    label: tr('في الانتظار','Waiting') },
+    called:      { cls:'bg-orange-500/20 text-orange-400', label: tr('تم الاستدعاء','Called') },
+    serving:     { cls:'bg-yellow-500/20 text-yellow-400', label: tr('قيد الفحص','In Service') },
+    in_progress: { cls:'bg-yellow-500/20 text-yellow-400', label: tr('قيد الفحص','In Progress') },
+    done:        { cls:'bg-green-500/20 text-green-400',   label: tr('تم الفحص','Done') },
+    completed:   { cls:'bg-green-500/20 text-green-400',   label: tr('مكتمل','Completed') },
+    no_show:     { cls:'bg-red-500/20 text-red-400',       label: tr('تغيب','Absent') },
+    absent:      { cls:'bg-red-500/20 text-red-400',       label: tr('تغيب','Absent') },
+    cancelled:   { cls:'bg-gray-500/20 text-gray-400',     label: tr('ملغي','Cancelled') },
   };
-
-  const config = statusConfig[status] || statusConfig.waiting;
-
+  const cfg = map[status] || { cls:'bg-gray-500/20 text-gray-400', label: status };
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
-      {config.label}
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${cfg.cls}`}>
+      {cfg.label}
     </span>
   );
 };
