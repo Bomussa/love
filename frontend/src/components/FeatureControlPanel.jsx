@@ -162,7 +162,7 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('settings')
+        .from('system_settings')
         .select('*')
         .like('key', 'feature_%');
 
@@ -227,13 +227,13 @@ const FeatureControlPanel = ({ language = 'ar', t }) => {
       }));
 
       // Batch upsert all settings at once for better performance
-      const { error: upsertErr } = await supabase.from('settings').upsert(updates, { onConflict: 'key' });
+      const { error: upsertErr } = await supabase.from('system_settings').upsert(updates, { onConflict: 'key' });
       if (upsertErr) {
         // Fallback: try one by one if batch fails
         console.warn('Batch upsert failed, trying individually:', upsertErr.message);
         let failCount = 0;
         for (const update of updates) {
-          const { error: singleErr } = await supabase.from('settings').upsert(update, { onConflict: 'key' });
+          const { error: singleErr } = await supabase.from('system_settings').upsert(update, { onConflict: 'key' });
           if (singleErr) failCount++;
         }
         if (failCount > 0) throw new Error(`${failCount} settings failed to save`);
