@@ -189,8 +189,9 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
           })
           if (srErr) {
             // fallback مباشر إذا فشل RPC
+            const nowQ = new Date(Date.now() + 3*60*60*1000).toISOString();
             const { error: fe } = await supabase.from('unified_queue')
-              .update({ status:'serving', entered_clinic_at: new Date().toISOString(), exam_start_time: new Date().toISOString() })
+              .update({ status:'serving', entered_clinic_at: nowQ, exam_start_time: nowQ })
               .eq('id', patientId)
             if (fe) throw fe
           }
@@ -209,8 +210,9 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
           }).then(r => ({ error: r.error })).catch(e => ({ error: e }))
           if (fe) {
             // fallback مباشر
+            const nowDone = new Date(Date.now() + 3*60*60*1000).toISOString();
             const { error: fe2 } = await supabase.from('unified_queue')
-              .update({ status:'done', completed_at: new Date().toISOString(), exam_end_time: new Date().toISOString() })
+              .update({ status:'done', completed_at: nowDone, exam_end_time: nowDone })
               .eq('id', patientId)
             if (fe2) throw fe2
           }

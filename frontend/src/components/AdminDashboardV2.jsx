@@ -68,7 +68,7 @@ const logActivity = async (actionType, description, userId = null, metadata = {}
       metadata: metadata,
       ip_address: null,
       user_agent: navigator.userAgent,
-      created_at: new Date().toISOString()
+      created_at: new Date(Date.now() + 3*60*60*1000).toISOString()
     }]);
   } catch (e) {
     console.error('Error logging activity:', e);
@@ -134,12 +134,13 @@ const QueueManagement = ({ language, t }) => {
   const loadQueues = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
 
       // جلب الطوابير من unified_queue
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('*')
+        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date,is_temporary,transferred_from')
         .eq('queue_date', today)
         .order('display_number', { ascending: true });
 
@@ -157,32 +158,20 @@ const QueueManagement = ({ language, t }) => {
 
   const callNext = async (clinicId) => {
     try {
-      // ترتيب المنتظرين حسب رقم الدور
-      const waitingQueue = queues
-        .filter(q => q.clinic_id === clinicId && q.status === 'waiting')
-        .sort((a, b) => (a.display_number || 0) - (b.display_number || 0));
-      
-      if (waitingQueue.length === 0) {
-        showErrorToast(t('لا يوجد مرضى في الانتظار', 'No patients waiting'));
-        return;
-      }
-      
-      const nextPatient = waitingQueue[0];
-      // تحديث في unified_queue أولاً، fallback لـ queues
-      let { error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'called', called_at: new Date().toISOString() })
-        .eq('id', nextPatient.id);
-
-
-      
-      if (!error) {
-        showSuccessToast(t(`تم استدعاء الرقم: ${nextPatient.display_number}`, `Called number: ${nextPatient.display_number}`));
-        await logActivity('queue_call', `تم استدعاء الرقم ${nextPatient.display_number} في عيادة ${clinicId}`);
-        loadQueues();
+      // استخدام call_next_patient RPC المحمية
+      const { data: rpcResult, error } = await supabase.rpc('call_next_patient', {
+        p_clinic_id: clinicId,
+        p_mark_current_done: false,
+      });
+      if (error) throw error;
+      const num = rpcResult?.data?.display_number;
+      if (num) {
+        showSuccessToast(t(`تم استدعاء الرقم: ${num}`, `Called number: ${num}`));
+        await logActivity('queue_call', `تم استدعاء الرقم ${num} في عيادة ${clinicId}`);
       } else {
-        showErrorToast(t('حدث خطأ أثناء الاستدعاء', 'Error calling patient'));
+        showErrorToast(t('لا يوجد مرضى في الانتظار', 'No patients waiting'));
       }
+      loadQueues();
     } catch (e) {
       console.error('Error calling next:', e);
       showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
@@ -193,25 +182,25 @@ const QueueManagement = ({ language, t }) => {
   const completePatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
-      // تحديث في unified_queue أولاً
-      let { error } = await supabase
-        .from('unified_queue')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', queueId);
-
-
-
-      if (!error) {
-        showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
-        await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
-        loadQueues();
-      } else {
-        showErrorToast(t('حدث خطأ أثناء إكمال الفحص', 'Error completing examination'));
+      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
+      // محاولة finish_exam_record RPC أولاً
+      const { error: rpcErr } = await supabase.rpc('finish_exam_record', {
+        p_queue_id: queueId,
+        p_result:   'completed',
+        p_notes:    null,
+        p_status:   'completed',
+      });
+      if (rpcErr) {
+        // fallback مباشر
+        const { error } = await supabase
+          .from('unified_queue')
+          .update({ status: 'completed', completed_at: now, exam_end_time: now })
+          .eq('id', queueId);
+        if (error) throw error;
       }
+      showSuccessToast(t('تم إكمال الفحص بنجاح', 'Examination completed'));
+      await logActivity('queue_complete', `تم إكمال الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
+      loadQueues();
     } catch (e) {
       console.error('Error completing patient:', e);
       showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
@@ -222,21 +211,20 @@ const QueueManagement = ({ language, t }) => {
   const skipPatient = async (queueId) => {
     try {
       const queue = queues.find(q => q.id === queueId);
-      // تحديث في unified_queue أولاً
-      let { error } = await supabase
+      const { error } = await supabase
         .from('unified_queue')
-        .update({ status: 'waiting', updated_at: new Date().toISOString() })
+        .update({ status: 'waiting', called_at: null })
         .eq('id', queueId);
-
-
-
       if (!error) {
         showSuccessToast(t('تم تخطي المريض وإعادته للانتظار', 'Patient skipped and returned to waiting'));
         await logActivity('queue_skip', `تم تخطي الرقم ${queue?.display_number} في عيادة ${queue?.clinic_id}`);
         loadQueues();
+      } else {
+        showErrorToast(t('حدث خطأ أثناء التخطي', 'Error skipping patient'));
       }
     } catch (e) {
       console.error('Error skipping patient:', e);
+      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error'));
     }
   };
 
@@ -281,11 +269,11 @@ const QueueManagement = ({ language, t }) => {
             patient_id: patient.patient_id || patient.id,
             patient_name: patient.name || 'مراجع أولوية',
             status: 'called',
-            called_at: new Date().toISOString(),
+            called_at: new Date(Date.now() + 3*60*60*1000).toISOString(),
             queue_number_int: 999,
             display_number: 999,
             queue_number: '999',
-            queue_date: new Date().toISOString().split('T')[0]
+            queue_date: new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0]
           });
 
         if (insertError) {
@@ -301,7 +289,7 @@ const QueueManagement = ({ language, t }) => {
           .from('unified_queue')
           .update({ 
             status: 'called', 
-            called_at: new Date().toISOString()
+            called_at: new Date(Date.now() + 3*60*60*1000).toISOString()
           })
           .eq('id', patientQueue.id);
 
@@ -359,7 +347,7 @@ const QueueManagement = ({ language, t }) => {
       }
 
       // تحديث جدول device_logins إذا كان موجوداً
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
       await supabase
         .from('device_logins')
         .update({ patient_id: newPatientId.trim() })
@@ -399,7 +387,8 @@ const QueueManagement = ({ language, t }) => {
     ...clinic,
     waiting: queues.filter(q => q.clinic_id === clinic.id && q.status === 'waiting'),
     called: queues.filter(q => q.clinic_id === clinic.id && q.status === 'called'),
-    completed: queues.filter(q => q.clinic_id === clinic.id && q.status === 'completed').length
+    completed: queues.filter(q => q.clinic_id === clinic.id && ['completed','done'].includes(q.status)).length,
+    serving: queues.filter(q => q.clinic_id === clinic.id && ['called','serving','in_progress'].includes(q.status))
   }));
 
   return (
@@ -694,23 +683,23 @@ const ReportsSection = ({ language, t }) => {
     return (completedWeight / totalWeight) * 100;
   };
 
-  const loadStats = async () => {
+   const loadStats = async () => {
     try {
       setLoading(true);
-      const today = new Date();
+      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
+      const todayStr = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+      const today = new Date(Date.now() + 3*60*60*1000);
       today.setHours(0, 0, 0, 0);
       
-      const weekAgo = new Date();
+      const weekAgo = new Date(Date.now() + 3*60*60*1000);
       weekAgo.setDate(weekAgo.getDate() - 7);
       
-      const monthAgo = new Date();
+      const monthAgo = new Date(Date.now() + 3*60*60*1000);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       
-      const yearAgo = new Date();
+      const yearAgo = new Date(Date.now() + 3*60*60*1000);
       yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-
       // إحصائيات اليوم
-      const todayStr = today.toISOString().split('T')[0];
       const { data: todayData } = await supabase
         .from('unified_queue')
         .select('*')
@@ -742,7 +731,7 @@ const ReportsSection = ({ language, t }) => {
       // حساب إحصائيات كل عيادة
       const clinicStats = clinicsData?.map(clinic => {
         const clinicQueues = todayData?.filter(q => q.clinic_id === clinic.id) || [];
-        const completed = clinicQueues.filter(q => q.status === 'completed');
+        const completed = clinicQueues.filter(q => ['completed','done'].includes(q.status));
         const waiting = clinicQueues.filter(q => q.status === 'waiting');
         const avgWait = completed.length > 0
           ? completed.reduce((acc, q) => {
@@ -777,7 +766,7 @@ const ReportsSection = ({ language, t }) => {
         .select('patient_id, stations, current_station_index, status')
         .gte('created_at', weekAgo.toISOString());
 
-      const completed = weekData?.filter(q => q.status === 'completed') || [];
+      const completed = weekData?.filter(q => ['completed','done'].includes(q.status)) || [];
       const avgWait = completed.length > 0
         ? completed.reduce((acc, q) => {
             if (q.called_at && q.created_at) {
@@ -5392,9 +5381,7 @@ const DatabaseManagement = ({ language, t }) => {
     { name: 'patients', label: t('المرضى', 'Patients'), icon: UserCheck },
     { name: 'notifications', label: t('الإشعارات', 'Notifications'), icon: Bell },
     { name: 'routes', label: t('المسارات', 'Routes'), icon: MapPin },
-    { name: 'pins', label: t('الأرقام السرية', 'PINs'), icon: Key },
-  ];
-
+   ];
   useEffect(() => {
     setTables(availableTables);
     setLoading(false);
@@ -5870,11 +5857,11 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // جلب بيانات الطوابير لليوم الحالي فقط
-      const todayDate = new Date().toISOString().split('T')[0];
+      // جلب بيانات الطوابير لليوم الحالي فقط (توقيت قطر UTC+3)
+      const todayDate = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
       const { data: queueData, error: queueError } = await supabase
         .from('unified_queue')
-        .select('patient_id, clinic_id, status, entered_at, called_at, completed_at')
+        .select('patient_id, clinic_id, status, entered_at, called_at, completed_at, exam_start_time, exam_end_time')
         .eq('queue_date', todayDate);
       
       if (!queueError && queueData) {
@@ -5894,10 +5881,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       if (queueData && clinicsData) {
         clinicsData.forEach(clinic => {
           const clinicQueues = queueData.filter(q => q.clinic_id === clinic.id);
-          const completed = clinicQueues.filter(q => q.status === 'completed');
-          // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
-              // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving)
-              const waiting = clinicQueues.filter(q => ['waiting', 'called', 'serving'].includes(q.status));
+          const completed = clinicQueues.filter(q => ['completed','done'].includes(q.status));
+          // في الانتظار للعيادة تشمل الحالات النشطة (waiting, called, serving, in_progress)
+          const waiting = clinicQueues.filter(q => ['waiting', 'called', 'serving', 'in_progress'].includes(q.status));
           
           // حساب متوسط مدة الانتظار (من entered_at إلى called_at)
           let avgWaitTime = 0;
@@ -5947,14 +5933,14 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
   };
 
   const processQueueData = (data, dateField) => {
-    // المنطق الصحيح: الإجمالي = انتظار + يُخدَّم + مكتمل (دائماً أكبر من أي مكوّن)
+    // المنطق الصحيح: الإجمالي = انتظار + يُخدّم + مكتمل (دائماً أكبر من أي مكوّن)
     const waitingCount   = data.filter(item => item.status === 'waiting').length;
-    const servingCount   = data.filter(item => ['called', 'serving'].includes(item.status)).length;
-    const completedCount = data.filter(item => item.status === 'completed').length;
+    const servingCount   = data.filter(item => ['called', 'serving', 'in_progress'].includes(item.status)).length;
+    const completedCount = data.filter(item => ['completed','done'].includes(item.status)).length;
     const totalPatients  = waitingCount + servingCount + completedCount;
 
     let avgWait = 0;
-    const completedItems = data.filter(item => item.status === 'completed' && item[dateField] && item.called_at);
+    const completedItems = data.filter(item => ['completed','done'].includes(item.status) && item[dateField] && item.called_at);
     if (completedItems.length > 0) {
       const totalWait = completedItems.reduce((acc, item) => {
         const wait = new Date(item.called_at) - new Date(item[dateField]);

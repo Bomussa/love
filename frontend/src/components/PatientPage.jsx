@@ -94,7 +94,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
-      const entryTime = new Date().toISOString();
+      const entryTime = new Date(Date.now() + 3*60*60*1000).toISOString();
 
       // استخدام personal_id (الرقم الشخصي) من patientData
       const patientIdentifier = patientData.personal_id || patientData.patient_id || patientData.id;

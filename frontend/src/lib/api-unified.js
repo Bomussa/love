@@ -42,7 +42,7 @@ const api = {
       // تحديث الجنس دائماً إذا تغيّر — يُصحح مشكلة عرض الجنس القديم
       if (data && gender && data.gender !== gender) {
         await supabase.from('patients')
-          .update({ gender, updated_at: new Date().toISOString() })
+          .update({ gender, updated_at: new Date(Date.now() + 3*60*60*1000).toISOString() })
           .eq('personal_id', patientId).catch(() => {});
       }
       const patId = data?.patient_id || data?.personal_id || patientId;
@@ -177,10 +177,10 @@ const api = {
 
   async queueDone(clinicId, patientId) {
     try {
-      // PIN check removed - no authentication required for completing queue
+      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
       const { data, error } = await supabase
         .from('unified_queue')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .update({ status: 'done', completed_at: now, exam_end_time: now })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .select();
@@ -265,7 +265,7 @@ const api = {
           exam_type: examType,
           gender: gender,
           stations: stationsData,
-          updated_at: new Date().toISOString()
+          updated_at: new Date(Date.now() + 3*60*60*1000).toISOString()
         }, {
           onConflict: 'patient_id'
         })
@@ -285,8 +285,9 @@ const api = {
     try {
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, name, name_ar, name_en, floor, pin_required')
-        .order('display_order', { ascending: true });
+        .select('id, name, name_ar, name_en, floor, is_active, exam_duration, category, gender_constraint')
+        .eq('is_active', true)
+        .order('name_ar', { ascending: true });
 
       if (error) throw error;
       return { success: true, clinics: data || [] };
@@ -296,33 +297,31 @@ const api = {
     }
   },
 
-  async verifyPin(clinicId, pin) {
+  // verifyPin — PIN system removed (no pin column in clinics table)
+  // Returns clinic info for session creation without PIN check
+  async verifyPin(clinicId, _pin) {
     try {
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, name, name_ar, name_en, pin')
+        .select('id, name, name_ar, name_en')
         .eq('id', clinicId)
         .single();
 
-      if (error) {
+      if (error || !data) {
         return { success: false, isValid: false, error: 'Clinic not found' };
       }
 
-      if (data.pin && data.pin === pin) {
-        return {
-          success: true,
-          isValid: true,
-          session: {
-            clinicId: data.id,
-            clinicName: data.name_ar || data.name,
-            pin: pin
-          }
-        };
-      }
-
-      return { success: false, isValid: false, error: 'Invalid PIN' };
+      // PIN system removed — any clinic ID is valid
+      return {
+        success: true,
+        isValid: true,
+        session: {
+          clinicId: data.id,
+          clinicName: data.name_ar || data.name_en || data.name || clinicId,
+        }
+      };
     } catch (error) {
-      console.error('Verify PIN Error:', error);
+      console.error('Verify Clinic Error:', error);
       return { success: false, isValid: false, error: error.message };
     }
   },
@@ -330,10 +329,10 @@ const api = {
   // --- Queue Status ---
   async getQueueStatus(clinicId) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('*')
+        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .order('display_number', { ascending: true });
@@ -346,45 +345,21 @@ const api = {
     }
   },
 
-  async callNextPatient(clinicId, pin) {
+  // callNextPatient — uses call_next_patient RPC (no PIN required)
+  async callNextPatient(clinicId) {
     try {
-      // Verify PIN first
-      const pinCheck = await this.verifyPin(clinicId, pin);
-      if (!pinCheck.isValid) {
-        return { success: false, error: 'Invalid PIN' };
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-
-      // Find next waiting patient
-      const { data: nextPatient, error: findError } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting')
-        .order('display_number', { ascending: true })
-        .limit(1)
-        .single();
-
-      if (findError && findError.code !== 'PGRST116') {
-        return { success: false, error: findError.message };
-      }
-
-      if (!nextPatient) {
-        return { success: false, error: 'No patients in queue' };
-      }
-
-      // Update to called status
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'called', called_at: new Date().toISOString() })
-        .eq('id', nextPatient.id)
-        .select()
-        .single();
+      const { data: rpcResult, error } = await supabase.rpc('call_next_patient', {
+        p_clinic_id: clinicId,
+        p_mark_current_done: false,
+      });
 
       if (error) throw error;
-      return { success: true, data, ticket: nextPatient };
+
+      const num = rpcResult?.data?.display_number;
+      if (num) {
+        return { success: true, data: rpcResult.data, ticket: rpcResult.data };
+      }
+      return { success: false, error: 'No patients waiting' };
     } catch (error) {
       console.error('Call Next Patient Error:', error);
       return { success: false, error: error.message };
@@ -393,11 +368,18 @@ const api = {
 
   async updateQueueStatus(clinicId, patientId, status) {
     try {
+      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
       const updateData = { status };
-      if (status === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-      } else if (status === 'called' || status === 'no_show') {
-        updateData.called_at = new Date().toISOString();
+      if (status === 'completed' || status === 'done') {
+        updateData.completed_at = now;
+        updateData.exam_end_time = now;
+      } else if (status === 'called') {
+        updateData.called_at = now;
+      } else if (status === 'serving' || status === 'in_progress') {
+        updateData.exam_start_time = now;
+        updateData.entered_clinic_at = now;
+      } else if (status === 'no_show' || status === 'absent') {
+        updateData.marked_absent_at = now;
       }
 
       const { data, error } = await supabase
@@ -418,7 +400,7 @@ const api = {
   // --- Create Queue (Fixed for App.jsx compatibility) ---
   async createQueue(patientId, examType, gender, idempotencyKey) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
 
       // Check if already in queue today
       const { data: existing } = await supabase
@@ -473,7 +455,7 @@ const api = {
         display_number: nextNumber,
         status: 'waiting',
         queue_date: today,
-        entered_at: new Date().toISOString()
+        entered_at: new Date(Date.now() + 3*60*60*1000).toISOString()
       };
       if (firstClinicId) {
         insertData.clinic_id = firstClinicId;
