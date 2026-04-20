@@ -61,7 +61,8 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
   const fetchPatients = useCallback(async () => {
     if (!clinicId) { setPatients([]); setCurrentPatient(null); return }
     try {
-      const today = new Date().toISOString().split('T')[0]
+      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase بدقة
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0]
       // تحديد الأعمدة الموجودة فعلاً في unified_queue
       const { data, error } = await supabase
         .from('unified_queue')
