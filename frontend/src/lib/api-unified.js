@@ -39,15 +39,30 @@ const api = {
       }
 
       if (error) throw error;
-      return { success: true, data };
+      // تحديث الجنس دائماً إذا تغيّر — يُصحح مشكلة عرض الجنس القديم
+      if (data && gender && data.gender !== gender) {
+        await supabase.from('patients')
+          .update({ gender, updated_at: new Date().toISOString() })
+          .eq('personal_id', patientId).catch(() => {});
+      }
+      const patId = data?.patient_id || data?.personal_id || patientId;
+      return {
+        success: true,
+        data: { ...data, gender: gender || data.gender || 'male', patient_id: patId, personal_id: patientId }
+      };
     } catch (error) {
       console.error('Login Error:', error);
       return { success: false, error: error.message };
     }
   },
 
+  // ═══ helper: تاريخ قطر الصحيح (UTC+3) — يطابق qatar_today() في Supabase ═══
+  getQatarDate() {
+    return new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+  },
+
   // --- Queue ---
-  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null) {
+  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null, gender = null, militaryId = null, personalId = null) {
     try {
       // المصدر الوحيد: enter_queue_safe RPC — لا fallback يتجاوز الحمايات
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
