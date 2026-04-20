@@ -68,7 +68,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (runsError) throw runsError;
+      // qa_runs تجاهل الخطأ إذا لم يكن الجدول موجوداً
 
       // جلب آخر 50 finding
       const { data: fnd, error: fndError } = await supabase
@@ -77,7 +77,7 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (fndError) throw fndError;
+      // qa_findings تجاهل الخطأ إذا لم يكن الجدول موجوداً
 
       // جلب عمليات الإصلاح
       const { data: repairs, error: repairsError } = await supabase
@@ -86,9 +86,9 @@ const QARepairPanel = ({ language = 'ar', t }) => {
         .order('created_at', { ascending: false })
         .limit(30);
 
-      // repair_runs جدول اختياري - تجاهل الخطأ إذا لم يكن موجوداً
-      setQaRuns(runs || []);
-      setFindings(fnd || []);
+      // جميع الجداول اختيارية - تجاهل الأخطاء إن وجدت
+      setQaRuns(runsError ? [] : (runs || []));
+      setFindings(fndError ? [] : (fnd || []));
       setRepairRuns(repairsError ? [] : (repairs || []));
     } catch (e) {
       console.error('Error loading QA data:', e);
