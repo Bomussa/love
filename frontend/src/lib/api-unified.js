@@ -68,8 +68,11 @@ const api = {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
         p_clinic_id:    clinicId,
         p_patient_id:   patientId,
-        p_patient_name: patientName,
-        p_exam_type:    examType,
+        p_patient_name: patientName || patientId,
+        p_exam_type:    examType   || 'general',
+        p_gender:       gender     || 'male',
+        p_military_id:  militaryId || null,
+        p_personal_id:  personalId || patientId,
       });
 
       if (rpcError) {
