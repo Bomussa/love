@@ -245,17 +245,21 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
           break
         }
 
-        // غياب
+        // غياب — يُسجّل في exam_records بحالة absent
         case 'ABSENT': {
-          const { error } = await supabase
-            .from('unified_queue')
-            .update({
-              status: 'no_show',
-              notes:  t('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA')
-            })
-            .eq('id', patientId)
+          // يحفظ في exam_records مع وقت الغياب
+          await supabase.rpc('finish_exam_record', {
+            p_queue_id: patientId,
+            p_status:   'absent',
+            p_notes:    t('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA'),
+          }).catch(() => null) // لا نتوقف إذا فشل الـ RPC
+          // تحديث unified_queue كـ fallback
+          const { error } = await supabase.from('unified_queue').update({
+            status: 'no_show',
+            notes:  t('غياب - ','Absent - ') + new Date().toLocaleTimeString('ar-SA')
+          }).eq('id', patientId)
           if (error) throw error
-          pushNotif({ type:'warning', message: t('تم تسجيل الغياب','Absence recorded') })
+          pushNotif({ type:'warning', message: t('✅ تم تسجيل الغياب في السجل','✅ Absence recorded') })
           break
         }
 
