@@ -110,7 +110,8 @@ const api = {
 
   async getQueuePosition(clinicId, patientId) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
       const { data: patientEntry, error: entryError } = await supabase
         .from('unified_queue')
         .select('*')
