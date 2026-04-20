@@ -215,8 +215,14 @@ function App() {
       // دخول الصف في أول عيادة عبر RPC المحمية
       const firstClinic = clinics[0];
       const enterResult = await api.enterQueue(
-        firstClinic.id, patientId, false,
-        patientData?.name, examType
+        firstClinic.id,
+        patientId,
+        false,
+        patientData?.name || patientId,
+        examType,
+        patientData?.gender || 'male',
+        patientData?.military_id || null,
+        patientData?.personal_id || patientId
       );
       // Save route to database for PatientPage to retrieve later
       try {
