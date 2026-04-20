@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Bell, Plus, RefreshCw, Edit, Trash2, Play, Eye, Send, User, Clock, Palette, Type, Move, Timer, Square, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
 import OperationalNotificationsManager from './OperationalNotificationsManager';
@@ -139,14 +140,14 @@ const NotificationsManagementV2 = ({ language, t }) => {
       
       if (error) {
         console.error('Error adding notification:', error);
-        alert(t('خطأ في إضافة الإشعار', 'Error adding notification'));
+        toast.error(t('خطأ في إضافة الإشعار', 'Error adding notification'));
         return;
       }
       
       loadNotifications();
       setShowAddForm(false);
       resetNewNotification();
-      alert(t('تم إضافة الإشعار بنجاح', 'Notification added successfully'));
+      toast.success(t('تم إضافة الإشعار بنجاح', 'Notification added successfully'));
     } catch (e) {
       console.error('Error adding notification:', e);
     }
@@ -196,7 +197,7 @@ const NotificationsManagementV2 = ({ language, t }) => {
       if (!error) {
         loadNotifications();
         setEditingNotification(null);
-        alert(t('تم تحديث الإشعار بنجاح', 'Notification updated successfully'));
+        toast.success(t('تم تحديث الإشعار بنجاح', 'Notification updated successfully'));
       }
     } catch (e) {
       console.error('Error updating notification:', e);
@@ -209,7 +210,7 @@ const NotificationsManagementV2 = ({ language, t }) => {
         sent_at: new Date().toISOString()
       }).eq('id', id);
       loadNotifications();
-      alert(t('تم إرسال الإشعار', 'Notification sent'));
+      toast.success(t('تم إرسال الإشعار', 'Notification sent'));
     } catch (e) {
       console.error('Error sending notification:', e);
     }
