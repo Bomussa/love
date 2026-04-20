@@ -216,7 +216,7 @@ const api = {
   // --- Stats ---
   async getQueueCount(clinicId) {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
       const { count, error } = await supabase
         .from('unified_queue')
         .select('*', { count: 'exact', head: true })
