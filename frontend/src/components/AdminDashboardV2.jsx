@@ -244,7 +244,7 @@ const QueueManagement = ({ language, t }) => {
   // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
   const priorityCallPatient = async () => {
     if (!priorityPatientId.trim()) {
-      alert(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter military or personal ID'));
+      showErrorToast(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter military or personal ID'));
       return;
     }
 
@@ -269,7 +269,7 @@ const QueueManagement = ({ language, t }) => {
           .single();
 
         if (patientError || !patient) {
-          alert(t('لم يتم العثور على المراجع', 'Patient not found'));
+          showErrorToast(t('لم يتم العثور على المراجع', 'Patient not found'));
           return;
         }
 
@@ -290,11 +290,11 @@ const QueueManagement = ({ language, t }) => {
 
         if (insertError) {
           console.error('Error inserting priority queue:', insertError);
-          alert(t('حدث خطأ أثناء تمرير الدور', 'Error processing priority call'));
+          showErrorToast(t('حدث خطأ أثناء تمرير الدور', 'Error processing priority call'));
           return;
         }
 
-        alert(t(`تم تمرير الدور للمراجع: ${patient.name || patient.military_id}`, `Priority call for: ${patient.name || patient.military_id}`));
+        showSuccessToast(t(`تم تمرير الدور للمراجع: ${patient.name || patient.military_id}`, `Priority call for: ${patient.name || patient.military_id}`));
       } else {
         // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
         await supabase
@@ -305,7 +305,7 @@ const QueueManagement = ({ language, t }) => {
           })
           .eq('id', patientQueue.id);
 
-        alert(t(`تم تمرير الدور للمراجع رقم: ${patientQueue.queue_number}`, `Priority call for queue: ${patientQueue.queue_number}`));
+        showSuccessToast(t(`تم تمرير الدور للمراجع رقم: ${patientQueue.queue_number}`, `Priority call for queue: ${patientQueue.queue_number}`));
       }
 
       // إغلاق النافذة وتحديث البيانات
@@ -315,7 +315,7 @@ const QueueManagement = ({ language, t }) => {
       loadQueues();
     } catch (e) {
       console.error('Error in priority call:', e);
-      alert(t('حدث خطأ غير متوقع', 'Unexpected error occurred'));
+      showErrorToast(t('حدث خطأ غير متوقع', 'Unexpected error occurred'));
     } finally {
       setPriorityLoading(false);
     }
@@ -993,7 +993,7 @@ ${clinicStatsTable}
 
   const sendReportByEmail = async () => {
     if (!emailAddress || !emailAddress.includes('@')) {
-      alert(t('يرجى إدخال بريد إلكتروني صحيح', 'Please enter a valid email'));
+      showErrorToast(t('يرجى إدخال بريد إلكتروني صحيح', 'Please enter a valid email'));
       return;
     }
     // حفظ طلب الإرسال في قاعدة البيانات
@@ -1005,12 +1005,12 @@ ${clinicStatsTable}
         status: 'pending',
         created_at: new Date().toISOString()
       });
-      alert(t('تم إرسال التقرير بنجاح', 'Report sent successfully'));
+      showSuccessToast(t('تم إرسال التقرير بنجاح', 'Report sent successfully'));
       setShowEmailModal(false);
       setEmailAddress('');
     } catch (e) {
       console.error('Error sending email:', e);
-      alert(t('حدث خطأ أثناء الإرسال', 'Error sending report'));
+      showErrorToast(t('حدث خطأ أثناء الإرسال', 'Error sending report'));
     }
   };
 
@@ -1568,7 +1568,7 @@ const ClinicsManagement = ({ language, t }) => {
               <button
                 onClick={async () => {
                   if (!transferReason) {
-                    alert(t('يرجى اختيار سبب الإغلاق', 'Please select closure reason'));
+                    showErrorToast(t('يرجى اختيار سبب الإغلاق', 'Please select closure reason'));
                     return;
                   }
                   try {
@@ -1592,7 +1592,7 @@ const ClinicsManagement = ({ language, t }) => {
                     setTransferModal(null);
                     setTransferReason('');
                     setTargetClinicId('');
-                    alert(t('تم إغلاق العيادة بنجاح', 'Clinic closed successfully'));
+                    showSuccessToast(t('تم إغلاق العيادة بنجاح', 'Clinic closed successfully'));
                   } catch (e) {
                     console.error('Error:', e);
                   }
@@ -2185,7 +2185,7 @@ const _OldDoctorManagement_ViewOnly = ({ language, t }) => {
   // تسجيل كـ VIP
   const markAsVip = async () => {
     if (!vipPatientId.trim()) {
-      alert(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter ID'));
+      showErrorToast(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter ID'));
       return;
     }
     try {
@@ -2196,7 +2196,7 @@ const _OldDoctorManagement_ViewOnly = ({ language, t }) => {
         .single();
 
       if (!patient) {
-        alert(t('لم يتم العثور على المراجع', 'Patient not found'));
+        showErrorToast(t('لم يتم العثور على المراجع', 'Patient not found'));
         return;
       }
 
@@ -2549,7 +2549,7 @@ const RoutesManagement = ({ language, t }) => {
 
   const addRoute = async () => {
     if (!newRoute.exam_type || !newRoute.route_name) {
-      alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
+      showErrorToast(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
       return;
     }
     try {
@@ -2570,7 +2570,7 @@ const RoutesManagement = ({ language, t }) => {
         setNewRoute({ exam_type: '', route_name: '', clinics: [], order_sequence: 1, is_active: true });
       } else {
         console.error('Error adding route:', error);
-        alert(t('حدث خطأ أثناء إضافة المسار', 'Error adding route'));
+        showErrorToast(t('حدث خطأ أثناء إضافة المسار', 'Error adding route'));
       }
     } catch (e) {
       console.error('Error adding route:', e);
@@ -5979,9 +5979,9 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       // حذف من جدول الطابور
       await supabase.from('unified_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       loadAllData();
-      alert(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));
+      showSuccessToast(t('تم تصفير البيانات بنجاح', 'Data reset successfully'));
     } catch (error) {
-      alert(t('خطأ في تصفير البيانات', 'Error resetting data'));
+      showErrorToast(t('خطأ في تصفير البيانات', 'Error resetting data'));
     }
   };
 
