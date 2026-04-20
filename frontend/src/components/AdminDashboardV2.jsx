@@ -3973,11 +3973,16 @@ const UsersManagement = ({ language, t }) => {
 
   const updateUserPermissions = async (userId, permissions) => {
     try {
-      await supabase
+      const { error: permErr } = await supabase
         .from('admin_users')
         .update({ permissions })
         .eq('id', userId);
-      loadUsers();
+      if (!permErr) {
+        loadUsers();
+        showSuccessToast(t('تم حفظ الصلاحيات بنجاح', 'Permissions saved successfully'));
+      } else {
+        showErrorToast(t('فشل حفظ الصلاحيات', 'Failed to save permissions'));
+      }
     } catch (e) {
       console.error('Error updating permissions:', e);
     }
