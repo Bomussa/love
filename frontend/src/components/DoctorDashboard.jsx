@@ -180,14 +180,21 @@ export function DoctorDashboard({ doctorData, onLogout, language, toggleLanguage
           break
         }
 
-        // بدء الفحص
+        // بدء الفحص + إنشاء سجل فحص في exam_records
         case 'START_EXAM': {
-          const { error } = await supabase
-            .from('unified_queue')
-            .update({ status:'serving', entered_clinic_at: new Date().toISOString(), exam_start_time: new Date().toISOString() })
-            .eq('id', patientId)
-          if (error) throw error
-          pushNotif({ type:'success', message: t('✅ بدأ الفحص','✅ Exam started') })
+          const { data: sr, error: srErr } = await supabase.rpc('start_exam_record', {
+            p_queue_id:    patientId,
+            p_doctor_id:   doctorData?.id   || null,
+            p_doctor_name: doctorData?.name || clinicName || null,
+          })
+          if (srErr) {
+            // fallback مباشر إذا فشل RPC
+            const { error: fe } = await supabase.from('unified_queue')
+              .update({ status:'serving', entered_clinic_at: new Date().toISOString(), exam_start_time: new Date().toISOString() })
+              .eq('id', patientId)
+            if (fe) throw fe
+          }
+          pushNotif({ type:'success', message: t('✅ بدأ الفحص وتم تسجيل السجل','✅ Exam started & record logged') })
           break
         }
 
