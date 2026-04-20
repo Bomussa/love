@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+  import toast from 'react-hot-toast';
 import {
   Bell, Plus, RefreshCw, Edit, Trash2, Send, Eye, EyeOff,
   Play, Pause, Save, Clock, MapPin, Type, Palette, Image,
@@ -152,7 +153,7 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
   // إضافة إشعار جديد
   const addNotification = async () => {
     if (!newNotification.title || !newNotification.message) {
-      alert(tr('يرجى إدخال العنوان والرسالة', 'Please enter title and message'));
+      toast.error(tr('يرجى إدخال العنوان والرسالة', 'Please enter title and message'));
       return;
     }
 
@@ -186,14 +187,14 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
 
       if (error) {
         console.error('Error adding notification:', error);
-        alert(tr('خطأ في إضافة الإشعار', 'Error adding notification'));
+        toast.error(tr('خطأ في إضافة الإشعار', 'Error adding notification'));
         return;
       }
 
       loadNotifications();
       setShowAddForm(false);
       setNewNotification(defaultNotification);
-      alert(tr('تم إضافة الإشعار بنجاح', 'Notification added successfully'));
+      toast.success(tr('تم إضافة الإشعار بنجاح', 'Notification added successfully'));
     } catch (e) {
       console.error('Error adding notification:', e);
     }
@@ -235,7 +236,7 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
       if (!error) {
         loadNotifications();
         setEditingNotification(null);
-        alert(tr('تم تحديث الإشعار بنجاح', 'Notification updated successfully'));
+        toast.success(tr('تم تحديث الإشعار بنجاح', 'Notification updated successfully'));
       }
     } catch (e) {
       console.error('Error updating notification:', e);
@@ -276,7 +277,7 @@ const AdvancedNotificationsManager = ({ language = 'ar', t }) => {
         sent_at: new Date().toISOString()
       }).eq('id', id);
       loadNotifications();
-      alert(tr('تم إرسال الإشعار', 'Notification sent'));
+      toast.success(tr('تم إرسال الإشعار', 'Notification sent'));
     } catch (e) {
       console.error('Error sending notification:', e);
     }
