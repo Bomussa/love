@@ -83,15 +83,6 @@ const SYSTEM_FEATURES = [
     category: 'system'
   },
   {
-    id: 'auto_pin_generate',
-    name: 'إصدار PIN تلقائي',
-    nameEn: 'Auto PIN Generate',
-    description: 'إصدار أرقام PIN يومياً',
-    descriptionEn: 'Generate PIN codes daily',
-    icon: Clock,
-    category: 'automation'
-  },
-  {
     id: 'auto_queue_reset',
     name: 'إعادة تعيين الدور',
     nameEn: 'Auto Queue Reset',
