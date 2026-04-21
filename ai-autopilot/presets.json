@@ -1,0 +1,37 @@
+{
+  "DEBUG": {
+    "description": "Focus on identifying, reproducing, and resolving software bugs.",
+    "parameters": {
+      "log_level": "debug",
+      "output_format": "verbose"
+    }
+  },
+  "BUILD": {
+    "description": "Focus on compilation, packaging, and dependency management.",
+    "parameters": {
+      "target": "production",
+      "optimize": true
+    }
+  },
+  "DEPLOY": {
+    "description": "Focus on deploying applications to various environments.",
+    "parameters": {
+      "environment": "staging",
+      "auto_rollback": true
+    }
+  },
+  "API_TEST": {
+    "description": "Focus on testing API endpoints, validating request/response schemas, and ensuring API functionality.",
+    "parameters": {
+      "suite": "all",
+      "report_format": "json"
+    }
+  },
+  "PERFORMANCE": {
+    "description": "Focus on optimizing application performance, identifying bottlenecks, and improving efficiency.",
+    "parameters": {
+      "profile_duration": "60s",
+      "metric_threshold": "90%"
+    }
+  }
+}

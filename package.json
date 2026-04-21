@@ -4,6 +4,8 @@
   "private": true,
   "description": "Medical Committee Integrated Application monorepo (frontend + api proxy).",
   "scripts": {
+    "autopilot:validate": "node scripts/validate-autopilot.js",
+    "autopilot:route": "node scripts/autopilot-router.js",
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview"
