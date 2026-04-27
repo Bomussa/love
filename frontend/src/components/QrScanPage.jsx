@@ -1,14 +1,14 @@
 /**
  * QrScanPage - صفحة مسح QR Code مع كشف الجهاز والتوجيه الذكي
  * يكتشف نوع الجهاز (iPhone/Android/Desktop) ويفتح المتصفح المناسب
- * ✅ يستخدم api-unified للاتصال المباشر بـ Supabase (بدون API خارجي)
+ * ✅ يستخدم endpoints session الموجودة بدلاً من دالة API غير معرفة
  */
 
 import React, { useState, useEffect } from 'react'
 import { Camera, Smartphone, Monitor, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import api from '../lib/api-unified'
+import axios from 'axios'
 
 /**
  * كشف نوع الجهاز بدون مكتبات خارجية
@@ -76,7 +76,7 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
   }, [])
 
   /**
-   * التحقق من صلاحية Token عبر api-unified (Supabase مباشر)
+   * التحقق من صلاحية Token عبر endpoints الجلسة
    */
   const handleValidateToken = async (tokenValue) => {
     const tokenToValidate = tokenValue || token
@@ -90,23 +90,27 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
     setErrorMessage('')
 
     try {
-      // التحقق من Token عبر api-unified (Supabase مباشر)
-      const result = await api.validateSession(tokenToValidate)
+      const response = await axios.post('/api/session/validate', { token: tokenToValidate })
 
-      if (result.success && result.valid) {
-        // نجح التحقق
+      if (response.data?.ok) {
+        const detectedDevice = detectDevice()
+
+        await axios.post('/api/session/device', {
+          token: tokenToValidate,
+          device: detectedDevice
+        }).catch(() => {
+          // تجاهل أخطاء تسجيل الجهاز - غير حرجة
+        })
+
         setStatus('success')
         
         // التوجيه الذكي بعد ثانية
         setTimeout(() => {
-          handleSmartRedirect(detectDevice())
+          handleSmartRedirect(detectedDevice)
         }, 1000)
       } else {
-        // فشل التحقق
         setStatus('error')
-        
-        // رسائل خطأ مفصلة
-        const errorCode = result.errorCode || 'UNKNOWN_ERROR'
+        const errorCode = response.data?.error || 'UNKNOWN_ERROR'
         const errorMessages = {
           SESSION_NOT_FOUND: {
             ar: 'الجلسة غير موجودة',
@@ -125,19 +129,35 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
             en: 'Unexpected error occurred'
           }
         }
-        
         const message = errorMessages[errorCode] || errorMessages.UNKNOWN_ERROR
-        setErrorMessage(result.error || (language === 'ar' ? message.ar : message.en))
+        setErrorMessage(language === 'ar' ? message.ar : message.en)
       }
     } catch (error) {
       console.error('خطأ في التحقق:', error)
       setStatus('error')
       
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        setErrorMessage(language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server connection error')
-      } else {
-        setErrorMessage(language === 'ar' ? 'حدث خطأ غير متوقع' : 'An unexpected error occurred')
+      const errorCode = error.response?.data?.error || 'UNKNOWN_ERROR'
+      const errorMessages = {
+        SESSION_NOT_FOUND: {
+          ar: 'الجلسة غير موجودة',
+          en: 'Session not found'
+        },
+        SESSION_EXPIRED: {
+          ar: 'انتهت صلاحية الجلسة',
+          en: 'Session expired'
+        },
+        SESSION_ALREADY_USED: {
+          ar: 'تم استخدام الجلسة من قبل',
+          en: 'Session already used'
+        },
+        UNKNOWN_ERROR: {
+          ar: 'حدث خطأ غير متوقع',
+          en: 'Unexpected error occurred'
+        }
       }
+      
+      const message = errorMessages[errorCode] || errorMessages.UNKNOWN_ERROR
+      setErrorMessage(language === 'ar' ? message.ar : message.en)
     }
   }
 
