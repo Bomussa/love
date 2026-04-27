@@ -12,9 +12,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 
-// Supabase configuration - Production values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rujwuruuosffcxazymit.supabase.co'; // Project URL: https://rujwuruuosffcxazymit.supabase.co
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1and1cnV1b3NmZmN4YXp5bWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODcyNjUsImV4cCI6MjA3Njk2MzI2NX0.HnrSwc7OZTqZRzCwzBH8hqtgtHMBix4yxy0RKvRDX10'; // anonpublic key
+// Supabase configuration - read from environment with safe placeholder fallbacks
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn('⚠️ Supabase env vars are not set. Configure frontend/.env or Vercel env vars.');
+}
 
 // إعدادات إعادة المحاولة
 const RETRY_CONFIG = {
