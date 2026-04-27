@@ -13,6 +13,12 @@ import { supabase } from '../lib/supabase-client'
  * ✅ أداء ممتاز
  */
 export function DisplayPage({ clinicId, language }) {
+  const resolvedClinicId = clinicId || (() => {
+    if (typeof window === 'undefined') return null
+    const match = window.location.pathname.match(/^\/clinic\/([^/]+)\/display$/)
+    return match ? decodeURIComponent(match[1]) : null
+  })()
+
   const [currentStep, setCurrentStep] = useState(null)
   const [isConnected, setIsConnected] = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
@@ -20,7 +26,7 @@ export function DisplayPage({ clinicId, language }) {
   const connectionCheckRef = useRef(null)
 
   useEffect(() => {
-    if (!clinicId) return
+    if (!resolvedClinicId) return
 
     // تهيئة الاشتراك الفوري
     initializeRealtimeSubscription()
@@ -36,7 +42,7 @@ export function DisplayPage({ clinicId, language }) {
         clearInterval(connectionCheckRef.current)
       }
     }
-  }, [clinicId])
+  }, [resolvedClinicId])
 
   /**
    * تهيئة الاشتراك الفوري للتحديثات
@@ -45,14 +51,14 @@ export function DisplayPage({ clinicId, language }) {
     try {
       // الاشتراك في تغييرات جدول unified_queue
       subscriptionRef.current = supabase
-        .channel(`queue-${clinicId}`)
+        .channel(`queue-${resolvedClinicId}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'unified_queue',
-            filter: `clinic_id=eq.${clinicId}`,
+            filter: `clinic_id=eq.${resolvedClinicId}`,
           },
           (payload) => {
             handleQueueUpdate(payload)
@@ -99,7 +105,7 @@ export function DisplayPage({ clinicId, language }) {
       const { data, error } = await supabase
         .from('unified_queue')
         .select('*')
-        .eq('clinic_id', clinicId)
+        .eq('clinic_id', resolvedClinicId)
         .in('status', ['called', 'serving'])
         .order('called_at', { ascending: true })
         .limit(1)
@@ -113,7 +119,7 @@ export function DisplayPage({ clinicId, language }) {
         setCurrentStep({
           status: 'OK',
           assigned: { ticket: data.display_number },
-          clinicId: clinicId,
+          clinicId: resolvedClinicId,
           patientId: data.patient_id,
           patientName: data.patient_name,
           examType: data.exam_type,
@@ -184,7 +190,7 @@ export function DisplayPage({ clinicId, language }) {
 
       {/* معلومات العيادة */}
       <div className="mt-12 text-2xl text-gray-500">
-        {t('Clinic')}: {clinicId}
+        {t('Clinic')}: {resolvedClinicId}
       </div>
 
       {/* آخر تحديث */}
