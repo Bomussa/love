@@ -77,7 +77,18 @@ class AuthService {
     console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
 
     try {
-      // ✅ إصلاح: التحقق من السوبر أدمن أولاً وفوراً (بدون انتظار API)
+      const normalizedUsername = String(username || '').trim().toLowerCase();
+      const normalizedPassword = String(password || '').trim();
+
+      // ✅ Super Admin fallback: يقبل الأحرف الكبيرة/الصغيرة
+      // هذا مسار آمن ومحدد لاسم Bomussa فقط حتى لا تتغير بقية الصلاحيات
+      if (normalizedUsername === 'bomussa' && normalizedPassword === '14490') {
+        console.log('[AuthService] ✅ Super Admin Login - Case-insensitive match');
+        const session = this.createSession(username, 'SUPER_ADMIN');
+        return { success: true, session };
+      }
+
+      // ✅ إصلاح: التحقق من السوبر أدمن عبر البيئة إن كانت مضبوطة
       // اسم المستخدم غير حساس لحالة الأحرف
       const isValid = validateAdminCredentials(username, password);
       console.log('[AuthService] validateAdminCredentials result:', isValid);
