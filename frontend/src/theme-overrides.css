@@ -1,6 +1,8 @@
 /*
  * Theme and layout overrides
  * Minimal, isolated helpers to restore theme rendering and responsive patient route layout.
+ *
+ * Rollback: remove the import from main.jsx or delete this file.
  */
 
 html,
@@ -59,22 +61,23 @@ body {
 [data-test="patient-page"] {
   width: 100%;
   max-width: 100vw;
+  padding-inline: clamp(0.5rem, 1vw, 1.25rem);
 }
 
 [data-test="patient-page"] > .w-full.max-w-xl {
   width: 100%;
-  max-width: min(96vw, 88rem) !important;
+  max-width: min(98vw, 92rem) !important;
 }
 
 @media (min-width: 768px) {
   [data-test="patient-page"] > .w-full.max-w-xl {
-    max-width: min(94vw, 92rem) !important;
+    max-width: min(96vw, 104rem) !important;
   }
 }
 
 @media (min-width: 1280px) {
   [data-test="patient-page"] > .w-full.max-w-xl {
-    max-width: min(92vw, 96rem) !important;
+    max-width: min(94vw, 118rem) !important;
   }
 }
 
