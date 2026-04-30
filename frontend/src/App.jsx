@@ -136,13 +136,22 @@ export default function App(){
  const toggleLanguage=()=>{const l=language==='ar'?'en':'ar'; setLanguage(l); setCurrentLanguage(l);};
 
  return (
- <div className='min-h-screen'>
-  <main className='relative z-10'>
+ <div className='min-h-screen w-full'>
+  <main className='relative z-10 w-full'>
    {currentView==='qrscan' && <Suspense fallback={<LoadingFallback/>}><QrScanPage language={language} toggleLanguage={toggleLanguage}/></Suspense>}
    {currentView==='login' && <LoginPage onLogin={handleLogin} onAdminLogin={handleAdminLogin} onDoctorLogin={handleDoctorLogin} currentTheme={currentTheme} onThemeChange={setCurrentTheme} language={language} toggleLanguage={toggleLanguage}/>}
    {currentView==='examSelection'&&patientData && <ExamSelectionPage patientData={patientData} onExamSelect={handleExamSelect} onBack={handleLogout} language={language} toggleLanguage={toggleLanguage}/>}
    {currentView==='patient'&&patientData && <PatientPage patientData={patientData} onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage}/>}
-   {currentView==='admin'&&isAdmin && <Suspense fallback={<LoadingFallback/>}><HealthAlertBanner language={language}/><AdminErrorBoundary><AdminDashboardV2 onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage} currentTheme={currentTheme} onThemeChange={setCurrentTheme}/></AdminErrorBoundary></Suspense>}
+   {currentView==='admin'&&isAdmin && (
+     <div data-view='admin' className='admin-dashboard-shell w-full min-h-screen'>
+       <Suspense fallback={<LoadingFallback/>}>
+         <HealthAlertBanner language={language}/>
+         <AdminErrorBoundary>
+           <AdminDashboardV2 onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage} currentTheme={currentTheme} onThemeChange={setCurrentTheme}/>
+         </AdminErrorBoundary>
+       </Suspense>
+     </div>
+   )}
    {currentView==='doctor'&&doctorSession && <Suspense fallback={<LoadingFallback/>}><DoctorDashboard doctorData={doctorSession} onLogout={()=>{setDoctorSession(null);localStorage.removeItem('mmc_doctor_session');setCurrentView('login');}} language={language} toggleLanguage={toggleLanguage}/></Suspense>}
    {currentView==='clinic_login' && <ClinicLoginPage onLogin={(s)=>{setClinicSession(s);localStorage.setItem('mmc_clinic_session',JSON.stringify(s));setCurrentView('clinic_dashboard');}} language={language} toggleLanguage={toggleLanguage}/>}
    {currentView==='clinic_dashboard'&&clinicSession && <Suspense fallback={<LoadingFallback/>}><ClinicDashboard session={clinicSession} onLogout={()=>{setClinicSession(null);localStorage.removeItem('mmc_clinic_session');setCurrentView('clinic_login');}} language={language} toggleLanguage={toggleLanguage}/></Suspense>}
