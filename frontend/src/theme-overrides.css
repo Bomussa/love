@@ -1,0 +1,95 @@
+/*
+ * Theme and layout overrides
+ * Minimal, isolated helpers to restore theme rendering and responsive patient route layout.
+ */
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--theme-gradient-background, linear-gradient(135deg, #8A1538 0%, #C9A54C 100%));
+  background-attachment: fixed;
+}
+
+/* Theme utility classes used by the login/theme selector */
+.bg-theme-primary {
+  background-color: var(--theme-primary) !important;
+}
+
+.text-theme-primary {
+  color: var(--theme-primary) !important;
+}
+
+.border-theme-primary {
+  border-color: var(--theme-primary) !important;
+}
+
+.bg-theme-secondary {
+  background-color: var(--theme-secondary) !important;
+}
+
+.text-theme-secondary {
+  color: var(--theme-secondary) !important;
+}
+
+.border-theme-secondary {
+  border-color: var(--theme-secondary) !important;
+}
+
+.bg-theme-accent {
+  background-color: var(--theme-accent) !important;
+}
+
+.text-theme-accent {
+  color: var(--theme-accent) !important;
+}
+
+.border-theme-accent {
+  border-color: var(--theme-accent) !important;
+}
+
+.shadow-theme {
+  box-shadow: var(--theme-shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1)) !important;
+}
+
+/* Patient route layout: allow the pathway cards to scale with the viewport */
+[data-test="patient-page"] {
+  width: 100%;
+  max-width: 100vw;
+}
+
+[data-test="patient-page"] > .w-full.max-w-xl {
+  width: 100%;
+  max-width: min(96vw, 88rem) !important;
+}
+
+@media (min-width: 768px) {
+  [data-test="patient-page"] > .w-full.max-w-xl {
+    max-width: min(94vw, 92rem) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-test="patient-page"] > .w-full.max-w-xl {
+    max-width: min(92vw, 96rem) !important;
+  }
+}
+
+/* Make the route summary feel less compressed on wide screens */
+@media (min-width: 1024px) {
+  [data-test="patient-page"] .space-y-3 > .border {
+    border-radius: 1rem;
+  }
+
+  [data-test="patient-page"] .space-y-3 h3 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+
+  [data-test="patient-page"] .space-y-3 p {
+    font-size: 0.95rem;
+  }
+}
