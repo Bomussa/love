@@ -14,6 +14,10 @@ import { getCurrentLanguage, setCurrentLanguage } from './lib/i18n';
 import { autoRepairSystem } from './lib/auto-repair-system';
 import { functionTableMonitor } from './lib/function-table-monitor';
 import { elementMonitor } from './lib/element-monitor';
+import { installAdminAuditSystem, logAdminEvent } from './lib/admin-audit';
+
+// Install audit system immediately
+installAdminAuditSystem();
 
 const LoginPage = lazy(() => import('./components/LoginPage.jsx').then(m => ({ default: m.LoginPage })));
 const ExamSelectionPage = lazy(() => import('./components/ExamSelectionPage.jsx').then(m => ({ default: m.ExamSelectionPage })));
@@ -90,6 +94,16 @@ export default function App(){
   setTimeout(verifyUIIntegrity, 1000);
  },[]);
 
+ // Audit: log admin view open
+ useEffect(()=>{
+  if (currentView === 'admin') {
+    void logAdminEvent('admin_dashboard_open', 'AdminDashboardV2 opened', {
+      path: window.location.pathname,
+      theme: currentTheme,
+    });
+  }
+ },[currentView, currentTheme]);
+
  useEffect(()=>{
   setCurrentLanguage(language);
   const path=window.location.pathname;
@@ -130,7 +144,10 @@ export default function App(){
  };
 
  const handleAdminLogin=async(credentials)=>{
-  try{ const [u,p]=credentials.split(':'); const r=await authService.login(u,p); if(r.success){setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null);} }catch(e){console.error(e);}
+  try{ const [u,p]=credentials.split(':'); const r=await authService.login(u,p); if(r.success){
+    await logAdminEvent('admin_login_success', 'Admin login successful', { username: u });
+    setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null);
+  }}catch(e){console.error(e);}
  };
 
  const handleDoctorLogin=async(credentials)=>{
@@ -142,6 +159,11 @@ export default function App(){
  };
 
  const handleLogout=()=>{
+  if (currentView === 'admin' || isAdmin) {
+    void logAdminEvent('admin_logout', 'Admin session ended', {
+      path: window.location.pathname,
+    });
+  }
   setPatientData(null);setIsAdmin(false);setDoctorSession(null);setCurrentView('login');
   localStorage.removeItem('patientData');localStorage.removeItem('mmc_admin_session');localStorage.removeItem('mmc_doctor_session');
   window.history.pushState({},'', '/');
