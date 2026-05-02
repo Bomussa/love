@@ -15,6 +15,7 @@ import { autoRepairSystem } from './lib/auto-repair-system';
 import { functionTableMonitor } from './lib/function-table-monitor';
 import { elementMonitor } from './lib/element-monitor';
 import { installAdminAuditSystem, logAdminEvent } from './lib/admin-audit';
+import CleanupApprovalPanel from './components/CleanupApprovalPanel';
 
 // Install audit system immediately
 installAdminAuditSystem();
@@ -138,61 +139,20 @@ export default function App(){
    localStorage.removeItem('mmc_admin_session'); localStorage.removeItem('mmc_doctor_session');
    setIsAdmin(false); setDoctorSession(null);
    const normalized=normalizePatientRecord(res.data,patientId);
-   setPatientData(normalized); localStorage.setItem('patientData',JSON.stringify(normalized));
-   setCurrentView('examSelection');
-  }catch(e){console.error(e);}
- };
+   setPatientData(normalized); localStorage.setItem('patientData',JSON.stringify(normalized)); setCurrentView('examSelection');
+  }catch(e){console.error(e);} };
 
- const handleAdminLogin=async(credentials)=>{
-  try{ const [u,p]=credentials.split(':'); const r=await authService.login(u,p); if(r.success){
-    await logAdminEvent('admin_login_success', 'Admin login successful', { username: u });
-    setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null);
-  }}catch(e){console.error(e);}
- };
+ const handleAdminLogin=async(credentials)=>{ try{ const [u,p]=credentials.split(':'); const r=await authService.login(u,p); if(r.success){ await logAdminEvent('admin_login_success', 'Admin login successful', { username: u }); setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null);} }catch(e){console.error(e);} };
 
- const handleDoctorLogin=async(credentials)=>{
-  try{
-   const [u,p]=credentials.split(':'); const r=await api.doctorLogin(u,p); if(!r.success||!r.data) return;
-   const s={id:r.data.id,name:r.data.name,clinic_id:r.data.clinic_id,clinic_name:r.data.clinic_name||r.data.clinic_id,role:r.data.role||'DOCTOR',expiresAt:new Date(Date.now()+86400000).toISOString()};
-   localStorage.setItem('mmc_doctor_session',JSON.stringify(s)); setDoctorSession(s); setCurrentView('doctor');
-  }catch(e){console.error(e);}
- };
+ const handleDoctorLogin=async(credentials)=>{ try{ const [u,p]=credentials.split(':'); const r=await api.doctorLogin(u,p); if(!r.success||!r.data) return; const s={id:r.data.id,name:r.data.name,clinic_id:r.data.clinic_id,clinic_name:r.data.clinic_name||r.data.clinic_id,role:r.data.role||'DOCTOR',expiresAt:new Date(Date.now()+86400000).toISOString()}; localStorage.setItem('mmc_doctor_session',JSON.stringify(s)); setDoctorSession(s); setCurrentView('doctor'); }catch(e){console.error(e);} };
 
- const handleLogout=()=>{
-  if (currentView === 'admin' || isAdmin) {
-    void logAdminEvent('admin_logout', 'Admin session ended', {
-      path: window.location.pathname,
-    });
-  }
-  setPatientData(null);setIsAdmin(false);setDoctorSession(null);setCurrentView('login');
-  localStorage.removeItem('patientData');localStorage.removeItem('mmc_admin_session');localStorage.removeItem('mmc_doctor_session');
-  window.history.pushState({},'', '/');
- };
+ const handleLogout=()=>{ if (currentView === 'admin' || isAdmin) { void logAdminEvent('admin_logout', 'Admin session ended', { path: window.location.pathname, }); } setPatientData(null);setIsAdmin(false);setDoctorSession(null);setCurrentView('login'); localStorage.removeItem('patientData');localStorage.removeItem('mmc_admin_session');localStorage.removeItem('mmc_doctor_session'); window.history.pushState({},'', '/'); };
 
- const handleExamSelect=async(examType)=>{
-  try{
-   const clinics=await getDynamicMedicalPathway(examType,patientData?.gender||'male');
-   if(!clinics?.length) throw new Error('No clinics');
-   const patientId=patientData?.patient_id||patientData?.personal_id||patientData?.id;
-   const firstClinic=clinics[0];
-   const enter=await api.enterQueue(firstClinic.id,patientId,false,patientData?.name||patientId,examType,patientData?.gender||'male',patientData?.military_id||null,patientData?.personal_id||patientId);
-   try{await api.createRoute(patientId,examType,patientData?.gender||'male',clinics);}catch(e){console.warn(e);}
-   const updated=normalizePatientRecord({...patientData,queueType:examType,examType,currentClinic:firstClinic.id,pathway:clinics,queueNumber:enter?.display_number||null,queueId:enter?.id||null},patientId);
-   setPatientData(updated); localStorage.setItem('patientData',JSON.stringify(updated)); setCurrentView('patient');
-  }catch(e){console.error(e);}
- };
+ const handleExamSelect=async(examType)=>{ try{ const clinics=await getDynamicMedicalPathway(examType,patientData?.gender||'male'); if(!clinics?.length) throw new Error('No clinics'); const patientId=patientData?.patient_id||patientData?.personal_id||patientData?.id; const firstClinic=clinics[0]; const enter=await api.enterQueue(firstClinic.id,patientId,false,patientData?.name||patientId,examType,patientData?.gender||'male',patientData?.military_id||null,patientData?.personal_id||patientId); try{await api.createRoute(patientId,examType,patientData?.gender||'male',clinics);}catch(e){console.warn(e);} const updated=normalizePatientRecord({...patientData,queueType:examType,examType,currentClinic:firstClinic.id,pathway:clinics,queueNumber:enter?.display_number||null,queueId:enter?.id||null},patientId); setPatientData(updated); localStorage.setItem('patientData',JSON.stringify(updated)); setCurrentView('patient'); }catch(e){console.error(e);} };
 
  const toggleLanguage=()=>{const l=language==='ar'?'en':'ar'; setLanguage(l); setCurrentLanguage(l);};
 
- useEffect(()=>{
-  if(currentView==='clinic_dashboard' && clinicSession){
-    const cid = clinicSession?.clinicId || clinicSession?.clinic_id;
-    if(!cid){
-      console.warn('[GUARD] Missing clinicId in session, redirecting to login');
-      setCurrentView('clinic_login');
-    }
-  }
- },[currentView, clinicSession]);
+ useEffect(()=>{ if(currentView==='clinic_dashboard' && clinicSession){ const cid = clinicSession?.clinicId || clinicSession?.clinic_id; if(!cid){ console.warn('[GUARD] Missing clinicId in session, redirecting to login'); setCurrentView('clinic_login'); } } },[currentView, clinicSession]);
 
  return (
  <div className='min-h-screen w-full'>
@@ -205,6 +165,8 @@ export default function App(){
      <div data-view='admin' className='admin-dashboard-shell w-full min-h-screen'>
        <Suspense fallback={<LoadingFallback/>}>
          <HealthAlertBanner language={language}/>
+         {/* Cleanup & Approval panel for SUPER_ADMIN */}
+         <CleanupApprovalPanel language={language} />
          <AdminErrorBoundary>
            <AdminDashboardV2 onLogout={handleLogout} language={language} toggleLanguage={toggleLanguage} currentTheme={currentTheme} onThemeChange={setCurrentTheme}/>
          </AdminErrorBoundary>
