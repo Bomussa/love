@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
+import * as XLSX from 'xlsx';
 
 const CATEGORY_META = {
   docs: { labelAr: 'التوثيق', labelEn: 'Docs', icon: FileText, color: '#8A1538' },
@@ -72,6 +73,8 @@ const FilesCenter = ({ language = 'ar' }) => {
   const [menuFor, setMenuFor] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [notice, setNotice] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedIds, setArchivedIds] = useState(new Set());
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -85,14 +88,32 @@ const FilesCenter = ({ language = 'ar' }) => {
         .order('name', { ascending: true });
 
       if (dbError) throw dbError;
-      setFiles((data || []).map(normalizeDoc));
+
+      // load archived registry
+      let archSet = new Set();
+      try {
+        const { data: archRow } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('id', 'archived_system_docs_v1')
+          .maybeSingle();
+        const arr = Array.isArray(archRow?.value) ? archRow.value : [];
+        archSet = new Set(arr.map((id) => String(id)));
+        setArchivedIds(archSet);
+      } catch {}
+
+      const normalized = (data || []).map(normalizeDoc);
+      const filtered = showArchived
+        ? normalized
+        : normalized.filter((d) => !archSet.has(String(d.id)));
+      setFiles(filtered);
     } catch (err) {
       setFiles([]);
       setError(err?.message || (isAr ? 'فشل تحميل الملفات من قاعدة البيانات' : 'Failed to load files from database'));
     } finally {
       setLoading(false);
     }
-  }, [isAr]);
+  }, [isAr, showArchived]);
 
   useEffect(() => {
     loadFiles();
@@ -167,6 +188,22 @@ const FilesCenter = ({ language = 'ar' }) => {
     setMenuFor(null);
   };
 
+  const downloadXlsx = (file) => {
+    const rows = [
+      ['Field', 'Value'],
+      ['Name', file.fullName || ''],
+      ['Path', file.path || ''],
+      ['Category', file.category || ''],
+      ['Updated At', file.updated_at || ''],
+      ['Content', file.content || ''],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Record');
+    XLSX.writeFile(wb, `${file.name || 'record'}.xlsx`);
+    setMenuFor(null);
+  };
+
   const copyContent = async (file) => {
     await navigator.clipboard.writeText(file.content || '');
     setCopiedId(file.id);
@@ -209,12 +246,17 @@ const FilesCenter = ({ language = 'ar' }) => {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#8A1538' }}><FolderOpen className="text-white" size={20} /></div>
           <div>
             <h1 className="text-xl font-bold" style={{ color: '#C9A54C' }}>{isAr ? 'مركز الملفات' : 'Files Center'}</h1>
-            <p className="text-xs" style={{ color: '#888' }}>{isAr ? `${files.length} ملف من قاعدة البيانات` : `${files.length} files from database`}</p>
+            <p className="text-xs" style={{ color: '#888' }}>{isAr ? `${files.length} ملف` : `${files.length} files`}</p>
           </div>
         </div>
-        <button onClick={loadFiles} className="rounded-lg px-3 py-2 text-white" style={{ background: '#8A1538' }} disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowArchived((v) => !v)} className="rounded-lg px-3 py-2 text-xs" style={{ background: '#1a1a2e', color: '#e8d5b7' }}>
+            {showArchived ? (isAr ? 'إخفاء المؤرشف' : 'Hide Archived') : (isAr ? 'عرض المؤرشف' : 'Show Archived')}
+          </button>
+          <button onClick={loadFiles} className="rounded-lg px-3 py-2 text-white" style={{ background: '#8A1538' }} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
@@ -231,7 +273,7 @@ const FilesCenter = ({ language = 'ar' }) => {
 
       {error ? <div className="mb-4 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div> : null}
       {loading ? <div className="text-sm" style={{ color: '#888' }}>{isAr ? 'جارٍ التحميل...' : 'Loading...'}</div> : null}
-      {!loading && !files.length ? <div className="rounded-xl border border-dashed p-8 text-center text-sm" style={{ color: '#888', borderColor: '#333' }}>{isAr ? 'لا توجد ملفات في قاعدة البيانات بعد.' : 'No files exist in the database yet.'}</div> : null}
+      {!loading && !files.length ? <div className="rounded-xl border border-dashed p-8 text-center text-sm" style={{ color: '#888', borderColor: '#333' }}>{isAr ? 'لا توجد ملفات.' : 'No files.'}</div> : null}
 
       <div className="grid grid-cols-4 gap-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
         {filtered.map((file) => {
@@ -239,7 +281,7 @@ const FilesCenter = ({ language = 'ar' }) => {
           const color = colorFor(file);
           return (
             <div key={file.id} className="relative flex flex-col items-center">
-              <button onClick={() => setMenuFor(menuFor === file.id ? null : file.id)} className="flex flex-col items-center focus:outline-none">
+              <button data-testid="file-card" onClick={() => setMenuFor(menuFor === file.id ? null : file.id)} className="flex flex-col items-center focus:outline-none">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl border shadow-lg" style={{ background: `${color}22`, borderColor: `${color}44` }}>
                   <Icon size={28} style={{ color }} />
                 </div>
@@ -249,13 +291,14 @@ const FilesCenter = ({ language = 'ar' }) => {
               {menuFor === file.id ? (
                 <div ref={menuRef} className="absolute z-30 mt-[76px] min-w-[170px] overflow-hidden rounded-xl border shadow-2xl" style={{ background: '#1a1a2e', borderColor: `${color}66` }}>
                   <div className="border-b px-3 py-2 text-xs font-bold" style={{ color, borderColor: `${color}33` }}>{file.fullName}</div>
-                  <button onClick={() => openFile(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Eye size={14} />{isAr ? 'فتح وقراءة' : 'Open & Read'}</button>
-                  <button onClick={() => { openFile(file); setEditing(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Edit3 size={14} />{isAr ? 'تعديل' : 'Edit'}</button>
-                  <button onClick={() => exportMarkdown(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Download size={14} />MD</button>
-                  <button onClick={() => printPDF(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Printer size={14} />PDF</button>
-                  <button onClick={() => copyContent(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Copy size={14} />{isAr ? 'نسخ المحتوى' : 'Copy'}</button>
-                  <button onClick={() => shareContent(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Share2 size={14} />{isAr ? 'مشاركة' : 'Share'}</button>
-                  <button onClick={() => setMenuFor(null)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><X size={14} />{isAr ? 'إغلاق' : 'Close'}</button>
+                  <button data-testid="btn-open" onClick={() => openFile(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Eye size={14} />{isAr ? 'فتح وقراءة' : 'Open & Read'}</button>
+                  <button data-testid="btn-edit" onClick={() => { openFile(file); setEditing(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Edit3 size={14} />{isAr ? 'تعديل' : 'Edit'}</button>
+                  <button data-testid="btn-md" onClick={() => exportMarkdown(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Download size={14} />MD</button>
+                  <button data-testid="btn-pdf" onClick={() => printPDF(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Printer size={14} />PDF</button>
+                  <button data-testid="btn-xlsx" onClick={() => downloadXlsx(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Download size={14} />XLSX</button>
+                  <button data-testid="btn-copy" onClick={() => copyContent(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Copy size={14} />{isAr ? 'نسخ المحتوى' : 'Copy'}</button>
+                  <button data-testid="btn-share" onClick={() => shareContent(file)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><Share2 size={14} />{isAr ? 'مشاركة' : 'Share'}</button>
+                  <button data-testid="btn-close" onClick={() => setMenuFor(null)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-left hover:bg-white/10"><X size={14} />{isAr ? 'إغلاق' : 'Close'}</button>
                 </div>
               ) : null}
             </div>
@@ -275,6 +318,7 @@ const FilesCenter = ({ language = 'ar' }) => {
                 {!editing ? <button onClick={() => setEditing(true)} className="rounded-lg px-3 py-1 text-xs text-white" style={{ background: '#f39c12' }}><Edit3 size={12} /> {isAr ? 'تعديل' : 'Edit'}</button> : <button onClick={saveFile} disabled={saving} className="rounded-lg px-3 py-1 text-xs text-white" style={{ background: '#2ecc71' }}>{saving ? (isAr ? 'حفظ...' : 'Saving...') : (isAr ? 'حفظ' : 'Save')}</button>}
                 <button onClick={() => exportMarkdown(selected)} className="rounded-lg px-3 py-1 text-xs text-white" style={{ background: '#3498db' }}>MD</button>
                 <button onClick={() => printPDF(selected)} className="rounded-lg px-3 py-1 text-xs text-white" style={{ background: '#e74c3c' }}>PDF</button>
+                <button onClick={() => downloadXlsx(selected)} className="rounded-lg px-3 py-1 text-xs text-white" style={{ background: '#16a085' }}>XLSX</button>
                 <button onClick={() => { setSelected(null); setEditing(false); }} className="rounded-lg p-1 text-white" style={{ background: 'transparent' }}><X size={18} /></button>
               </div>
             </div>
