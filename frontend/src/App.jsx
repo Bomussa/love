@@ -49,6 +49,31 @@ class AdminErrorBoundary extends React.Component {
  render(){ if(this.state.hasError){ return <div className='min-h-screen bg-red-900 text-white p-8'><h1>AdminPage Error</h1><button onClick={()=>this.setState({hasError:false})}>Retry</button></div>; } return this.props.children; }
 }
 
+function installGlobalErrorHandlers(){
+  window.addEventListener('error', (e) => {
+    console.error('[GLOBAL_ERROR]', e?.message || e);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('[UNHANDLED_REJECTION]', e?.reason || e);
+  });
+}
+
+function verifyUIIntegrity(){
+  try{
+    const hasRoot = !!document.querySelector('#root');
+    if(!hasRoot) console.error('[UI_CHECK] root missing');
+
+    const hasAnyButton = !!document.querySelector('button');
+    if(!hasAnyButton) console.error('[UI_CHECK] no buttons detected');
+
+    const isClinic = window.location.pathname.startsWith('/clinic');
+    if(isClinic){
+      const select = document.querySelector('select');
+      if(!select) console.warn('[UI_CHECK] clinic select missing');
+    }
+  }catch(e){ console.error('[UI_CHECK_ERROR]', e); }
+}
+
 export default function App(){
  const [doctorSession,setDoctorSession]=useState(()=>{try{const s=localStorage.getItem('mmc_doctor_session');return s?JSON.parse(s):null;}catch{return null;}});
  const [clinicSession,setClinicSession]=useState(()=>{try{const s=localStorage.getItem('mmc_clinic_session');return s?JSON.parse(s):null;}catch{return null;}});
@@ -59,8 +84,10 @@ export default function App(){
  const [language,setLanguage]=useState(getCurrentLanguage());
 
  useEffect(()=>{
+  installGlobalErrorHandlers();
   autoRepairSystem.startMonitoring(); functionTableMonitor.startMonitoring(); elementMonitor.startMonitoring();
   new AdvancedAutoRepair(supabase).startAutoRepair(); healthMonitor.init(supabase); new InteractiveElementReporter().startReporting();
+  setTimeout(verifyUIIntegrity, 1000);
  },[]);
 
  useEffect(()=>{
@@ -134,6 +161,16 @@ export default function App(){
  };
 
  const toggleLanguage=()=>{const l=language==='ar'?'en':'ar'; setLanguage(l); setCurrentLanguage(l);};
+
+ useEffect(()=>{
+  if(currentView==='clinic_dashboard' && clinicSession){
+    const cid = clinicSession?.clinicId || clinicSession?.clinic_id;
+    if(!cid){
+      console.warn('[GUARD] Missing clinicId in session, redirecting to login');
+      setCurrentView('clinic_login');
+    }
+  }
+ },[currentView, clinicSession]);
 
  return (
  <div className='min-h-screen w-full'>
