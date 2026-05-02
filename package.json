@@ -8,7 +8,9 @@
     "autopilot:route": "node scripts/autopilot-router.js",
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview"
+    "preview": "cd frontend && npm run preview",
+    "test:e2e": "cd frontend && npm run test:e2e",
+    "verify:ui": "cd frontend && npm run test:verify"
   },
   "engines": {
     "node": "20.x"
