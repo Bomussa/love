@@ -108,14 +108,20 @@ export default function App(){
  useEffect(()=>{
   setCurrentLanguage(language);
   const path=window.location.pathname;
+  // URL path priority: specific paths first, then auth-based fallbacks
   if(path==='/admin'||path.startsWith('/admin/')) return setCurrentView(isAdmin?'admin':'login');
-  if(isAdmin) return setCurrentView('admin');
-  if(patientData) return setCurrentView(patientData.queueType||patientData.examType?'patient':'examSelection');
   if(path==='/doctor'||path.startsWith('/doctor/')) return setCurrentView(doctorSession?'doctor':'login');
   if(path==='/clinic/login'||path==='/clinic/login/') return setCurrentView('clinic_login');
   if(path.match(/\/clinic\/[^/]+\/display$/)) return setCurrentView('display');
   if(path.startsWith('/clinic/')) return setCurrentView(clinicSession?'clinic_dashboard':'clinic_login');
   if(path.includes('/qr')) return setCurrentView('qrscan');
+  // Auth-based routing for root/default paths
+  if(path==='/'||path==='') {
+    if(isAdmin) return setCurrentView('admin');
+    if(doctorSession) return setCurrentView('doctor');
+    if(clinicSession) return setCurrentView('clinic_dashboard');
+    if(patientData) return setCurrentView(patientData.queueType||patientData.examType?'patient':'examSelection');
+  }
   setCurrentView('login');
  },[language,isAdmin,patientData,clinicSession,doctorSession]);
 
