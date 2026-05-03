@@ -292,6 +292,14 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
               </h2>
             </div>
 
+            {/* Error message for all modes */}
+            {validationError && (isAdminMode || isDoctorMode) && (
+              <div className="flex items-center gap-2 p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm mb-4">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {validationError}
+              </div>
+            )}
+
             {!isAdminMode && !isDoctorMode ? (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
