@@ -81,32 +81,24 @@ class AuthService {
       const normalizedPassword = String(password || '').trim();
 
       // ✅ Super Admin fallback: يقبل الأحرف الكبيرة/الصغيرة
-      // هذا مسار آمن ومحدد لاسم Bomussa فقط حتى لا تتغير بقية الصلاحيات
       if (normalizedUsername === 'bomussa' && normalizedPassword === '14490') {
         console.log('[AuthService] ✅ Super Admin Login - Case-insensitive match');
         const session = this.createSession(username, 'SUPER_ADMIN');
         return { success: true, session };
       }
 
-      // ✅ إصلاح: التحقق من السوبر أدمن عبر البيئة إن كانت مضبوطة
-      // اسم المستخدم غير حساس لحالة الأحرف
+      // ✅ Check admin credentials
       const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] validateAdminCredentials result:', isValid);
-      console.log('[AuthService] Expected credentials:', { 
-        username: ADMIN_CREDENTIALS.username, 
-        passwordLength: ADMIN_CREDENTIALS.password?.length 
-      });
-
       if (isValid) {
-        console.log('[AuthService] ✅ Super Admin Login - Instant Access');
+        console.log('[AuthService] ✅ Admin Login - Credentials valid');
         const session = this.createSession(username, 'SUPER_ADMIN');
         return { success: true, session };
       }
 
-      // 2. للمستخدمين الآخرين - تحقق عبر API مع timeout قصير
+      // 2. Try API login for other users
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني فقط
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await api.adminLogin(username, password);
         clearTimeout(timeoutId);
@@ -115,21 +107,20 @@ class AuthService {
           const session = this.createSession(username, response.role || 'ADMIN');
           return { success: true, session };
         }
-        return { success: false, error: response.message || 'Invalid credentials' };
+        throw new Error(response.message || response.error || 'Invalid credentials');
       } catch (apiError) {
-        console.warn('[AuthService] API timeout or error:', apiError);
-        return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+        console.warn('[AuthService] API error:', apiError);
+        throw new Error(apiError.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      // Fallback للسوبر أدمن في حالة الأخطاء
+      // Fallback for admin credentials on API failure
       const isValid = validateAdminCredentials(username, password);
-      console.log('[AuthService] Fallback validation:', isValid);
       if (isValid) {
         const session = this.createSession(username, 'SUPER_ADMIN');
         return { success: true, session };
       }
-      return { success: false, error: 'فشل الاتصال - يرجى المحاولة مرة أخرى' };
+      throw error;
     }
   }
 
