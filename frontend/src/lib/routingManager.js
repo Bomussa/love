@@ -106,13 +106,7 @@ export async function pickClinicForNextStep(examType, gender, currentStep = 1) {
     });
 
     const selectedClinic = scoredClinics[0];
-    
-      loadRatio: selectedClinic.loadRatio.toFixed(2),
-      distributedToday: selectedClinic.distributedToday,
-      score: selectedClinic.score.toFixed(3)
-    });
-
-    return selectedClinic.id;
+    return selectedClinic?.id || null;
 
   } catch (error) {
     // console.error('Error picking clinic for next step:', error);
