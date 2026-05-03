@@ -494,7 +494,7 @@ const api = {
       if (result?.success && result?.data) {
         return { success: true, role: result.data.role || 'DOCTOR', data: result.data };
       }
-      return { success: false, message: result?.message || 'بيانات الدخول غير صحيحة' };
+      return { success: false, error: result?.message || result?.error || 'بيانات الدخول غير صحيحة' };
     } catch (error) {
       console.error('Doctor Login RPC Error:', error);
       return { success: false, error: error.message };
