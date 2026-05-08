@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
@@ -34,8 +33,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     setError(null)
 
     try {
-      // PIN system removed — clinic selection is sufficient
-      const response = await api.verifyPin(selectedClinic, null)
+      const response = await api.verifyClinicAccess(selectedClinic)
       if (response.success && response.isValid) {
         onLogin(response.session)
       } else {
