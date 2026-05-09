@@ -95,6 +95,62 @@ export default function App(){
   setTimeout(verifyUIIntegrity, 1000);
  },[]);
 
+ useEffect(() => {
+  if (!patientData || !['patient', 'examSelection'].includes(currentView)) return;
+  const patientIdentifier = patientData.patient_id || patientData.personal_id || patientData.id;
+  if (!patientIdentifier) return;
+
+  let alive = true;
+  const refreshPatientPathway = async () => {
+    try {
+      const pathway = await getDynamicMedicalPathway(
+        patientData.queueType || patientData.examType,
+        patientData.gender || 'male'
+      );
+
+      if (!alive || !Array.isArray(pathway) || pathway.length === 0) return;
+
+      setPatientData((prev) => {
+        if (!prev) return prev;
+        const updated = normalizePatientRecord(
+          {
+            ...prev,
+            pathway,
+            updated_at: new Date().toISOString(),
+          },
+          patientIdentifier,
+        );
+        localStorage.setItem('patientData', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (error) {
+      console.warn('[App] Failed to refresh patient pathway:', error);
+    }
+  };
+
+  const channel = supabase
+    .channel(`patient_live_sync_${patientIdentifier}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => {
+      void refreshPatientPathway();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_routes', filter: `patient_id=eq.${patientIdentifier}` }, () => {
+      void refreshPatientPathway();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, () => {
+      if (!alive) return;
+      const activeTheme = localStorage.getItem('selectedTheme');
+      if (activeTheme && activeTheme !== currentTheme) {
+        setCurrentTheme(activeTheme);
+      }
+    })
+    .subscribe();
+
+  return () => {
+    alive = false;
+    supabase.removeChannel(channel);
+  };
+ }, [currentView, patientData?.id, patientData?.patient_id, patientData?.personal_id, patientData?.examType, patientData?.queueType, patientData?.gender, currentTheme]);
+
  // Audit: log admin view open
  useEffect(()=>{
   if (currentView === 'admin') {
