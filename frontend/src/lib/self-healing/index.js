@@ -3,6 +3,8 @@
  * Main entry point for all self-healing functionality
  */
 
+import '../doctor-login-fix';
+
 // Constants
 export {
   HEALTH_MONITOR_CONFIG,
