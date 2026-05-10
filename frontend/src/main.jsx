@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './lib/system-settings-shim'
 import App from './App.jsx'
 import './index.css'
 import './responsive-fixes.css'
