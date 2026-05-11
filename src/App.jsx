@@ -1,1 +1,1 @@
-/* App.jsx Content Here */
+export { default } from '../frontend/src/App.jsx';
