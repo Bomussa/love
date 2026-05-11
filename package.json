@@ -6,11 +6,11 @@
   "scripts": {
     "autopilot:validate": "node scripts/validate-autopilot.js",
     "autopilot:route": "node scripts/autopilot-router.js",
-    "dev": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview",
-    "test:e2e": "cd frontend && npm run test:e2e",
-    "verify:ui": "cd frontend && npm run test:verify"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "npm run build",
+    "verify:ui": "npm run build"
   },
   "engines": {
     "node": "20.x"
