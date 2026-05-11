@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client';
+import authService from './auth-service';
 
 const AUDIT_TABLE = 'activity_logs';
 const MUTATION_TABLES = new Set(['activity_logs', 'daily_activity_logs', 'permanent_audit_logs']);
@@ -11,9 +12,51 @@ function isBrowser() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
-function isAdminShellActive() {
+function readJsonStorage(key) {
+  if (!isBrowser()) return null;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getAuditSessionContext() {
+  const adminSession = readJsonStorage('mmc_admin_session');
+  const doctorSession = readJsonStorage('mmc_doctor_session');
+  const authSession = typeof authService?.getSession === 'function' ? authService.getSession() : null;
+  const session = doctorSession || adminSession || authSession || null;
+
+  if (!session) {
+    return {
+      userId: null,
+      username: null,
+      role: null,
+      source: null,
+    };
+  }
+
+  return {
+    userId: session.id || session.user_id || session.username || null,
+    username: session.username || session.name || session.full_name || null,
+    role: session.role || null,
+    source: doctorSession ? 'doctor-session' : adminSession ? 'admin-session' : 'auth-service',
+  };
+}
+
+function isAuditShellActive() {
   if (!isBrowser()) return false;
-  return !!document.querySelector('[data-view="admin"]');
+
+  const path = window.location.pathname || '';
+  return Boolean(
+    document.querySelector('[data-view="admin"], [data-view="doctor"]') ||
+    path.startsWith('/admin') ||
+    path.startsWith('/doctor') ||
+    readJsonStorage('mmc_admin_session') ||
+    readJsonStorage('mmc_doctor_session')
+  );
 }
 
 function getTextLabel(el) {
@@ -36,9 +79,23 @@ function getTextLabel(el) {
   return el.tagName?.toLowerCase() || 'unknown';
 }
 
+function extractPatientId(metadata = {}) {
+  return (
+    metadata.patient_id ||
+    metadata.patientId ||
+    metadata.p_patient_id ||
+    metadata.real_patient_id ||
+    metadata.queue_patient_id ||
+    null
+  );
+}
+
 async function writeAudit(actionType, description, metadata = {}) {
   if (!isBrowser()) return false;
   if (window[AUDIT_EVENT_FLAG]) return false;
+
+  const actor = getAuditSessionContext();
+  const patientId = extractPatientId(metadata);
 
   try {
     window[AUDIT_EVENT_FLAG] = true;
@@ -47,9 +104,12 @@ async function writeAudit(actionType, description, metadata = {}) {
       description,
       metadata: {
         ...metadata,
-        source: 'admin-ui',
+        patient_id: patientId,
+        actor_username: actor.username,
+        actor_role: actor.role,
+        source: metadata.source || actor.source || 'ui',
       },
-      user_id: null,
+      user_id: actor.userId || actor.username || null,
       ip_address: null,
       user_agent: navigator.userAgent,
       created_at: new Date().toISOString(),
@@ -90,7 +150,7 @@ function patchSupabaseClient() {
       builder[methodName] = async (...args) => {
         const result = await original.apply(builder, args);
 
-        if (isAdminShellActive()) {
+        if (isAuditShellActive()) {
           const errMsg = result?.error?.message || null;
           await writeAudit(
             actionType,
@@ -117,14 +177,17 @@ function patchSupabaseClient() {
 
   supabase.rpc = async (fnName, params = {}) => {
     const result = await originalRpc(fnName, params);
+    const patientId = extractPatientId(params);
 
-    if (isAdminShellActive()) {
+    if (isAuditShellActive()) {
       await writeAudit(
         result?.error ? 'admin_rpc_error' : 'admin_rpc_call',
         `${result?.error ? 'RPC ERROR' : 'RPC'}: ${fnName}`,
         {
           function: fnName,
           params: params ? Object.keys(params) : [],
+          patient_id: patientId,
+          queue_id: params?.p_queue_id || params?.queue_id || null,
           error: result?.error?.message || null,
         }
       );
@@ -140,7 +203,7 @@ function attachUiListeners() {
   const clickHandler = (event) => {
     const target = event.target?.closest?.('button, [role="button"], a');
     if (!target) return;
-    if (!target.closest?.('[data-view="admin"]')) return;
+    if (!isAuditShellActive()) return;
 
     const label = getTextLabel(target);
     if (!label) return;
@@ -156,7 +219,7 @@ function attachUiListeners() {
 
   const changeHandler = (event) => {
     const target = event.target;
-    if (!target || !target.closest?.('[data-view="admin"]')) return;
+    if (!target || !isAuditShellActive()) return;
 
     const isSelect = target.matches?.('select');
     const isCheckbox = target.matches?.('input[type="checkbox"], input[type="radio"]');
