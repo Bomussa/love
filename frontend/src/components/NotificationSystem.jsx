@@ -8,7 +8,7 @@ import { MapPin, Bell, CheckCircle, AlertTriangle, ArrowRight, Navigation, Clock
  * 2. الإشعارات ذات الأولوية الأعلى تظهر أولاً
  * 3. كل إشعار له مدة محددة ثم يختفي تلقائياً
  * 4. يمكن إغلاقه يدوياً
- * 5. لا يُعاد عرض نفس الإشعار مرتين
+ * 5. لا يُعاد عرض نفس الإشعار مرتين إلا إذا كان خطأ/تحذيراً جديداً
  */
 
 const PRIORITY = {
@@ -116,36 +116,48 @@ export default function NotificationSystem({ notifications = [], onDismiss }) {
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState([])
-  const shownRef = useRef(new Set())
+  const seenRef = useRef(new Set())
   const counterRef = useRef(0)
 
   const push = useCallback((notif) => {
-    const dedupeKey = `${notif.type}:${notif.message}`
-    if (shownRef.current.has(dedupeKey)) return
+    const allowDuplicates = notif.allowDuplicates ?? ['error', 'warning'].includes(notif.type)
+    const dedupeKey = notif.dedupeKey || `${notif.type}:${notif.message}`
+
+    if (!allowDuplicates && seenRef.current.has(dedupeKey)) return
+
     const id = ++counterRef.current
     const newNotif = { ...notif, id }
-    shownRef.current.add(dedupeKey)
+
+    if (!allowDuplicates) {
+      seenRef.current.add(dedupeKey)
+    }
+
     setNotifications(prev => {
-      const filtered = prev.filter(n => n.type !== notif.type)
-      const updated = [...filtered, newNotif]
-      updated.sort((a, b) => (PRIORITY[b.type] || 1) - (PRIORITY[a.type] || 1))
-      return updated
+      const updated = allowDuplicates ? prev : prev.filter(n => n.type !== notif.type)
+      const next = [...updated, newNotif]
+      next.sort((a, b) => (PRIORITY[b.type] || 1) - (PRIORITY[a.type] || 1))
+      return next.slice(-6)
     })
+
     const duration = DURATION[notif.type] || 6000
-    setTimeout(() => { shownRef.current.delete(dedupeKey) }, duration + 500)
+    setTimeout(() => {
+      if (!allowDuplicates) {
+        seenRef.current.delete(dedupeKey)
+      }
+    }, duration + 500)
   }, [])
 
   const dismiss = useCallback((id) => {
     setNotifications(prev => {
       const notif = prev.find(n => n.id === id)
-      if (notif) shownRef.current.delete(`${notif.type}:${notif.message}`)
+      if (notif) seenRef.current.delete(`${notif.type}:${notif.message}`)
       return prev.filter(n => n.id !== id)
     })
   }, [])
 
   const clear = useCallback(() => {
     setNotifications([])
-    shownRef.current.clear()
+    seenRef.current.clear()
   }, [])
 
   return { notifications, push, dismiss, clear }
