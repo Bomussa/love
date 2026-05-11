@@ -131,109 +131,114 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
   }
 
   return (
-    <div className="h-screen max-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full max-w-full" style={{overflowY: "auto", overflowX: "hidden"}}>
-      <div className="w-full max-w-md mx-auto space-y-8">
-        {/* Language Selector (Left) and Admin Access (Right) */}
-        <div className="absolute top-4 left-4 z-50 flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
-            onClick={() => setShowStatistics(true)}
-            title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
-          >
-            <BarChart3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-300 hover:text-white hover:bg-gray-800/50"
-            onClick={toggleLanguage}
-          >
-            <Globe className="w-4 h-4 mr-2" />
-            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
-          </Button>
-        </div>
-        
-        {/* Admin quick access (Right) + Info icon on same row */}
-        {onAdminLogin && (
-          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-            {!isAdminMode && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUsageGuide(!showUsageGuide)}
-                  className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white rounded-lg px-2 py-1 transition-all duration-200 border border-white/10"
-                  title={language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}
-                >
-                  <span className="text-sm">ℹ️</span>
-                  <span className="text-[10px] font-medium leading-tight max-w-[70px] text-right">
-                    {language === 'ar' ? 'تعليمات الدخول' : 'Instructions'}
-                  </span>
-                </button>
-                {showUsageGuide && (
-                  <div className="absolute top-10 right-0 z-50 w-60">
-                    <div className="bg-gray-900/95 rounded-xl shadow-2xl p-4 text-white border border-white/20 backdrop-blur-sm">
-                      <button
-                        onClick={() => setShowUsageGuide(false)}
-                        className="absolute top-2 left-2 text-white/60 hover:text-white text-base font-bold"
-                      >×</button>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">👋</span>
-                        <h3 className="text-xs font-bold">{language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}</h3>
-                      </div>
-                      <div className="text-xs leading-relaxed space-y-1 text-white/90">
-                        {language === 'ar' ? (
-                          <>
-                            <div>1️⃣ أدخل رقمك الشخصي أو العسكري</div>
-                            <div>2️⃣ اختر الجنس (ذكر / أنثى)</div>
-                            <div>3️⃣ اضغط تأكيد لأخذ دورك</div>
-                            <div>4️⃣ تابع رقم دورك على الشاشة</div>
-                            <div>5️⃣ ادخل العيادة عند مناداتك</div>
-                          </>
-                        ) : (
-                          <>
-                            <div>1️⃣ Enter your personal or military ID</div>
-                            <div>2️⃣ Select gender (Male / Female)</div>
-                            <div>3️⃣ Press confirm to get your turn</div>
-                            <div>4️⃣ Watch your number on screen</div>
-                            <div>5️⃣ Enter clinic when called</div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full max-w-full"
+      style={{ overflowY: 'auto', overflowX: 'hidden' }}
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+    >
+      <div className="w-full max-w-md mx-auto space-y-6 relative z-10">
+        {/* Top controls stay in normal flow to avoid overlap on mobile */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
             <Button
               variant="ghost"
               size="sm"
-              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 border border-blue-600/50"
-              onClick={() => {
-                setIsDoctorMode(!isDoctorMode)
-                setIsAdminMode(false)
-              }}
-              title={language === 'ar' ? 'دخول الطبيب' : 'Doctor Login'}
+              className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+              onClick={() => setShowStatistics(true)}
+              title={language === 'ar' ? 'الإحصائيات' : 'Statistics'}
             >
-              <Stethoscope className="w-4 h-4 mr-2" />
-              {language === 'ar' ? 'الطبيب' : 'Doctor'}
+              <BarChart3 className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
-              onClick={() => {
-                setIsAdminMode(!isAdminMode)
-                setIsDoctorMode(false)
-              }}
-              title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
+              className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+              onClick={toggleLanguage}
             >
-              <Shield className="w-4 h-4 mr-2" />
-              {language === 'ar' ? 'الإدارة' : 'Admin'}
+              <Globe className="w-4 h-4 mr-2" />
+              {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
             </Button>
           </div>
-        )}
 
+          {onAdminLogin && (
+            <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
+              {!isAdminMode && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUsageGuide(!showUsageGuide)}
+                    className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white rounded-lg px-2 py-1 transition-all duration-200 border border-white/10"
+                    title={language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}
+                  >
+                    <span className="text-sm">ℹ️</span>
+                    <span className="text-[10px] font-medium leading-tight max-w-[70px] text-right">
+                      {language === 'ar' ? 'تعليمات الدخول' : 'Instructions'}
+                    </span>
+                  </button>
+                  {showUsageGuide && (
+                    <div className="absolute top-10 right-0 z-50 w-60">
+                      <div className="bg-gray-900/95 rounded-xl shadow-2xl p-4 text-white border border-white/20 backdrop-blur-sm">
+                        <button
+                          onClick={() => setShowUsageGuide(false)}
+                          className="absolute top-2 left-2 text-white/60 hover:text-white text-base font-bold"
+                        >×</button>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">👋</span>
+                          <h3 className="text-xs font-bold">{language === 'ar' ? 'طريقة الاستخدام' : 'How to use'}</h3>
+                        </div>
+                        <div className="text-xs leading-relaxed space-y-1 text-white/90">
+                          {language === 'ar' ? (
+                            <>
+                              <div>1️⃣ أدخل رقمك الشخصي أو العسكري</div>
+                              <div>2️⃣ اختر الجنس (ذكر / أنثى)</div>
+                              <div>3️⃣ اضغط تأكيد لأخذ دورك</div>
+                              <div>4️⃣ تابع رقم دورك على الشاشة</div>
+                              <div>5️⃣ ادخل العيادة عند مناداتك</div>
+                            </>
+                          ) : (
+                            <>
+                              <div>1️⃣ Enter your personal or military ID</div>
+                              <div>2️⃣ Select gender (Male / Female)</div>
+                              <div>3️⃣ Press confirm to get your turn</div>
+                              <div>4️⃣ Watch your number on screen</div>
+                              <div>5️⃣ Enter clinic when called</div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 border border-blue-600/50"
+                onClick={() => {
+                  setIsDoctorMode(!isDoctorMode)
+                  setIsAdminMode(false)
+                }}
+                title={language === 'ar' ? 'دخول الطبيب' : 'Doctor Login'}
+              >
+                <Stethoscope className="w-4 h-4 mr-2" />
+                {language === 'ar' ? 'الطبيب' : 'Doctor'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30 border border-yellow-600/50"
+                onClick={() => {
+                  setIsAdminMode(!isAdminMode)
+                  setIsDoctorMode(false)
+                }}
+                title={language === 'ar' ? 'دخول الإدارة' : 'Admin Login'}
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                {language === 'ar' ? 'الإدارة' : 'Admin'}
+              </Button>
+            </div>
+          )}
+        </div>
+        
         {/* Logo and Title */}
         <div className="text-center space-y-2">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
@@ -494,8 +499,6 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
         onClose={() => setShowStatistics(false)}
         language={language}
       />
-      
-
     </div>
   )
 }
