@@ -33,7 +33,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     setError(null)
 
     try {
-      const response = await api.verifyClinicAccess(selectedClinic)
+      const response = await api.verifyPin(selectedClinic)
       if (response.success && response.isValid) {
         onLogin(response.session)
       } else {
