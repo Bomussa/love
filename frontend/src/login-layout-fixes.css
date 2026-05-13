@@ -1,5 +1,5 @@
 /* Login page mobile layout fixes
- * Keeps the existing visual identity intact while preventing overlap on small screens.
+ * Conservative overrides only for the login screen. No visual identity changes.
  */
 
 @media (max-width: 768px) {
@@ -7,13 +7,13 @@
     align-items: flex-start !important;
     justify-content: flex-start !important;
     min-height: 100dvh !important;
-    padding-top: max(0.25rem, env(safe-area-inset-top)) !important;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 13rem) !important;
+    padding-top: max(0.35rem, env(safe-area-inset-top)) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 6rem) !important;
     padding-inline: 0.75rem !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     scroll-padding-top: 0.5rem;
-    scroll-padding-bottom: 13rem;
+    scroll-padding-bottom: 6rem;
     touch-action: pan-y;
   }
 
@@ -21,18 +21,15 @@
     width: 100% !important;
     max-width: 100% !important;
     margin-inline: auto !important;
-    gap: 0.625rem !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .space-y-6 {
-    gap: 0.75rem !important;
+    gap: 0.85rem !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .flex.flex-col.gap-3.sm\:flex-row.sm\:items-start.sm\:justify-between {
     width: 100% !important;
-    position: static !important;
-    align-items: stretch !important;
-    gap: 0.5rem !important;
+    gap: 0.65rem !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .flex.flex-col.gap-3.sm\:flex-row.sm\:items-start.sm\:justify-between > div {
@@ -43,8 +40,7 @@
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .flex.flex-col.gap-3.sm\:flex-row.sm\:items-start.sm\:justify-between button {
-    width: auto !important;
-    flex: 1 1 0 !important;
+    flex: 0 1 auto !important;
     min-width: 0 !important;
     white-space: normal !important;
   }
@@ -69,7 +65,7 @@
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .bg-gray-800\/50 .p-8,
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .p-8 {
-    padding: 0.9rem !important;
+    padding: 1rem !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .grid.grid-cols-2.gap-3 button {
@@ -78,7 +74,7 @@
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .relative > .absolute.top-10.right-0.z-50.w-60 {
     position: absolute !important;
-    top: calc(100% + 0.5rem) !important;
+    top: calc(100% + 0.4rem) !important;
     right: 0 !important;
     left: auto !important;
     width: min(18rem, calc(100vw - 1rem)) !important;
@@ -89,20 +85,16 @@
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .relative > .absolute.top-10.right-0.z-50.w-60 > .bg-gray-900\/95 {
     width: 100% !important;
   }
-
-  .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full form {
-    scroll-margin-bottom: 13rem;
-  }
 }
 
 @media (max-width: 480px) {
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full {
     padding-inline: 0.5rem !important;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 15rem) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 7rem) !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .space-y-6 {
-    gap: 0.625rem !important;
+    gap: 0.75rem !important;
   }
 
   .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full .theme-buttons-container button {
