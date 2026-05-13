@@ -4,6 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import './responsive-fixes.css'
 import './theme-overrides.css'
+import './login-layout-fixes.css'
 
 // Self-Healing: initialize once on app start + wrap React tree with Error Boundary
 import { initSelfHealingSystem } from './lib/self-healing'
