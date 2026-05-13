@@ -33,7 +33,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%);
+    background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%) fixed;
+    background-size: cover;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  #root {
+    width: 100%;
     min-height: 100vh;
   }
 }
