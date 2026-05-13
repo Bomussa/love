@@ -31,19 +31,28 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%) fixed;
-    background-size: cover;
-    min-height: 100vh;
+  html, body {
     margin: 0;
     padding: 0;
     width: 100%;
+    min-height: 100vh;
+    background-color: #8A1538; /* Fallback color */
     overflow-x: hidden;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background: linear-gradient(135deg, #8A1538 0%, #6B0F2A 50%, #C9A54C 100%) fixed !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+    width: 100%;
+    display: block;
   }
   #root {
     width: 100%;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 }
 
