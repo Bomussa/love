@@ -1,3 +1,11 @@
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Promise rejection:', err);
+  process.exit(1);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
 
 const fs = require("fs");
 const path = require("path");
