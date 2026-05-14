@@ -10,7 +10,7 @@ This is the authoritative, current documentation for the `Bomussa/love` reposito
 
 There are three relevant data-access layers in this repository:
 
-1. `frontend/src/lib/api-unified.js` and `frontend/src/lib/auth-service.js`
+1. `src/lib/api-unified.js` and `src/lib/auth-service.js`
    - Direct Supabase access.
    - This is the active path for patient login, doctor login, queue entry, route creation, and most dashboard interactions.
 
@@ -28,23 +28,23 @@ There are three relevant data-access layers in this repository:
 
 ### Patient flow
 
-- `frontend/src/components/LoginPage.jsx` sends patient credentials into `App.jsx`.
-- `App.jsx` calls `api.patientLogin(...)`.
-- In `frontend/src/lib/api-unified.js`, patient login talks directly to Supabase.
+- `src/components/LoginPage.jsx` sends patient credentials into `src/App.jsx`.
+- `src/App.jsx` calls `api.patientLogin(...)`.
+- In `src/lib/api-unified.js`, patient login talks directly to Supabase.
 - After login, the patient continues through exam selection and queue entry.
 
 ### Doctor flow
 
-- `LoginPage.jsx` routes doctor credentials into `App.jsx`.
-- `App.jsx` calls `api.doctorLogin(...)`.
-- In `frontend/src/lib/api-unified.js`, doctor login calls `supabase.rpc('doctor_login', ...)`.
-- The doctor dashboard is driven from `frontend/src/components/DoctorDashboard.jsx`, which uses Supabase directly for queue control and exam state.
+- `src/components/LoginPage.jsx` routes doctor credentials into `src/App.jsx`.
+- `src/App.jsx` calls `api.doctorLogin(...)`.
+- In `src/lib/api-unified.js`, doctor login calls `supabase.rpc('doctor_login', ...)`.
+- `src/components/DoctorDashboard.jsx` is the operational doctor screen for queue control and exam lifecycle actions.
 
-### Admin flow
+### Admin / clinic flow
 
-- `frontend/src/lib/auth-service.js` wraps admin login.
+- `src/lib/auth-service.js` wraps clinic/admin login.
 - It calls `api.adminLogin(...)`.
-- Admin authentication still resolves through the Supabase-backed service path.
+- Administrative authentication and operational screens resolve through the Supabase-backed service path and the `/api/v1` compatibility layer.
 
 ## PIN system status
 
@@ -52,12 +52,11 @@ The PIN workflow is no longer part of the active frontend control path. Any old 
 
 ## Repository layout that matters now
 
-- `frontend/src/App.jsx` — application state, view routing, and login flow orchestration.
-- `frontend/src/components/` — live UI screens.
-- `frontend/src/lib/api-unified.js` — direct Supabase service layer.
-- `frontend/src/lib/auth-service.js` — frontend auth wrapper.
+- `src/App.jsx` — application state, view routing, and login flow orchestration.
+- `src/components/` — live UI screens.
+- `src/lib/api-unified.js` — direct Supabase service layer.
+- `src/lib/auth-service.js` — frontend auth wrapper.
 - `src/lib/api.js` — `/api/v1` compatibility contract.
-- `src/lib/auth-service.js` — additional auth wrapper used by older code paths.
 - `src/lib/local-api.js` — local fallback.
 - `docs/` — current and legacy documentation.
 - `archive/` — archived historical material.
@@ -68,6 +67,7 @@ The frontend environment example currently focuses on Supabase and Vercel variab
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_BASE`
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
@@ -79,9 +79,9 @@ If you need an API base for the compatibility layer, use `VITE_API_BASE`. Do not
 Use these files as the current references:
 
 - `README.md` — current top-level guide
-- `docs/PROJECT_MEMORY.md` — current operational memory
-- `docs/README_OLD.md` — legacy notice only
-- `docs/API_INTEGRATION_COMPLETE.md` — legacy notice only
+- `docs/DOCUMENTATION_INDEX.md` — documentation hierarchy and canonical map
+- `docs/FULL_SYSTEM_GUIDE.md` — complete system flow and architecture
+- `docs/MAINTENANCE_GUIDE.md` — troubleshooting and recovery
 
 Do not use older archived reports as the source of truth for live behavior.
 
