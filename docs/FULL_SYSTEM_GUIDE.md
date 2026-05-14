@@ -1,3 +1,5 @@
+# [Official Source of Truth] - Refer to [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) for context
+
 # FULL SYSTEM GUIDE — MMC-MMS (`Bomussa/love`)
 
 This document explains the current system in a way that lets a maintainer understand the application flow, the important files, the maintenance boundaries, and the live data paths without needing old reports.
