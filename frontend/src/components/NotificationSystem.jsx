@@ -76,9 +76,9 @@ function NotificationCard({ notification, onDismiss }) {
           </div>
           <div className="flex-1 min-w-0">
             {notification.title && (
-              <p className={`font-bold text-base leading-tight mb-1 ${style.titleColor}`}>{notification.title}</p>
+              <p className={`font-bold text-base leading-snug mb-1 ${style.titleColor}`}>{notification.title}</p>
             )}
-            <p className={`text-sm leading-relaxed ${style.msgColor}`}>{notification.message}</p>
+            <p className={`text-[15px] leading-6 ${style.msgColor}`}>{notification.message}</p>
             {notification.clinic && (
               <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium ${style.iconColor}`}>
                 <MapPin size={13} />
@@ -114,43 +114,41 @@ export default function NotificationSystem({ notifications = [], onDismiss }) {
   )
 }
 
+function getDedupKey(notif) {
+  return notif.dedupeKey || `${notif.type}:${notif.message}`
+}
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState([])
   const seenRef = useRef(new Set())
   const counterRef = useRef(0)
 
   const push = useCallback((notif) => {
-    const allowDuplicates = notif.allowDuplicates ?? ['error', 'warning'].includes(notif.type)
-    const dedupeKey = notif.dedupeKey || `${notif.type}:${notif.message}`
-
-    if (!allowDuplicates && seenRef.current.has(dedupeKey)) return
+    const dedupeKey = getDedupKey(notif)
+    if (seenRef.current.has(dedupeKey)) return
 
     const id = ++counterRef.current
-    const newNotif = { ...notif, id }
+    const newNotif = { ...notif, id, dedupeKey }
 
-    if (!allowDuplicates) {
-      seenRef.current.add(dedupeKey)
-    }
+    seenRef.current.add(dedupeKey)
 
     setNotifications(prev => {
-      const updated = allowDuplicates ? prev : prev.filter(n => n.type !== notif.type)
+      const updated = prev.filter(n => getDedupKey(n) !== dedupeKey)
       const next = [...updated, newNotif]
       next.sort((a, b) => (PRIORITY[b.type] || 1) - (PRIORITY[a.type] || 1))
-      return next.slice(-6)
+      return next.slice(-4)
     })
 
     const duration = DURATION[notif.type] || 6000
     setTimeout(() => {
-      if (!allowDuplicates) {
-        seenRef.current.delete(dedupeKey)
-      }
+      seenRef.current.delete(dedupeKey)
     }, duration + 500)
   }, [])
 
   const dismiss = useCallback((id) => {
     setNotifications(prev => {
       const notif = prev.find(n => n.id === id)
-      if (notif) seenRef.current.delete(`${notif.type}:${notif.message}`)
+      if (notif) seenRef.current.delete(getDedupKey(notif))
       return prev.filter(n => n.id !== id)
     })
   }, [])
