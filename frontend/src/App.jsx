@@ -79,6 +79,23 @@ function verifyUIIntegrity(){
   }catch(e){ console.error('[UI_CHECK_ERROR]', e); }
 }
 
+function getUserFacingError(raw, language, fallbackAr, fallbackEn) {
+  const text = String(raw?.message || raw?.error || raw?.code || raw || '').toLowerCase();
+  if (text.includes('invalid') || text.includes('wrong') || text.includes('incorrect') || text.includes('password') || text.includes('credential')) {
+    return language === 'ar' ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials';
+  }
+  if (text.includes('device') || text.includes('already used') || text.includes('already logged') || text.includes('different number') || text.includes('same device')) {
+    return language === 'ar' ? 'هذا الجهاز مستخدم برقم آخر اليوم' : 'This device is already linked to another patient today';
+  }
+  if (text.includes('clinic') || text.includes('lab') || text.includes('other clinic') || text.includes('another clinic') || text.includes('active_clinic_id')) {
+    return language === 'ar' ? 'لا يمكن الدخول لأن الحساب مرتبط بعيادة أخرى' : 'This account is already assigned to another clinic';
+  }
+  if (text.includes('connection') || text.includes('network') || text.includes('timeout') || text.includes('fetch')) {
+    return language === 'ar' ? 'خطأ في الاتصال' : 'Connection error';
+  }
+  return language === 'ar' ? fallbackAr : fallbackEn;
+}
+
 export default function App(){
  const [doctorSession,setDoctorSession]=useState(()=>{try{const s=localStorage.getItem('mmc_doctor_session');return s?JSON.parse(s):null;}catch{return null;}});
  const [clinicSession,setClinicSession]=useState(()=>{try{const s=localStorage.getItem('mmc_clinic_session');return s?JSON.parse(s):null;}catch{return null;}});
@@ -188,29 +205,52 @@ export default function App(){
   localStorage.setItem('selectedTheme',currentTheme);
  },[currentTheme]);
 
- const notify=(msg)=>console.log(msg);
+ const notify=(rawMessage)=>{
+  const message = getUserFacingError(rawMessage, language, 'حدث خطأ غير متوقع.', 'An unexpected error occurred.');
+  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+    window.alert(message);
+  } else {
+    console.error(message);
+  }
+ };
 
  const handleLogin=async({patientId,gender})=>{
   try{
    const restrict=await getSystemSetting('device_restriction_enabled',false);
-   if(restrict){const chk=await checkDeviceLogin(patientId); if(!chk.allowed) return notify('device blocked');}
+   if(restrict){
+    const chk=await checkDeviceLogin(patientId);
+    if(!chk.allowed) {
+      notify({ message: chk.message || 'device blocked' });
+      return;
+    }
+    if (chk.warning) {
+      notify({ message: chk.warning });
+    }
+   }
    const res=await api.patientLogin(patientId,gender);
-   if(!res.success) return notify('login failed');
+   if(!res.success) {
+    notify({ error: res.error || 'login failed' });
+    return;
+   }
    await registerDeviceLogin(patientId);
    await logDailyActivity('patient_login',{patientId,gender,performedBy:patientId});
    localStorage.removeItem('mmc_admin_session'); localStorage.removeItem('mmc_doctor_session');
    setIsAdmin(false); setDoctorSession(null);
    const normalized=normalizePatientRecord(res.data,patientId);
    setPatientData(normalized); localStorage.setItem('patientData',JSON.stringify(normalized)); setCurrentView('examSelection');
-  }catch(e){console.error(e);} };
+  }catch(e){
+    console.error(e);
+    notify(e);
+  }
+ };
 
- const handleAdminLogin=async(credentials)=>{ try{ const [u,p]=credentials.split(':'); const r=await authService.login(u,p); if(r.success){ await logAdminEvent('admin_login_success', 'Admin login successful', { username: u }); setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null);} }catch(e){console.error(e);} };
+ const handleAdminLogin=async(credentials)=>{ try{ const [u,p]=String(credentials || '').split(':'); const r=await authService.login(u,p); if(r.success){ await logAdminEvent('admin_login_success', 'Admin login successful', { username: u }); setIsAdmin(true);setCurrentView('admin'); localStorage.removeItem('patientData'); setPatientData(null); return;} notify({ error: r.error || r.message || 'invalid credentials' }); }catch(e){console.error(e); notify(e);} };
 
- const handleDoctorLogin=async(credentials)=>{ try{ const [u,p]=credentials.split(':'); const r=await api.doctorLogin(u,p); if(!r.success||!r.data) return; const s={id:r.data.id,name:r.data.name,clinic_id:r.data.clinic_id,clinic_name:r.data.clinic_name||r.data.clinic_id,role:r.data.role||'DOCTOR',expiresAt:new Date(Date.now()+86400000).toISOString()}; localStorage.setItem('mmc_doctor_session',JSON.stringify(s)); setDoctorSession(s); setCurrentView('doctor'); }catch(e){console.error(e);} };
+ const handleDoctorLogin=async(credentials)=>{ try{ const [u,p]=String(credentials || '').split(':'); const r=await api.doctorLogin(u,p); if(!r.success||!r.data) { throw new Error(r.error || r.message || 'Invalid username or password'); } const s={id:r.data.id,name:r.data.name,clinic_id:r.data.clinic_id,clinic_name:r.data.clinic_name||r.data.clinic_id,role:r.data.role||'DOCTOR',expiresAt:new Date(Date.now()+86400000).toISOString()}; localStorage.setItem('mmc_doctor_session',JSON.stringify(s)); setDoctorSession(s); setCurrentView('doctor'); }catch(e){console.error(e); throw e;} };
 
  const handleLogout=()=>{ if (currentView === 'admin' || isAdmin) { void logAdminEvent('admin_logout', 'Admin session ended', { path: window.location.pathname, }); } setPatientData(null);setIsAdmin(false);setDoctorSession(null);setCurrentView('login'); localStorage.removeItem('patientData');localStorage.removeItem('mmc_admin_session');localStorage.removeItem('mmc_doctor_session'); window.history.pushState({},'', '/'); };
 
- const handleExamSelect=async(examType)=>{ try{ const clinics=await getDynamicMedicalPathway(examType,patientData?.gender||'male'); if(!clinics?.length) throw new Error('No clinics'); const patientId=patientData?.patient_id||patientData?.personal_id||patientData?.id; const firstClinic=clinics[0]; const enter=await api.enterQueue(firstClinic.id,patientId,false,patientData?.name||patientId,examType,patientData?.gender||'male',patientData?.military_id||null,patientData?.personal_id||patientId); try{await api.createRoute(patientId,examType,patientData?.gender||'male',clinics);}catch(e){console.warn(e);} const updated=normalizePatientRecord({...patientData,queueType:examType,examType,currentClinic:firstClinic.id,pathway:clinics,queueNumber:enter?.display_number||null,queueId:enter?.id||null},patientId); setPatientData(updated); localStorage.setItem('patientData',JSON.stringify(updated)); setCurrentView('patient'); }catch(e){console.error(e);} };
+ const handleExamSelect=async(examType)=>{ try{ const clinics=await getDynamicMedicalPathway(examType,patientData?.gender||'male'); if(!clinics?.length) throw new Error('No clinics'); const patientId=patientData?.patient_id||patientData?.personal_id||patientData?.id; const firstClinic=clinics[0]; const enter=await api.enterQueue(firstClinic.id,patientId,false,patientData?.name||patientId,examType,patientData?.gender||'male',patientData?.military_id||null,patientData?.personal_id||patientId); if(!enter?.success){ notify({ error: enter?.error || enter?.message || 'queue failed' }); return; } try{await api.createRoute(patientId,examType,patientData?.gender||'male',clinics);}catch(e){console.warn(e);} const updated=normalizePatientRecord({...patientData,queueType:examType,examType,currentClinic:firstClinic.id,pathway:clinics,queueNumber:enter?.display_number||null,queueId:enter?.id||null},patientId); setPatientData(updated); localStorage.setItem('patientData',JSON.stringify(updated)); setCurrentView('patient'); }catch(e){console.error(e); notify(e);} };
 
  const toggleLanguage=()=>{const l=language==='ar'?'en':'ar'; setLanguage(l); setCurrentLanguage(l);};
 
