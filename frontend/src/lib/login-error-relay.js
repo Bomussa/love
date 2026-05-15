@@ -23,12 +23,17 @@ function isRelevantMessage(text) {
     'invalid', 'wrong', 'incorrect', 'password', 'credential',
     'device blocked', 'same device', 'already logged', 'different number',
     'clinic not found', 'another clinic', 'other clinic', 'lab',
-    'active_clinic_id', 'queue failed', 'login failed', 'connection error'
+    'active_clinic_id', 'queue failed', 'login failed', 'connection error',
+    'access denied: non-admin role'
   ].some((term) => lower.includes(term))
 }
 
 function normalizeMessage(text) {
   const lower = String(text || '').toLowerCase()
+
+  if (lower.includes('access denied: non-admin role')) {
+    return 'لا تملك صلاحية الدخول إلى لوحة الإدارة'
+  }
 
   if (lower.includes('device blocked') || lower.includes('same device') || lower.includes('already logged') || lower.includes('different number')) {
     return 'هذا الجهاز مستخدم برقم آخر اليوم'
@@ -108,11 +113,25 @@ function patchAdminLogin() {
   const original = api.adminLogin.bind(api)
   const patched = async (...args) => {
     const result = await original(...args)
+
+    if (result && result.success) {
+      const role = String(result.role || result.data?.role || 'ADMIN').toUpperCase()
+
+      if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) {
+        const errorMessage = 'Access denied: non-admin role cannot enter admin dashboard'
+        notify(errorMessage)
+        throw new Error(errorMessage)
+      }
+
+      return result
+    }
+
     if (result && result.success === false) {
       const message = normalizeMessage(result.error || result.message || 'Invalid credentials')
       notify(message)
       throw new Error(message)
     }
+
     return result
   }
 
