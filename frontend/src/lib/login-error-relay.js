@@ -1,4 +1,5 @@
 import api from './api-unified'
+import './doctor-login-fallback.js'
 
 function extractText(...values) {
   return values
@@ -92,12 +93,9 @@ function patchDoctorLogin() {
   const original = api.doctorLogin.bind(api)
   const patched = async (...args) => {
     const result = await original(...args)
-    if (result && result.success === false) {
-      const message = normalizeMessage(result.error || result.message || 'Invalid credentials')
-      notify(message)
-      throw new Error(message)
-    }
-    return result
+    if (result && result.success) return result
+    const message = normalizeMessage(result?.error || result?.message || 'Invalid credentials')
+    throw new Error(message)
   }
 
   patched.__mmcPatched = true
