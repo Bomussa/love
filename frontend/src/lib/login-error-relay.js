@@ -4,33 +4,6 @@ import './doctor-login-fallback.js'
 const ALLOWED_ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN'])
 const DOCTOR_ROLE = 'DOCTOR'
 
-function extractText(...values) {
-  return values
-    .flatMap((value) => {
-      if (value == null) return []
-      if (typeof value === 'string') return [value]
-      if (value instanceof Error) return [value.message, value.name]
-      if (typeof value === 'object') {
-        return [value.message, value.error, value.code, JSON.stringify(value)]
-      }
-      return [String(value)]
-    })
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-}
-
-function isRelevantMessage(text) {
-  const lower = String(text || '').toLowerCase()
-  return [
-    'invalid', 'wrong', 'incorrect', 'password', 'credential',
-    'device blocked', 'same device', 'already logged', 'different number',
-    'clinic not found', 'another clinic', 'other clinic', 'lab',
-    'active_clinic_id', 'queue failed', 'login failed', 'connection error',
-    'access denied: non-admin role'
-  ].some((term) => lower.includes(term))
-}
-
 function normalizeMessage(text) {
   const lower = String(text || '').toLowerCase()
 
@@ -66,7 +39,11 @@ function notify(message) {
   const text = normalizeMessage(message)
   if (!window.__mmcLastAuthError || window.__mmcLastAuthError !== text) {
     window.__mmcLastAuthError = text
-    window.alert?.(text)
+    if (typeof window.__mmcAuthNotify === 'function') {
+      window.__mmcAuthNotify(text)
+    } else {
+      console.warn('[AuthRelay]', text)
+    }
     clearTimeout(window.__mmcLastAuthErrorTimer)
     window.__mmcLastAuthErrorTimer = setTimeout(() => {
       window.__mmcLastAuthError = null
@@ -104,27 +81,6 @@ function sanitizeStoredSessions() {
   }
 }
 
-function patchConsoleMethod(methodName) {
-  if (typeof console === 'undefined') return
-  const original = console[methodName]
-  if (typeof original !== 'function' || original.__mmcPatched) return
-
-  const patched = (...args) => {
-    try {
-      const text = extractText(...args)
-      if (isRelevantMessage(text)) {
-        notify(text)
-      }
-    } catch {
-      // Ignore relay failures and preserve original logging.
-    }
-    return original.apply(console, args)
-  }
-
-  patched.__mmcPatched = true
-  console[methodName] = patched
-}
-
 function patchDoctorLogin() {
   if (typeof api.doctorLogin !== 'function' || api.doctorLogin.__mmcPatched) return
 
@@ -153,7 +109,7 @@ function patchAdminLogin() {
       if (!ALLOWED_ADMIN_ROLES.has(role)) {
         const errorMessage = 'Access denied: non-admin role cannot enter admin dashboard'
         notify(errorMessage)
-        throw new Error(errorMessage)
+        return { success: false, error: errorMessage }
       }
 
       return result
@@ -173,9 +129,6 @@ function patchAdminLogin() {
 }
 
 sanitizeStoredSessions()
-patchConsoleMethod('log')
-patchConsoleMethod('error')
-patchConsoleMethod('warn')
 patchDoctorLogin()
 patchAdminLogin()
 
