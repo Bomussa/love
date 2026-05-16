@@ -6,6 +6,7 @@ import './responsive-fixes.css'
 import './theme-overrides.css'
 import './lib/login-error-relay.js'
 import './lib/patient-experience-relay.js'
+import './lib/patient-foreground-sync.js'
 
 // Self-Healing: initialize once on app start + wrap React tree with Error Boundary
 import { initSelfHealingSystem } from './lib/self-healing'
