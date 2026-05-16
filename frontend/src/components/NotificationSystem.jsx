@@ -145,6 +145,27 @@ export function useNotifications() {
     }, duration + 500)
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    window.__mmcPatientNotify = (notif) => {
+      if (!notif) return
+      push({
+        type: notif.type || 'info',
+        title: notif.title || null,
+        message: notif.message || '',
+        clinic: notif.clinic || null,
+        floor: notif.floor || null,
+        dedupeKey: notif.dedupeKey || notif.message || notif.title || undefined,
+      })
+    }
+
+    return () => {
+      if (window.__mmcPatientNotify) {
+        delete window.__mmcPatientNotify
+      }
+    }
+  }, [push])
+
   const dismiss = useCallback((id) => {
     setNotifications(prev => {
       const notif = prev.find(n => n.id === id)
