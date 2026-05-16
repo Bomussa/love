@@ -102,6 +102,30 @@ function patchApiMethod(methodName, handler) {
   api[methodName] = patched
 }
 
+function installRetryReloadBridge() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+  if (window.__mmcPatientRetryReloadBridgeInstalled) return
+  window.__mmcPatientRetryReloadBridgeInstalled = true
+
+  const handler = (event) => {
+    const target = event?.target
+    if (!target || typeof target.closest !== 'function') return
+    const button = target.closest('button')
+    if (!button) return
+
+    const label = String(button.textContent || button.innerText || '').trim().toLowerCase()
+    if (!label) return
+
+    if (label.includes('retry') || label.includes('إعادة المحاولة') || label.includes('إعادة المحاوله')) {
+      setTimeout(() => {
+        window.location.reload()
+      }, 50)
+    }
+  }
+
+  document.addEventListener('click', handler, true)
+}
+
 patchApiMethod('enterQueue', async (original, ...args) => {
   const [clinicId, patientId] = args
   const result = await original(...args)
@@ -203,5 +227,7 @@ patchApiMethod('createRoute', async (original, ...args) => {
   notifyPatient(result?.error || result?.message || 'Unable to save pathway', `createRoute:${String(patientId || '')}`)
   return result
 })
+
+installRetryReloadBridge()
 
 export default null
