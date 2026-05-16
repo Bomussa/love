@@ -23,6 +23,7 @@ const Button = React.forwardRef(({
     ghost: "hover:bg-accent hover:text-accent-foreground",
     link: "text-primary underline-offset-4 hover:underline",
     gradient: "gradient-primary text-white hover:opacity-90",
+    gradientPrimary: "gradient-primary text-white hover:opacity-90",
     gradientSecondary: "gradient-secondary text-white hover:opacity-90"
   }
 
@@ -41,7 +42,7 @@ const Button = React.forwardRef(({
         "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50 touch-manipulation select-none",
-        variants[variant],
+        variants[variant] || variants.default,
         sizes[size],
         loading && "cursor-wait",
         className
