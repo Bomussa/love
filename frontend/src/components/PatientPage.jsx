@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
 import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle, Loader2 } from 'lucide-react'
+import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
 import { computeEtaMinutes } from '../lib/eta'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
@@ -19,7 +19,8 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [stations, setStations] = useState([])
   const [selectedStation, setSelectedStation] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true) // حالة التحميل الأولي
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [pathwayError, setPathwayError] = useState(null)
   const [activeTicket, setActiveTicket] = useState(null)
   const [currentNotice, setCurrentNotice] = useState(null)
   const [routeWithZFD, setRouteWithZFD] = useState(null)
@@ -27,11 +28,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const [directAlerts, setDirectAlerts] = useState([])
   const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
 
+  const getPatientIdentifier = useCallback(() => {
+    return patientData.personal_id || patientData.patient_id || patientData.id
+  }, [patientData.personal_id, patientData.patient_id, patientData.id])
+
   // ✅ دالة مساعدة لجلب رقم الطابور للعيادة
   const fetchQueueNumberForStation = async (station) => {
     try {
-      // استخدام personal_id (الرقم الشخصي) من patientData
-      const patientIdentifier = patientData.personal_id || patientData.patient_id || patientData.id;
+      const patientIdentifier = getPatientIdentifier();
       const positionData = await api.getQueuePosition(station.id, patientIdentifier)
       if (positionData && positionData.success) {
         return {
@@ -54,20 +58,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       setLoading(true)
       console.log('[PatientPage] Getting ticket for first clinic:', station.id)
 
-      // استخدام personal_id (الرقم الشخصي) من patientData
-      const patientIdentifier = patientData.personal_id || patientData.patient_id || patientData.id;
-
-      // أولاً: محاولة إنشاء Queue entry
+      const patientIdentifier = getPatientIdentifier();
       const enterResult = await api.enterQueue(station.id, patientIdentifier, false, patientData.name, patientData.queueType)
 
       if (enterResult && !enterResult.success && enterResult.error) {
-        // إذا كان هناك خطأ (وليس because already in queue)
         if (!enterResult.alreadyExists) {
           console.warn('[PatientPage] Enter queue result:', enterResult)
         }
       }
 
-      // ثانياً: جلب رقم الطابور الحالي
       const positionData = await api.getQueuePosition(station.id, patientIdentifier)
 
       if (positionData && positionData.success) {
@@ -82,6 +81,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         } : s))
 
         console.log('[PatientPage] Got queue number:', positionData.display_number, 'ahead:', positionData.ahead)
+      } else if (enterResult && enterResult.success && enterResult.display_number != null) {
+        setStations(prev => prev.map((s, idx) => idx === 0 ? {
+          ...s,
+          yourNumber: enterResult.display_number,
+          current: enterResult.current_number ?? 0,
+          ahead: enterResult.ahead ?? 0,
+          totalWaiting: enterResult.total_waiting ?? 0,
+          status: 'ready',
+          isEntered: false,
+        } : s))
       }
     } catch (e) {
       console.error('[PatientPage] Get ticket for first clinic failed:', e)
@@ -90,16 +99,18 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }
 
+  const retryLoadPathway = useCallback(() => {
+    setPathwayError(null)
+    setStations([])
+    setInitialLoading(true)
+  }, [])
+
   // دخول يدوي لأي عيادة
   const handleEnterClinic = async (station) => {
     try {
       setLoading(true)
       const entryTime = new Date(Date.now() + 3*60*60*1000).toISOString();
-
-      // استخدام personal_id (الرقم الشخصي) من patientData
-      const patientIdentifier = patientData.personal_id || patientData.patient_id || patientData.id;
-
-      // إنشاء Queue entry مع isAutoEnter = true
+      const patientIdentifier = getPatientIdentifier();
       const enterResult = await api.enterQueue(station.id, patientIdentifier, true, patientData.name, patientData.queueType)
 
       if (enterResult && !enterResult.success && enterResult.error && !enterResult.alreadyExists) {
@@ -108,7 +119,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         return
       }
 
-      // جلب بيانات الطابور
       const positionData = await api.getQueuePosition(station.id, patientIdentifier)
       if (positionData && positionData.success) {
         setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
@@ -129,6 +139,25 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           clinic: language === 'ar' ? station.nameAr : (station.name || station.nameAr),
           floor: station.floor
         })
+      } else if (enterResult && enterResult.success && enterResult.display_number != null) {
+        setActiveTicket({ clinicId: station.id, ticket: enterResult.display_number })
+        setStations(prev => prev.map(s => s.id === station.id ? {
+          ...s,
+          yourNumber: enterResult.display_number,
+          current: enterResult.current_number ?? 0,
+          ahead: enterResult.ahead ?? 0,
+          totalWaiting: enterResult.total_waiting ?? 0,
+          status: 'ready',
+          isEntered: true,
+          entered_at: entryTime
+        } : s))
+        pushNotif({
+          type: 'success',
+          title: language === 'ar' ? 'تم الدخول بنجاح' : 'Entered Successfully',
+          message: language === 'ar' ? `رقمك في الطابور: ${enterResult.display_number}` : `Your queue number: ${enterResult.display_number}`,
+          clinic: language === 'ar' ? station.nameAr : (station.name || station.nameAr),
+          floor: station.floor
+        })
       }
       setLoading(false)
     } catch (e) {
@@ -145,15 +174,14 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   useEffect(() => {
     const loadPathway = async () => {
       setInitialLoading(true)
+      setPathwayError(null)
       try {
         let examStations = null
 
-        // ✅ استخدام المسار من patientData إذا كان متوفراً
         if (patientData.pathway && patientData.pathway.length > 0) {
           examStations = patientData.pathway
           console.log('[PatientPage] Using pathway from patientData:', examStations.length, 'stations')
         } else {
-          // جلب المسار من API أو قاعدة البيانات
           try {
             const savedRoute = await api.getRoute(patientData.id)
             if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
@@ -164,7 +192,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             console.warn('[PatientPage] Failed to get saved route:', err)
           }
 
-          // إذا لم يكن هناك مسار محفوظ، جلب المسار الديناميكي
           if (!examStations) {
             examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
             console.log('[PatientPage] Loaded dynamic pathway:', examStations?.length, 'stations')
@@ -172,12 +199,13 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         }
 
         if (!examStations || examStations.length === 0) {
-          console.error('[PatientPage] No stations found for pathway')
+          const errorMsg = language === 'ar' ? 'تعذر تحميل المسار الطبي. يمكنك إعادة المحاولة الآن.' : 'Unable to load the medical pathway. You can retry now.'
+          setPathwayError(errorMsg)
+          pushNotif({ type: 'error', message: errorMsg })
           setInitialLoading(false)
           return
         }
 
-        // تهيئة المحطات
         const initialStations = examStations.map((station, index) => ({
           ...station,
           status: index === 0 ? 'ready' : 'locked',
@@ -189,7 +217,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
         setStations(initialStations)
 
-        // جلب رقم الطابور للعيادة الأولى
         if (examStations.length > 0) {
           const firstClinic = examStations[0]
           await handleGetTicketForFirstClinic(firstClinic)
@@ -206,13 +233,16 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
         }
       } catch (err) {
         console.error('[PatientPage] Failed to load pathway:', err)
+        const errorMsg = language === 'ar' ? 'تعذر تحميل المسار الطبي. حاول مرة أخرى.' : 'Unable to load the medical pathway. Please try again.'
+        setPathwayError(errorMsg)
+        pushNotif({ type: 'error', message: errorMsg })
       } finally {
         setInitialLoading(false)
       }
     }
 
     loadPathway()
-  }, [patientData.examType, patientData.queueType, patientData.gender, patientData.pathway])
+  }, [patientData.examType, patientData.queueType, patientData.gender, patientData.pathway, patientData.id, language, pushNotif])
 
   useEffect(() => {
     if (patientData?.id) {
@@ -222,7 +252,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     }
   }, [patientData?.id])
 
-  // تحديث لحظي لحالة الطابور
   useEffect(() => {
     if (!patientData?.id || stations.length === 0) return;
     let retryCount = 0;
@@ -255,8 +284,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       try {
         const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
         if (currentStation) {
-          // استخدام personal_id (الرقم الشخصي) من patientData
-          const patientIdentifier = patientData.personal_id || patientData.patient_id || patientData.id;
+          const patientIdentifier = getPatientIdentifier();
           const positionData = await api.getQueuePosition(currentStation.id, patientIdentifier);
           if (positionData && positionData.success) {
             const stateKey = `${currentStation.id}-${positionData.display_number}`;
@@ -360,7 +388,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       clearInterval(heartbeatInterval);
       supabase.removeChannel(statusChannel);
     };
-  }, [patientData?.id, language, stations.length]);
+  }, [patientData?.id, language, stations.length])
 
   useEffect(() => {
     if (!patientData?.id) return;
@@ -505,6 +533,31 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#C9A54C] mx-auto mb-4"></div>
           <p className="text-white text-lg">{language === 'ar' ? 'جارٍ تحميل المسار الطبي...' : 'Loading medical pathway...'}</p>
         </div>
+      </div>
+    )
+  }
+
+  if (pathwayError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900" data-test="pathway-error-screen">
+        <Card className="w-full max-w-lg bg-gray-800/80 border-red-500/40">
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center text-red-400">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-white">{language === 'ar' ? 'تعذر تحميل المسار' : 'Unable to load pathway'}</h2>
+            <p className="text-gray-300 leading-relaxed">{pathwayError}</p>
+            <div className="flex gap-3 justify-center pt-2">
+              <Button onClick={retryLoadPathway} variant="default" className="bg-[#C9A54C] text-black font-bold">
+                <RefreshCw className="w-4 h-4 me-2" />
+                {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+              </Button>
+              <Button onClick={onLogout} variant="outline" className="border-gray-600 text-gray-200">
+                {language === 'ar' ? 'العودة' : 'Back'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
