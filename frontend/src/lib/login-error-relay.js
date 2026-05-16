@@ -1,6 +1,9 @@
 import api from './api-unified'
 import './doctor-login-fallback.js'
 
+const ALLOWED_ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN'])
+const DOCTOR_ROLE = 'DOCTOR'
+
 function extractText(...values) {
   return values
     .flatMap((value) => {
@@ -71,6 +74,36 @@ function notify(message) {
   }
 }
 
+function sanitizeStoredSessions() {
+  if (typeof window === 'undefined') return
+
+  try {
+    const adminRaw = localStorage.getItem('mmc_admin_session')
+    if (adminRaw) {
+      const adminSession = JSON.parse(adminRaw)
+      const role = String(adminSession?.role || '').toUpperCase()
+      if (!ALLOWED_ADMIN_ROLES.has(role)) {
+        localStorage.removeItem('mmc_admin_session')
+      }
+    }
+  } catch {
+    localStorage.removeItem('mmc_admin_session')
+  }
+
+  try {
+    const doctorRaw = localStorage.getItem('mmc_doctor_session')
+    if (doctorRaw) {
+      const doctorSession = JSON.parse(doctorRaw)
+      const role = String(doctorSession?.role || '').toUpperCase()
+      if (role && role !== DOCTOR_ROLE) {
+        localStorage.removeItem('mmc_doctor_session')
+      }
+    }
+  } catch {
+    localStorage.removeItem('mmc_doctor_session')
+  }
+}
+
 function patchConsoleMethod(methodName) {
   if (typeof console === 'undefined') return
   const original = console[methodName]
@@ -117,7 +150,7 @@ function patchAdminLogin() {
     if (result && result.success) {
       const role = String(result.role || result.data?.role || 'ADMIN').toUpperCase()
 
-      if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) {
+      if (!ALLOWED_ADMIN_ROLES.has(role)) {
         const errorMessage = 'Access denied: non-admin role cannot enter admin dashboard'
         notify(errorMessage)
         throw new Error(errorMessage)
@@ -139,6 +172,7 @@ function patchAdminLogin() {
   api.adminLogin = patched
 }
 
+sanitizeStoredSessions()
 patchConsoleMethod('log')
 patchConsoleMethod('error')
 patchConsoleMethod('warn')
