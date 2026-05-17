@@ -17,7 +17,7 @@ export class ErrorBoundaryEnhanced extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
@@ -25,9 +25,8 @@ export class ErrorBoundaryEnhanced extends React.Component {
     const now = Date.now();
     const timeSinceLastError = this.state.lastErrorTime ? now - this.state.lastErrorTime : Infinity;
 
-    // تتبع عدد الأخطاء المتكررة
     let errorCount = this.state.errorCount + 1;
-    if (timeSinceLastError > 60000) { // إعادة تعيين بعد دقيقة
+    if (timeSinceLastError > 60000) {
       errorCount = 1;
     }
 
@@ -38,17 +37,14 @@ export class ErrorBoundaryEnhanced extends React.Component {
       lastErrorTime: now,
     });
 
-    // تسجيل الخطأ
     console.error('Error caught by boundary:', error, errorInfo);
 
-    // إرسال تقرير الخطأ إذا كان متكرراً
     if (errorCount > 3) {
       this.reportError(error, errorInfo);
     }
   }
 
   reportError = (error, errorInfo) => {
-    // يمكن إرسال التقرير إلى خادم المراقبة
     console.error('🚨 Critical Error Reported:', {
       message: error?.toString(),
       stack: errorInfo?.componentStack,
@@ -62,14 +58,26 @@ export class ErrorBoundaryEnhanced extends React.Component {
       error: null,
       errorInfo: null,
     });
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('mmc:self-heal-recover', {
+          detail: { source: 'enhanced-error-boundary' }
+        }));
+      } catch {
+        // noop
+      }
+    }
   };
 
   handleReload = () => {
-    window.location.reload();
+    this.handleReset();
   };
 
   handleGoHome = () => {
-    window.location.href = '/';
+    if (typeof window !== 'undefined') {
+      window.location.assign('/');
+    }
   };
 
   render() {
@@ -77,13 +85,11 @@ export class ErrorBoundaryEnhanced extends React.Component {
       return (
         <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-            {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
               <h1 className="text-2xl font-bold text-gray-900">حدث خطأ</h1>
             </div>
 
-            {/* Error Message */}
             <div className="mb-4">
               <p className="text-gray-600 text-sm mb-2">
                 {this.state.error?.message || 'حدث خطأ غير متوقع'}
@@ -100,7 +106,6 @@ export class ErrorBoundaryEnhanced extends React.Component {
               )}
             </div>
 
-            {/* Error Count Warning */}
             {this.state.errorCount > 2 && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-xs text-yellow-800">
@@ -109,7 +114,6 @@ export class ErrorBoundaryEnhanced extends React.Component {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="space-y-2">
               <button
                 onClick={this.handleReset}
@@ -134,7 +138,6 @@ export class ErrorBoundaryEnhanced extends React.Component {
               </button>
             </div>
 
-            {/* Footer */}
             <p className="mt-4 text-xs text-gray-500 text-center">
               إذا استمرت المشكلة، يرجى التواصل مع الدعم الفني
             </p>
