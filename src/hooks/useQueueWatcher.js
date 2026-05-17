@@ -15,16 +15,17 @@ export default function useQueueWatcher({
   const retryCountRef = useRef(0);
   const lastStateRef = useRef(null);
   const timerRef = useRef(null);
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
 
+    stoppedRef.current = false;
     const interval = useNearTurnInterval ? NEAR_TURN_REFRESH_INTERVAL : GENERAL_REFRESH_INTERVAL;
 
     const safeFetch = async () => {
-      if (document.hidden) return;
+      if (stoppedRef.current || document.hidden) return;
       try {
-        // استخدم الدالة الممررة أو الديفولت api.getQueueStatus
         const newState = await (fetchFunction || api.getQueueStatus)();
         if (JSON.stringify(newState) === JSON.stringify(lastStateRef.current)) {
           return;
@@ -42,22 +43,10 @@ export default function useQueueWatcher({
         if (retryCountRef.current <= MAX_RETRY) {
           setTimeout(safeFetch, RECOVERY_DELAY);
         } else {
-          try {
-            await api.logRecovery ? api.logRecovery({
-              source: 'queue-watcher',
-              retries: retryCountRef.current,
-              timestamp: new Date().toISOString()
-            }) : fetch('/api/v1/events/recovery', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                source: 'queue-watcher',
-                retries: retryCountRef.current,
-                timestamp: new Date().toISOString()
-              })
-            });
-          } catch {}
-          window.location.reload();
+          stoppedRef.current = true;
+          if (onError) {
+            onError(new Error('queue-watcher-recovery-exhausted'));
+          }
         }
       }
     };
@@ -65,6 +54,7 @@ export default function useQueueWatcher({
     safeFetch();
     timerRef.current = setInterval(safeFetch, interval);
     return () => {
+      stoppedRef.current = true;
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
