@@ -4,6 +4,12 @@ const WARNED_KEYS = new Set()
 const QUEUE_CACHE_PREFIX = 'mmc_patient_queue_cache:'
 const ROUTE_CACHE_PREFIX = 'mmc_patient_route_cache:'
 
+function isPatientJourneyPath() {
+  if (typeof window === 'undefined') return false
+  const path = String(window.location.pathname || '')
+  return path === '/' || path === '' || path.startsWith('/patient') || path.startsWith('/clinic/')
+}
+
 function cacheQueue(clinicId, patientId, payload) {
   if (typeof window === 'undefined') return
   try {
@@ -108,6 +114,8 @@ function installRetryReloadBridge() {
   window.__mmcPatientRetryReloadBridgeInstalled = true
 
   const handler = (event) => {
+    if (!isPatientJourneyPath()) return
+
     const target = event?.target
     if (!target || typeof target.closest !== 'function') return
     const button = target.closest('button')
@@ -124,6 +132,21 @@ function installRetryReloadBridge() {
   }
 
   document.addEventListener('click', handler, true)
+}
+
+function installForegroundResyncBridge() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (window.__mmcPatientForegroundBridgeInstalled) return
+  window.__mmcPatientForegroundBridgeInstalled = true
+
+  const resync = () => {
+    if (document.hidden) return
+    if (!isPatientJourneyPath()) return
+    window.location.reload()
+  }
+
+  document.addEventListener('visibilitychange', resync, false)
+  window.addEventListener('focus', resync, false)
 }
 
 patchApiMethod('enterQueue', async (original, ...args) => {
@@ -174,7 +197,7 @@ patchApiMethod('getQueuePosition', async (original, ...args) => {
       current_number: result.current_number ?? null,
       ahead: result.ahead ?? null,
       total_waiting: result.total_waiting ?? null,
-      status: result.status ?? 'waiting',
+      status: result.status || 'waiting',
       entered_at: result.entered_at ?? new Date().toISOString(),
     })
     return result
@@ -229,5 +252,6 @@ patchApiMethod('createRoute', async (original, ...args) => {
 })
 
 installRetryReloadBridge()
+installForegroundResyncBridge()
 
 export default null
