@@ -10,6 +10,16 @@ function isPatientJourneyPath() {
   return path === '/' || path === '' || path.startsWith('/patient') || path.startsWith('/clinic/')
 }
 
+function emitPatientJourneyEvent(name, detail = {}) {
+  if (typeof window === 'undefined') return false
+  try {
+    window.dispatchEvent(new CustomEvent(name, { detail }))
+    return true
+  } catch {
+    return false
+  }
+}
+
 function cacheQueue(clinicId, patientId, payload) {
   if (typeof window === 'undefined') return
   try {
@@ -108,10 +118,10 @@ function patchApiMethod(methodName, handler) {
   api[methodName] = patched
 }
 
-function installRetryReloadBridge() {
+function installRetryBridge() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return
-  if (window.__mmcPatientRetryReloadBridgeInstalled) return
-  window.__mmcPatientRetryReloadBridgeInstalled = true
+  if (window.__mmcPatientRetryBridgeInstalled) return
+  window.__mmcPatientRetryBridgeInstalled = true
 
   const handler = (event) => {
     if (!isPatientJourneyPath()) return
@@ -125,9 +135,7 @@ function installRetryReloadBridge() {
     if (!label) return
 
     if (label.includes('retry') || label.includes('إعادة المحاولة') || label.includes('إعادة المحاوله')) {
-      setTimeout(() => {
-        window.location.reload()
-      }, 50)
+      emitPatientJourneyEvent('mmc:patient-retry-requested')
     }
   }
 
@@ -142,7 +150,7 @@ function installForegroundResyncBridge() {
   const resync = () => {
     if (document.hidden) return
     if (!isPatientJourneyPath()) return
-    window.location.reload()
+    emitPatientJourneyEvent('mmc:patient-foreground-resync')
   }
 
   document.addEventListener('visibilitychange', resync, false)
@@ -251,7 +259,7 @@ patchApiMethod('createRoute', async (original, ...args) => {
   return result
 })
 
-installRetryReloadBridge()
+installRetryBridge()
 installForegroundResyncBridge()
 
 export default null
