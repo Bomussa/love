@@ -1,25 +1,42 @@
-
 import { supabase } from './supabase-client';
 import { initGDS } from './guaranteed-data-system';
 import { getDynamicMedicalPathway } from './dynamic-pathways';
 
 /**
- * Unified API Service - Direct Supabase Implementation (V2 - Excellence Standard)
- * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
- *
- * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
- * ✅ إعادة المحاولة التلقائية
- * ✅ بدون بيانات وهمية
+ * Unified API Service - Direct Supabase Implementation
+ * All patient-facing queue flows use canonical statuses only:
+ * WAITING, CALLED, COMPLETED
  */
 
-// تهيئة نظام ضمان البيانات
 initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
 
+const CANONICAL_QUEUE_STATUSES = new Set(['waiting', 'called', 'completed']);
+
+function normalizeQueueStatus(status) {
+  const value = String(status || '').trim().toLowerCase();
+  if (value === 'done' || value === 'completed') return 'completed';
+  if (value === 'serving' || value === 'in_progress' || value === 'in-progress') return 'called';
+  if (value === 'called') return 'called';
+  if (value === 'waiting') return 'waiting';
+  return value;
+}
+
+function normalizeQueueRow(row) {
+  if (!row) return row;
+  return { ...row, status: normalizeQueueStatus(row.status) };
+}
+
+function qatarDateTime() {
+  return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+}
+
+function qatarDate() {
+  return qatarDateTime().split('T')[0];
+}
+
 const api = {
-  // --- Patients ---
   async patientLogin(patientId, gender) {
     try {
-      // Backend uses personal_id in patients table, frontend uses patient_id
       const { data, error } = await supabase
         .from('patients')
         .select('*')
@@ -27,7 +44,6 @@ const api = {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Patient doesn't exist, create new
         const { data: newUser, error: createError } = await supabase
           .from('patients')
           .insert([{ personal_id: patientId, gender: gender || 'male', status: 'active', name: `Patient ${patientId}` }])
@@ -39,16 +55,19 @@ const api = {
       }
 
       if (error) throw error;
-      // تحديث الجنس دائماً إذا تغيّر — يُصحح مشكلة عرض الجنس القديم
+
       if (data && gender && data.gender !== gender) {
-        await supabase.from('patients')
-          .update({ gender, updated_at: new Date(Date.now() + 3*60*60*1000).toISOString() })
-          .eq('personal_id', patientId).catch(() => {});
+        await supabase
+          .from('patients')
+          .update({ gender, updated_at: qatarDateTime() })
+          .eq('personal_id', patientId)
+          .catch(() => {});
       }
+
       const patId = data?.patient_id || data?.personal_id || patientId;
       return {
         success: true,
-        data: { ...data, gender: gender || data.gender || 'male', patient_id: patId, personal_id: patientId }
+        data: { ...data, gender: gender || data.gender || 'male', patient_id: patId, personal_id: patientId },
       };
     } catch (error) {
       console.error('Login Error:', error);
@@ -56,23 +75,20 @@ const api = {
     }
   },
 
-  // ═══ helper: تاريخ قطر الصحيح (UTC+3) — يطابق qatar_today() في Supabase ═══
   getQatarDate() {
-    return new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+    return qatarDate();
   },
 
-  // --- Queue ---
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null, gender = null, militaryId = null, personalId = null) {
     try {
-      // المصدر الوحيد: enter_queue_safe RPC — لا fallback يتجاوز الحمايات
       const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
-        p_clinic_id:    clinicId,
-        p_patient_id:   patientId,
+        p_clinic_id: clinicId,
+        p_patient_id: patientId,
         p_patient_name: patientName || patientId,
-        p_exam_type:    examType   || 'general',
-        p_gender:       gender     || 'male',
-        p_military_id:  militaryId || null,
-        p_personal_id:  personalId || patientId,
+        p_exam_type: examType || 'general',
+        p_gender: gender || 'male',
+        p_military_id: militaryId || null,
+        p_personal_id: personalId || patientId,
       });
 
       if (rpcError) {
@@ -84,15 +100,13 @@ const api = {
         return { success: false, error: 'لا توجد استجابة من قاعدة البيانات' };
       }
 
-      // الحالات المقبولة
-      const accepted = ['OK','ALREADY_IN_QUEUE','COMPLETED_BEFORE'];
-      if (!accepted.includes(rpcResult.status) && !rpcResult.success) {
-        // أخطاء الحماية (عيادتين / حد يومي)
+      const accepted = new Set(['OK', 'ALREADY_IN_QUEUE', 'COMPLETED_BEFORE']);
+      if (!accepted.has(rpcResult.status) && !rpcResult.success) {
         return {
           success: false,
           error: rpcResult.error || rpcResult.status,
           status: rpcResult.status,
-          active_clinic_id: rpcResult.active_clinic_id
+          active_clinic_id: rpcResult.active_clinic_id,
         };
       }
 
@@ -100,7 +114,7 @@ const api = {
         success: true,
         ...rpcResult,
         display_number: rpcResult.display_number || rpcResult.number,
-        alreadyExists:  rpcResult.status === 'ALREADY_IN_QUEUE'
+        alreadyExists: rpcResult.status === 'ALREADY_IN_QUEUE',
       };
     } catch (error) {
       console.error('enterQueue exception:', error);
@@ -110,8 +124,7 @@ const api = {
 
   async getQueuePosition(clinicId, patientId) {
     try {
-      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+      const today = qatarDate();
       const { data: patientEntry, error: entryError } = await supabase
         .from('unified_queue')
         .select('*')
@@ -124,10 +137,12 @@ const api = {
 
       if (entryError) throw entryError;
 
+      const normalizedPatientEntry = normalizeQueueRow(patientEntry);
+
       let currentNumber = 0;
       const { data: servingEntry } = await supabase
         .from('unified_queue')
-        .select('display_number')
+        .select('display_number,status,called_at,completed_at')
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .in('status', ['called', 'in_progress', 'serving'])
@@ -143,13 +158,11 @@ const api = {
           .select('display_number')
           .eq('clinic_id', clinicId)
           .eq('queue_date', today)
-          .eq('status', 'completed')
+          .in('status', ['completed', 'done'])
           .order('completed_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (lastCompleted) {
-          currentNumber = lastCompleted.display_number;
-        }
+        if (lastCompleted) currentNumber = lastCompleted.display_number;
       }
 
       const { count, error: countError } = await supabase
@@ -158,16 +171,17 @@ const api = {
         .eq('clinic_id', clinicId)
         .eq('queue_date', today)
         .eq('status', 'waiting')
-        .lt('entered_at', patientEntry.entered_at);
+        .lt('entered_at', normalizedPatientEntry.entered_at);
 
       if (countError) throw countError;
 
       return {
         success: true,
-        display_number: patientEntry.display_number,
+        display_number: normalizedPatientEntry.display_number,
         current_number: currentNumber,
         ahead: count || 0,
-        status: patientEntry.status,
+        status: normalizedPatientEntry.status,
+        entered_at: normalizedPatientEntry.entered_at,
       };
     } catch (error) {
       console.error('Get Position Error:', error);
@@ -177,29 +191,28 @@ const api = {
 
   async queueDone(clinicId, patientId) {
     try {
-      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
+      const now = qatarDateTime();
       const { data, error } = await supabase
         .from('unified_queue')
-        .update({ status: 'done', completed_at: now, exam_end_time: now })
+        .update({ status: 'completed', completed_at: now, exam_end_time: now })
         .eq('clinic_id', clinicId)
         .eq('patient_id', patientId)
         .select();
 
       if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: (data || []).map(normalizeQueueRow) };
     } catch (error) {
       console.error('Queue Done Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  // --- Settings ---
   async getSettings() {
     try {
       const { data, error } = await supabase.from('system_settings').select('*');
       if (error) throw error;
       const settings = {};
-      data.forEach(s => {
+      (data || []).forEach((s) => {
         try {
           settings[s.id] = JSON.parse(s.value);
         } catch {
@@ -213,10 +226,9 @@ const api = {
     }
   },
 
-  // --- Stats ---
   async getQueueCount(clinicId) {
     try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+      const today = qatarDate();
       const { count, error } = await supabase
         .from('unified_queue')
         .select('*', { count: 'exact', head: true })
@@ -247,8 +259,7 @@ const api = {
 
   async createRoute(patientId, examType, gender, stations) {
     try {
-      // تحويل المحطات إلى الشكل الصحيح
-      const stationsData = stations.map((s, index) => ({
+      const stationsData = (stations || []).map((s, index) => ({
         id: s.id,
         name: s.name || s.nameAr,
         nameAr: s.nameAr || s.name,
@@ -257,18 +268,18 @@ const api = {
         order: index + 1,
       }));
 
-      // استخدام upsert مع onConflict للpatient_id
       const { data, error } = await supabase
         .from('patient_routes')
-        .upsert({
-          patient_id: patientId,
-          exam_type: examType,
-          gender: gender,
-          stations: stationsData,
-          updated_at: new Date(Date.now() + 3*60*60*1000).toISOString()
-        }, {
-          onConflict: 'patient_id'
-        })
+        .upsert(
+          {
+            patient_id: patientId,
+            exam_type: examType,
+            gender,
+            stations: stationsData,
+            updated_at: qatarDateTime(),
+          },
+          { onConflict: 'patient_id' },
+        )
         .select()
         .single();
 
@@ -280,7 +291,6 @@ const api = {
     }
   },
 
-  // --- Clinics ---
   async getClinics() {
     try {
       const { data, error } = await supabase
@@ -297,9 +307,7 @@ const api = {
     }
   },
 
-  // verifyPin — PIN system removed (no pin column in clinics table)
-  // Returns clinic info for session creation without PIN check
-  async verifyPin(clinicId, _pin) {
+  async verifyPin(clinicId) {
     try {
       const { data, error } = await supabase
         .from('clinics')
@@ -311,14 +319,13 @@ const api = {
         return { success: false, isValid: false, error: 'Clinic not found' };
       }
 
-      // PIN system removed — any clinic ID is valid
       return {
         success: true,
         isValid: true,
         session: {
           clinicId: data.id,
           clinicName: data.name_ar || data.name_en || data.name || clinicId,
-        }
+        },
       };
     } catch (error) {
       console.error('Verify Clinic Error:', error);
@@ -326,10 +333,9 @@ const api = {
     }
   },
 
-  // --- Queue Status ---
   async getQueueStatus(clinicId) {
     try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+      const today = qatarDate();
       const { data, error } = await supabase
         .from('unified_queue')
         .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date')
@@ -338,14 +344,13 @@ const api = {
         .order('display_number', { ascending: true });
 
       if (error) throw error;
-      return { success: true, queue: data || [] };
+      return { success: true, queue: (data || []).map(normalizeQueueRow) };
     } catch (error) {
       console.error('Get Queue Status Error:', error);
       return { success: false, error: error.message, queue: [] };
     }
   },
 
-  // callNextPatient — uses call_next_patient RPC (no PIN required)
   async callNextPatient(clinicId) {
     try {
       const { data: rpcResult, error } = await supabase.rpc('call_next_patient', {
@@ -368,18 +373,18 @@ const api = {
 
   async updateQueueStatus(clinicId, patientId, status) {
     try {
-      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
-      const updateData = { status };
-      if (status === 'completed' || status === 'done') {
+      const normalizedStatus = normalizeQueueStatus(status);
+      const now = qatarDateTime();
+      const updateData = { status: normalizedStatus };
+
+      if (normalizedStatus === 'completed') {
         updateData.completed_at = now;
         updateData.exam_end_time = now;
-      } else if (status === 'called') {
+      } else if (normalizedStatus === 'called') {
         updateData.called_at = now;
-      } else if (status === 'serving' || status === 'in_progress') {
-        updateData.exam_start_time = now;
-        updateData.entered_clinic_at = now;
-      } else if (status === 'no_show' || status === 'absent') {
-        updateData.marked_absent_at = now;
+      } else if (normalizedStatus === 'waiting') {
+        updateData.called_at = null;
+        updateData.completed_at = null;
       }
 
       const { data, error } = await supabase
@@ -390,25 +395,23 @@ const api = {
         .select();
 
       if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: (data || []).map(normalizeQueueRow) };
     } catch (error) {
       console.error('Update Queue Status Error:', error);
       return { success: false, error: error.message };
     }
   },
 
-  // --- Create Queue (Fixed for App.jsx compatibility) ---
   async createQueue(patientId, examType, gender, idempotencyKey) {
     try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
+      const today = qatarDate();
 
-      // Check if already in queue today
       const { data: existing } = await supabase
         .from('unified_queue')
         .select('*')
         .eq('patient_id', patientId)
         .eq('queue_date', today)
-        .in('status', ['waiting', 'called', 'serving', 'in_progress'])
+        .in('status', ['waiting', 'called', 'serving', 'in_progress', 'completed', 'done'])
         .maybeSingle();
 
       if (existing) {
@@ -418,13 +421,12 @@ const api = {
             queueId: existing.id,
             number: existing.display_number,
             clinicId: existing.clinic_id,
-            path: []
+            path: [],
           },
-          alreadyInQueue: true
+          alreadyInQueue: true,
         };
       }
 
-      // Get next display number
       const { data: lastEntry } = await supabase
         .from('unified_queue')
         .select('display_number')
@@ -435,7 +437,6 @@ const api = {
 
       const nextNumber = (lastEntry?.display_number || 0) + 1;
 
-      // Get dynamic pathway for the patient
       let pathway = [];
       let firstClinicId = null;
       try {
@@ -447,19 +448,16 @@ const api = {
         console.warn('Dynamic pathway error, continuing without route:', pathErr);
       }
 
-      // Insert into unified_queue with first clinic
       const insertData = {
         patient_id: patientId,
         exam_type: examType,
-        gender: gender,
+        gender,
         display_number: nextNumber,
         status: 'waiting',
         queue_date: today,
-        entered_at: new Date(Date.now() + 3*60*60*1000).toISOString()
+        entered_at: qatarDateTime(),
       };
-      if (firstClinicId) {
-        insertData.clinic_id = firstClinicId;
-      }
+      if (firstClinicId) insertData.clinic_id = firstClinicId;
 
       const { data, error } = await supabase
         .from('unified_queue')
@@ -474,8 +472,8 @@ const api = {
           queueId: data.id,
           number: data.display_number,
           clinicId: firstClinicId,
-          path: pathway
-        }
+          path: pathway,
+        },
       };
     } catch (error) {
       console.error('Create Queue Error:', error);
@@ -483,11 +481,10 @@ const api = {
     }
   },
 
-  // --- Doctor Login --- (يستخدم doctor_login RPC SECURITY DEFINER — حساسية حالة الأحرف مُعطَّلة)
   async doctorLogin(username, password) {
     try {
       const { data: result, error } = await supabase.rpc('doctor_login', {
-        p_username: username,   // الـ RPC يطبق LOWER() تلقائياً في DB
+        p_username: username,
         p_password: password,
       });
       if (error) throw error;
@@ -501,19 +498,12 @@ const api = {
     }
   },
 
-  // --- Admin Login (Fixed) ---
   async adminLogin(username, password) {
     try {
-      // Super admin check
       if (username === 'Bomussa' && password === '14490') {
-        return {
-          success: true,
-          role: 'SUPER_ADMIN',
-          data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' }
-        };
+        return { success: true, role: 'SUPER_ADMIN', data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' } };
       }
 
-      // Try doctors table
       const { data: doctor, error: docError } = await supabase
         .from('doctors')
         .select('*')
@@ -521,17 +511,18 @@ const api = {
         .eq('is_active', true)
         .maybeSingle();
 
+      if (docError) throw docError;
+
       if (doctor) {
-        // Check password_hash if available, fallback to plain password
-        const passwordMatch = doctor.password_hash 
+        const passwordMatch = doctor.password_hash
           ? doctor.password_hash === password || doctor.password_hash === await (async () => {
               const encoder = new TextEncoder();
               const data = encoder.encode(password);
               const hash = await crypto.subtle.digest('SHA-256', data);
-              return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+              return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
             })()
           : doctor.password === password;
-        
+
         if (passwordMatch) {
           return { success: true, role: doctor.role || 'DOCTOR', data: doctor };
         }
@@ -542,7 +533,7 @@ const api = {
       console.error('Admin Login Error:', error);
       return { success: false, error: error.message };
     }
-  }
+  },
 };
 
 export default api;
