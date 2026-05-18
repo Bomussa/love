@@ -15,8 +15,16 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
   const clinicName = session?.clinicName || clinicId;
   const tr = (ar, en) => language === 'ar' ? ar : en;
 
+  const normalizeQueueStatus = (status) => {
+    const value = String(status || '').toLowerCase();
+    if (value === 'serving' || value === 'in_progress' || value === 'in_service') return 'called';
+    if (value === 'done') return 'completed';
+    if (value === 'called' || value === 'completed' || value === 'waiting') return value;
+    return value;
+  };
+
   const [currentTicket, setCurrentTicket] = useState(null)
-  const [queueStats,    setQueueStats]    = useState({ waiting: 0, serving: 0, done: 0 })
+  const [queueStats,    setQueueStats]    = useState({ waiting: 0, called: 0, completed: 0 })
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState(null)
 
@@ -26,13 +34,13 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
     try {
       const response = await api.getQueueStatus(clinicId)
       if (response.success) {
-        const q = response.queue || []
-        const inService = q.find(p => ['called','serving','in_progress'].includes(p.status))
+        const q = (response.queue || []).map((p) => ({ ...p, status: normalizeQueueStatus(p.status) }))
+        const inService = q.find(p => p.status === 'called')
         setCurrentTicket(inService || null)
         setQueueStats({
           waiting: q.filter(p => p.status === 'waiting').length,
-          serving: q.filter(p => ['called','serving','in_progress'].includes(p.status)).length,
-          done:    q.filter(p => ['done','completed'].includes(p.status)).length,
+          called: q.filter(p => p.status === 'called').length,
+          completed: q.filter(p => p.status === 'completed').length,
         })
       }
     } catch (err) {
@@ -93,7 +101,7 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
       })
       if (rpcErr) {
         // fallback مباشر
-        await api.updateQueueStatus(clinicId, currentTicket.patient_id, 'done')
+        await api.updateQueueStatus(clinicId, currentTicket.patient_id, 'completed')
       }
       setCurrentTicket(null)
       await refreshStatus()
@@ -145,10 +153,10 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
               {tr('انتظار', 'Waiting')}: {queueStats.waiting}
             </span>
             <span className="px-3 py-1 rounded-full text-xs bg-yellow-500/20 text-yellow-400 font-medium">
-              {tr('يُخدَّم', 'Serving')}: {queueStats.serving}
+              {tr('يُخدَّم', 'Called')}: {queueStats.called}
             </span>
             <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400 font-medium">
-              {tr('مكتمل', 'Done')}: {queueStats.done}
+              {tr('مكتمل', 'Completed')}: {queueStats.completed}
             </span>
           </div>
           <button
