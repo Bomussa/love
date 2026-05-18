@@ -16,7 +16,8 @@
     "deploy": "npm run build && wrangler pages publish dist",
     "test:api": "node test-api-integration.js",
     "test:final": "node final-integration-test.js",
-    "test:e2e": "npm run build",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "verify:ui": "npm run build"
   },
   "engines": {
@@ -47,6 +48,7 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.8.1",
