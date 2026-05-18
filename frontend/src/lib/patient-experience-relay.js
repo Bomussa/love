@@ -11,10 +11,17 @@ function isPatientJourneyPath() {
 function normalizeMessage(text) {
   const lower = String(text || '').toLowerCase()
 
-  if (lower.includes('active_clinic_id') || lower.includes('another clinic') || lower.includes('other clinic') || lower.includes('lab')) {
-    return 'لا يمكن الدخول لأنك مسجل بالفعل في عيادة أخرى اليوم'
+  if (
+    lower.includes('active_clinic_id') ||
+    lower.includes('another clinic') ||
+    lower.includes('other clinic') ||
+    lower.includes('clinic conflict') ||
+    lower.includes('wrong_clinic_pin') ||
+    lower.includes('wrong clinic pin')
+  ) {
+    return 'أنت مسجل بالفعل في عيادة أخرى اليوم'
   }
-  if (lower.includes('already in queue') || lower.includes('already queued') || lower.includes('الطابور')) {
+  if (lower.includes('already in queue') || lower.includes('already queued') || lower.includes('queue conflict') || lower.includes('duplicate queue') || lower.includes('الطابور')) {
     return 'أنت مسجل بالفعل في الطابور'
   }
   if (lower.includes('connection') || lower.includes('network') || lower.includes('timeout') || lower.includes('fetch')) {
