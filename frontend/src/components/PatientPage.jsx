@@ -1,523 +1,364 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { GENERAL_REFRESH_INTERVAL, NEAR_TURN_REFRESH_INTERVAL } from '../core/config/refresh.constants'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import { Input } from './Input'
-import { Lock, Unlock, Clock, Globe, LogIn, LogOut, ArrowRight, CheckCircle, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
-import { calculateWaitTime, examTypes, formatTime } from '../lib/utils'
-import { computeEtaMinutes } from '../lib/eta'
+import { Lock, Unlock, Clock, Globe, LogIn, CheckCircle, RefreshCw, AlertTriangle } from 'lucide-react'
+import { examTypes, formatTime } from '../lib/utils'
 import { getDynamicMedicalPathway } from '../lib/dynamic-pathways'
 import { t } from '../lib/i18n'
 import api from '../lib/api-unified'
-import { ZFDTicketDisplay, ZFDBanner } from './ZFDTicketDisplay'
 import NotificationSystem, { useNotifications } from './NotificationSystem'
-import { CountdownTimer } from './CountdownTimer'
-import eventBus from '../core/event-bus'
 import { supabase } from '../lib/supabase-client'
+
+const normalizeStatus = (status) => {
+  const value = String(status || '').trim().toLowerCase()
+  if (value === 'completed' || value === 'done') return 'completed'
+  if (value === 'called' || value === 'serving' || value === 'in_progress' || value === 'in_service' || value === 'in-service') return 'called'
+  if (value === 'waiting') return 'waiting'
+  if (value === 'ready' || value === 'locked' || value === 'cancelled' || value === 'no_show') return value
+  return 'waiting'
+}
+
+async function fetchQueuePosition(clinicId, patientId) {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data: myRow } = await supabase
+    .from('unified_queue')
+    .select('id, display_number, status, entered_at, called_at, completed_at')
+    .eq('clinic_id', clinicId)
+    .eq('patient_id', patientId)
+    .eq('queue_date', today)
+    .not('status', 'eq', 'cancelled')
+    .order('entered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!myRow) return null
+
+  const { data: serving } = await supabase
+    .from('unified_queue')
+    .select('display_number')
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', today)
+    .in('status', ['called', 'serving', 'in_progress'])
+    .order('display_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { count: ahead } = await supabase
+    .from('unified_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', today)
+    .in('status', ['waiting', 'called', 'serving', 'in_progress'])
+    .lt('display_number', myRow.display_number)
+
+  const { count: totalWaiting } = await supabase
+    .from('unified_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', today)
+    .in('status', ['waiting', 'called', 'serving', 'in_progress'])
+
+  return {
+    id: myRow.id,
+    display_number: myRow.display_number,
+    current_number: serving?.display_number ?? 0,
+    ahead: ahead ?? 0,
+    total_waiting: totalWaiting ?? 0,
+    entered_at: myRow.entered_at,
+    status: myRow.status,
+    success: true,
+  }
+}
 
 export function PatientPage({ patientData, onLogout, language, toggleLanguage }) {
   const [stations, setStations] = useState([])
-  const [selectedStation, setSelectedStation] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [pathwayError, setPathwayError] = useState(null)
-  const [activeTicket, setActiveTicket] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [currentNotice, setCurrentNotice] = useState(null)
-  const [routeWithZFD, setRouteWithZFD] = useState(null)
-  const [queuePositions, setQueuePositions] = useState({})
   const [directAlerts, setDirectAlerts] = useState([])
-  const { notifications: notifList, push: pushNotif, dismiss: dismissNotif } = useNotifications()
+  const channelRef = useRef(null)
+  const pollTimerRef = useRef(null)
+  const { notifications, push, dismiss } = useNotifications()
 
-  const getPatientIdentifier = useCallback(() => {
-    return patientData.personal_id || patientData.patient_id || patientData.id
-  }, [patientData.personal_id, patientData.patient_id, patientData.id])
+  const patientId = String(
+    patientData?.id ||
+    patientData?.patientId ||
+    patientData?.patient_id ||
+    patientData?.personal_id ||
+    patientData?.military_number ||
+    patientData?.militaryId ||
+    ''
+  )
+  const queueType = patientData?.queueType || patientData?.examType || 'general'
+  const gender = patientData?.gender || 'male'
 
-  // ✅ دالة مساعدة لجلب رقم الطابور للعيادة
-  const fetchQueueNumberForStation = async (station) => {
-    try {
-      const patientIdentifier = getPatientIdentifier();
-      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
-      if (positionData && positionData.success) {
-        return {
-          yourNumber: positionData.display_number,
-          current: positionData.current_number,
-          ahead: positionData.ahead,
-          totalWaiting: positionData.total_waiting,
-          status: 'waiting'
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to get queue position for station:', station.id, e)
-    }
-    return null
-  }
+  const getExamName = useCallback(() => {
+    const exam = examTypes.find((e) => e.id === queueType)
+    return exam ? (language === 'ar' ? exam.nameAr : exam.name) : (language === 'ar' ? 'فحص طبي' : 'Medical Exam')
+  }, [language, queueType])
 
-  // ✅ دالة لإنشاء Queue entry وجلب الرقم
-  const handleGetTicketForFirstClinic = async (station) => {
-    try {
-      setLoading(true)
-      console.log('[PatientPage] Getting ticket for first clinic:', station.id)
-
-      const patientIdentifier = getPatientIdentifier();
-      const enterResult = await api.enterQueue(station.id, patientIdentifier, false, patientData.name, patientData.queueType)
-
-      if (enterResult && !enterResult.success && enterResult.error) {
-        if (!enterResult.alreadyExists) {
-          console.warn('[PatientPage] Enter queue result:', enterResult)
-        }
-      }
-
-      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
-
-      if (positionData && positionData.success) {
-        setStations(prev => prev.map((s, idx) => idx === 0 ? {
-          ...s,
-          yourNumber: positionData.display_number,
-          current: positionData.current_number,
-          ahead: positionData.ahead,
-          totalWaiting: positionData.total_waiting,
-          status: positionData.status === 'waiting' ? 'ready' : positionData.status,
-          isEntered: false,
-        } : s))
-
-        console.log('[PatientPage] Got queue number:', positionData.display_number, 'ahead:', positionData.ahead)
-      } else if (enterResult && enterResult.success && enterResult.display_number != null) {
-        setStations(prev => prev.map((s, idx) => idx === 0 ? {
-          ...s,
-          yourNumber: enterResult.display_number,
-          current: enterResult.current_number ?? 0,
-          ahead: enterResult.ahead ?? 0,
-          totalWaiting: enterResult.total_waiting ?? 0,
-          status: 'ready',
-          isEntered: false,
-        } : s))
-      }
-    } catch (e) {
-      console.error('[PatientPage] Get ticket for first clinic failed:', e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const retryLoadPathway = useCallback(() => {
-    setPathwayError(null)
-    setStations([])
-    setInitialLoading(true)
+  const notify = useCallback((message, type = 'info') => {
+    setCurrentNotice({ message, type })
+    window.clearTimeout(window.__patientNoticeTimer)
+    window.__patientNoticeTimer = window.setTimeout(() => {
+      setCurrentNotice((prev) => (prev?.message === message ? null : prev))
+    }, 5000)
   }, [])
 
-  // دخول يدوي لأي عيادة
-  const handleEnterClinic = async (station) => {
+  const enterClinic = useCallback(async (station) => {
+    if (!patientId) return
+
     try {
       setLoading(true)
-      const entryTime = new Date(Date.now() + 3*60*60*1000).toISOString();
-      const patientIdentifier = getPatientIdentifier();
-      const enterResult = await api.enterQueue(station.id, patientIdentifier, true, patientData.name, patientData.queueType)
+      const { data, error } = await supabase.rpc('enter_unified_queue_safe', {
+        p_clinic_id: station.id,
+        p_patient_id: patientId,
+        p_patient_name: patientData?.name || patientData?.patient_name || patientId,
+        p_exam_type: queueType,
+        p_gender: gender,
+        p_military_id: String(patientData?.military_number || patientData?.militaryId || patientId),
+        p_personal_id: patientId,
+        p_force: false,
+      })
 
-      if (enterResult && !enterResult.success && enterResult.error && !enterResult.alreadyExists) {
-        pushNotif({ type: 'error', message: enterResult.error })
-        setLoading(false)
+      if (error) throw error
+
+      if (data?.status === 'ALREADY_ACTIVE_IN_OTHER_CLINIC') {
+        notify(language === 'ar' ? 'أنت مرتبط بعيادة أخرى. أكملها أولاً.' : 'You are active in another clinic. Finish it first.', 'info')
         return
       }
 
-      const positionData = await api.getQueuePosition(station.id, patientIdentifier)
-      if (positionData && positionData.success) {
-        setActiveTicket({ clinicId: station.id, ticket: positionData.display_number })
-        setStations(prev => prev.map(s => s.id === station.id ? {
-          ...s,
-          yourNumber: positionData.display_number,
-          current: positionData.current_number,
-          ahead: positionData.ahead,
-          totalWaiting: positionData.total_waiting,
-          status: positionData.status === 'waiting' ? 'ready' : positionData.status,
-          isEntered: true,
-          entered_at: positionData.entered_at || entryTime
-        } : s))
-        pushNotif({
-          type: 'success',
-          title: language === 'ar' ? 'تم الدخول بنجاح' : 'Entered Successfully',
-          message: language === 'ar' ? `رقمك في الطابور: ${positionData.display_number}` : `Your queue number: ${positionData.display_number}`,
-          clinic: language === 'ar' ? station.nameAr : (station.name || station.nameAr),
-          floor: station.floor
-        })
-      } else if (enterResult && enterResult.success && enterResult.display_number != null) {
-        setActiveTicket({ clinicId: station.id, ticket: enterResult.display_number })
-        setStations(prev => prev.map(s => s.id === station.id ? {
-          ...s,
-          yourNumber: enterResult.display_number,
-          current: enterResult.current_number ?? 0,
-          ahead: enterResult.ahead ?? 0,
-          totalWaiting: enterResult.total_waiting ?? 0,
-          status: 'ready',
-          isEntered: true,
-          entered_at: entryTime
-        } : s))
-        pushNotif({
-          type: 'success',
-          title: language === 'ar' ? 'تم الدخول بنجاح' : 'Entered Successfully',
-          message: language === 'ar' ? `رقمك في الطابور: ${enterResult.display_number}` : `Your queue number: ${enterResult.display_number}`,
-          clinic: language === 'ar' ? station.nameAr : (station.name || station.nameAr),
-          floor: station.floor
-        })
-      }
-      setLoading(false)
-    } catch (e) {
-      console.error('[PatientPage] Enter clinic failed:', e)
-      pushNotif({
-        type: 'error',
-        message: language === 'ar' ? 'فشل الدخول للعيادة. الرجاء المحاولة مرة أخرى.' : 'Failed to enter clinic. Please try again.'
-      })
+      const pos = await fetchQueuePosition(station.id, patientId)
+      if (!pos) throw new Error('QUEUE_POSITION_MISSING')
+
+      setStations((prev) => prev.map((s, idx) => (
+        idx === 0
+          ? {
+              ...s,
+              queueId: data?.id || pos.id,
+              yourNumber: pos.display_number,
+              current: pos.current_number,
+              ahead: pos.ahead,
+              totalWaiting: pos.total_waiting,
+              status: 'ready',
+              isEntered: false,
+            }
+          : s
+      )))
+
+      notify(language === 'ar' ? `✅ رقمك: ${pos.display_number}` : `✅ Your number: ${pos.display_number}`, 'success')
+    } catch (err) {
+      console.error('[PatientPage] enterClinic:', err)
+      notify(language === 'ar' ? 'فشل الدخول للعيادة' : 'Failed to enter clinic', 'error')
+    } finally {
       setLoading(false)
     }
-  }
+  }, [gender, language, notify, patientData, patientId, queueType])
 
-  // ✅ تحميل المسار الطبي عند بدء الصفحة
-  useEffect(() => {
-    const loadPathway = async () => {
-      setInitialLoading(true)
-      setPathwayError(null)
-      try {
-        let examStations = null
+  const loadPathway = useCallback(async () => {
+    if (!patientId) return
 
-        if (patientData.pathway && patientData.pathway.length > 0) {
-          examStations = patientData.pathway
-          console.log('[PatientPage] Using pathway from patientData:', examStations.length, 'stations')
-        } else {
-          try {
-            const savedRoute = await api.getRoute(patientData.id)
-            if (savedRoute && savedRoute.success && savedRoute.route && savedRoute.route.stations) {
-              examStations = savedRoute.route.stations
-              console.log('[PatientPage] Using saved route:', examStations.length, 'stations')
-            }
-          } catch (err) {
-            console.warn('[PatientPage] Failed to get saved route:', err)
-          }
+    setInitialLoading(true)
+    setPathwayError(null)
 
-          if (!examStations) {
-            examStations = await getDynamicMedicalPathway(patientData.examType || patientData.queueType, patientData.gender)
-            console.log('[PatientPage] Loaded dynamic pathway:', examStations?.length, 'stations')
-          }
+    try {
+      let pathway = Array.isArray(patientData?.pathway) && patientData.pathway.length > 0
+        ? patientData.pathway
+        : (Array.isArray(patientData?.route?.stations) && patientData.route.stations.length > 0 ? patientData.route.stations : null)
+
+      if (!pathway) {
+        const savedRoute = await api.getRoute(patientData?.id || patientId)
+        if (savedRoute?.success && Array.isArray(savedRoute?.route?.stations) && savedRoute.route.stations.length > 0) {
+          pathway = savedRoute.route.stations
         }
-
-        if (!examStations || examStations.length === 0) {
-          const errorMsg = language === 'ar' ? 'تعذر تحميل المسار الطبي. يمكنك إعادة المحاولة الآن.' : 'Unable to load the medical pathway. You can retry now.'
-          setPathwayError(errorMsg)
-          pushNotif({ type: 'error', message: errorMsg })
-          setInitialLoading(false)
-          return
-        }
-
-        const initialStations = examStations.map((station, index) => ({
-          ...station,
-          status: index === 0 ? 'ready' : 'locked',
-          current: 0,
-          yourNumber: null,
-          ahead: 0,
-          isEntered: false
-        }))
-
-        setStations(initialStations)
-
-        if (examStations.length > 0) {
-          const firstClinic = examStations[0]
-          await handleGetTicketForFirstClinic(firstClinic)
-
-          if (firstClinic.floor) {
-            pushNotif({
-              type: 'floor_guide',
-              title: language === 'ar' ? 'توجه إلى العيادة' : 'Go to Clinic',
-              message: language === 'ar' ? `يرجى التوجه إلى ${firstClinic.floor}` : `Please go to ${firstClinic.floor}`,
-              clinic: language === 'ar' ? firstClinic.nameAr : (firstClinic.name || firstClinic.nameAr),
-              floor: firstClinic.floor
-            })
-          }
-        }
-      } catch (err) {
-        console.error('[PatientPage] Failed to load pathway:', err)
-        const errorMsg = language === 'ar' ? 'تعذر تحميل المسار الطبي. حاول مرة أخرى.' : 'Unable to load the medical pathway. Please try again.'
-        setPathwayError(errorMsg)
-        pushNotif({ type: 'error', message: errorMsg })
-      } finally {
-        setInitialLoading(false)
       }
+
+      if (!pathway) {
+        pathway = await getDynamicMedicalPathway(queueType, gender)
+      }
+
+      if (!Array.isArray(pathway) || pathway.length === 0) {
+        throw new Error('EMPTY_PATHWAY')
+      }
+
+      const initial = pathway.map((station, index) => ({
+        ...station,
+        status: index === 0 ? 'ready' : 'locked',
+        current: null,
+        yourNumber: null,
+        ahead: null,
+        totalWaiting: null,
+        isEntered: false,
+      }))
+
+      setStations(initial)
+      await enterClinic(initial[0])
+    } catch (err) {
+      console.error('[PatientPage] loadPathway:', err)
+      setPathwayError(language === 'ar'
+        ? 'تعذر تحميل المسار الطبي. حاول مرة أخرى.'
+        : 'Unable to load the medical pathway. Please try again.')
+    } finally {
+      setInitialLoading(false)
+    }
+  }, [enterClinic, gender, language, patientData, patientId, queueType])
+
+  const completedCount = useMemo(() => stations.filter((s) => normalizeStatus(s.status) === 'completed').length, [stations])
+  const allCompleted = stations.length > 0 && stations.every((s) => normalizeStatus(s.status) === 'completed')
+  const progress = stations.length > 0 ? Math.round((completedCount / stations.length) * 100) : 0
+  const activeStation = useMemo(() => stations.find((s) => normalizeStatus(s.status) === 'ready' && s.yourNumber !== null), [stations])
+
+  useEffect(() => { void loadPathway() }, [loadPathway])
+
+  useEffect(() => {
+    if (!patientId || !activeStation) return undefined
+
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
     }
 
-    loadPathway()
-  }, [patientData.examType, patientData.queueType, patientData.gender, patientData.pathway, patientData.id, language, pushNotif])
-
-  useEffect(() => {
-    if (patientData?.id) {
-      api.getRoute(patientData.id)
-        .then(data => { if (data?.route) setRouteWithZFD(data) })
-        .catch(err => console.warn('Route fetch failed:', err))
-    }
-  }, [patientData?.id])
-
-  useEffect(() => {
-    if (!patientData?.id || stations.length === 0) return;
-    let retryCount = 0;
-    let lastResponseTime = Date.now();
-    let dynamicInterval = GENERAL_REFRESH_INTERVAL;
-    let pollingInterval = null;
-    let isSSEActive = false;
-    const MAX_RETRY = 3;
-    const RECOVERY_DELAY = 3000;
-    const lastStateRef = { current: null };
-
-    const handleSSEConnected = () => {
-      isSSEActive = true;
-      if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
-    };
-    const handleSSEError = () => {
-      isSSEActive = false;
-      if (!pollingInterval) {
-        pollingInterval = setInterval(() => { updateQueueStatus(); }, dynamicInterval);
-      }
-    };
-    const unsubscribeConnected = eventBus.on('sse:connected', handleSSEConnected);
-    const unsubscribeError = eventBus.on('sse:error', handleSSEError);
-    if (window.eventBusSSE?.isConnected()) handleSSEConnected();
-    else handleSSEError();
-
-    const updateQueueStatus = async () => {
-      if (document.hidden) return;
-      const start = Date.now();
-      try {
-        const currentStation = stations.find(s => s.status === 'ready' && s.yourNumber !== null);
-        if (currentStation) {
-          const patientIdentifier = getPatientIdentifier();
-          const positionData = await api.getQueuePosition(currentStation.id, patientIdentifier);
-          if (positionData && positionData.success) {
-            const stateKey = `${currentStation.id}-${positionData.display_number}`;
-            if (lastStateRef.current !== stateKey) {
-              lastStateRef.current = stateKey;
-              setStations(prev => prev.map(s => {
-                if (s.id === currentStation.id) {
-                  const previousNumber = s.lastNotifiedPosition || 999;
-                  if (positionData.display_number !== previousNumber && positionData.display_number <= 2) {
-                    const notifTypes = { 0: 'your_turn', 1: 'near_turn', 2: 'near_turn' };
-                    const messages = {
-                      0: language === 'ar' ? 'دورك الآن! توجه للعيادة فوراً' : 'Your turn now! Go to the clinic immediately',
-                      1: language === 'ar' ? 'أنت التالي - كن جاهزاً' : 'You are next - be ready',
-                      2: language === 'ar' ? 'أنت الثاني في الانتظار' : 'You are second in line'
-                    };
-                    const notifTitles = {
-                      0: language === 'ar' ? 'دورك الآن!' : 'Your Turn!',
-                      1: language === 'ar' ? 'تنبيه: أنت التالي' : 'Alert: You are next',
-                      2: language === 'ar' ? 'تنبيه' : 'Alert'
-                    };
-                    const message = messages[positionData.display_number];
-                    if (message) {
-                      pushNotif({
-                        type: notifTypes[positionData.display_number] || 'queue_update',
-                        title: notifTitles[positionData.display_number],
-                        message: message,
-                        clinic: s.nameAr,
-                        floor: s.floor
-                      });
-                      if (positionData.display_number === 0) {
-                        eventBus.emit('queue:your_turn', { clinicName: s.nameAr, position: positionData.display_number });
-                      }
-                    }
-                  }
-                  return {
-                    ...s,
-                    yourNumber: positionData.display_number,
-                    current: positionData.current_number,
-                    ahead: positionData.ahead,
-                    totalWaiting: positionData.total_waiting,
-                    estimatedWait: positionData.estimated_wait_minutes,
-                    lastNotifiedPosition: positionData.display_number
-                  };
-                }
-                return s;
-              }));
-            }
-          }
-        }
-        retryCount = 0;
-        const duration = Date.now() - start;
-        lastResponseTime = Date.now();
-        dynamicInterval = Math.max(3000, Math.min(GENERAL_REFRESH_INTERVAL, duration * 2 + 2000));
-      } catch (err) {
-        retryCount++;
-        dynamicInterval = Math.min(60000, dynamicInterval * 1.5);
-        if (retryCount <= MAX_RETRY) setTimeout(updateQueueStatus, RECOVERY_DELAY);
-        else retryCount = 0;
-      }
-    };
-    updateQueueStatus();
-    const heartbeatInterval = setInterval(() => {
-      const now = Date.now();
-      if (now - lastResponseTime > 120000) lastResponseTime = Date.now();
-    }, 30000);
-
-    const statusChannel = supabase
-      .channel(`queue_status_${patientData.id}`)
+    const channel = supabase
+      .channel(`patient_queue_${patientId}_${activeStation.id}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'unified_queue',
-        filter: `patient_id=eq.${patientData.personal_id || patientData.patient_id || patientData.id}`
-      }, (payload) => {
-        const updatedEntry = payload.new;
-        updateQueueStatus();
-        if (updatedEntry) {
-          if (['called', 'completed', 'cancelled'].includes(updatedEntry.status)) {
-            setTimeout(() => {
-              setStations(prev => {
-                const currentIdx = prev.findIndex(s => s.id === updatedEntry.clinic_id);
-                if (currentIdx === -1) return prev;
-                return prev.map((s, i) => {
-                  if (i === currentIdx) return { ...s, status: updatedEntry.status, isEntered: false };
-                  if (updatedEntry.status === 'completed' && i === currentIdx + 1 && s.status === 'locked') {
-                    return { ...s, status: 'ready' };
-                  }
-                  return s;
-                });
-              });
-            }, 300);
-          }
-        }
+        filter: `clinic_id=eq.${activeStation.id}`,
+      }, async () => {
+        const pos = await fetchQueuePosition(activeStation.id, patientId)
+        if (!pos) return
+        const status = normalizeStatus(pos.status)
+
+        setStations((prev) => {
+          const idx = prev.findIndex((s) => s.id === activeStation.id)
+          if (idx === -1) return prev
+
+          return prev.map((station, i) => {
+            if (i !== idx) return station
+            if (status === 'completed') {
+              return {
+                ...station,
+                status: 'completed',
+                isEntered: false,
+                current: pos.current_number,
+                ahead: pos.ahead,
+                totalWaiting: pos.total_waiting,
+              }
+            }
+            return {
+              ...station,
+              yourNumber: pos.display_number,
+              current: pos.current_number,
+              ahead: pos.ahead,
+              totalWaiting: pos.total_waiting,
+              status: 'ready',
+            }
+          }).map((station, i) => (
+            status === 'completed' && i === idx + 1 && normalizeStatus(station.status) === 'locked'
+              ? { ...station, status: 'ready' }
+              : station
+          ))
+        })
       })
-      .subscribe();
+      .subscribe()
+
+    channelRef.current = channel
 
     return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-      unsubscribeConnected();
-      unsubscribeError();
-      clearInterval(heartbeatInterval);
-      supabase.removeChannel(statusChannel);
-    };
-  }, [patientData?.id, language, stations.length])
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [activeStation, patientId])
 
   useEffect(() => {
-    if (!patientData?.id) return;
-    const handleQueueUpdate = (data) => {
-      try {
-        const message = language === 'ar' ? data.message : data.messageEn;
-        pushNotif({ type: data.type, message, position: data.position, clinic: data.clinic });
-      } catch (err) {}
-    };
-    eventBus.on('queue:update', handleQueueUpdate);
-    eventBus.on('queue:near_turn', handleQueueUpdate);
-    eventBus.on('queue:your_turn', handleQueueUpdate);
+    if (!patientId || !activeStation) return undefined
+
+    pollTimerRef.current = window.setInterval(async () => {
+      const pos = await fetchQueuePosition(activeStation.id, patientId)
+      if (!pos) return
+      setStations((prev) => prev.map((s) => (s.id === activeStation.id ? { ...s, yourNumber: pos.display_number, current: pos.current_number, ahead: pos.ahead, totalWaiting: pos.total_waiting } : s)))
+    }, GENERAL_REFRESH_INTERVAL || 10000)
+
     return () => {
-      eventBus.off('queue:update', handleQueueUpdate);
-      eventBus.off('queue:near_turn', handleQueueUpdate);
-      eventBus.off('queue:your_turn', handleQueueUpdate);
-    };
-  }, [patientData?.id, language])
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current)
+    }
+  }, [activeStation, patientId])
 
   useEffect(() => {
-    if (!patientData?.personal_id) return;
-    const patientIdentifier = String(patientData.personal_id || patientData.patient_id);
-    const fetchActiveAlerts = async () => {
-      try {
-        const { data } = await supabase
-          .from('direct_alerts')
-          .select('*')
-          .eq('patient_id', patientIdentifier)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-        if (data && data.length > 0) setDirectAlerts(data);
-      } catch (e) {}
-    };
-    fetchActiveAlerts();
+    if (!patientId) return undefined
+    const alertId = String(patientData?.military_number || patientData?.militaryId || patientId)
+    let alive = true
+
+    const loadAlerts = async () => {
+      const { data } = await supabase
+        .from('direct_alerts')
+        .select('*')
+        .eq('patient_id', alertId)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+      if (alive && Array.isArray(data) && data.length) setDirectAlerts(data)
+    }
+
+    void loadAlerts()
+
     const channel = supabase
-      .channel(`direct_alerts_${patientIdentifier}`)
+      .channel(`direct_alerts_${alertId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'direct_alerts',
-        filter: `patient_id=eq.${patientIdentifier}`
+        filter: `patient_id=eq.${alertId}`,
       }, (payload) => {
-        const alert = payload.new;
-        if (alert.is_active && new Date(alert.expires_at) > new Date()) {
-          setDirectAlerts(prev => [alert, ...prev]);
-          if (alert.sound_enabled) {
-            try { new Audio('/notification.mp3').play().catch(() => {}); } catch(e) {}
-          }
+        const alert = payload.new
+        if (alert?.is_active && new Date(alert.expires_at) > new Date()) {
+          setDirectAlerts((prev) => [alert, ...prev])
         }
       })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [patientData?.personal_id]);
+      .subscribe()
+
+    return () => {
+      alive = false
+      supabase.removeChannel(channel)
+    }
+  }, [patientData?.id, patientData?.militaryId, patientData?.military_number, patientId])
 
   const dismissDirectAlert = async (alertId) => {
     try {
-      await supabase.from('direct_alerts').update({ read_at: new Date().toISOString() }).eq('id', alertId);
-      setDirectAlerts(prev => prev.filter(a => a.id !== alertId));
-    } catch (e) {}
-  };
-
-  const getExamName = () => {
-    const exam = examTypes.find(e => e.id === patientData.queueType)
-    if (!exam) return language === 'ar' ? 'فحص طبي' : 'Medical Exam'
-    return language === 'ar' ? exam.nameAr : exam.name
+      await supabase.from('direct_alerts').update({ read_at: new Date().toISOString() }).eq('id', alertId)
+      setDirectAlerts((prev) => prev.filter((a) => a.id !== alertId))
+    } catch {
+      // ignore
+    }
   }
 
-  const allStationsCompleted = stations.length > 0 && stations.every(s => s.status === 'completed')
-
-  if (allStationsCompleted) {
+  if (allCompleted) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center" data-test="completion-screen">
-        <div className="max-w-2xl mx-auto space-y-6 text-center">
+      <div className="min-h-screen p-4 flex items-center justify-center bg-gradient-to-b from-[#08111f] to-[#04070d]" data-test="completion-screen">
+        <div className="max-w-2xl mx-auto text-center space-y-6">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
-          <h1 className="text-lg font-bold text-white">{'اللجنة الطبية العسكرية'}</h1>
-          <div className="text-green-400">
-            <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <Card className="bg-gradient-to-br from-green-900/30 to-blue-900/30 border-green-500/30">
+          <CheckCircle className="w-24 h-24 mx-auto text-green-400" />
+          <Card className="bg-gradient-to-br from-green-900/30 to-blue-900/30 border-green-500/30 shadow-2xl">
             <CardContent className="p-8 space-y-6">
-              <h1 className="text-5xl font-bold text-white mb-4">
-                {language === 'ar' ? '✅ تم إنهاء الفحص الطبي' : '✅ Medical Examination Completed'}
-              </h1>
-              <div className="space-y-6 text-xl">
-                <p className="text-gray-300 font-medium">
-                  {language === 'ar' ? 'تهانينا! لقد أكملت جميع الفحوصات الطبية المطلوبة بنجاح' : 'Congratulations! You have successfully completed all required medical examinations'}
-                </p>
-                <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-xl p-8 mt-6">
-                  <h2 className="text-3xl font-bold text-yellow-400 mb-6">
-                    {language === 'ar' ? '📋 الخطوة التالية' : '📋 Next Step'}
-                  </h2>
-                  <p className="text-xl text-white font-bold">
-                    {language === 'ar' ? 'يرجى التوجه إلى استقبال اللجنة الطبية' : 'Please proceed to the Medical Committee Reception'}
-                  </p>
-                  <p className="text-gray-300 text-sm mt-2 font-medium">
-                    {language === 'ar' ? 'الموقع: الطابق الأول - مكتب الاستقبال' : 'Location: First Floor - Reception Office'}
-                  </p>
-                </div>
-                <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-6 mt-6">
-                  <h3 className="text-xl font-bold text-white mb-4">{language === 'ar' ? 'ملخص الفحوصات' : 'Examination Summary'}</h3>
-                  <div className="space-y-2 text-left">
-                    <p className="text-gray-300"><span className="font-semibold">{language === 'ar' ? 'نوع الفحص:' : 'Exam Type:'}</span> {getExamName()}</p>
-                    <p className="text-gray-300"><span className="font-semibold">{language === 'ar' ? 'عدد العيادات:' : 'Number of Clinics:'}</span> {stations.length}</p>
-                    <p className="text-gray-300"><span className="font-semibold">{language === 'ar' ? 'الحالة:' : 'Status:'}</span> <span className="text-green-400 font-bold"> {language === 'ar' ? 'مكتمل ✓' : 'Completed ✓'}</span></p>
-                  </div>
-                </div>
-                <div className="bg-gray-800/50 border border-gray-600 rounded-lg p-6 mt-4">
-                  <h3 className="text-lg font-bold text-white mb-3">{language === 'ar' ? 'العيادات المكتملة:' : 'Completed Clinics:'}</h3>
-                  <div className="space-y-2">
-                    {stations.map((station, index) => (
-                      <div key={station.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-300">{index + 1}. {language === 'ar' ? station.nameAr : station.name}</span>
-                        <span className="text-green-400">✓</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight">{language === 'ar' ? '✅ تم إنهاء الفحص الطبي' : '✅ Medical Examination Completed'}</h1>
+              <p className="text-gray-300 text-lg sm:text-xl">{language === 'ar' ? 'تهانينا، لقد أكملت جميع الفحوصات الطبية المطلوبة بنجاح.' : 'Congratulations, you have successfully completed all required medical examinations.'}</p>
+              <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl p-6 sm:p-8 text-right">
+                <h2 className="text-2xl sm:text-3xl font-black text-yellow-400 mb-4">{language === 'ar' ? '📋 الخطوة التالية' : '📋 Next Step'}</h2>
+                <p className="text-white text-lg sm:text-xl font-bold">{language === 'ar' ? 'يرجى التوجه إلى استقبال اللجنة الطبية' : 'Please proceed to the Medical Committee Reception'}</p>
+                <p className="text-gray-300 text-sm mt-2">{language === 'ar' ? 'الموقع: الطابق الأول - مكتب الاستقبال' : 'Location: First Floor - Reception Office'}</p>
               </div>
-              <div className="flex gap-4 justify-center mt-8">
-                <Button variant="default" size="lg" onClick={onLogout} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold px-6 py-2 text-base">
-                  {language === 'ar' ? '🏠 العودة للصفحة الرئيسية' : '🏠 Return to Home'}
-                </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-right">
+                <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4"><p className="text-gray-400 text-xs mb-1">{language === 'ar' ? 'نوع الفحص' : 'Exam Type'}</p><p className="text-white font-bold">{t('exam', language)}: {getExamName()}</p></div>
+                <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4"><p className="text-gray-400 text-xs mb-1">{language === 'ar' ? 'عدد العيادات' : 'Clinics'}</p><p className="text-white font-bold">{stations.length}</p></div>
+                <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4"><p className="text-gray-400 text-xs mb-1">{language === 'ar' ? 'الحالة' : 'Status'}</p><p className="text-green-400 font-black">{language === 'ar' ? 'مكتمل ✓' : 'Completed ✓'}</p></div>
               </div>
-              <p className="text-gray-400 text-sm mt-6">
-                {language === 'ar' ? 'شكراً لاستخدامكم نظام إدارة الطوابير الطبية' : 'Thank you for using the Medical Queue Management System'}
-              </p>
+              <Button variant="default" size="lg" onClick={onLogout} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3">{language === 'ar' ? '🏠 العودة للرئيسية' : '🏠 Return Home'}</Button>
             </CardContent>
           </Card>
         </div>
@@ -525,12 +366,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     )
   }
 
-  // ✅ مؤشر التحميل الأولي
   if (initialLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#C9A54C] mx-auto mb-4"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-center space-y-4">
+          <div className="mx-auto h-16 w-16 rounded-full border-4 border-[#C9A54C] border-t-transparent animate-spin" />
           <p className="text-white text-lg">{language === 'ar' ? 'جارٍ تحميل المسار الطبي...' : 'Loading medical pathway...'}</p>
         </div>
       </div>
@@ -539,22 +379,15 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
   if (pathwayError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900" data-test="pathway-error-screen">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950" data-test="pathway-error-screen">
         <Card className="w-full max-w-lg bg-gray-800/80 border-red-500/40">
           <CardContent className="p-6 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center text-red-400">
-              <AlertTriangle className="w-8 h-8" />
-            </div>
+            <div className="mx-auto w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center text-red-400"><AlertTriangle className="w-8 h-8" /></div>
             <h2 className="text-xl font-bold text-white">{language === 'ar' ? 'تعذر تحميل المسار' : 'Unable to load pathway'}</h2>
             <p className="text-gray-300 leading-relaxed">{pathwayError}</p>
             <div className="flex gap-3 justify-center pt-2">
-              <Button onClick={retryLoadPathway} variant="default" className="bg-[#C9A54C] text-black font-bold">
-                <RefreshCw className="w-4 h-4 me-2" />
-                {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
-              </Button>
-              <Button onClick={onLogout} variant="outline" className="border-gray-600 text-gray-200">
-                {language === 'ar' ? 'العودة' : 'Back'}
-              </Button>
+              <Button onClick={() => window.location.reload()} variant="default" className="bg-[#C9A54C] text-black font-bold"><RefreshCw className="w-4 h-4 me-2" />{language === 'ar' ? 'إعادة المحاولة' : 'Retry'}</Button>
+              <Button onClick={onLogout} variant="outline" className="border-gray-600 text-gray-200">{language === 'ar' ? 'العودة' : 'Back'}</Button>
             </div>
           </CardContent>
         </Card>
@@ -563,34 +396,37 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   return (
-    <div className="h-screen max-h-screen px-2 sm:px-4 py-4 sm:py-6 overflow-x-hidden overflow-y-auto" data-test="patient-page" style={{overflowY: "auto", overflowX: "hidden"}}>
+    <div className="min-h-screen bg-[#05070d] px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page">
+      {currentNotice && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border border-white/10 bg-[#111827]/95 p-4 shadow-2xl backdrop-blur">
+          <div className="flex items-start gap-3">
+            <div className="text-yellow-400 mt-0.5">ℹ️</div>
+            <div className="flex-1 text-sm text-white leading-relaxed">{currentNotice.message}</div>
+            <button onClick={() => setCurrentNotice(null)} className="text-white/60 hover:text-white">✕</button>
+          </div>
+        </div>
+      )}
+
       {directAlerts.length > 0 && (
-        <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
-          {directAlerts.slice(0, 3).map(alert => (
-            <div key={alert.id} className={`flex items-start gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-sm animate-pulse-once ${
-              alert.alert_type === 'urgent' ? 'bg-red-900/90 border-red-500/50' :
-              alert.alert_type === 'warning' ? 'bg-yellow-900/90 border-yellow-500/50' :
-              alert.alert_type === 'success' ? 'bg-green-900/90 border-green-500/50' :
-              'bg-[#1a0a12]/90 border-[#C9A54C]/50'
-            }`}>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white leading-relaxed">{language === 'ar' ? alert.message : (alert.message_en || alert.message)}</p>
-              </div>
-              <button onClick={() => dismissDirectAlert(alert.id)} className="text-white/60 hover:text-white transition-colors flex-shrink-0 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+        <div className="fixed top-4 left-4 z-50 space-y-2 max-w-sm">
+          {directAlerts.slice(0, 3).map((alert) => (
+            <div key={alert.id} className={`flex items-start gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-sm ${alert.alert_type === 'urgent' ? 'bg-red-900/90 border-red-500/50' : alert.alert_type === 'warning' ? 'bg-yellow-900/90 border-yellow-500/50' : alert.alert_type === 'success' ? 'bg-green-900/90 border-green-500/50' : 'bg-[#1a0a12]/90 border-[#C9A54C]/50'}`}>
+              <p className="flex-1 text-sm font-medium text-white leading-relaxed">{language === 'ar' ? alert.message : (alert.message_en || alert.message)}</p>
+              <button onClick={() => dismissDirectAlert(alert.id)} className="text-white/60 hover:text-white">✕</button>
             </div>
           ))}
         </div>
       )}
-      <NotificationSystem notifications={notifList} onDismiss={dismissNotif} />
-      <div className="w-full max-w-xl mx-auto space-y-4 sm:space-y-5">
+
+      <NotificationSystem notifications={notifications} onDismiss={dismiss} />
+
+      <div className="w-full max-w-2xl mx-auto space-y-5 px-2 sm:px-4">
         <div className="absolute top-4 left-4">
           <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-gray-800/50" onClick={toggleLanguage}>
-            <Globe className="icon icon-md me-2" />
-            {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
+            <Globe className="w-4 h-4 me-2" />{language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
           </Button>
         </div>
+
         <div className="text-center space-y-2 pt-4">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <div className="space-y-0.5">
@@ -599,112 +435,122 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
             <p className="text-gray-400 text-xs">{language === 'ar' ? 'المركز الطبي التخصصي العسكري - العطار' : 'Military Specialized Medical Center – Al-Attar'}</p>
           </div>
         </div>
+
+        <div className="bg-[#0f172a]/70 border border-blue-500/20 rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl">⚕️</div>
+            <div>
+              <p className="text-white font-medium text-sm">{language === 'ar' ? 'يتم التحكم في تدفق المرضى من قبل الأطباء' : 'Patient flow controlled by doctors'}</p>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'سيتم استدعاؤك تلقائياً عند حلول دورك' : 'You will be called automatically'}</p>
+            </div>
+          </div>
+        </div>
+
         <Card className="bg-gray-800/50 border-gray-700 shadow-xl">
           <CardHeader className="text-center pb-3 pt-4">
             <CardTitle className="text-white text-xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
             <p className="text-gray-400 text-sm mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
+            <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#8A1538] to-[#C9A54C]" style={{ width: `${progress}%` }} /></div>
+            <p className="text-xs text-gray-400 mt-2">{language === 'ar' ? `تقدم الرحلة: ${completedCount}/${stations.length} مكتمل` : `Journey progress: ${completedCount}/${stations.length} completed`}</p>
           </CardHeader>
+
           <CardContent className="space-y-3 px-3 pb-4">
-            {stations.map((station, index) => (
-              <Card key={station.id} className={`border transition-all duration-200 ${station.status === 'ready' ? 'bg-gray-700/60 border-green-500/30 shadow-md' : station.status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-65' : 'bg-gray-700/40 border-gray-600/60'}`}>
-                <CardContent className="p-3.5 sm:p-5">
-                  <div className="flex items-center justify-between mb-3 gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-                        station.status === 'ready' ? 'bg-green-500/20' :
-                        station.status === 'completed' ? 'bg-green-500/15' :
-                        'bg-gray-600/50'
-                      }`}>
-                        {station.status === 'ready' ? <Unlock className="icon icon-md icon-success" /> :
-                         station.status === 'completed' ? <CheckCircle className="icon icon-md text-green-400" /> :
-                         <Lock className="icon icon-md icon-muted" />}
+            {stations.map((station) => {
+              const status = normalizeStatus(station.status)
+              const canEnter = status === 'ready' && !station.isEntered
+              return (
+                <Card key={station.id} className={`border transition-all duration-200 ${status === 'ready' ? 'bg-gray-700/60 border-green-500/30 shadow-md' : status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-70' : 'bg-gray-700/40 border-gray-600/60'}`}>
+                  <CardContent className="p-3.5 sm:p-5">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${status === 'ready' ? 'bg-green-500/20' : status === 'completed' ? 'bg-green-500/15' : 'bg-gray-600/50'}`}>
+                          {status === 'ready' ? <Unlock className="w-5 h-5 text-green-400" /> : status === 'completed' ? <CheckCircle className="w-5 h-5 text-green-400" /> : <Lock className="w-5 h-5 text-gray-400" />}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-white text-base font-bold leading-tight">{language === 'ar' ? station.nameAr : station.name}</h3>
+                          <p className="text-gray-400 text-sm mt-0.5">{t('floor', language)}: <span className="text-gray-200 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span></p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="text-white text-base font-bold leading-tight">{language === 'ar' ? station.nameAr : station.name}</h3>
-                        <p className="text-gray-400 text-sm mt-0.5">{t('floor', language)}: <span className="text-gray-200 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span></p>
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
-                        station.status === 'ready' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                        station.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
-                        'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                      }`}>
-                        {station.status === 'ready' ? t('ready', language) : station.status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') : t('locked', language)}
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${status === 'ready' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
+                        {status === 'ready' ? t('ready', language) : status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') : t('locked', language)}
                       </span>
                     </div>
-                  </div>
-                  {routeWithZFD && routeWithZFD.route && routeWithZFD.route.length > index && (
-                    <div className="mb-4" data-test="zfd-ticket-section">
-                      <ZFDTicketDisplay step={routeWithZFD.route[index]} />
-                    </div>
-                  )}
-                  {station.status !== 'completed' && (
-                    <div className="grid grid-cols-2 gap-2.5 text-center" data-test="queue-info">
-                      <div className="py-4 px-2 bg-yellow-500/15 rounded-xl border-2 border-yellow-500/40">
-                        <div className="text-4xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : (station.status === 'ready' ? '...' : '')}</div>
-                        <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
+
+                    {status !== 'completed' && (
+                      <div className="grid grid-cols-2 gap-2.5 text-center" data-test="queue-info">
+                        <div className="py-4 px-2 bg-yellow-500/15 rounded-xl border-2 border-yellow-500/40">
+                          <div className="text-4xl font-black text-yellow-400 mb-1.5 leading-none" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : (status === 'ready' ? '...' : '—')}</div>
+                          <div className="text-yellow-300/80 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
+                        </div>
+                        <div className="py-4 px-2 bg-gray-700/50 rounded-xl border border-gray-500/50">
+                          <div className="text-4xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">{typeof station.ahead === 'number' ? station.ahead : (status === 'ready' ? '...' : '—')}</div>
+                          <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
+                        </div>
                       </div>
-                      <div className="py-4 px-2 bg-gray-700/50 rounded-xl border border-gray-500/50">
-                        <div className="text-4xl font-black text-white mb-1.5 leading-none" data-test="ahead-count">{typeof station.ahead === 'number' ? station.ahead : (station.status === 'ready' ? '...' : 0)}</div>
-                        <div className="text-gray-400 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
-                      </div>
-                    </div>
-                  )}
-                  {station.status === 'ready' && !station.isEntered && (
-                    <div className="mt-4 pt-4 border-t border-gray-600/40">
-                      {(station.yourNumber > 0 && (station.ahead === 0 || station.ahead === null || station.yourNumber === station.current || (station.current > 0 && station.yourNumber < station.current))) ? (
-                        <Button variant="gradientPrimary" onClick={() => handleEnterClinic(station)} disabled={loading} className="w-full py-3 text-lg font-bold" data-test="enter-clinic-btn">
-                          <LogIn className="icon icon-md me-2" />{t('enterClinic', language)}
-                        </Button>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">⏳</span>
-                              <span className="text-yellow-400 font-semibold text-sm">{language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}</span>
-                            </div>
-                            <span className="text-yellow-200 text-xs font-medium">{language === 'ar' ? `أمامك ${station.ahead} شخص` : `${station.ahead} ahead`}</span>
-                          </div>
-                          <Button variant="outline" disabled={true} className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm">
-                            <Lock className="icon icon-sm me-2" />{language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
+                    )}
+
+                    {canEnter && (
+                      <div className="mt-4 pt-4 border-t border-gray-600/40">
+                        {(station.yourNumber > 0 && (station.ahead === 0 || station.ahead === null || station.ahead === undefined)) ? (
+                          <Button variant="gradientPrimary" onClick={() => enterClinic(station)} disabled={loading} className="w-full py-3 text-lg font-bold" data-test="enter-clinic-btn">
+                            <LogIn className="w-4 h-4 me-2" />{t('enterClinic', language)}
                           </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {station.status === 'ready' && station.isEntered && (
-                    <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
-                      <div className="text-center text-sm text-green-400 p-3 bg-green-900/20 rounded border border-green-500/30">
-                        {language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                              <div className="flex items-center gap-2"><span className="text-lg">⏳</span><span className="text-yellow-400 font-semibold text-sm">{language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}</span></div>
+                              <span className="text-yellow-200 text-xs font-medium">{language === 'ar' ? `أمامك ${station.ahead ?? '—'} شخص` : `${station.ahead ?? '—'} ahead`}</span>
+                            </div>
+                            <Button variant="outline" disabled className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm">
+                              <Lock className="w-4 h-4 me-2" />{language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      {station.exitTime && (
-                        <div className="text-sm text-gray-400 flex items-center gap-2">
-                          <Clock className="icon icon-sm icon-muted" />
-                          <span>{language === 'ar' ? 'وقت الخروج:' : 'Exit time:'} {formatTime(new Date(station.exitTime))}</span>
+                    )}
+
+                    {status === 'ready' && station.isEntered && (
+                      <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
+                        <div className="text-center text-sm text-green-400 p-3 bg-green-900/20 rounded border border-green-500/30">
+                          {language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}
                         </div>
-                      )}
-                    </div>
-                  )}
-                  {station.status === 'ready' && station.ahead > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-600/60">
-                      <p className="text-gray-400 text-xs">{language === 'ar' ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}` : `You can reach via elevator – press ${station.floorCode}`}</p>
-                    </div>
-                  )}
-                  {station.note && (
-                    <div className="mt-3 pt-3 border-t border-gray-600/60">
-                      <p className="text-yellow-400 text-xs">⚠️ {t('note', language)}: {t('registerAtReception', language)}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                        {station.entered_at && (
+                          <div className="text-sm text-gray-400 flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            <span>{language === 'ar' ? 'وقت الدخول:' : 'Entry time:'} {formatTime(new Date(station.entered_at))}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {status === 'completed' && (
+                      <div className="mt-3 pt-3 border-t border-green-500/20 text-center text-green-400 text-sm font-bold">
+                        {language === 'ar' ? 'تم إنهاء هذه المحطة ✓' : 'Station completed ✓'}
+                      </div>
+                    )}
+
+                    {status === 'ready' && station.ahead > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-600/60">
+                        <p className="text-gray-400 text-xs">
+                          {language === 'ar' ? `يمكنك الوصول عبر المصعد – اضغط ${station.floorCode}` : `You can reach via elevator – press ${station.floorCode}`}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </CardContent>
         </Card>
-        <div className="text-center">
-          <Button variant="outline" onClick={onLogout} className="border-gray-600 text-gray-300">{t('exitSystem', language)}</Button>
+
+        <div className="text-center pb-6">
+          <Button variant="outline" onClick={onLogout} className="border-gray-600 text-gray-300">
+            {t('exitSystem', language)}
+          </Button>
         </div>
       </div>
     </div>
   )
 }
+
+export default PatientPage
