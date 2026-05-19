@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react'
 import { Camera, Smartphone, Monitor, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './Card'
 import { Button } from './Button'
-import axios from 'axios'
+import sessionApiClient from '../lib/session-api-client'
 
 /**
  * كشف نوع الجهاز بدون مكتبات خارجية
@@ -90,15 +90,12 @@ export function QrScanPage({ language = 'ar', toggleLanguage }) {
     setErrorMessage('')
 
     try {
-      const response = await axios.post('/api/session/validate', { token: tokenToValidate })
+      const response = await sessionApiClient.validateToken(tokenToValidate)
 
-      if (response.data?.ok) {
+      if (response?.ok) {
         const detectedDevice = detectDevice()
 
-        await axios.post('/api/session/device', {
-          token: tokenToValidate,
-          device: detectedDevice
-        }).catch(() => {
+        await sessionApiClient.registerDevice(tokenToValidate, detectedDevice).catch(() => {
           // تجاهل أخطاء تسجيل الجهاز - غير حرجة
         })
 
