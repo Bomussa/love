@@ -3319,7 +3319,7 @@ const SystemStatus = ({ language, t }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 bg-white/5 rounded-xl">
             <span className="text-gray-400 text-sm">{t('عنوان Supabase', 'Supabase URL')}</span>
-            <p className="font-mono text-sm mt-1 text-[#B8943D]">rujwuruuosffcxazymit.supabase.co</p>
+            <p className="font-mono text-sm mt-1 text-[#B8943D]">Configured via VITE_SUPABASE_URL</p>
           </div>
           <div className="p-4 bg-white/5 rounded-xl">
             <span className="text-gray-400 text-sm">{t('حالة الاتصال', 'Connection Status')}</span>
