@@ -34,6 +34,15 @@ function qatarDate() {
   return qatarDateTime().split('T')[0];
 }
 
+
+function authSuccess(data, role) {
+  return { success: true, data, role: role || data?.role || null, error: null };
+}
+
+function authFailure(message, code = 'AUTH_FAILED') {
+  return { success: false, data: null, role: null, error: { code, message } };
+}
+
 const api = {
   async patientLogin(patientId, gender) {
     try {
@@ -484,54 +493,37 @@ const api = {
   async doctorLogin(username, password) {
     try {
       const { data: result, error } = await supabase.rpc('doctor_login', {
-        p_username: username,
-        p_password: password,
+        p_username: String(username || '').trim().toLowerCase(),
+        p_password: String(password || '').trim(),
       });
       if (error) throw error;
       if (result?.success && result?.data) {
-        return { success: true, role: result.data.role || 'DOCTOR', data: result.data };
+        return authSuccess(result.data, result.data.role || 'DOCTOR');
       }
-      return { success: false, error: result?.message || result?.error || 'بيانات الدخول غير صحيحة' };
+      return authFailure(result?.message || result?.error || 'بيانات الدخول غير صحيحة', 'INVALID_CREDENTIALS');
     } catch (error) {
       console.error('Doctor Login RPC Error:', error);
-      return { success: false, error: error.message };
+      return authFailure(error.message || 'Authentication error', 'AUTH_RPC_ERROR');
     }
   },
 
   async adminLogin(username, password) {
     try {
-      if (username === 'Bomussa' && password === '14490') {
-        return { success: true, role: 'SUPER_ADMIN', data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' } };
+      const { data: result, error } = await supabase.rpc('admin_login', {
+        p_username: String(username || '').trim().toLowerCase(),
+        p_password: String(password || '').trim(),
+      });
+
+      if (error) throw error;
+
+      if (result?.success && result?.data) {
+        return authSuccess(result.data, result.data.role || 'ADMIN');
       }
 
-      const { data: doctor, error: docError } = await supabase
-        .from('doctors')
-        .select('*')
-        .eq('username', username.toLowerCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (docError) throw docError;
-
-      if (doctor) {
-        const passwordMatch = doctor.password_hash
-          ? doctor.password_hash === password || doctor.password_hash === await (async () => {
-              const encoder = new TextEncoder();
-              const data = encoder.encode(password);
-              const hash = await crypto.subtle.digest('SHA-256', data);
-              return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
-            })()
-          : doctor.password === password;
-
-        if (passwordMatch) {
-          return { success: true, role: doctor.role || 'DOCTOR', data: doctor };
-        }
-      }
-
-      return { success: false, message: 'Invalid credentials' };
+      return authFailure(result?.message || result?.error || 'Invalid credentials', 'INVALID_CREDENTIALS');
     } catch (error) {
-      console.error('Admin Login Error:', error);
-      return { success: false, error: error.message };
+      console.error('Admin Login RPC Error:', error);
+      return authFailure(error.message || 'Authentication error', 'AUTH_RPC_ERROR');
     }
   },
 };

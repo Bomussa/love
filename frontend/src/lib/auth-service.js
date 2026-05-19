@@ -105,9 +105,9 @@ class AuthService {
 
         if (response.success) {
           const session = this.createSession(username, response.role || 'ADMIN');
-          return { success: true, session };
+          return { success: true, session, error: null };
         }
-        throw new Error(response.message || response.error || 'Invalid credentials');
+        throw new Error(response.error?.message || response.message || 'Invalid credentials');
       } catch (apiError) {
         console.warn('[AuthService] API error:', apiError);
         throw new Error(apiError.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
@@ -139,6 +139,7 @@ class AuthService {
 
   logout() {
     localStorage.removeItem(this.storageKey);
+    return { success: true, data: { loggedOut: true }, error: null };
   }
 
   getSession() {
