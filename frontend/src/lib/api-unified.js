@@ -500,35 +500,29 @@ const api = {
 
   async adminLogin(username, password) {
     try {
-      if (username === 'Bomussa' && password === '14490') {
-        return { success: true, role: 'SUPER_ADMIN', data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' } };
+      const { data: result, error } = await supabase.rpc('admin_login', {
+        p_username: username,
+        p_password: password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
       }
 
-      const { data: doctor, error: docError } = await supabase
-        .from('doctors')
-        .select('*')
-        .eq('username', username.toLowerCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (docError) throw docError;
-
-      if (doctor) {
-        const passwordMatch = doctor.password_hash
-          ? doctor.password_hash === password || doctor.password_hash === await (async () => {
-              const encoder = new TextEncoder();
-              const data = encoder.encode(password);
-              const hash = await crypto.subtle.digest('SHA-256', data);
-              return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
-            })()
-          : doctor.password === password;
-
-        if (passwordMatch) {
-          return { success: true, role: doctor.role || 'DOCTOR', data: doctor };
-        }
+      if (result?.success && result?.data) {
+        return {
+          success: true,
+          data: {
+            ...result.data,
+            role: result.data.role || 'ADMIN',
+          },
+        };
       }
 
-      return { success: false, message: 'Invalid credentials' };
+      return {
+        success: false,
+        error: result?.error || result?.message || 'بيانات الدخول غير صحيحة',
+      };
     } catch (error) {
       console.error('Admin Login Error:', error);
       return { success: false, error: error.message };
