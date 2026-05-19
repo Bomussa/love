@@ -3,8 +3,7 @@ import { writeAtomicJSON, readJSON } from '../../utils/fs-atomic.js';
 import { localDateKeyAsiaQatar, nowISO } from '../../utils/time.js';
 import { appendAudit } from '../../utils/logger.js';
 
-import ROUTE_MAP from "../../../config/routeMap.json" with { type: "json" };
-import CLINICS from "../../../config/clinics.json" with { type: "json" };
+import { loadRouteMap, loadClinics } from "./configLoader.js";
 
 type RouteFile = {
   visitId: string;
@@ -17,9 +16,10 @@ type RouteFile = {
 const filePath = (visitId:string) => path.join('data','routes', `${visitId}.json`);
 
 export async function createRoute(visitId:string, examType:string, gender?:'M'|'F') {
-  const steps: string[] = Array.isArray((ROUTE_MAP as any)[examType]) ? (ROUTE_MAP as any)[examType] as string[] :
+  const routeMap = await loadRouteMap();
+  const steps: string[] = Array.isArray((routeMap as any)[examType]) ? (routeMap as any)[examType] as string[] :
     // للحالات الخاصة (نساء)
-    (gender === 'F' && (ROUTE_MAP as any)['نساء/عام']?.F) ? (ROUTE_MAP as any)['نساء/عام']?.F as string[] : ((ROUTE_MAP as any)['نساء/عام']?.M || []) as string[];
+    (gender === 'F' && (routeMap as any)['نساء/عام']?.F) ? (routeMap as any)['نساء/عام']?.F as string[] : ((routeMap as any)['نساء/عام']?.M || []) as string[];
   const route: RouteFile = {
     visitId, examType, gender,
     route: steps.map(c=>({ clinicId:c })),
@@ -41,7 +41,8 @@ export async function assignFirstClinicTicket(visitId:string, assignFn:(cid:stri
   first.assigned = { ticket, dateKey, issuedAt: nowISO() };
   await writeAtomicJSON(filePath(visitId), rf);
   await appendAudit(`route.ticket.assigned visit=${visitId} clinic=${first.clinicId} ticket=${ticket}`);
-  return { ...first, floorHint: (CLINICS as any)[first.clinicId].floor };
+  const clinics = await loadClinics();
+  return { ...first, floorHint: (clinics as any)[first.clinicId]?.floor };
 }
 
 export async function getRoute(visitId:string) {
@@ -66,5 +67,6 @@ export async function getNextClinic(visitId:string) {
   if (!rf) throw new Error('ROUTE_NOT_FOUND');
   const next = rf.route.find((x: { status?: string; }) => !x.status);
   if (!next) return { done: true };
-  return { clinicId: next.clinicId, floorHint: (CLINICS as any)[next.clinicId].floor };
+  const clinics = await loadClinics();
+  return { clinicId: next.clinicId, floorHint: (clinics as any)[next.clinicId]?.floor };
 }
