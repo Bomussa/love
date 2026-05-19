@@ -1,59 +1,55 @@
-// lib/settings.js - خدمة إدارة إعدادات النظام
-import db from '../../../src/lib/supabase-db.js';
+// lib/settings.js - خدمة إدارة إعدادات النظام (Supabase-first)
+import { supabase } from './supabase-client';
 
-/**
- * جلب قيمة إعداد من قاعدة البيانات
- * @param {string} key - مفتاح الإعداد
- * @param {string} fallback - القيمة الافتراضية
- * @returns {Promise<string>} قيمة الإعداد
- */
+async function upsertSetting(key, value) {
+  const payload = {
+    key,
+    value: String(value),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(payload, { onConflict: 'key' });
+
+  if (error) throw error;
+}
+
 export async function getSetting(key, fallback = '') {
   try {
-    const { rows } = await db.query(
-      'SELECT value FROM system_settings WHERE key = $1',
-      [key],
-    );
-    return rows[0]?.value ?? fallback;
-  } catch (error) {
-    // console.error(`Error getting setting ${key}:`, error);
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data?.value ?? fallback;
+  } catch {
     return fallback;
   }
 }
 
-/**
- * تحديث قيمة إعداد في قاعدة البيانات
- * @param {string} key - مفتاح الإعداد
- * @param {string} value - القيمة الجديدة
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
 export async function setSetting(key, value) {
   try {
-    await db.query(`
-      INSERT INTO system_settings(key, value, updated_at) 
-      VALUES($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET 
-        value = EXCLUDED.value,
-        updated_at = NOW()
-    `, [key, value]);
+    await upsertSetting(key, value);
     return true;
-  } catch (error) {
-    // console.error(`Error setting ${key}:`, error);
+  } catch {
     return false;
   }
 }
 
-/**
- * جلب جميع الإعدادات
- * @returns {Promise<Object>} كائن يحتوي على جميع الإعدادات
- */
 export async function getAllSettings() {
   try {
-    const { rows } = await db.query(
-      'SELECT key, value, description FROM system_settings ORDER BY key',
-    );
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('key, value, description')
+      .order('key', { ascending: true });
+
+    if (error) throw error;
 
     const settings = {};
-    rows.forEach((row) => {
+    (data || []).forEach((row) => {
       settings[row.key] = {
         value: row.value,
         description: row.description,
@@ -61,16 +57,11 @@ export async function getAllSettings() {
     });
 
     return settings;
-  } catch (error) {
-    // console.error('Error getting all settings:', error);
+  } catch {
     return {};
   }
 }
 
-/**
- * جلب الإعدادات الأساسية للنظام
- * @returns {Promise<Object>} الإعدادات الأساسية
- */
 export async function getSystemConfig() {
   try {
     const graceMinutes = await getSetting('grace_minutes', '5');
@@ -94,8 +85,7 @@ export async function getSystemConfig() {
       },
       emergencyPin,
     };
-  } catch (error) {
-    // console.error('Error getting system config:', error);
+  } catch {
     return {
       graceMinutes: 5,
       cadenceMinutes: 1,
@@ -111,60 +101,31 @@ export async function getSystemConfig() {
   }
 }
 
-/**
- * تحديث إعدادات متعددة دفعة واحدة
- * @param {Object} settings - كائن يحتوي على الإعدادات المراد تحديثها
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
 export async function updateSettings(settings) {
-  const client = await db.getClient();
-
   try {
-    await client.query('BEGIN');
-
-    for (const [key, value] of Object.entries(settings)) {
-      await client.query(`
-        INSERT INTO system_settings(key, value, updated_at) 
-        VALUES($1, $2, NOW())
-        ON CONFLICT (key) DO UPDATE SET 
-          value = EXCLUDED.value,
-          updated_at = NOW()
-      `, [key, String(value)]);
+    const entries = Object.entries(settings || {});
+    for (const [key, value] of entries) {
+      await upsertSetting(key, value);
     }
-
-    await client.query('COMMIT');
     return true;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error('Error updating settings:', error);
+  } catch {
     return false;
-  } finally {
-    client.release();
   }
 }
 
-/**
- * التحقق من أن النظام يعمل في ساعات العمل
- * @returns {Promise<boolean>} هل النظام يعمل الآن
- */
 export async function isWorkingHours() {
   try {
     const config = await getSystemConfig();
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+    const currentTime = now.toTimeString().slice(0, 5);
 
     return currentTime >= config.workingHours.start
            && currentTime <= config.workingHours.end;
-  } catch (error) {
-    // console.error('Error checking working hours:', error);
-    return true; // افتراضياً نعتبر أنه وقت عمل
+  } catch {
+    return true;
   }
 }
 
-/**
- * جلب إعدادات الثيمات
- * @returns {Promise<Object>} إعدادات الثيمات
- */
 export async function getThemeSettings() {
   try {
     const currentTheme = await getSetting('current_theme', 'medical-professional');
@@ -176,8 +137,7 @@ export async function getThemeSettings() {
       enableThemeSelector: enableThemeSelector === 'true',
       showThemePreview: showThemePreview === 'true',
     };
-  } catch (error) {
-    // console.error('Error getting theme settings:', error);
+  } catch {
     return {
       currentTheme: 'medical-professional',
       enableThemeSelector: true,
@@ -186,11 +146,6 @@ export async function getThemeSettings() {
   }
 }
 
-/**
- * تحديث إعدادات الثيمات
- * @param {Object} themeSettings - إعدادات الثيمات الجديدة
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
 export async function updateThemeSettings(themeSettings) {
   try {
     const updates = {};
@@ -208,8 +163,7 @@ export async function updateThemeSettings(themeSettings) {
     }
 
     return await updateSettings(updates);
-  } catch (error) {
-    // console.error('Error updating theme settings:', error);
+  } catch {
     return false;
   }
 }
