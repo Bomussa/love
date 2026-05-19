@@ -30,6 +30,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Check for conflict/backup files in src
+        run: npm run check:no-conflict-files
+
       - name: Build frontend
         run: npm run build
 

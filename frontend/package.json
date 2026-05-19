@@ -69,7 +69,8 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:verify": "npm run build && playwright test"
+    "test:verify": "npm run build && playwright test",
+    "check:no-conflict-files": "bash -lc 'if find src -type f \\( -name \"*conflict*\" -o -name \"*.backup*\" \\) | grep -q .; then echo \"Forbidden backup/conflict files found under src:\"; find src -type f \\( -name \"*conflict*\" -o -name \"*.backup*\" \\); exit 1; fi'"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
