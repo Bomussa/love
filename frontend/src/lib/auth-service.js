@@ -1,11 +1,9 @@
 /**
  * Auth Service - Authentication System
- * Updated with Emergency Access and Robust Error Handling
- * السوبر أدمن: Bomussa / 14490
+ * Updated with RPC-based authentication and robust error handling
  */
 
 import api from './api-unified';
-import { validateAdminCredentials, ADMIN_CREDENTIALS } from '../config/admin-credentials';
 
 // ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
@@ -77,50 +75,21 @@ class AuthService {
     console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
 
     try {
-      const normalizedUsername = String(username || '').trim().toLowerCase();
-      const normalizedPassword = String(password || '').trim();
+      const response = await api.adminLogin(username, password);
 
-      // ✅ Super Admin fallback: يقبل الأحرف الكبيرة/الصغيرة
-      if (normalizedUsername === 'bomussa' && normalizedPassword === '14490') {
-        console.log('[AuthService] ✅ Super Admin Login - Case-insensitive match');
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
+      if (!response?.success || !response?.data) {
+        throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
 
-      // ✅ Check admin credentials
-      const isValid = validateAdminCredentials(username, password);
-      if (isValid) {
-        console.log('[AuthService] ✅ Admin Login - Credentials valid');
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
-      }
+      const session = this.createSession(
+        response.data.username || response.data.name || username,
+        response.data.role || 'ADMIN'
+      );
 
-      // 2. Try API login for other users
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const response = await api.adminLogin(username, password);
-        clearTimeout(timeoutId);
-
-        if (response.success) {
-          const session = this.createSession(username, response.role || 'ADMIN');
-          return { success: true, session };
-        }
-        throw new Error(response.message || response.error || 'Invalid credentials');
-      } catch (apiError) {
-        console.warn('[AuthService] API error:', apiError);
-        throw new Error(apiError.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
-      }
+      return { success: true, session };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      // Fallback for admin credentials on API failure
-      const isValid = validateAdminCredentials(username, password);
-      if (isValid) {
-        const session = this.createSession(username, 'SUPER_ADMIN');
-        return { success: true, session };
-      }
-      throw error;
+      throw new Error(error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
     }
   }
 
