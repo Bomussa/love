@@ -1,6 +1,59 @@
 // lib/settings.js - خدمة إدارة إعدادات النظام (Supabase-first)
 import { supabase } from './supabase-client';
 
+const DEFAULT_SETTINGS = {
+  grace_minutes: '5',
+  admission_cadence_minutes: '1',
+  max_capacity_per_clinic: '6',
+  enable_auto_routing: 'true',
+  enable_notifications: 'true',
+  working_hours_start: '07:00',
+  working_hours_end: '15:00',
+  emergency_pin: '999',
+  current_theme: 'medical-professional',
+  enable_theme_selector: 'true',
+  show_theme_preview: 'true',
+};
+
+function normalizeError(error, context = 'settings') {
+  if (!error) {
+    return {
+      code: 'UNKNOWN_ERROR',
+      message: `Unknown ${context} error`,
+      context,
+      originalError: null,
+    };
+  }
+
+  return {
+    code: error.code || error.status || 'SETTINGS_ERROR',
+    message: error.message || `Failed ${context} operation`,
+    details: error.details,
+    hint: error.hint,
+    context,
+    originalError: error,
+  };
+}
+
+function toNumber(value, fallback) {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function toBoolean(value, fallback) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+  }
+  return fallback;
+}
+
+function toStringValue(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+}
+
 async function upsertSetting(key, value) {
   const payload = {
     key,
@@ -12,7 +65,7 @@ async function upsertSetting(key, value) {
     .from('system_settings')
     .upsert(payload, { onConflict: 'key' });
 
-  if (error) throw error;
+  if (error) throw normalizeError(error, `upsert:${key}`);
 }
 
 export async function getSetting(key, fallback = '') {
@@ -23,10 +76,10 @@ export async function getSetting(key, fallback = '') {
       .eq('key', key)
       .maybeSingle();
 
-    if (error) throw error;
-    return data?.value ?? fallback;
+    if (error) throw normalizeError(error, `get:${key}`);
+    return toStringValue(data?.value, fallback);
   } catch {
-    return fallback;
+    return toStringValue(fallback, '');
   }
 }
 
@@ -46,13 +99,13 @@ export async function getAllSettings() {
       .select('key, value, description')
       .order('key', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw normalizeError(error, 'list:all');
 
     const settings = {};
     (data || []).forEach((row) => {
       settings[row.key] = {
-        value: row.value,
-        description: row.description,
+        value: toStringValue(row.value, ''),
+        description: row.description || '',
       };
     });
 
@@ -63,42 +116,27 @@ export async function getAllSettings() {
 }
 
 export async function getSystemConfig() {
-  try {
-    const graceMinutes = await getSetting('grace_minutes', '5');
-    const cadenceMinutes = await getSetting('admission_cadence_minutes', '1');
-    const maxCapacity = await getSetting('max_capacity_per_clinic', '6');
-    const autoRouting = await getSetting('enable_auto_routing', 'true');
-    const notifications = await getSetting('enable_notifications', 'true');
-    const workingHoursStart = await getSetting('working_hours_start', '07:00');
-    const workingHoursEnd = await getSetting('working_hours_end', '15:00');
-    const emergencyPin = await getSetting('emergency_pin', '999');
+  const graceMinutes = await getSetting('grace_minutes', DEFAULT_SETTINGS.grace_minutes);
+  const cadenceMinutes = await getSetting('admission_cadence_minutes', DEFAULT_SETTINGS.admission_cadence_minutes);
+  const maxCapacity = await getSetting('max_capacity_per_clinic', DEFAULT_SETTINGS.max_capacity_per_clinic);
+  const autoRouting = await getSetting('enable_auto_routing', DEFAULT_SETTINGS.enable_auto_routing);
+  const notifications = await getSetting('enable_notifications', DEFAULT_SETTINGS.enable_notifications);
+  const workingHoursStart = await getSetting('working_hours_start', DEFAULT_SETTINGS.working_hours_start);
+  const workingHoursEnd = await getSetting('working_hours_end', DEFAULT_SETTINGS.working_hours_end);
+  const emergencyPin = await getSetting('emergency_pin', DEFAULT_SETTINGS.emergency_pin);
 
-    return {
-      graceMinutes: parseInt(graceMinutes, 10),
-      cadenceMinutes: parseInt(cadenceMinutes, 10),
-      maxCapacity: parseInt(maxCapacity, 10),
-      autoRouting: autoRouting === 'true',
-      notifications: notifications === 'true',
-      workingHours: {
-        start: workingHoursStart,
-        end: workingHoursEnd,
-      },
-      emergencyPin,
-    };
-  } catch {
-    return {
-      graceMinutes: 5,
-      cadenceMinutes: 1,
-      maxCapacity: 6,
-      autoRouting: true,
-      notifications: true,
-      workingHours: {
-        start: '07:00',
-        end: '15:00',
-      },
-      emergencyPin: '999',
-    };
-  }
+  return {
+    graceMinutes: toNumber(graceMinutes, 5),
+    cadenceMinutes: toNumber(cadenceMinutes, 1),
+    maxCapacity: toNumber(maxCapacity, 6),
+    autoRouting: toBoolean(autoRouting, true),
+    notifications: toBoolean(notifications, true),
+    workingHours: {
+      start: toStringValue(workingHoursStart, DEFAULT_SETTINGS.working_hours_start),
+      end: toStringValue(workingHoursEnd, DEFAULT_SETTINGS.working_hours_end),
+    },
+    emergencyPin: toStringValue(emergencyPin, DEFAULT_SETTINGS.emergency_pin),
+  };
 }
 
 export async function updateSettings(settings) {
@@ -127,26 +165,18 @@ export async function isWorkingHours() {
 }
 
 export async function getThemeSettings() {
-  try {
-    const currentTheme = await getSetting('current_theme', 'medical-professional');
-    const enableThemeSelector = await getSetting('enable_theme_selector', 'true');
-    const showThemePreview = await getSetting('show_theme_preview', 'true');
+  const currentTheme = await getSetting('current_theme', DEFAULT_SETTINGS.current_theme);
+  const enableThemeSelector = await getSetting('enable_theme_selector', DEFAULT_SETTINGS.enable_theme_selector);
+  const showThemePreview = await getSetting('show_theme_preview', DEFAULT_SETTINGS.show_theme_preview);
 
-    return {
-      currentTheme,
-      enableThemeSelector: enableThemeSelector === 'true',
-      showThemePreview: showThemePreview === 'true',
-    };
-  } catch {
-    return {
-      currentTheme: 'medical-professional',
-      enableThemeSelector: true,
-      showThemePreview: true,
-    };
-  }
+  return {
+    currentTheme: toStringValue(currentTheme, DEFAULT_SETTINGS.current_theme),
+    enableThemeSelector: toBoolean(enableThemeSelector, true),
+    showThemePreview: toBoolean(showThemePreview, true),
+  };
 }
 
-export async function updateThemeSettings(themeSettings) {
+export async function updateThemeSettings(themeSettings = {}) {
   try {
     const updates = {};
 
