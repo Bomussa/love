@@ -37,41 +37,46 @@ function qatarDate() {
 const api = {
   async patientLogin(patientId, gender) {
     try {
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('personal_id', patientId)
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        const { data: newUser, error: createError } = await supabase
-          .from('patients')
-          .insert([{ personal_id: patientId, gender: gender || 'male', status: 'active', name: `Patient ${patientId}` }])
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        return { success: true, data: newUser };
-      }
+      // استخدام RPC لتسجيل الدخول بشكل آمن وذري
+      const { data, error } = await supabase.rpc('patient_login_safe', {
+        p_personal_id: patientId,
+        p_gender: gender || 'male'
+      });
 
       if (error) throw error;
 
-      if (data && gender && data.gender !== gender) {
-        await supabase
-          .from('patients')
-          .update({ gender, updated_at: qatarDateTime() })
-          .eq('personal_id', patientId)
-          .catch(() => {});
-      }
-
-      const patId = data?.patient_id || data?.personal_id || patientId;
       return {
         success: true,
-        data: { ...data, gender: gender || data.gender || 'male', patient_id: patId, personal_id: patientId },
+        data: { 
+          ...data, 
+          patient_id: data.patient_id || data.personal_id || patientId,
+          personal_id: patientId 
+        },
       };
     } catch (error) {
       console.error('Login Error:', error);
-      return { success: false, error: error.message };
+      // Fallback to direct insert if RPC fails (backward compatibility)
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('personal_id', patientId)
+          .single();
+
+        if (fetchError && fetchError.code === 'PGRST116') {
+          const { data: newUser, error: createError } = await supabase
+            .from('patients')
+            .insert([{ personal_id: patientId, gender: gender || 'male', status: 'active', name: `Patient ${patientId}` }])
+            .select()
+            .single();
+          if (createError) throw createError;
+          return { success: true, data: newUser };
+        }
+        if (fetchError) throw fetchError;
+        return { success: true, data };
+      } catch (fallbackError) {
+        return { success: false, error: fallbackError.message };
+      }
     }
   },
 
@@ -81,7 +86,8 @@ const api = {
 
   async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null, gender = null, militaryId = null, personalId = null) {
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
+      // استخدام RPC القوي الذي يدعم Concurrency Lock (pg_advisory_xact_lock)
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe_v2', {
         p_clinic_id: clinicId,
         p_patient_id: patientId,
         p_patient_name: patientName || patientId,
@@ -92,22 +98,19 @@ const api = {
       });
 
       if (rpcError) {
-        console.error('enter_queue_safe RPC error:', rpcError.message);
-        return { success: false, error: rpcError.message };
-      }
-
-      if (!rpcResult) {
-        return { success: false, error: 'لا توجد استجابة من قاعدة البيانات' };
-      }
-
-      const accepted = new Set(['OK', 'ALREADY_IN_QUEUE', 'COMPLETED_BEFORE']);
-      if (!accepted.has(rpcResult.status) && !rpcResult.success) {
-        return {
-          success: false,
-          error: rpcResult.error || rpcResult.status,
-          status: rpcResult.status,
-          active_clinic_id: rpcResult.active_clinic_id,
-        };
+        console.error('enter_queue_safe_v2 RPC error:', rpcError.message);
+        // محاولة استخدام النسخة القديمة إذا لم تتوفر الجديدة
+        const { data: oldRpcResult, error: oldRpcError } = await supabase.rpc('enter_queue_safe', {
+          p_clinic_id: clinicId,
+          p_patient_id: patientId,
+          p_patient_name: patientName || patientId,
+          p_exam_type: examType || 'general',
+          p_gender: gender || 'male',
+          p_military_id: militaryId || null,
+          p_personal_id: personalId || patientId,
+        });
+        if (oldRpcError) throw oldRpcError;
+        return { success: true, ...oldRpcResult };
       }
 
       return {
@@ -133,9 +136,10 @@ const api = {
         .eq('queue_date', today)
         .order('entered_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (entryError) throw entryError;
+      if (!patientEntry) return { success: false, error: 'لم يتم العثور على المراجع في الطابور' };
 
       const normalizedPatientEntry = normalizeQueueRow(patientEntry);
 
@@ -214,7 +218,7 @@ const api = {
       const settings = {};
       (data || []).forEach((s) => {
         try {
-          settings[s.id] = JSON.parse(s.value);
+          settings[s.id] = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
         } catch {
           settings[s.id] = s.value;
         }
@@ -427,52 +431,30 @@ const api = {
         };
       }
 
-      const { data: lastEntry } = await supabase
+      // استخدام RPC لإنشاء الطابور بشكل ذري
+      const { data: queueId, error: rpcError } = await supabase.rpc('create_queue_atomic', {
+        p_patient_id: patientId,
+        p_exam_type: examType,
+        p_clinic_id: null, // سيتم تحديده لاحقاً أو من المسار
+        p_path: [],
+        p_queue_date: today
+      });
+
+      if (rpcError) throw rpcError;
+
+      const { data: newEntry } = await supabase
         .from('unified_queue')
-        .select('display_number')
-        .eq('queue_date', today)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextNumber = (lastEntry?.display_number || 0) + 1;
-
-      let pathway = [];
-      let firstClinicId = null;
-      try {
-        pathway = await getDynamicMedicalPathway(examType, gender);
-        if (pathway && pathway.length > 0) {
-          firstClinicId = pathway[0].id || null;
-        }
-      } catch (pathErr) {
-        console.warn('Dynamic pathway error, continuing without route:', pathErr);
-      }
-
-      const insertData = {
-        patient_id: patientId,
-        exam_type: examType,
-        gender,
-        display_number: nextNumber,
-        status: 'waiting',
-        queue_date: today,
-        entered_at: qatarDateTime(),
-      };
-      if (firstClinicId) insertData.clinic_id = firstClinicId;
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .insert([insertData])
-        .select()
+        .select('*')
+        .eq('id', queueId)
         .single();
 
-      if (error) throw error;
       return {
         success: true,
         data: {
-          queueId: data.id,
-          number: data.display_number,
-          clinicId: firstClinicId,
-          path: pathway,
+          queueId: newEntry.id,
+          number: newEntry.display_number,
+          clinicId: newEntry.clinic_id,
+          path: [],
         },
       };
     } catch (error) {
@@ -480,54 +462,7 @@ const api = {
       return { success: false, error: error.message };
     }
   },
-
-  async doctorLogin(username, password) {
-    try {
-      const { data: result, error } = await supabase.rpc('doctor_login', {
-        p_username: username,
-        p_password: password,
-      });
-      if (error) throw error;
-      if (result?.success && result?.data) {
-        return { success: true, role: result.data.role || 'DOCTOR', data: result.data };
-      }
-      return { success: false, error: result?.message || result?.error || 'بيانات الدخول غير صحيحة' };
-    } catch (error) {
-      console.error('Doctor Login RPC Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  async adminLogin(username, password) {
-    try {
-      const { data: result, error } = await supabase.rpc('admin_login', {
-        p_username: username,
-        p_password: password,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      if (result?.success && result?.data) {
-        return {
-          success: true,
-          data: {
-            ...result.data,
-            role: result.data.role || 'ADMIN',
-          },
-        };
-      }
-
-      return {
-        success: false,
-        error: result?.error || result?.message || 'بيانات الدخول غير صحيحة',
-      };
-    } catch (error) {
-      console.error('Admin Login Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
 };
 
 export default api;
+export { api };
