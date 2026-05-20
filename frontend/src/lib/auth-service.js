@@ -1,17 +1,16 @@
 /**
  * Auth Service - Authentication System
- * Updated with RPC-based authentication and robust error handling
+ * Updated with canonical API-based authentication and robust error handling
  */
 
 import api from './api-unified';
 
-// ✅ إصلاح: تعريف الأدوار والصلاحيات
 export const USER_ROLES = {
   SUPER_ADMIN: {
     id: 'SUPER_ADMIN',
     name: 'مدير النظام',
     nameEn: 'System Administrator',
-    permissions: ['*'] // جميع الصلاحيات
+    permissions: ['*']
   },
   ADMIN: {
     id: 'ADMIN',
@@ -35,7 +34,7 @@ export const USER_ROLES = {
     permissions: [
       'dashboard',
       'queue_management',
-      'clinic_only', // ✅ صلاحية خاصة بالعيادات فقط
+      'clinic_only',
       'patient_view'
     ]
   },
@@ -66,17 +65,14 @@ class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
     this.maxAttempts = 5;
-    this.lockoutDuration = 5 * 60 * 1000; // 5 mins
-    this.sessionTimeout = 60 * 60 * 1000; // 60 mins
-    this.failedAttempts = new Map(); // تتبع المحاولات الفاشلة
+    this.lockoutDuration = 5 * 60 * 1000;
+    this.sessionTimeout = 60 * 60 * 1000;
+    this.failedAttempts = new Map();
   }
 
   async login(username, password) {
-    console.log('[AuthService] Login attempt:', { username, passwordLength: password?.length });
-
     try {
       const response = await api.adminLogin(username, password);
-
       if (!response?.success || !response?.data) {
         throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
@@ -89,6 +85,25 @@ class AuthService {
       return { success: true, session };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
+      throw new Error(error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+    }
+  }
+
+  async doctorLogin(username, password) {
+    try {
+      const response = await api.doctorLogin(username, password);
+      if (!response?.success || !response?.data) {
+        throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+      }
+
+      const session = this.createSession(
+        response.data.username || response.data.name || username,
+        'DOCTOR'
+      );
+
+      return { success: true, session };
+    } catch (error) {
+      console.error('[AuthService] Doctor login error:', error);
       throw new Error(error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
     }
   }
@@ -127,31 +142,25 @@ class AuthService {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
   }
 
-  // ✅ إصلاح: التحقق من الصلاحيات
   hasPermission(permission) {
     const session = this.getSession();
     if (!session) return false;
 
     const role = USER_ROLES[session.role];
     if (!role) return false;
-
-    // السوبر أدمن لديه جميع الصلاحيات
     if (role.permissions.includes('*')) return true;
 
     return role.permissions.includes(permission);
   }
 
-  // ✅ إصلاح: التحقق من عدة صلاحيات (واحد أو أكثر)
   hasAnyPermission(permissions) {
     return permissions.some(p => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: التحقق من جميع الصلاحيات المطلوبة
   hasAllPermissions(permissions) {
     return permissions.every(p => this.hasPermission(p));
   }
 
-  // ✅ إصلاح: الحصول على صلاحيات المستخدم الحالي
   getCurrentPermissions() {
     const session = this.getSession();
     if (!session) return [];
@@ -160,13 +169,11 @@ class AuthService {
     return role ? role.permissions : [];
   }
 
-  // ✅ إصلاح: التحقق إذا كان المستخدم طبيب (للعرض في العيادات فقط)
   isDoctor() {
     const session = this.getSession();
     return session && session.role === 'DOCTOR';
   }
 
-  // ✅ إصلاح: التحقق من صلاحية العيادة فقط
   canAccessClinicOnly() {
     return this.hasPermission('clinic_only');
   }
