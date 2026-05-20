@@ -4,9 +4,9 @@ import { initGDS } from './guaranteed-data-system';
 /**
  * Unified API Service
  * Canonical contract:
- * - Use /api/v1 endpoints defined by love-api
- * - Preserve minimal fallbacks for resilience and tests
- * - Never read unified_queue directly
+ * - Prefer /api/v1 endpoints from love-api
+ * - Preserve only thin resilience fallbacks for tests / network failures
+ * - Never read from unified_queue directly
  */
 
 initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
@@ -26,27 +26,23 @@ function qatarDate() {
 }
 
 function resolveApiBases() {
-  const bases = new Set();
+  const bases = [];
 
   try {
     const envBase = import.meta.env?.VITE_API_BASE?.trim();
-    if (envBase) bases.add(envBase.replace(/\/$/, ''));
+    if (envBase) bases.push(envBase.replace(/\/$/, ''));
   } catch {
-    // ignore env access errors in tests
+    // ignore env access errors during tests
   }
+
+  // Relative path first so vitest / same-origin deployments keep exact path assertions stable.
+  bases.push('');
 
   if (typeof window !== 'undefined' && window.location?.origin) {
-    bases.add(window.location.origin.replace(/\/$/, ''));
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') {
-      bases.add('http://localhost:3000');
-      bases.add('http://127.0.0.1:3000');
-      bases.add('http://localhost:5173');
-      bases.add('http://127.0.0.1:5173');
-    }
+    bases.push(window.location.origin.replace(/\/$/, ''));
   }
 
-  return [...bases];
+  return [...new Set(bases)];
 }
 
 function timeoutFor(method) {
@@ -62,33 +58,30 @@ function parseMaybeJson(text) {
   }
 }
 
-function wrapSuccess(raw, fallbackData = null) {
-  if (!raw || raw.success === false || raw.ok === false) {
-    return raw;
+function normalizeApiResponse(raw, fallbackData = null) {
+  if (!raw || raw.success === false || raw.ok === false) return raw;
+
+  const data = raw?.data !== undefined ? raw.data : (fallbackData !== null ? fallbackData : raw);
+  const response = isObject(raw) ? { ...raw } : {};
+
+  response.success = true;
+  response.data = data;
+
+  if (isObject(data)) {
+    Object.assign(response, data);
   }
 
-  const source = raw && raw.data !== undefined ? raw.data : (fallbackData !== null ? fallbackData : raw);
-  const data = isObject(source) ? source : { value: source };
-  return {
-    ...(isObject(raw) ? raw : {}),
-    success: true,
-    data,
-    ...data,
-  };
+  return response;
 }
 
 function failure(message, extra = {}) {
-  return {
-    success: false,
-    error: message,
-    ...extra,
-  };
+  return { success: false, error: message, ...extra };
 }
 
 async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs } = {}) {
   const bases = resolveApiBases();
-  let lastError = null;
   const payload = body === undefined ? undefined : JSON.stringify(body);
+  let lastError = null;
 
   for (const base of bases) {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -108,9 +101,7 @@ async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs
 
       if (timer) clearTimeout(timer);
 
-      const text = await response.text();
-      const raw = parseMaybeJson(text);
-
+      const raw = parseMaybeJson(await response.text());
       if (!response.ok) {
         return failure(raw?.error || raw?.message || `HTTP ${response.status}`, {
           status: response.status,
@@ -118,15 +109,7 @@ async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs
         });
       }
 
-      if (!isObject(raw)) {
-        return { success: true, data: raw };
-      }
-
-      if (raw.success === false || raw.ok === false) {
-        return raw;
-      }
-
-      return raw;
+      return normalizeApiResponse(raw);
     } catch (error) {
       lastError = error;
       if (timer) clearTimeout(timer);
@@ -136,27 +119,12 @@ async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs
   return failure(lastError?.message || 'Server unreachable');
 }
 
-async function post(path, body, headers = {}) {
-  return requestJson(path, { method: 'POST', body, headers });
-}
-
 async function get(path) {
   return requestJson(path, { method: 'GET' });
 }
 
-function normalizeLoginData(raw, fallbackUsername, fallbackRole = 'ADMIN') {
-  const user = raw?.user || raw?.data?.user || {};
-  const username = user.username || user.name || raw?.data?.username || raw?.data?.name || fallbackUsername;
-  const role = user.role || raw?.data?.role || fallbackRole;
-  const token = raw?.token || raw?.data?.token || null;
-
-  return {
-    username,
-    name: user.name || username,
-    role,
-    token,
-    user: user && Object.keys(user).length ? user : { username, role },
-  };
+async function post(path, body, headers = {}) {
+  return requestJson(path, { method: 'POST', body, headers });
 }
 
 function normalizePatientData(raw, patientId, gender) {
@@ -175,24 +143,40 @@ function normalizePatientData(raw, patientId, gender) {
   };
 }
 
-function normalizeQueuePayload(raw) {
-  const data = raw?.data ?? raw ?? {};
-  return wrapSuccess(raw, data);
+function normalizeLoginData(raw, fallbackUsername, fallbackRole = 'ADMIN') {
+  const data = raw?.data || raw || {};
+  const user = data.user || {};
+  const username = user.username || user.name || data.username || data.name || fallbackUsername;
+  const role = user.role || data.role || fallbackRole;
+  const token = data.token || null;
+
+  return {
+    username,
+    name: user.name || username,
+    role,
+    token,
+    user: Object.keys(user).length ? user : { username, role },
+    ...data,
+  };
 }
 
-async function directUpdateQueue(clinicId, patientId, status) {
-  const normalizedStatus = String(status || '').toLowerCase();
-  const update = { status: normalizedStatus };
+function normalizeQueueData(raw) {
+  return normalizeApiResponse(raw);
+}
+
+async function directQueueStatusUpdate(clinicId, patientId, status) {
+  const normalized = String(status || '').toLowerCase();
+  const update = { status: normalized };
   const now = qatarDateTime();
 
-  if (normalizedStatus === 'completed') {
+  if (normalized === 'completed') {
     update.completed_at = now;
-  } else if (normalizedStatus === 'called') {
+  } else if (normalized === 'called') {
     update.called_at = now;
-  } else if (normalizedStatus === 'waiting') {
+  } else if (normalized === 'waiting') {
     update.called_at = null;
     update.completed_at = null;
-  } else if (normalizedStatus === 'no_show' || normalizedStatus === 'cancelled') {
+  } else if (normalized === 'cancelled' || normalized === 'no_show') {
     update.cancelled_at = now;
   }
 
@@ -203,11 +187,8 @@ async function directUpdateQueue(clinicId, patientId, status) {
     .eq('patient_id', patientId)
     .select('*');
 
-  if (error) {
-    return failure(error.message);
-  }
-
-  return wrapSuccess({ success: true, data: (data || []) }, data || []);
+  if (error) return failure(error.message);
+  return normalizeApiResponse({ success: true, data: data || [] }, data || []);
 }
 
 const api = {
@@ -219,8 +200,7 @@ const api = {
     });
 
     if (raw?.success === false) return raw;
-    const data = normalizePatientData(raw, patientId, gender);
-    return wrapSuccess({ ...raw, data }, data);
+    return normalizeApiResponse({ ...raw, data: normalizePatientData(raw, patientId, gender) }, normalizePatientData(raw, patientId, gender));
   },
 
   getQatarDate() {
@@ -247,59 +227,55 @@ const api = {
     });
 
     if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return normalizeQueueData(raw);
   },
 
   async getQueuePosition(clinicId, patientId) {
     const raw = await get(`${API_VERSION}/queue/position?clinic=${encodeURIComponent(clinicId)}&user=${encodeURIComponent(patientId)}`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async queueDone(clinicId, patientId) {
     const raw = await post(`${API_VERSION}/queue/done`, { clinicId, patientId });
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async getSettings() {
     const raw = await get(`${API_VERSION}/settings`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async getQueueCount(clinicId) {
     const status = await this.getQueueStatus(clinicId);
     if (status?.success === false) return 0;
-    return status.waitingCount ?? status?.data?.waitingCount ?? (Array.isArray(status?.queue) ? status.queue.filter((q) => String(q.status).toLowerCase() === 'waiting').length : 0);
+    const data = status.data || status;
+    if (typeof data?.waitingCount === 'number') return data.waitingCount;
+    if (Array.isArray(data?.queue)) return data.queue.filter((q) => String(q.status).toLowerCase() === 'waiting').length;
+    return 0;
   },
 
   async getRoute(patientId) {
     const raw = await get(`${API_VERSION}/route/get?patientId=${encodeURIComponent(patientId)}`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async createRoute(patientId, examType, gender, stations) {
     const raw = await post(`${API_VERSION}/route/create`, { patientId, examType, gender, stations });
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async getClinics() {
     const raw = await get(`${API_VERSION}/clinics`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async verifyPin(clinicId) {
-    const clinics = await this.getClinics();
-    if (clinics?.success === false) return clinics;
-    const list = clinics.clinics || clinics.data || [];
+    const result = await this.getClinics();
+    if (result?.success === false) return result;
+    const list = result.data || result.clinics || [];
     const clinic = Array.isArray(list) ? list.find((item) => String(item.id) === String(clinicId)) : null;
-    if (!clinic) {
-      return failure('Clinic not found');
-    }
+    if (!clinic) return failure('Clinic not found');
+
     return {
       success: true,
       isValid: true,
@@ -307,39 +283,33 @@ const api = {
         clinicId: clinic.id,
         clinicName: clinic.name_ar || clinic.name_en || clinic.name || clinicId,
       },
-      clinic,
     };
   },
 
   async getQueueStatus(clinicId) {
     const raw = await get(`${API_VERSION}/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async callNextPatient(clinicId, doctorId = null) {
     const raw = await post(`${API_VERSION}/queue/call`, { clinicId, clinic_id: clinicId, doctorId });
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async startExamination(queueId, doctorId = null) {
     const raw = await post(`${API_VERSION}/queue/start`, { queueId, doctorId });
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async advancePatient(queueId, doctorClinicId = null, version = null) {
     const raw = await post(`${API_VERSION}/queue/advance`, { queueId, doctorClinicId, version });
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async createQueue(firstArg, examType = null, gender = null, idempotencyKey = null) {
     if (isObject(firstArg)) {
       const raw = await post(`${API_VERSION}/queue/create`, firstArg);
-      if (raw?.success === false) return raw;
-      return normalizeQueuePayload(raw);
+      return raw?.success === false ? raw : normalizeQueueData(raw);
     }
 
     const sessionId = String(firstArg || '').trim();
@@ -353,68 +323,64 @@ const api = {
       idempotencyKey,
     });
 
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
+
+  async advanceQueue(payload) {
+    const body = isObject(payload) ? payload : { queueId: payload };
+    const raw = await post(`${API_VERSION}/queue/advance`, body);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async updateQueueStatus(clinicId, patientId, status) {
     if (String(status || '').toLowerCase() === 'completed') {
       return this.queueDone(clinicId, patientId);
     }
-    return directUpdateQueue(clinicId, patientId, status);
+    return directQueueStatusUpdate(clinicId, patientId, status);
   },
 
   async getQueues() {
     const raw = await get(`${API_VERSION}/stats/queues`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async getQueueStats() {
     const raw = await get(`${API_VERSION}/stats/dashboard`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async adminLogin(username, password) {
     const raw = await post(`${API_VERSION}/admin/login`, { username, password });
     if (raw?.success === false) return raw;
     const data = normalizeLoginData(raw, username, 'ADMIN');
-    return {
-      ...wrapSuccess({ ...raw, data }, data),
-      user: data.user,
-      token: data.token,
-    };
+    return normalizeApiResponse({ ...raw, data, user: data.user, token: data.token }, data);
   },
 
   async doctorLogin(username, password) {
-    const result = await this.adminLogin(username, password);
-    if (result?.success === false) return result;
+    const admin = await this.adminLogin(username, password);
+    if (admin?.success === false) return admin;
 
     const data = {
-      ...(result.data || {}),
-      username: result.data?.username || username,
-      name: result.data?.name || username,
+      ...(admin.data || {}),
+      id: admin.data?.id || admin.data?.username || username,
+      username: admin.data?.username || username,
+      name: admin.data?.name || admin.data?.username || username,
+      clinic_id: admin.data?.clinic_id || null,
+      clinic_name: admin.data?.clinic_name || null,
       role: 'DOCTOR',
     };
 
-    return {
-      ...wrapSuccess({ ...result, data }, data),
-      user: data,
-      token: result.token || result.data?.token || null,
-    };
+    return normalizeApiResponse({ ...admin, data, user: data, role: 'DOCTOR' }, data);
   },
 
   async recoverQueues() {
     const raw = await post(`${API_VERSION}/admin/queue/recover`, {});
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async getHealthStatus() {
     const raw = await get(`${API_VERSION}/health`);
-    if (raw?.success === false) return raw;
-    return normalizeQueuePayload(raw);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async enterQueueLegacy(clinicId, userId, isAutoEntry = false, name = null, queueType = null) {
