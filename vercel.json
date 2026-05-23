@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "cd frontend && npm install",
-  "buildCommand": "cd frontend && npm install && npm run build -- --config vite.config.fixed.js",
+  "buildCommand": "cd frontend && npm install && node ./scripts/sync-runtime-config.mjs && npx vite build --config vite.config.fixed.js",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "redirects": [
