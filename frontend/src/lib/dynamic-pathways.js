@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client';
+import routeMap from '../../config/routeMap.json';
 
 const examTypeMap = {
   recruitment: 'تجنيد',
@@ -11,6 +12,39 @@ const examTypeMap = {
   courses: 'دورات',
   general: 'ترفيع',
 };
+
+function normalizeExamKey(examType, gender) {
+  const key = String(examType || '').trim();
+  const mapped = examTypeMap[key] || key;
+  if (!mapped) return gender === 'female' ? 'نساء/عام' : 'تجنيد';
+  if (mapped === 'ترفيع' || mapped === 'نقل' || mapped === 'تحويل' || mapped === 'تجديد التعاقد') return mapped;
+  if (mapped === 'طباخين' || mapped === 'دورات' || mapped === 'طيران سنوي') return mapped;
+  if (gender === 'female' && routeMap['نساء/عام']?.F) return 'نساء/عام';
+  return mapped;
+}
+
+function stationsFromRouteMap(examType, gender) {
+  const key = normalizeExamKey(examType, gender);
+  const raw = routeMap[key];
+  if (!raw) return [];
+
+  const codes = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.[gender === 'female' ? 'F' : 'M'])
+      ? raw[gender === 'female' ? 'F' : 'M']
+      : [];
+
+  return codes.map((code, index) => ({
+    id: code,
+    code,
+    name: code,
+    nameAr: code,
+    floor: raw?.prefix || '',
+    floorCode: raw?.prefix || '',
+    order: index + 1,
+    status: index === 0 ? 'ready' : 'locked',
+  }));
+}
 
 async function fetchRouteFromDatabase(examType) {
   if (!supabase) return null;
@@ -100,13 +134,22 @@ function sortClinicsByWeight(clinics, weights) {
     }));
 }
 
-export async function getDynamicMedicalPathway(examType) {
+export async function getDynamicMedicalPathway(examType, gender = 'male') {
   const dbRoute = await fetchRouteFromDatabase(examType);
-  if (!dbRoute) return [];
-  const clinics = await mapClinicCodes(dbRoute.clinics || []);
-  if (!clinics.length) return [];
-  const weights = await fetchClinicWeights(clinics.map((clinic) => clinic.id));
-  return sortClinicsByWeight(clinics, weights);
+  if (dbRoute) {
+    const clinics = await mapClinicCodes(dbRoute.clinics || []);
+    if (clinics.length) {
+      const weights = await fetchClinicWeights(clinics.map((clinic) => clinic.id));
+      return sortClinicsByWeight(clinics, weights);
+    }
+  }
+
+  const fallbackStations = stationsFromRouteMap(examType, gender);
+  if (fallbackStations.length) {
+    return fallbackStations;
+  }
+
+  return [];
 }
 
 export async function enrichStationsWithClinicData(stations) {
