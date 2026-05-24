@@ -53,7 +53,12 @@ export default async function handler(req, res) {
     const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const patientData = {
       id: sessionId,
+      sessionId,
+      session_id: sessionId,
       patientId: patientId,
+      patient_id: patientId,
+      personalId: patientId,
+      personal_id: patientId,
       gender: gender,
       loginTime: new Date().toISOString(),
       status: 'logged_in'
