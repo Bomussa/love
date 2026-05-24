@@ -1,8 +1,13 @@
+import { GENERAL_REFRESH_INTERVAL } from '../core/config/refresh.constants'
+
+if (typeof globalThis !== 'undefined' && typeof globalThis.GENERAL_REFRESH_INTERVAL === 'undefined') {
+  globalThis.GENERAL_REFRESH_INTERVAL = GENERAL_REFRESH_INTERVAL
+}
+
 /**
  * نظام تقارير العناصر التفاعلية (Interactive Element Reporter)
  * يكتب تقرير مفصل عن حالة كل عنصر تفاعلي (يعمل أم لا)
  */
-
 class InteractiveElementReporter {
   constructor() {
     this.elements = new Map();
