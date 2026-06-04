@@ -2,185 +2,102 @@ import { supabase } from './supabase-client';
 import routeMap from '../../config/routeMap.json';
 
 const examTypeMap = {
-  recruitment: 'تجنيد',
-  promotion: 'ترفيع',
-  transfer: 'نقل',
-  referral: 'تحويل',
-  contract: 'تجديد التعاقد',
-  aviation: 'طيران سنوي',
-  cooks: 'طباخين',
-  courses: 'دورات',
-  general: 'ترفيع',
+  recruitment: 'تجنيد', promotion: 'ترفيع', transfer: 'نقل', referral: 'تحويل',
+  contract: 'تجديد التعاقد', aviation: 'طيران سنوي', cooks: 'طباخين', courses: 'دورات', general: 'تجنيد',
 };
 
-function normalizeExamKey(examType, gender) {
-  const key = String(examType || '').trim();
-  const mapped = examTypeMap[key] || key;
-  if (!mapped) return gender === 'female' ? 'نساء/عام' : 'تجنيد';
-  if (mapped === 'ترفيع' || mapped === 'نقل' || mapped === 'تحويل' || mapped === 'تجديد التعاقد') return mapped;
-  if (mapped === 'طباخين' || mapped === 'دورات' || mapped === 'طيران سنوي') return mapped;
+function examKey(examType, gender) {
+  const key = examTypeMap[String(examType || '').trim()] || String(examType || '').trim();
   if (gender === 'female' && routeMap['نساء/عام']?.F) return 'نساء/عام';
-  return mapped;
+  return key || (gender === 'female' ? 'نساء/عام' : 'تجنيد');
 }
 
-function stationsFromRouteMap(examType, gender) {
-  const key = normalizeExamKey(examType, gender);
+function toCode(item) {
+  if (!item) return null;
+  if (typeof item === 'string') return item.trim() || null;
+  return String(item.code || item.clinic_code || item.clinicCode || item.id || '').trim() || null;
+}
+
+async function clinicByCode(code) {
+  if (!supabase || !code) return null;
+  for (const field of ['id', 'code']) {
+    const { data } = await supabase.from('clinics').select('id, name, name_ar, name_en, floor, code, is_active').eq(field, code).eq('is_active', true).maybeSingle();
+    if (data) return data;
+  }
+  return null;
+}
+
+async function routeCodesFromDb(examType) {
+  if (!supabase) return [];
+  const keys = [String(examType || '').trim(), examTypeMap[String(examType || '').trim()]].filter(Boolean);
+  for (const key of keys) {
+    const { data } = await supabase.from('routes').select('clinics, is_active').eq('exam_type', key).eq('is_active', true).maybeSingle();
+    const codes = Array.isArray(data?.clinics) ? data.clinics.map(toCode).filter(Boolean) : [];
+    if (codes.length) return codes;
+  }
+  return [];
+}
+
+function routeCodesFromMap(examType, gender) {
+  const key = examKey(examType, gender);
   const raw = routeMap[key];
-  if (!raw) return [];
+  const codes = Array.isArray(raw) ? raw : Array.isArray(raw?.[gender === 'female' ? 'F' : 'M']) ? raw[gender === 'female' ? 'F' : 'M'] : [];
+  return codes.map(toCode).filter(Boolean);
+}
 
-  const codes = Array.isArray(raw)
-    ? raw
-    : Array.isArray(raw?.[gender === 'female' ? 'F' : 'M'])
-      ? raw[gender === 'female' ? 'F' : 'M']
-      : [];
+async function queueLoad(clinicId) {
+  if (!supabase || !clinicId) return 0;
+  const today = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { count } = await supabase.from('unified_queue').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId).eq('queue_date', today).in('status', ['waiting', 'called', 'in_progress', 'serving']);
+  return Number(count || 0);
+}
 
-  return codes.map((code, index) => ({
-    id: code,
-    code,
-    name: code,
-    nameAr: code,
-    floor: raw?.prefix || '',
-    floorCode: raw?.prefix || '',
+function floorRank(floorCode) {
+  return ({ M: 1, G: 2, 1: 3, 2: 4, 3: 5 }[String(floorCode || '').trim()] || 99);
+}
+
+async function buildStations(codes) {
+  const clinics = [];
+  for (const code of codes) {
+    const clinic = await clinicByCode(code);
+    if (!clinic) continue;
+    clinics.push({
+      id: clinic.id,
+      code: clinic.code || code,
+      name: clinic.name_en || clinic.name,
+      nameAr: clinic.name_ar || clinic.name,
+      floorCode: clinic.floor,
+      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
+    });
+  }
+  const withLoad = await Promise.all(clinics.map(async (clinic) => ({ ...clinic, load: await queueLoad(clinic.id) })));
+  return withLoad.sort((a, b) => (a.load - b.load) || (floorRank(a.floorCode) - floorRank(b.floorCode))).map((clinic, index) => ({
+    id: clinic.id,
+    code: clinic.code,
+    name: clinic.name,
+    nameAr: clinic.nameAr,
+    floor: clinic.floor,
+    floorCode: clinic.floorCode,
     order: index + 1,
     status: index === 0 ? 'ready' : 'locked',
   }));
 }
 
-async function fetchRouteFromDatabase(examType) {
-  if (!supabase) return null;
-  const queryTypes = [examType, examTypeMap[examType]].filter(Boolean);
-  for (const queryType of queryTypes) {
-    const { data, error } = await supabase
-      .from('routes')
-      .select('clinics, route_name, exam_type, is_active')
-      .eq('exam_type', queryType)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (!error && data?.clinics && Array.isArray(data.clinics) && data.clinics.length > 0) {
-      return data;
-    }
-  }
-  return null;
-}
-
-async function fetchClinicByCode(code) {
-  if (!supabase) return null;
-  const cleaned = String(code || '').trim();
-  if (!cleaned) return null;
-
-  const byId = await supabase
-    .from('clinics')
-    .select('id, name, name_ar, name_en, floor, code, is_active')
-    .eq('id', cleaned)
-    .eq('is_active', true)
-    .maybeSingle();
-  if (byId.data) return byId.data;
-
-  const byCode = await supabase
-    .from('clinics')
-    .select('id, name, name_ar, name_en, floor, code, is_active')
-    .eq('code', cleaned)
-    .eq('is_active', true)
-    .maybeSingle();
-  return byCode.data || null;
-}
-
-async function mapClinicCodes(codes) {
-  if (!Array.isArray(codes) || codes.length === 0) return [];
-  const clinics = [];
-  for (const code of codes) {
-    const clinic = await fetchClinicByCode(code);
-    if (!clinic) continue;
-    clinics.push({
-      id: clinic.id,
-      name: clinic.name_en || clinic.name,
-      nameAr: clinic.name_ar || clinic.name,
-      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
-      floorCode: clinic.floor,
-      code: clinic.code || code,
-    });
-  }
-  return clinics;
-}
-
-async function fetchClinicWeights(clinicIds) {
-  const weights = Object.fromEntries((clinicIds || []).map((id) => [id, 0]));
-  if (!supabase || !clinicIds?.length) return weights;
-  const today = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().split('T')[0];
-  await Promise.all(clinicIds.map(async (clinicId) => {
-    const { count, error } = await supabase
-      .from('unified_queue')
-      .select('*', { count: 'exact', head: true })
-      .eq('clinic_id', clinicId)
-      .eq('queue_date', today)
-      .eq('status', 'waiting');
-    if (!error && typeof count === 'number') weights[clinicId] = count;
-  }));
-  return weights;
-}
-
-function sortClinicsByWeight(clinics, weights) {
-  return [...clinics]
-    .map((clinic) => ({ ...clinic, weight: weights[clinic.id] || 0 }))
-    .sort((a, b) => {
-      if (a.weight !== b.weight) return a.weight - b.weight;
-      const order = { M: 1, G: 2, 1: 3, 2: 4, 3: 5 };
-      return (order[a.floorCode] || 3) - (order[b.floorCode] || 3);
-    })
-    .map((clinic, index) => ({
-      ...clinic,
-      order: index + 1,
-      status: index === 0 ? 'ready' : 'locked',
-    }));
-}
-
 export async function getDynamicMedicalPathway(examType, gender = 'male') {
-  const dbRoute = await fetchRouteFromDatabase(examType);
-  if (dbRoute) {
-    const clinics = await mapClinicCodes(dbRoute.clinics || []);
-    if (clinics.length) {
-      const weights = await fetchClinicWeights(clinics.map((clinic) => clinic.id));
-      return sortClinicsByWeight(clinics, weights);
-    }
-  }
-
-  const fallbackStations = stationsFromRouteMap(examType, gender);
-  if (fallbackStations.length) {
-    return fallbackStations;
-  }
-
-  return [];
+  const dbCodes = await routeCodesFromDb(examType);
+  const codes = dbCodes.length ? dbCodes : routeCodesFromMap(examType, gender);
+  if (!codes.length) return [];
+  return buildStations(codes);
 }
 
 export async function enrichStationsWithClinicData(stations) {
   if (!Array.isArray(stations) || !supabase) return stations;
-  const enriched = [];
+  const out = [];
   for (const station of stations) {
-    const code = station.code || station.id;
-    const byId = await supabase
-      .from('clinics')
-      .select('id, name, name_ar, name_en, floor, code, is_active')
-      .eq('id', code)
-      .eq('is_active', true)
-      .maybeSingle();
-    const byCode = byId.data ? null : await supabase
-      .from('clinics')
-      .select('id, name, name_ar, name_en, floor, code, is_active')
-      .eq('code', code)
-      .eq('is_active', true)
-      .maybeSingle();
-    const clinic = byId.data || byCode?.data || null;
-    enriched.push(clinic ? {
-      ...station,
-      id: clinic.id,
-      name: clinic.name_en || clinic.name,
-      nameAr: clinic.name_ar || clinic.name,
-      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
-      floorCode: clinic.floor,
-      code: clinic.code || code,
-    } : station);
+    const clinic = await clinicByCode(station.code || station.id);
+    out.push(clinic ? { ...station, id: clinic.id, name: clinic.name_en || clinic.name, nameAr: clinic.name_ar || clinic.name, floorCode: clinic.floor, floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}` } : station);
   }
-  return enriched;
+  return out;
 }
 
 export default getDynamicMedicalPathway;
