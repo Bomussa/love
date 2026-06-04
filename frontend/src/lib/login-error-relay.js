@@ -1,8 +1,6 @@
 import api from './api-unified'
-import './doctor-login-fallback.js'
 
 const ALLOWED_ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN'])
-const DOCTOR_ROLE = 'DOCTOR'
 
 function normalizeMessage(text) {
   const lower = String(text || '').toLowerCase()
@@ -72,28 +70,13 @@ function sanitizeStoredSessions() {
     if (doctorRaw) {
       const doctorSession = JSON.parse(doctorRaw)
       const role = String(doctorSession?.role || '').toUpperCase()
-      if (role && role !== DOCTOR_ROLE) {
+      if (role && role !== 'DOCTOR') {
         localStorage.removeItem('mmc_doctor_session')
       }
     }
   } catch {
     localStorage.removeItem('mmc_doctor_session')
   }
-}
-
-function patchDoctorLogin() {
-  if (typeof api.doctorLogin !== 'function' || api.doctorLogin.__mmcPatched) return
-
-  const original = api.doctorLogin.bind(api)
-  const patched = async (...args) => {
-    const result = await original(...args)
-    if (result && result.success) return result
-    const message = normalizeMessage(result?.error || result?.message || 'Invalid credentials')
-    throw new Error(message)
-  }
-
-  patched.__mmcPatched = true
-  api.doctorLogin = patched
 }
 
 function patchAdminLogin() {
@@ -129,7 +112,6 @@ function patchAdminLogin() {
 }
 
 sanitizeStoredSessions()
-patchDoctorLogin()
 patchAdminLogin()
 
 export default null
