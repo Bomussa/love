@@ -19,7 +19,7 @@ function Header({ currentPage, onPageChange, onThemeChange, currentTheme, langua
             {language === 'ar' ? 'English 🇺🇸' : 'العربية 🇶🇦'}
           </Button>
           <div className="flex items-center gap-2">
-            <img src="/mms-logo.png" alt="قيادة الخدمات الطبية" className="w-16 h-16 rounded-full" />
+            <img src="/img/logo.svg" alt="قيادة الخدمات الطبية" className="w-16 h-16 rounded-full" />
             <div className="text-right">
               <h1 className="text-white font-semibold text-lg">قيادة الخدمات الطبية</h1>
               <p className="text-gray-400 text-sm">Medical Services</p>
