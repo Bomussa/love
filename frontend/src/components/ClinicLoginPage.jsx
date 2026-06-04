@@ -18,7 +18,12 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
     try {
       const response = await api.getClinics()
       if (response.success) {
-        setClinics(response.clinics)
+        const items = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.clinics)
+            ? response.clinics
+            : []
+        setClinics(items)
       }
     } catch (err) {
       console.error('Failed to load clinics', err)
@@ -74,7 +79,7 @@ export function ClinicLoginPage({ onLogin, language, toggleLanguage }) {
                 <option value="">{language === 'ar' ? 'اختر العيادة...' : 'Select Clinic...'}</option>
                 {clinics.map(c => (
                   <option key={c.id} value={c.id}>
-                    {language === 'ar' ? (c.name_ar || c.name_en) : (c.name_en || c.name_ar)}
+                    {language === 'ar' ? (c.name_ar || c.name_en || c.name || c.id) : (c.name_en || c.name_ar || c.name || c.id)}
                   </option>
                 ))}
               </select>
