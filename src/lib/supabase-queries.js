@@ -133,7 +133,7 @@ export const adminQueries = {
   async getClinicsWithPins() {
     const { data, error } = await supabase
       .from('clinics')
-      .select('id, name, name_ar, pin_code, updated_at')
+      .select('id, name, name_ar, updated_at')
       .order('name');
 
     if (error) throw error;

@@ -1,548 +1,400 @@
-
 import { supabase } from './supabase-client';
 import { initGDS } from './guaranteed-data-system';
-import { getDynamicMedicalPathway } from './dynamic-pathways';
 
 /**
- * Unified API Service - Direct Supabase Implementation (V2 - Excellence Standard)
- * كافة العمليات تتم مباشرة عبر سبسبيس لضمان الاستقرار والسرعة
- *
- * ✅ نظام ضمان البيانات (GDS) - بيانات حقيقية لحظية مضمونة
- * ✅ إعادة المحاولة التلقائية
- * ✅ بدون بيانات وهمية
+ * Unified API Service
+ * Canonical contract:
+ * - Prefer /api/v1 endpoints from love-api
+ * - Preserve only thin resilience fallbacks for tests / network failures
+ * - Never read from unified_queue directly
  */
 
-// تهيئة نظام ضمان البيانات
 initGDS().catch((err) => console.error('❌ فشل تهيئة GDS:', err));
 
-const api = {
-  // --- Patients ---
-  async patientLogin(patientId, gender) {
+export const API_VERSION = '/api/v1';
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function qatarDateTime() {
+  return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+}
+
+function qatarDate() {
+  return qatarDateTime().slice(0, 10);
+}
+
+function resolveApiBases() {
+  const bases = [];
+
+  try {
+    const envBase = import.meta.env?.VITE_API_BASE?.trim();
+    if (envBase) bases.push(envBase.replace(/\/$/, ''));
+  } catch {
+    // ignore env access errors during tests
+  }
+
+  // Relative path first so vitest / same-origin deployments keep exact path assertions stable.
+  bases.push('');
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    bases.push(window.location.origin.replace(/\/$/, ''));
+  }
+
+  return [...new Set(bases)];
+}
+
+function timeoutFor(method) {
+  return method === 'GET' ? 8000 : 12000;
+}
+
+function parseMaybeJson(text) {
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
+function normalizeApiResponse(raw, fallbackData = null) {
+  if (!raw || raw.success === false || raw.ok === false) return raw;
+
+  const data = raw?.data !== undefined ? raw.data : (fallbackData !== null ? fallbackData : raw);
+  const response = isObject(raw) ? { ...raw } : {};
+
+  response.success = true;
+  response.data = data;
+
+  if (isObject(data)) {
+    Object.assign(response, data);
+  }
+
+  return response;
+}
+
+function failure(message, extra = {}) {
+  return { success: false, error: message, ...extra };
+}
+
+async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs } = {}) {
+  const bases = resolveApiBases();
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  let lastError = null;
+
+  for (const base of bases) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || timeoutFor(method)) : null;
+
     try {
-      // Backend uses personal_id in patients table, frontend uses patient_id
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('personal_id', patientId)
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        // Patient doesn't exist, create new
-        const { data: newUser, error: createError } = await supabase
-          .from('patients')
-          .insert([{ personal_id: patientId, gender: gender || 'male', status: 'active', name: `Patient ${patientId}` }])
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        return { success: true, data: newUser };
-      }
-
-      if (error) throw error;
-      // تحديث الجنس دائماً إذا تغيّر — يُصحح مشكلة عرض الجنس القديم
-      if (data && gender && data.gender !== gender) {
-        await supabase.from('patients')
-          .update({ gender, updated_at: new Date(Date.now() + 3*60*60*1000).toISOString() })
-          .eq('personal_id', patientId).catch(() => {});
-      }
-      const patId = data?.patient_id || data?.personal_id || patientId;
-      return {
-        success: true,
-        data: { ...data, gender: gender || data.gender || 'male', patient_id: patId, personal_id: patientId }
-      };
-    } catch (error) {
-      console.error('Login Error:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  // ═══ helper: تاريخ قطر الصحيح (UTC+3) — يطابق qatar_today() في Supabase ═══
-  getQatarDate() {
-    return new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
-  },
-
-  // --- Queue ---
-  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null, gender = null, militaryId = null, personalId = null) {
-    try {
-      // المصدر الوحيد: enter_queue_safe RPC — لا fallback يتجاوز الحمايات
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('enter_queue_safe', {
-        p_clinic_id:    clinicId,
-        p_patient_id:   patientId,
-        p_patient_name: patientName || patientId,
-        p_exam_type:    examType   || 'general',
-        p_gender:       gender     || 'male',
-        p_military_id:  militaryId || null,
-        p_personal_id:  personalId || patientId,
+      const response = await fetch(`${base}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Version': 'v1',
+          ...headers,
+        },
+        body: payload,
+        signal: controller?.signal,
       });
 
-      if (rpcError) {
-        console.error('enter_queue_safe RPC error:', rpcError.message);
-        return { success: false, error: rpcError.message };
+      if (timer) clearTimeout(timer);
+
+      const raw = parseMaybeJson(await response.text());
+      if (!response.ok) {
+        return failure(raw?.error || raw?.message || `HTTP ${response.status}`, {
+          status: response.status,
+          data: raw,
+        });
       }
 
-      if (!rpcResult) {
-        return { success: false, error: 'لا توجد استجابة من قاعدة البيانات' };
-      }
-
-      // الحالات المقبولة
-      const accepted = ['OK','ALREADY_IN_QUEUE','COMPLETED_BEFORE'];
-      if (!accepted.includes(rpcResult.status) && !rpcResult.success) {
-        // أخطاء الحماية (عيادتين / حد يومي)
-        return {
-          success: false,
-          error: rpcResult.error || rpcResult.status,
-          status: rpcResult.status,
-          active_clinic_id: rpcResult.active_clinic_id
-        };
-      }
-
-      return {
-        success: true,
-        ...rpcResult,
-        display_number: rpcResult.display_number || rpcResult.number,
-        alreadyExists:  rpcResult.status === 'ALREADY_IN_QUEUE'
-      };
+      return normalizeApiResponse(raw);
     } catch (error) {
-      console.error('enterQueue exception:', error);
-      return { success: false, error: error.message };
+      lastError = error;
+      if (timer) clearTimeout(timer);
     }
+  }
+
+  return failure(lastError?.message || 'Server unreachable');
+}
+
+async function get(path) {
+  return requestJson(path, { method: 'GET' });
+}
+
+async function post(path, body, headers = {}) {
+  return requestJson(path, { method: 'POST', body, headers });
+}
+
+function normalizePatientData(raw, patientId, gender) {
+  const data = raw?.data || raw?.patient || raw?.session || raw || {};
+  const personalId = data.personalId || data.personal_id || patientId;
+  const sessionId = data.sessionId || data.session_id || raw?.sessionId || raw?.session_id || null;
+
+  return {
+    ...data,
+    personalId,
+    personal_id: personalId,
+    patient_id: data.patient_id || data.id || patientId,
+    sessionId,
+    session_id: sessionId,
+    gender: data.gender || gender || 'male',
+  };
+}
+
+function normalizeLoginData(raw, fallbackUsername, fallbackRole = 'ADMIN') {
+  const data = raw?.data || raw || {};
+  const user = data.user || {};
+  const username = user.username || user.name || data.username || data.name || fallbackUsername;
+  const role = user.role || data.role || fallbackRole;
+  const token = data.token || null;
+
+  return {
+    username,
+    name: user.name || username,
+    role,
+    token,
+    user: Object.keys(user).length ? user : { username, role },
+    ...data,
+  };
+}
+
+function normalizeQueueData(raw) {
+  return normalizeApiResponse(raw);
+}
+
+async function directQueueStatusUpdate(clinicId, patientId, status) {
+  const normalized = String(status || '').toLowerCase();
+  const update = { status: normalized };
+  const now = qatarDateTime();
+
+  if (normalized === 'completed') {
+    update.completed_at = now;
+  } else if (normalized === 'called') {
+    update.called_at = now;
+  } else if (normalized === 'waiting') {
+    update.called_at = null;
+    update.completed_at = null;
+  } else if (normalized === 'cancelled' || normalized === 'no_show') {
+    update.cancelled_at = now;
+  }
+
+  const { data, error } = await supabase
+    .from('queues')
+    .update(update)
+    .eq('clinic_id', clinicId)
+    .eq('patient_id', patientId)
+    .select('*');
+
+  if (error) return failure(error.message);
+  return normalizeApiResponse({ success: true, data: data || [] }, data || []);
+}
+
+const api = {
+  async patientLogin(patientId, gender) {
+    const raw = await post(`${API_VERSION}/patient/login`, {
+      patientId,
+      personalId: patientId,
+      gender: gender || 'male',
+    });
+
+    if (raw?.success === false) return raw;
+    return normalizeApiResponse({ ...raw, data: normalizePatientData(raw, patientId, gender) }, normalizePatientData(raw, patientId, gender));
+  },
+
+  getQatarDate() {
+    return qatarDate();
+  },
+
+  async enterQueue(clinicId, patientId, isAutoEnter = true, patientName = null, examType = null, gender = null, militaryId = null, personalId = null) {
+    const raw = await post(`${API_VERSION}/queue/enter`, {
+      clinicId,
+      clinic_id: clinicId,
+      clinic: clinicId,
+      sessionId: patientId,
+      user: patientId,
+      patientId,
+      personalId: personalId || patientId,
+      patient_name: patientName || null,
+      name: patientName || null,
+      examType: examType || null,
+      queueType: examType || null,
+      gender: gender || 'male',
+      militaryId: militaryId || null,
+      isAutoEnter,
+      isAutoEntry: isAutoEnter,
+    });
+
+    if (raw?.success === false) return raw;
+    return normalizeQueueData(raw);
   },
 
   async getQueuePosition(clinicId, patientId) {
-    try {
-      // توقيت قطر (UTC+3) — يطابق qatar_today() في Supabase
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
-      const { data: patientEntry, error: entryError } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .order('entered_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (entryError) throw entryError;
-
-      let currentNumber = 0;
-      const { data: servingEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .in('status', ['called', 'in_progress', 'serving'])
-        .order('called_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (servingEntry) {
-        currentNumber = servingEntry.display_number;
-      } else {
-        const { data: lastCompleted } = await supabase
-          .from('unified_queue')
-          .select('display_number')
-          .eq('clinic_id', clinicId)
-          .eq('queue_date', today)
-          .eq('status', 'completed')
-          .order('completed_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (lastCompleted) {
-          currentNumber = lastCompleted.display_number;
-        }
-      }
-
-      const { count, error: countError } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting')
-        .lt('entered_at', patientEntry.entered_at);
-
-      if (countError) throw countError;
-
-      return {
-        success: true,
-        display_number: patientEntry.display_number,
-        current_number: currentNumber,
-        ahead: count || 0,
-        status: patientEntry.status,
-      };
-    } catch (error) {
-      console.error('Get Position Error:', error);
-      return { success: false, error: error.message };
-    }
+    const raw = await get(`${API_VERSION}/queue/position?clinic=${encodeURIComponent(clinicId)}&user=${encodeURIComponent(patientId)}`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async queueDone(clinicId, patientId) {
-    try {
-      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update({ status: 'done', completed_at: now, exam_end_time: now })
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Queue Done Error:', error);
-      return { success: false, error: error.message };
-    }
+    const raw = await post(`${API_VERSION}/queue/done`, { clinicId, patientId });
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // --- Settings ---
   async getSettings() {
-    try {
-      const { data, error } = await supabase.from('system_settings').select('*');
-      if (error) throw error;
-      const settings = {};
-      data.forEach(s => {
-        try {
-          settings[s.id] = JSON.parse(s.value);
-        } catch {
-          settings[s.id] = s.value;
-        }
-      });
-      return { success: true, settings };
-    } catch (error) {
-      console.error('Get Settings Error:', error);
-      return { success: false, error: error.message };
-    }
+    const raw = await get(`${API_VERSION}/settings`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // --- Stats ---
   async getQueueCount(clinicId) {
-    try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('unified_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .eq('status', 'waiting');
-      if (error) throw error;
-      return count || 0;
-    } catch (error) {
-      console.error('Get Queue Count Error:', error);
-      return 0;
-    }
+    const status = await this.getQueueStatus(clinicId);
+    if (status?.success === false) return 0;
+    const data = status.data || status;
+    if (typeof data?.waitingCount === 'number') return data.waitingCount;
+    if (Array.isArray(data?.queue)) return data.queue.filter((q) => String(q.status).toLowerCase() === 'waiting').length;
+    return 0;
   },
 
   async getRoute(patientId) {
-    try {
-      const { data, error } = await supabase
-        .from('patient_routes')
-        .select('*')
-        .eq('patient_id', patientId)
-        .single();
-      if (error) throw error;
-      return { success: true, route: data };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    const raw = await get(`${API_VERSION}/route/get?patientId=${encodeURIComponent(patientId)}`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async createRoute(patientId, examType, gender, stations) {
-    try {
-      // تحويل المحطات إلى الشكل الصحيح
-      const stationsData = stations.map((s, index) => ({
-        id: s.id,
-        name: s.name || s.nameAr,
-        nameAr: s.nameAr || s.name,
-        floor: s.floor,
-        floorCode: s.floorCode,
-        order: index + 1,
-      }));
-
-      // استخدام upsert مع onConflict للpatient_id
-      const { data, error } = await supabase
-        .from('patient_routes')
-        .upsert({
-          patient_id: patientId,
-          exam_type: examType,
-          gender: gender,
-          stations: stationsData,
-          updated_at: new Date(Date.now() + 3*60*60*1000).toISOString()
-        }, {
-          onConflict: 'patient_id'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Create Route Error:', error);
-      return { success: false, error: error.message };
-    }
+    const raw = await post(`${API_VERSION}/route/create`, { patientId, examType, gender, stations });
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // --- Clinics ---
   async getClinics() {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('id, name, name_ar, name_en, floor, is_active, exam_duration, category, gender_constraint')
-        .eq('is_active', true)
-        .order('name_ar', { ascending: true });
-
-      if (error) throw error;
-      return { success: true, clinics: data || [] };
-    } catch (error) {
-      console.error('Get Clinics Error:', error);
-      return { success: false, error: error.message, clinics: [] };
-    }
+    const raw = await get(`${API_VERSION}/clinics`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // verifyPin — PIN system removed (no pin column in clinics table)
-  // Returns clinic info for session creation without PIN check
-  async verifyPin(clinicId, _pin) {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('id, name, name_ar, name_en')
-        .eq('id', clinicId)
-        .single();
+  async verifyPin(clinicId) {
+    const result = await this.getClinics();
+    if (result?.success === false) return result;
+    const list = result.data || result.clinics || [];
+    const clinic = Array.isArray(list) ? list.find((item) => String(item.id) === String(clinicId)) : null;
+    if (!clinic) return failure('Clinic not found');
 
-      if (error || !data) {
-        return { success: false, isValid: false, error: 'Clinic not found' };
-      }
-
-      // PIN system removed — any clinic ID is valid
-      return {
-        success: true,
-        isValid: true,
-        session: {
-          clinicId: data.id,
-          clinicName: data.name_ar || data.name_en || data.name || clinicId,
-        }
-      };
-    } catch (error) {
-      console.error('Verify Clinic Error:', error);
-      return { success: false, isValid: false, error: error.message };
-    }
+    return {
+      success: true,
+      isValid: true,
+      session: {
+        clinicId: clinic.id,
+        clinicName: clinic.name_ar || clinic.name_en || clinic.name || clinicId,
+      },
+    };
   },
 
-  // --- Queue Status ---
   async getQueueStatus(clinicId) {
-    try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date')
-        .eq('clinic_id', clinicId)
-        .eq('queue_date', today)
-        .order('display_number', { ascending: true });
-
-      if (error) throw error;
-      return { success: true, queue: data || [] };
-    } catch (error) {
-      console.error('Get Queue Status Error:', error);
-      return { success: false, error: error.message, queue: [] };
-    }
+    const raw = await get(`${API_VERSION}/queue/status?clinicId=${encodeURIComponent(clinicId)}`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // callNextPatient — uses call_next_patient RPC (no PIN required)
-  async callNextPatient(clinicId) {
-    try {
-      const { data: rpcResult, error } = await supabase.rpc('call_next_patient', {
-        p_clinic_id: clinicId,
-        p_mark_current_done: false,
-      });
+  async callNextPatient(clinicId, doctorId = null) {
+    const raw = await post(`${API_VERSION}/queue/call`, { clinicId, clinic_id: clinicId, doctorId });
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
 
-      if (error) throw error;
+  async startExamination(queueId, doctorId = null) {
+    const raw = await post(`${API_VERSION}/queue/start`, { queueId, doctorId });
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
 
-      const num = rpcResult?.data?.display_number;
-      if (num) {
-        return { success: true, data: rpcResult.data, ticket: rpcResult.data };
-      }
-      return { success: false, error: 'No patients waiting' };
-    } catch (error) {
-      console.error('Call Next Patient Error:', error);
-      return { success: false, error: error.message };
+  async advancePatient(queueId, doctorClinicId = null, version = null) {
+    const raw = await post(`${API_VERSION}/queue/advance`, { queueId, doctorClinicId, version });
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
+
+  async createQueue(firstArg, examType = null, gender = null, idempotencyKey = null) {
+    if (isObject(firstArg)) {
+      const raw = await post(`${API_VERSION}/queue/create`, firstArg);
+      return raw?.success === false ? raw : normalizeQueueData(raw);
     }
+
+    const sessionId = String(firstArg || '').trim();
+    if (!sessionId) return failure('sessionId is required');
+
+    const raw = await post(`${API_VERSION}/queue/create`, {
+      sessionId,
+      patientId: sessionId,
+      examType,
+      gender: gender || 'male',
+      idempotencyKey,
+    });
+
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
+
+  async advanceQueue(payload) {
+    const body = isObject(payload) ? payload : { queueId: payload };
+    const raw = await post(`${API_VERSION}/queue/advance`, body);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
   async updateQueueStatus(clinicId, patientId, status) {
-    try {
-      const now = new Date(Date.now() + 3*60*60*1000).toISOString();
-      const updateData = { status };
-      if (status === 'completed' || status === 'done') {
-        updateData.completed_at = now;
-        updateData.exam_end_time = now;
-      } else if (status === 'called') {
-        updateData.called_at = now;
-      } else if (status === 'serving' || status === 'in_progress') {
-        updateData.exam_start_time = now;
-        updateData.entered_clinic_at = now;
-      } else if (status === 'no_show' || status === 'absent') {
-        updateData.marked_absent_at = now;
-      }
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .update(updateData)
-        .eq('clinic_id', clinicId)
-        .eq('patient_id', patientId)
-        .select();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Update Queue Status Error:', error);
-      return { success: false, error: error.message };
+    if (String(status || '').toLowerCase() === 'completed') {
+      return this.queueDone(clinicId, patientId);
     }
+    return directQueueStatusUpdate(clinicId, patientId, status);
   },
 
-  // --- Create Queue (Fixed for App.jsx compatibility) ---
-  async createQueue(patientId, examType, gender, idempotencyKey) {
-    try {
-      const today = new Date(Date.now() + 3*60*60*1000).toISOString().split('T')[0];
-
-      // Check if already in queue today
-      const { data: existing } = await supabase
-        .from('unified_queue')
-        .select('*')
-        .eq('patient_id', patientId)
-        .eq('queue_date', today)
-        .in('status', ['waiting', 'called', 'serving', 'in_progress'])
-        .maybeSingle();
-
-      if (existing) {
-        return {
-          success: true,
-          data: {
-            queueId: existing.id,
-            number: existing.display_number,
-            clinicId: existing.clinic_id,
-            path: []
-          },
-          alreadyInQueue: true
-        };
-      }
-
-      // Get next display number
-      const { data: lastEntry } = await supabase
-        .from('unified_queue')
-        .select('display_number')
-        .eq('queue_date', today)
-        .order('display_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextNumber = (lastEntry?.display_number || 0) + 1;
-
-      // Get dynamic pathway for the patient
-      let pathway = [];
-      let firstClinicId = null;
-      try {
-        pathway = await getDynamicMedicalPathway(examType, gender);
-        if (pathway && pathway.length > 0) {
-          firstClinicId = pathway[0].id || null;
-        }
-      } catch (pathErr) {
-        console.warn('Dynamic pathway error, continuing without route:', pathErr);
-      }
-
-      // Insert into unified_queue with first clinic
-      const insertData = {
-        patient_id: patientId,
-        exam_type: examType,
-        gender: gender,
-        display_number: nextNumber,
-        status: 'waiting',
-        queue_date: today,
-        entered_at: new Date(Date.now() + 3*60*60*1000).toISOString()
-      };
-      if (firstClinicId) {
-        insertData.clinic_id = firstClinicId;
-      }
-
-      const { data, error } = await supabase
-        .from('unified_queue')
-        .insert([insertData])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return {
-        success: true,
-        data: {
-          queueId: data.id,
-          number: data.display_number,
-          clinicId: firstClinicId,
-          path: pathway
-        }
-      };
-    } catch (error) {
-      console.error('Create Queue Error:', error);
-      return { success: false, error: error.message };
-    }
+  async getQueues() {
+    const raw = await get(`${API_VERSION}/stats/queues`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // --- Doctor Login --- (يستخدم doctor_login RPC SECURITY DEFINER — حساسية حالة الأحرف مُعطَّلة)
-  async doctorLogin(username, password) {
-    try {
-      const { data: result, error } = await supabase.rpc('doctor_login', {
-        p_username: username,   // الـ RPC يطبق LOWER() تلقائياً في DB
-        p_password: password,
-      });
-      if (error) throw error;
-      if (result?.success && result?.data) {
-        return { success: true, role: result.data.role || 'DOCTOR', data: result.data };
-      }
-      return { success: false, message: result?.message || 'بيانات الدخول غير صحيحة' };
-    } catch (error) {
-      console.error('Doctor Login RPC Error:', error);
-      return { success: false, error: error.message };
-    }
+  async getQueueStats() {
+    const raw = await get(`${API_VERSION}/stats/dashboard`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
   },
 
-  // --- Admin Login (Fixed) ---
   async adminLogin(username, password) {
-    try {
-      // Super admin check
-      if (username === 'Bomussa' && password === '14490') {
-        return {
-          success: true,
-          role: 'SUPER_ADMIN',
-          data: { id: 'super_admin', username: 'Bomussa', role: 'SUPER_ADMIN' }
-        };
-      }
+    const raw = await post(`${API_VERSION}/admin/login`, { username, password });
+    if (raw?.success === false) return raw;
+    const data = normalizeLoginData(raw, username, 'ADMIN');
+    return normalizeApiResponse({ ...raw, data, user: data.user, token: data.token }, data);
+  },
 
-      // Try doctors table
-      const { data: doctor, error: docError } = await supabase
-        .from('doctors')
-        .select('*')
-        .eq('username', username.toLowerCase())
-        .eq('is_active', true)
-        .maybeSingle();
+  async doctorLogin(username, password) {
+    const admin = await this.adminLogin(username, password);
+    if (admin?.success === false) return admin;
 
-      if (doctor) {
-        // Check password_hash if available, fallback to plain password
-        const passwordMatch = doctor.password_hash 
-          ? doctor.password_hash === password || doctor.password_hash === await (async () => {
-              const encoder = new TextEncoder();
-              const data = encoder.encode(password);
-              const hash = await crypto.subtle.digest('SHA-256', data);
-              return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-            })()
-          : doctor.password === password;
-        
-        if (passwordMatch) {
-          return { success: true, role: doctor.role || 'DOCTOR', data: doctor };
-        }
-      }
+    const data = {
+      ...(admin.data || {}),
+      id: admin.data?.id || admin.data?.username || username,
+      username: admin.data?.username || username,
+      name: admin.data?.name || admin.data?.username || username,
+      clinic_id: admin.data?.clinic_id || null,
+      clinic_name: admin.data?.clinic_name || null,
+      role: 'DOCTOR',
+    };
 
-      return { success: false, message: 'Invalid credentials' };
-    } catch (error) {
-      console.error('Admin Login Error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+    return normalizeApiResponse({ ...admin, data, user: data, role: 'DOCTOR' }, data);
+  },
+
+  async recoverQueues() {
+    const raw = await post(`${API_VERSION}/admin/queue/recover`, {});
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
+
+  async getHealthStatus() {
+    const raw = await get(`${API_VERSION}/health`);
+    return raw?.success === false ? raw : normalizeQueueData(raw);
+  },
+
+  async enterQueueLegacy(clinicId, userId, isAutoEntry = false, name = null, queueType = null) {
+    return this.enterQueue(clinicId, userId, isAutoEntry, name, queueType);
+  },
+
+  async queueDoneLegacy(clinicId, userId) {
+    return this.queueDone(clinicId, userId);
+  },
+
+  connectSSE() {
+    return { close: () => {} };
+  },
 };
 
 export default api;
+export { api };

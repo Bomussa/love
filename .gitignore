@@ -129,3 +129,10 @@ logs/screenshots/*
 # Build artifacts
 dist_server/
 .lock
+
+# Frontend generated bundles accidentally written into src/
+frontend/src/assets/index-*.js
+frontend/src/assets/index-*.css
+
+# Merge conflict backup artifacts
+*.conflict_backup

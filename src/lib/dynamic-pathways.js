@@ -1,128 +1,141 @@
-// المسارات الديناميكية - تعمل sync ثم تعيد الترتيب في الخلفية
-import routeMap from '../../config/routeMap.json'
-import clinicsData from '../../config/clinics.json'
+import { supabase } from './supabase-client'
 
-// تحويل رموز العيادات إلى كائنات كاملة
-function mapClinicCodes(codes) {
-  return codes.map(code => {
-    const clinic = clinicsData[code]
-    if (!clinic) {
-
-      return null
-    }
-    
-    return {
-      id: clinic.id.toLowerCase(),
-      name: clinic.name,
-      nameAr: clinic.name,
-      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
-      floorCode: clinic.floor,
-      code: code
-    }
-  }).filter(Boolean)
+const examTypeMap = {
+  recruitment: 'تجنيد',
+  promotion: 'ترفيع',
+  transfer: 'نقل',
+  referral: 'تحويل',
+  contract: 'تجديد التعاقد',
+  aviation: 'طيران سنوي',
+  cooks: 'طباخين',
+  courses: 'دورات',
+  general: 'ترفيع',
 }
 
-// جلب أوزان العيادات (عدد المنتظرين) من API
-async function fetchClinicWeights(clinicIds) {
-  const weights = {}
-  
-  try {
-    const promises = clinicIds.map(async (clinicId) => {
-      try {
-        const response = await fetch(`/api/v1/queue/status?clinic=${clinicId}`)
-        const data = await response.json()
-        
-        if (data.success) {
-          weights[clinicId] = data.total_waiting || data.waiting || 0
-        } else {
-          weights[clinicId] = 0
-        }
-      } catch (err) {
-        weights[clinicId] = 0
-      }
-    })
-    
-    await Promise.all(promises)
-  } catch (err) {
-    // console.error('Failed to fetch clinic weights:', err)
+async function fetchRouteFromDatabase(examType) {
+  if (!supabase) return null
+  const queryTypes = [examType, examTypeMap[examType]].filter(Boolean)
+  for (const queryType of queryTypes) {
+    const { data, error } = await supabase
+      .from('routes')
+      .select('clinics, route_name, exam_type, is_active')
+      .eq('exam_type', queryType)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!error && data?.clinics && Array.isArray(data.clinics) && data.clinics.length > 0) return data
   }
-  
+  return null
+}
+
+async function fetchClinicByCode(code) {
+  if (!supabase) return null
+  const cleaned = String(code || '').trim()
+  if (!cleaned) return null
+
+  const byId = await supabase
+    .from('clinics')
+    .select('id, name, name_ar, name_en, floor, code, is_active')
+    .eq('id', cleaned)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (byId.data) return byId.data
+
+  const byCode = await supabase
+    .from('clinics')
+    .select('id, name, name_ar, name_en, floor, code, is_active')
+    .eq('code', cleaned)
+    .eq('is_active', true)
+    .maybeSingle()
+  return byCode.data || null
+}
+
+async function mapClinicCodes(codes) {
+  if (!Array.isArray(codes) || codes.length === 0) return []
+  const clinics = []
+  for (const code of codes) {
+    const clinic = await fetchClinicByCode(code)
+    if (!clinic) continue
+    clinics.push({
+      id: clinic.id,
+      name: clinic.name_en || clinic.name,
+      nameAr: clinic.name_ar || clinic.name,
+      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
+      floorCode: clinic.floor,
+      code: clinic.code || code,
+    })
+  }
+  return clinics
+}
+
+async function fetchClinicWeights(clinicIds) {
+  const weights = Object.fromEntries((clinicIds || []).map((id) => [id, 0]))
+  if (!supabase || !clinicIds?.length) return weights
+  const today = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().split('T')[0]
+  await Promise.all(clinicIds.map(async (clinicId) => {
+    const { count, error } = await supabase
+      .from('unified_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('clinic_id', clinicId)
+      .eq('queue_date', today)
+      .eq('status', 'waiting')
+    if (!error && typeof count === 'number') weights[clinicId] = count
+  }))
   return weights
 }
 
-// ترتيب العيادات حسب الأوزان مع احترام قيود الطوابق
 function sortClinicsByWeight(clinics, weights) {
-  // إضافة الوزن لكل عيادة
-  const clinicsWithWeights = clinics.map(clinic => ({
-    ...clinic,
-    weight: weights[clinic.id] || 0
-  }))
-  
-  // ترتيب حسب الوزن أولاً (الفارغة أولاً)
-  clinicsWithWeights.sort((a, b) => {
-    // الترتيب الأساسي: حسب الوزن
-    if (a.weight !== b.weight) {
-      return a.weight - b.weight
-    }
-    
-    // إذا كان الوزن متساوي، نرتب حسب الطابق
-    const floorOrder = { 'M': 1, 'G': 2, '2': 3, '3': 4 }
-    const floorA = floorOrder[a.floorCode] || 3
-    const floorB = floorOrder[b.floorCode] || 3
-    return floorA - floorB
-  })
-  
-  return clinicsWithWeights
+  return [...clinics]
+    .map((clinic) => ({ ...clinic, weight: weights[clinic.id] || 0 }))
+    .sort((a, b) => {
+      if (a.weight !== b.weight) return a.weight - b.weight
+      const order = { M: 1, G: 2, 1: 3, 2: 4, 3: 5 }
+      return (order[a.floorCode] || 3) - (order[b.floorCode] || 3)
+    })
+    .map((clinic, index) => ({
+      ...clinic,
+      order: index + 1,
+      status: index === 0 ? 'ready' : 'locked',
+    }))
 }
 
-// الحصول على المسار الطبي حسب نوع الفحص والجنس
-export async function getDynamicMedicalPathway(examType, gender) {
-  // تحويل examType من الإنجليزية إلى العربية
-  const examTypeMap = {
-    'recruitment': 'تجنيد',
-    'promotion': 'ترفيع',
-    'transfer': 'نقل',
-    'referral': 'تحويل',
-    'contract': 'تجديد التعاقد',
-    'aviation': 'طيران سنوي',
-    'cooks': 'طباخين',
-    'courses': 'دورات'
+export async function getDynamicMedicalPathway(examType) {
+  const dbRoute = await fetchRouteFromDatabase(examType)
+  if (!dbRoute) return []
+  const clinics = await mapClinicCodes(dbRoute.clinics || [])
+  if (!clinics.length) return []
+  const weights = await fetchClinicWeights(clinics.map((clinic) => clinic.id))
+  return sortClinicsByWeight(clinics, weights)
+}
+
+export async function enrichStationsWithClinicData(stations) {
+  if (!Array.isArray(stations) || !supabase) return stations
+  const enriched = []
+  for (const station of stations) {
+    const code = station.code || station.id
+    const byId = await supabase
+      .from('clinics')
+      .select('id, name, name_ar, name_en, floor, code, is_active')
+      .eq('id', code)
+      .eq('is_active', true)
+      .maybeSingle()
+    const byCode = byId.data ? null : await supabase
+      .from('clinics')
+      .select('id, name, name_ar, name_en, floor, code, is_active')
+      .eq('code', code)
+      .eq('is_active', true)
+      .maybeSingle()
+    const clinic = byId.data || byCode?.data || null
+    enriched.push(clinic ? {
+      ...station,
+      id: clinic.id,
+      name: clinic.name_en || clinic.name,
+      nameAr: clinic.name_ar || clinic.name,
+      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
+      floorCode: clinic.floor,
+      code: clinic.code || code,
+    } : station)
   }
-  
-  const arabicExamType = examTypeMap[examType] || examType
-  const route = routeMap[arabicExamType]
-  
-  if (!route) {
-    return []
-  }
-  
-  // الحصول على رموز العيادات
-  let codes = []
-  if (typeof route === 'object' && !Array.isArray(route)) {
-    const genderKey = gender === 'female' ? 'F' : 'M'
-    codes = route[genderKey] || route.M || []
-  } else if (Array.isArray(route)) {
-    codes = route
-  }
-  
-  if (codes.length === 0) {
-    return []
-  }
-  
-  // تحويل الرموز إلى كائنات عيادات
-  const clinics = mapClinicCodes(codes)
-  
-  if (clinics.length === 0) {
-    return []
-  }
-  
-  // جلب أوزان العيادات وترتيبها
-  const clinicIds = clinics.map(c => c.id)
-  const weights = await fetchClinicWeights(clinicIds)
-  const sortedClinics = sortClinicsByWeight(clinics, weights)
-  
-  return sortedClinics
+  return enriched
 }
 
 export default getDynamicMedicalPathway
-

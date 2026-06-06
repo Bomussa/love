@@ -154,6 +154,34 @@ export const ToastProvider = ({ children }) => {
     }
   }, [addToast]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    window.__mmcToast = toast;
+
+    const handleToastEvent = (event) => {
+      const detail = event?.detail || {};
+      const type = detail.type || 'info';
+      const message = detail.message || detail.text || '';
+      if (!message) return;
+      addToast({
+        type,
+        title: detail.title,
+        message,
+        duration: detail.duration,
+        actions: detail.actions,
+      });
+    };
+
+    window.addEventListener('mmc:toast', handleToastEvent);
+    return () => {
+      window.removeEventListener('mmc:toast', handleToastEvent);
+      if (window.__mmcToast === toast) {
+        delete window.__mmcToast;
+      }
+    };
+  }, [addToast, toast]);
+
   return (
     <ToastContext.Provider value={toast}>
       {children}

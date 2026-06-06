@@ -5,15 +5,31 @@
 import eventBus from './event-bus.js';
 
 export const NOTIFICATION_TYPES = {
-  START_HINT:   'START_HINT',
-  NEAR_TURN:    'NEAR_TURN',
-  YOUR_TURN:    'YOUR_TURN',
+  START_HINT: 'START_HINT',
+  NEAR_TURN: 'NEAR_TURN',
+  YOUR_TURN: 'YOUR_TURN',
   STEP_DONE_NEXT: 'STEP_DONE_NEXT',
-  RESET_DONE:   'RESET_DONE',
+  RESET_DONE: 'RESET_DONE',
   CLINIC_OPENED: 'CLINIC_OPENED',
   CLINIC_CLOSED: 'CLINIC_CLOSED',
   QUEUE_UPDATE: 'QUEUE_UPDATE',
 };
+
+const UI_TYPE_ALIASES = {
+  START_HINT: 'info',
+  RESET_DONE: 'success',
+  CLINIC_OPENED: 'success',
+  CLINIC_CLOSED: 'warning',
+  QUEUE_UPDATE: 'queue_update',
+  NEAR_TURN: 'near_turn',
+  YOUR_TURN: 'your_turn',
+  STEP_DONE_NEXT: 'next_clinic',
+};
+
+function normalizeUiType(type) {
+  const key = String(type || 'info').trim();
+  return UI_TYPE_ALIASES[key] || UI_TYPE_ALIASES[key.toUpperCase()] || key.toLowerCase();
+}
 
 let _tplCache = null, _tplTime = 0;
 const TPL_TTL = 5 * 60 * 1000;
@@ -88,11 +104,14 @@ export class NotificationEngine {
   }
 
   notifyPatient(patientId, notif) {
+    const normalizedType = normalizeUiType(notif.type);
     const item = {
       id: Date.now()+'_'+Math.random().toString(36).substr(2,9),
       timestamp: new Date().toISOString(),
       read: false,
-      ...notif
+      type: normalizedType,
+      ...notif,
+      type: normalizedType,
     };
     if (!this.notifications.has(patientId)) this.notifications.set(patientId, []);
     const list = this.notifications.get(patientId);
@@ -152,7 +171,7 @@ export class NotificationEngine {
   }
 
   _triggerAlerts(notif) {
-    if (notif.sound) this._playSound(notif.priority);
+    if (notif.sound) this._playSound(notif.priority)
     if (notif.vibrate && 'vibrate' in navigator) {
       switch(notif.priority) {
         case 'urgent': navigator.vibrate([200,100,200,100,200]); break;
@@ -160,7 +179,7 @@ export class NotificationEngine {
         default:        navigator.vibrate(200);
       }
     }
-    if (notif.priority==='urgent'||notif.priority==='high') this._showBrowserNotif(notif);
+    if (notif.priority==='urgent'||notif.priority==='high') this._showBrowserNotif(notif)
   }
 
   _playSound(priority='normal') {

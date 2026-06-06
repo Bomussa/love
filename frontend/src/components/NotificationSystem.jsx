@@ -8,7 +8,7 @@ import { MapPin, Bell, CheckCircle, AlertTriangle, ArrowRight, Navigation, Clock
  * 2. الإشعارات ذات الأولوية الأعلى تظهر أولاً
  * 3. كل إشعار له مدة محددة ثم يختفي تلقائياً
  * 4. يمكن إغلاقه يدوياً
- * 5. لا يُعاد عرض نفس الإشعار مرتين
+ * 5. لا يُعاد عرض نفس الإشعار مرتين إلا إذا كان خطأ/تحذيراً جديداً
  */
 
 const PRIORITY = {
@@ -76,9 +76,9 @@ function NotificationCard({ notification, onDismiss }) {
           </div>
           <div className="flex-1 min-w-0">
             {notification.title && (
-              <p className={`font-bold text-base leading-tight mb-1 ${style.titleColor}`}>{notification.title}</p>
+              <p className={`font-bold text-base leading-snug mb-1 ${style.titleColor}`}>{notification.title}</p>
             )}
-            <p className={`text-sm leading-relaxed ${style.msgColor}`}>{notification.message}</p>
+            <p className={`text-[15px] leading-6 ${style.msgColor}`}>{notification.message}</p>
             {notification.clinic && (
               <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium ${style.iconColor}`}>
                 <MapPin size={13} />
@@ -114,38 +114,69 @@ export default function NotificationSystem({ notifications = [], onDismiss }) {
   )
 }
 
+function getDedupKey(notif) {
+  return notif.dedupeKey || `${notif.type}:${notif.message}`
+}
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState([])
-  const shownRef = useRef(new Set())
+  const seenRef = useRef(new Set())
   const counterRef = useRef(0)
 
   const push = useCallback((notif) => {
-    const dedupeKey = `${notif.type}:${notif.message}`
-    if (shownRef.current.has(dedupeKey)) return
+    const dedupeKey = getDedupKey(notif)
+    if (seenRef.current.has(dedupeKey)) return
+
     const id = ++counterRef.current
-    const newNotif = { ...notif, id }
-    shownRef.current.add(dedupeKey)
+    const newNotif = { ...notif, id, dedupeKey }
+
+    seenRef.current.add(dedupeKey)
+
     setNotifications(prev => {
-      const filtered = prev.filter(n => n.type !== notif.type)
-      const updated = [...filtered, newNotif]
-      updated.sort((a, b) => (PRIORITY[b.type] || 1) - (PRIORITY[a.type] || 1))
-      return updated
+      const updated = prev.filter(n => getDedupKey(n) !== dedupeKey)
+      const next = [...updated, newNotif]
+      next.sort((a, b) => (PRIORITY[b.type] || 1) - (PRIORITY[a.type] || 1))
+      return next.slice(-4)
     })
+
     const duration = DURATION[notif.type] || 6000
-    setTimeout(() => { shownRef.current.delete(dedupeKey) }, duration + 500)
+    setTimeout(() => {
+      seenRef.current.delete(dedupeKey)
+    }, duration + 500)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    window.__mmcPatientNotify = (notif) => {
+      if (!notif) return
+      push({
+        type: notif.type || 'info',
+        title: notif.title || null,
+        message: notif.message || '',
+        clinic: notif.clinic || null,
+        floor: notif.floor || null,
+        dedupeKey: notif.dedupeKey || notif.message || notif.title || undefined,
+      })
+    }
+
+    return () => {
+      if (window.__mmcPatientNotify) {
+        delete window.__mmcPatientNotify
+      }
+    }
+  }, [push])
 
   const dismiss = useCallback((id) => {
     setNotifications(prev => {
       const notif = prev.find(n => n.id === id)
-      if (notif) shownRef.current.delete(`${notif.type}:${notif.message}`)
+      if (notif) seenRef.current.delete(getDedupKey(notif))
       return prev.filter(n => n.id !== id)
     })
   }, [])
 
   const clear = useCallback(() => {
     setNotifications([])
-    shownRef.current.clear()
+    seenRef.current.clear()
   }, [])
 
   return { notifications, push, dismiss, clear }

@@ -1,9 +1,6 @@
 #!/bin/bash
 
-# ============================================
-# Supabase Database Setup Script
-# MMC-MMS Medical Queue Management System
-# ============================================
+set -euo pipefail
 
 echo "============================================"
 echo "  Supabase Database Setup"
@@ -11,17 +8,20 @@ echo "  MMC-MMS System"
 echo "============================================"
 echo ""
 
-# Supabase connection details
-SUPABASE_HOST="db.rujwuruuosffcxazymit.supabase.co"
-SUPABASE_DB="postgres"
-SUPABASE_USER="postgres"
-SUPABASE_PASSWORD="fa7af059cd2c8504e8a247e23b6e0378476bf5d5d7da75c37e3a1227b1f12063"
-SUPABASE_PORT="5432"
+if [ -z "${SUPABASE_HOST:-}" ] || [ -z "${SUPABASE_DB:-}" ] || [ -z "${SUPABASE_USER:-}" ] || [ -z "${SUPABASE_PASSWORD:-}" ] || [ -z "${SUPABASE_PORT:-}" ]; then
+  echo "❌ Missing Supabase environment variables"
+  echo "   Required: SUPABASE_HOST, SUPABASE_DB, SUPABASE_USER, SUPABASE_PASSWORD, SUPABASE_PORT"
+  exit 1
+fi
 
-# Schema file
-SCHEMA_FILE="/home/ubuntu/love/supabase/migrations/20251105_initial_schema.sql"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCHEMA_FILE="${SCHEMA_FILE:-${SCRIPT_DIR}/../diagnostics/schema-plan.sql}"
 
-# Check if psql is installed
+if [ ! -f "$SCHEMA_FILE" ]; then
+  echo "❌ Schema file not found: $SCHEMA_FILE"
+  exit 1
+fi
+
 if ! command -v psql &> /dev/null; then
     echo "📦 Installing PostgreSQL client..."
     sudo apt-get update -qq
@@ -30,7 +30,6 @@ fi
 
 echo "🔍 Testing connection to Supabase..."
 
-# Test connection
 PGPASSWORD="$SUPABASE_PASSWORD" psql \
     -h "$SUPABASE_HOST" \
     -U "$SUPABASE_USER" \
@@ -50,7 +49,6 @@ echo ""
 echo "🚀 Applying database schema..."
 echo ""
 
-# Apply schema
 PGPASSWORD="$SUPABASE_PASSWORD" psql \
     -h "$SUPABASE_HOST" \
     -U "$SUPABASE_USER" \
@@ -71,13 +69,12 @@ fi
 echo ""
 echo "🔍 Verifying tables..."
 
-# Verify tables
 PGPASSWORD="$SUPABASE_PASSWORD" psql \
     -h "$SUPABASE_HOST" \
     -U "$SUPABASE_USER" \
     -d "$SUPABASE_DB" \
     -p "$SUPABASE_PORT" \
-    -c "\dt" 2>&1 | grep -E "patients|clinics|queues|pathways|notifications"
+    -c "\dt" 2>&1 | grep -E "patients|clinics|queues|pathways|notifications|unified_queue|direct_alerts|routes"
 
 echo ""
 echo "============================================"

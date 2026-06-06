@@ -292,6 +292,10 @@
 #### POST /api/v1/admin/report/export
 **Description:** Export report to R2 (when enabled)
 
+
+> **Security Notice:** `/api/v1/admin/export-secrets` is an internal development-only diagnostic route and is **not available** for client integrations in production or preview environments.
+
+
 ---
 
 ## Features

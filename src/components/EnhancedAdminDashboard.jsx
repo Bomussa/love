@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react'
   } from 'lucide-react'
   import { supabase } from '../lib/supabase-client'
   import AdminQueueMonitor from './AdminQueueMonitor'
-  import AdminPINMonitor from './AdminPINMonitor'
+
   import { AdminQrManager } from './AdminQrManager'
 
   /**

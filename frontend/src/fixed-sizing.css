@@ -1,174 +1,163 @@
 /* ======================================
-   تثبيت المقاسات لجميع الأجهزة
-   Fixed Sizing for All Devices
+   تثبيت المقاسات وتوحيد النصوص
+   Fixed Sizing & Typography Normalization
    ====================================== */
 
-/* إعداد الجذر للتحكم في المقاسات */
 :root {
-  /* مقاسات الخطوط الثابتة */
-  --font-xs: 10px;
-  --font-sm: 12px;
-  --font-base: 14px;
-  --font-lg: 16px;
-  --font-xl: 18px;
-  --font-2xl: 20px;
-  --font-3xl: 24px;
-  --font-4xl: 28px;
-  
-  /* التباعد الثابت */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
-  --spacing-2xl: 24px;
-  
-  /* أحجام البطاقات */
-  --card-padding: 16px;
-  --card-radius: 12px;
-  --card-gap: 12px;
+  --font-xs: 0.875rem;
+  --font-sm: 0.95rem;
+  --font-base: 1rem;
+  --font-lg: 1.125rem;
+  --font-xl: 1.25rem;
+  --font-2xl: 1.5rem;
+  --font-3xl: 1.875rem;
+  --font-4xl: 2.25rem;
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.25rem;
+  --spacing-2xl: 1.5rem;
+
+  --card-padding: 1rem;
+  --card-radius: 1rem;
+  --card-gap: 0.875rem;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+button,
+input,
+select,
+textarea {
+  font-size: inherit;
+  line-height: inherit;
 }
 
 /* ======================================
-   شاشة المراجع (PatientPage)
+   شاشة المراجع
    ====================================== */
 
-/* بطاقات العيادات */
-[data-test="patient-page"] .bg-gray-900\/60,
-[data-test="patient-page"] .bg-gray-800\/50 {
-  padding: var(--card-padding) !important;
-  border-radius: var(--card-radius) !important;
-  margin-bottom: var(--card-gap) !important;
+[data-test="patient-page"] {
+  font-size: 1rem;
 }
 
-/* عنوان العيادة */
-[data-test="patient-page"] h3.text-xl,
-[data-test="patient-page"] h3.text-2xl {
-  font-size: var(--font-lg) !important;
-  line-height: 1.3 !important;
-  margin-bottom: var(--spacing-xs) !important;
+/* إزالة الشريط/الخانة الإضافية في الوسط */
+[data-test="patient-page"] .bg-\[\#0f172a\]\/70.border.border-blue-500\/20.rounded-2xl.p-4.shadow-lg {
+  display: none !important;
 }
 
-/* اسم الطابق */
-[data-test="patient-page"] .text-base,
-[data-test="patient-page"] .text-lg {
-  font-size: var(--font-sm) !important;
-  line-height: 1.4 !important;
+/* عرض الصفحة ومساحتها */
+[data-test="patient-page"] .w-full.max-w-2xl.mx-auto.space-y-5 {
+  max-width: min(96vw, 72rem) !important;
+  gap: 1rem !important;
 }
 
-/* أرقام الدور الكبيرة */
-[data-test="patient-page"] .text-4xl,
-[data-test="patient-page"] .text-5xl,
-[data-test="patient-page"] .text-6xl {
-  font-size: var(--font-3xl) !important;
-  line-height: 1.2 !important;
+/* الهيدر */
+[data-test="patient-page"] .text-center.space-y-2.pt-4 h1 {
+  font-size: clamp(1.4rem, 2.3vw, 2rem) !important;
+  line-height: 1.25 !important;
 }
 
-/* التسميات الصغيرة (رقمك، أمامك) */
-[data-test="patient-page"] .text-xs,
-[data-test="patient-page"] .text-sm {
-  font-size: var(--font-xs) !important;
-  line-height: 1.4 !important;
+[data-test="patient-page"] .text-center.space-y-2.pt-4 p.text-sm {
+  font-size: 1rem !important;
+  line-height: 1.55 !important;
 }
-
-/* أيقونات القفل */
-[data-test="patient-page"] .w-8.h-8,
-[data-test="patient-page"] .w-6.h-6 {
-  width: 20px !important;
-  height: 20px !important;
-}
-
-/* شارة الحالة (جاهز/مقفل) */
-[data-test="patient-page"] .rounded-full {
-  font-size: var(--font-xs) !important;
-  padding: 4px 10px !important;
-}
-
-/* حقل إدخال PIN */
-[data-test="patient-page"] input[type="text"],
-[data-test="patient-page"] input[placeholder*="PIN"],
-[data-test="patient-page"] input[placeholder*="رقم"] {
-  font-size: var(--font-sm) !important;
-  padding: 10px 14px !important;
-  height: 40px !important;
-}
-
-/* الأزرار */
-[data-test="patient-page"] button {
-  font-size: var(--font-sm) !important;
-  padding: 10px 16px !important;
-  min-height: 40px !important;
-}
-
-/* زر الخروج من العيادة */
-[data-test="patient-page"] button[class*="red"],
-[data-test="patient-page"] button:has(.text-red) {
-  font-size: var(--font-sm) !important;
-}
-
-/* ======================================
-   الهيدر والشعار
-   ====================================== */
 
 [data-test="patient-page"] img[alt*="اللجنة"],
 [data-test="patient-page"] img[src*="logo"] {
-  width: 48px !important;
-  height: 48px !important;
+  width: 52px !important;
+  height: 52px !important;
 }
 
-[data-test="patient-page"] h1.text-base {
-  font-size: var(--font-base) !important;
+/* جدول/بطاقات العيادات */
+[data-test="patient-page"] .bg-gray-800\/50.border-gray-700.shadow-xl,
+[data-test="patient-page"] .bg-gray-700\/60.border-green-500\/30.shadow-md,
+[data-test="patient-page"] .bg-gray-700\/40.border-gray-600\/60,
+[data-test="patient-page"] .bg-gray-700\/30.border-gray-600\/50 {
+  border-radius: var(--card-radius) !important;
 }
 
-[data-test="patient-page"] .text-\[10px\] {
-  font-size: 9px !important;
+[data-test="patient-page"] .bg-gray-800\/50.border-gray-700.shadow-xl {
+  max-width: 100% !important;
 }
 
-/* ======================================
-   عنوان المسار الطبي
-   ====================================== */
-
-[data-test="patient-page"] .text-xl {
-  font-size: var(--font-lg) !important;
-}
-
-/* شريط التقدم */
-[data-test="patient-page"] .h-3 {
-  height: 8px !important;
-}
-
-[data-test="patient-page"] .rounded-full.h-3 {
-  height: 8px !important;
-}
-
-/* ======================================
-   إشعار اقترب دورك
-   ====================================== */
-
-[class*="notification"],
-[class*="banner"],
-.bg-yellow-500\/20,
-.bg-yellow-600 {
-  font-size: var(--font-sm) !important;
-  padding: 10px 14px !important;
-}
-
-/* ======================================
-   التباعد العام
-   ====================================== */
-
-[data-test="patient-page"] .space-y-4 > * + * {
-  margin-top: var(--card-gap) !important;
-}
-
-[data-test="patient-page"] .space-y-6 > * + * {
-  margin-top: var(--spacing-lg) !important;
-}
-
-[data-test="patient-page"] .gap-4 {
+[data-test="patient-page"] .bg-gray-800\/50.border-gray-700.shadow-xl .space-y-3,
+[data-test="patient-page"] .bg-gray-800\/50.border-gray-700.shadow-xl .space-y-4 {
   gap: var(--card-gap) !important;
 }
 
+[data-test="patient-page"] h3.text-white.text-base.font-bold.leading-tight,
+[data-test="patient-page"] h3.text-white.text-base.font-bold.leading-tight * {
+  font-size: 1.15rem !important;
+  line-height: 1.45 !important;
+}
+
+[data-test="patient-page"] .text-gray-400.text-sm.mt-0\.5,
+[data-test="patient-page"] .text-gray-400.text-xs,
+[data-test="patient-page"] .text-yellow-300\/80.text-sm.font-bold,
+[data-test="patient-page"] .text-gray-400.text-sm.font-bold {
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+[data-test="patient-page"] .text-4xl.font-black,
+[data-test="patient-page"] .text-5xl.font-black,
+[data-test="patient-page"] .text-6xl.font-black {
+  font-size: clamp(2rem, 6vw, 2.9rem) !important;
+  line-height: 1.05 !important;
+}
+
+[data-test="patient-page"] .grid.grid-cols-2 {
+  gap: 0.75rem !important;
+}
+
+[data-test="patient-page"] .grid.grid-cols-2 > div {
+  padding: 0.9rem !important;
+}
+
+[data-test="patient-page"] .rounded-full,
+[data-test="patient-page"] .inline-block.px-2\.5.py-1.rounded-full {
+  font-size: 0.8rem !important;
+  padding: 0.35rem 0.7rem !important;
+}
+
+/* الإشعارات */
+[data-test="patient-page"] .fixed.top-4.right-4.z-50.max-w-sm,
+[data-test="patient-page"] .fixed.top-4.left-4.z-50.space-y-2.max-w-sm,
+[data-test="patient-page"] .fixed.top-4.right-4.z-\[100\].flex.flex-col.gap-2 {
+  max-width: min(92vw, 36rem) !important;
+}
+
+[data-test="patient-page"] .fixed.top-4.right-4.z-50.max-w-sm,
+[data-test="patient-page"] .fixed.top-4.left-4.z-50.space-y-2.max-w-sm,
+[data-test="patient-page"] .fixed.top-4.right-4.z-\[100\].flex.flex-col.gap-2 > * {
+  font-size: 1rem !important;
+}
+
+[data-test="patient-page"] .fixed.top-4.right-4.z-50.max-w-sm .text-sm,
+[data-test="patient-page"] .fixed.top-4.left-4.z-50.space-y-2.max-w-sm p,
+[data-test="patient-page"] .fixed.top-4.right-4.z-\[100\] .text-base,
+[data-test="patient-page"] .fixed.top-4.right-4.z-\[100\] .text-[15px] {
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+}
+
+/* أزرار أعلى الصفحة */
+[data-test="patient-page"] .absolute.top-4 button {
+  font-size: 0.9rem !important;
+  padding: 0.4rem 0.7rem !important;
+}
+
+/* مساحة داخلية متوازنة */
 [data-test="patient-page"] .p-6,
 [data-test="patient-page"] .p-8 {
   padding: var(--card-padding) !important;
@@ -180,22 +169,29 @@
   padding-right: var(--card-padding) !important;
 }
 
-/* ======================================
-   منع التغيير حسب حجم الشاشة
-   ====================================== */
-
-/* إلغاء جميع media queries للحجم */
-@media screen {
-  [data-test="patient-page"] * {
-    /* تثبيت المقاسات */
-  }
+[data-test="patient-page"] .space-y-4 > * + * {
+  margin-top: var(--card-gap) !important;
 }
 
-/* تجاوز Tailwind responsive classes */
+[data-test="patient-page"] .space-y-6 > * + * {
+  margin-top: var(--spacing-lg) !important;
+}
+
+/* ======================================
+   عناوين وأحجام موحدة نسبياً عبر التطبيق
+   ====================================== */
+
+.heading-1 { font-size: 2rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+.heading-2 { font-size: 1.5rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+.heading-3 { font-size: 1.25rem; line-height: 1.3; font-weight: 600; }
+.body-text { font-size: 1rem; line-height: 1.65; }
+.small-text { font-size: 0.95rem; line-height: 1.5; }
+
+/* منع تقليص النصوص داخل قواعد Tailwind responsive */
 [data-test="patient-page"] .sm\:text-2xl,
 [data-test="patient-page"] .md\:text-2xl,
 [data-test="patient-page"] .lg\:text-2xl {
-  font-size: var(--font-lg) !important;
+  font-size: 1.25rem !important;
 }
 
 [data-test="patient-page"] .sm\:p-8,
@@ -204,35 +200,13 @@
   padding: var(--card-padding) !important;
 }
 
-/* ======================================
-   قسم الأرقام (رقمك / أمامك)
-   ====================================== */
-
-[data-test="patient-page"] .grid-cols-2 {
-  gap: var(--spacing-md) !important;
+[data-test="patient-page"] .h-3,
+[data-test="patient-page"] .rounded-full.h-3 {
+  height: 0.5rem !important;
 }
 
-[data-test="patient-page"] .grid-cols-2 > div {
-  padding: var(--spacing-md) !important;
-}
-
-/* الرقم الكبير */
 [data-test="patient-page"] .font-bold.text-yellow-400,
 [data-test="patient-page"] .font-bold.text-blue-400,
 [data-test="patient-page"] .font-bold.text-green-400 {
-  font-size: var(--font-2xl) !important;
-}
-
-/* ======================================
-   زر تبديل اللغة والإحصائيات
-   ====================================== */
-
-[data-test="patient-page"] .absolute.top-4 button {
-  font-size: var(--font-xs) !important;
-  padding: 6px 10px !important;
-}
-
-[data-test="patient-page"] .icon-md {
-  width: 16px !important;
-  height: 16px !important;
+  font-size: 1.5rem !important;
 }

@@ -1,197 +1,182 @@
-// lib/settings.js - خدمة إدارة إعدادات النظام
-import db from '../../../src/lib/supabase-db.js';
+// lib/settings.js - خدمة إدارة إعدادات النظام (Supabase-first)
+import { supabase } from './supabase-client';
 
-/**
- * جلب قيمة إعداد من قاعدة البيانات
- * @param {string} key - مفتاح الإعداد
- * @param {string} fallback - القيمة الافتراضية
- * @returns {Promise<string>} قيمة الإعداد
- */
+const DEFAULT_SETTINGS = {
+  grace_minutes: '5',
+  admission_cadence_minutes: '1',
+  max_capacity_per_clinic: '6',
+  enable_auto_routing: 'true',
+  enable_notifications: 'true',
+  working_hours_start: '07:00',
+  working_hours_end: '15:00',
+  emergency_pin: '999',
+  current_theme: 'medical-professional',
+  enable_theme_selector: 'true',
+  show_theme_preview: 'true',
+};
+
+function normalizeError(error, context = 'settings') {
+  if (!error) {
+    return {
+      code: 'UNKNOWN_ERROR',
+      message: `Unknown ${context} error`,
+      context,
+      originalError: null,
+    };
+  }
+
+  return {
+    code: error.code || error.status || 'SETTINGS_ERROR',
+    message: error.message || `Failed ${context} operation`,
+    details: error.details,
+    hint: error.hint,
+    context,
+    originalError: error,
+  };
+}
+
+function toNumber(value, fallback) {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function toBoolean(value, fallback) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+  }
+  return fallback;
+}
+
+function toStringValue(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+}
+
+async function upsertSetting(key, value) {
+  const payload = {
+    key,
+    value: String(value),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(payload, { onConflict: 'key' });
+
+  if (error) throw normalizeError(error, `upsert:${key}`);
+}
+
 export async function getSetting(key, fallback = '') {
   try {
-    const { rows } = await db.query(
-      'SELECT value FROM system_settings WHERE key = $1',
-      [key],
-    );
-    return rows[0]?.value ?? fallback;
-  } catch (error) {
-    // console.error(`Error getting setting ${key}:`, error);
-    return fallback;
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+
+    if (error) throw normalizeError(error, `get:${key}`);
+    return toStringValue(data?.value, fallback);
+  } catch {
+    return toStringValue(fallback, '');
   }
 }
 
-/**
- * تحديث قيمة إعداد في قاعدة البيانات
- * @param {string} key - مفتاح الإعداد
- * @param {string} value - القيمة الجديدة
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
 export async function setSetting(key, value) {
   try {
-    await db.query(`
-      INSERT INTO system_settings(key, value, updated_at) 
-      VALUES($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET 
-        value = EXCLUDED.value,
-        updated_at = NOW()
-    `, [key, value]);
+    await upsertSetting(key, value);
     return true;
-  } catch (error) {
-    // console.error(`Error setting ${key}:`, error);
+  } catch {
     return false;
   }
 }
 
-/**
- * جلب جميع الإعدادات
- * @returns {Promise<Object>} كائن يحتوي على جميع الإعدادات
- */
 export async function getAllSettings() {
   try {
-    const { rows } = await db.query(
-      'SELECT key, value, description FROM system_settings ORDER BY key',
-    );
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('key, value, description')
+      .order('key', { ascending: true });
+
+    if (error) throw normalizeError(error, 'list:all');
 
     const settings = {};
-    rows.forEach((row) => {
+    (data || []).forEach((row) => {
       settings[row.key] = {
-        value: row.value,
-        description: row.description,
+        value: toStringValue(row.value, ''),
+        description: row.description || '',
       };
     });
 
     return settings;
-  } catch (error) {
-    // console.error('Error getting all settings:', error);
+  } catch {
     return {};
   }
 }
 
-/**
- * جلب الإعدادات الأساسية للنظام
- * @returns {Promise<Object>} الإعدادات الأساسية
- */
 export async function getSystemConfig() {
-  try {
-    const graceMinutes = await getSetting('grace_minutes', '5');
-    const cadenceMinutes = await getSetting('admission_cadence_minutes', '1');
-    const maxCapacity = await getSetting('max_capacity_per_clinic', '6');
-    const autoRouting = await getSetting('enable_auto_routing', 'true');
-    const notifications = await getSetting('enable_notifications', 'true');
-    const workingHoursStart = await getSetting('working_hours_start', '07:00');
-    const workingHoursEnd = await getSetting('working_hours_end', '15:00');
-    const emergencyPin = await getSetting('emergency_pin', '999');
+  const graceMinutes = await getSetting('grace_minutes', DEFAULT_SETTINGS.grace_minutes);
+  const cadenceMinutes = await getSetting('admission_cadence_minutes', DEFAULT_SETTINGS.admission_cadence_minutes);
+  const maxCapacity = await getSetting('max_capacity_per_clinic', DEFAULT_SETTINGS.max_capacity_per_clinic);
+  const autoRouting = await getSetting('enable_auto_routing', DEFAULT_SETTINGS.enable_auto_routing);
+  const notifications = await getSetting('enable_notifications', DEFAULT_SETTINGS.enable_notifications);
+  const workingHoursStart = await getSetting('working_hours_start', DEFAULT_SETTINGS.working_hours_start);
+  const workingHoursEnd = await getSetting('working_hours_end', DEFAULT_SETTINGS.working_hours_end);
+  const emergencyPin = await getSetting('emergency_pin', DEFAULT_SETTINGS.emergency_pin);
 
-    return {
-      graceMinutes: parseInt(graceMinutes, 10),
-      cadenceMinutes: parseInt(cadenceMinutes, 10),
-      maxCapacity: parseInt(maxCapacity, 10),
-      autoRouting: autoRouting === 'true',
-      notifications: notifications === 'true',
-      workingHours: {
-        start: workingHoursStart,
-        end: workingHoursEnd,
-      },
-      emergencyPin,
-    };
-  } catch (error) {
-    // console.error('Error getting system config:', error);
-    return {
-      graceMinutes: 5,
-      cadenceMinutes: 1,
-      maxCapacity: 6,
-      autoRouting: true,
-      notifications: true,
-      workingHours: {
-        start: '07:00',
-        end: '15:00',
-      },
-      emergencyPin: '999',
-    };
-  }
+  return {
+    graceMinutes: toNumber(graceMinutes, 5),
+    cadenceMinutes: toNumber(cadenceMinutes, 1),
+    maxCapacity: toNumber(maxCapacity, 6),
+    autoRouting: toBoolean(autoRouting, true),
+    notifications: toBoolean(notifications, true),
+    workingHours: {
+      start: toStringValue(workingHoursStart, DEFAULT_SETTINGS.working_hours_start),
+      end: toStringValue(workingHoursEnd, DEFAULT_SETTINGS.working_hours_end),
+    },
+    emergencyPin: toStringValue(emergencyPin, DEFAULT_SETTINGS.emergency_pin),
+  };
 }
 
-/**
- * تحديث إعدادات متعددة دفعة واحدة
- * @param {Object} settings - كائن يحتوي على الإعدادات المراد تحديثها
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
 export async function updateSettings(settings) {
-  const client = await db.getClient();
-
   try {
-    await client.query('BEGIN');
-
-    for (const [key, value] of Object.entries(settings)) {
-      await client.query(`
-        INSERT INTO system_settings(key, value, updated_at) 
-        VALUES($1, $2, NOW())
-        ON CONFLICT (key) DO UPDATE SET 
-          value = EXCLUDED.value,
-          updated_at = NOW()
-      `, [key, String(value)]);
+    const entries = Object.entries(settings || {});
+    for (const [key, value] of entries) {
+      await upsertSetting(key, value);
     }
-
-    await client.query('COMMIT');
     return true;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    // console.error('Error updating settings:', error);
+  } catch {
     return false;
-  } finally {
-    client.release();
   }
 }
 
-/**
- * التحقق من أن النظام يعمل في ساعات العمل
- * @returns {Promise<boolean>} هل النظام يعمل الآن
- */
 export async function isWorkingHours() {
   try {
     const config = await getSystemConfig();
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+    const currentTime = now.toTimeString().slice(0, 5);
 
     return currentTime >= config.workingHours.start
            && currentTime <= config.workingHours.end;
-  } catch (error) {
-    // console.error('Error checking working hours:', error);
-    return true; // افتراضياً نعتبر أنه وقت عمل
+  } catch {
+    return true;
   }
 }
 
-/**
- * جلب إعدادات الثيمات
- * @returns {Promise<Object>} إعدادات الثيمات
- */
 export async function getThemeSettings() {
-  try {
-    const currentTheme = await getSetting('current_theme', 'medical-professional');
-    const enableThemeSelector = await getSetting('enable_theme_selector', 'true');
-    const showThemePreview = await getSetting('show_theme_preview', 'true');
+  const currentTheme = await getSetting('current_theme', DEFAULT_SETTINGS.current_theme);
+  const enableThemeSelector = await getSetting('enable_theme_selector', DEFAULT_SETTINGS.enable_theme_selector);
+  const showThemePreview = await getSetting('show_theme_preview', DEFAULT_SETTINGS.show_theme_preview);
 
-    return {
-      currentTheme,
-      enableThemeSelector: enableThemeSelector === 'true',
-      showThemePreview: showThemePreview === 'true',
-    };
-  } catch (error) {
-    // console.error('Error getting theme settings:', error);
-    return {
-      currentTheme: 'medical-professional',
-      enableThemeSelector: true,
-      showThemePreview: true,
-    };
-  }
+  return {
+    currentTheme: toStringValue(currentTheme, DEFAULT_SETTINGS.current_theme),
+    enableThemeSelector: toBoolean(enableThemeSelector, true),
+    showThemePreview: toBoolean(showThemePreview, true),
+  };
 }
 
-/**
- * تحديث إعدادات الثيمات
- * @param {Object} themeSettings - إعدادات الثيمات الجديدة
- * @returns {Promise<boolean>} نجح التحديث أم لا
- */
-export async function updateThemeSettings(themeSettings) {
+export async function updateThemeSettings(themeSettings = {}) {
   try {
     const updates = {};
 
@@ -208,8 +193,7 @@ export async function updateThemeSettings(themeSettings) {
     }
 
     return await updateSettings(updates);
-  } catch (error) {
-    // console.error('Error updating theme settings:', error);
+  } catch {
     return false;
   }
 }
