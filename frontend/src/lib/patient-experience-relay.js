@@ -61,34 +61,6 @@ function patchApiMethod(methodName, handler) {
   api[methodName] = patched
 }
 
-function installBridgeEvents() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return
-  if (window.__mmcPatientBridgeInstalled) return
-  window.__mmcPatientBridgeInstalled = true
-
-  document.addEventListener('click', (event) => {
-    if (!isPatientJourneyPath()) return
-    const target = event?.target
-    if (!target || typeof target.closest !== 'function') return
-    const button = target.closest('button')
-    if (!button) return
-    const label = String(button.textContent || button.innerText || '').trim().toLowerCase()
-    if (!label) return
-    if (label.includes('retry') || label.includes('إعادة المحاولة') || label.includes('إعادة المحاوله')) {
-      window.dispatchEvent(new CustomEvent('mmc:patient-retry-requested', { detail: { source: 'relay' } }))
-    }
-  }, true)
-
-  const foregroundResync = () => {
-    if (document.hidden) return
-    if (!isPatientJourneyPath()) return
-    window.dispatchEvent(new CustomEvent('mmc:patient-foreground-resync', { detail: { source: 'relay' } }))
-  }
-
-  document.addEventListener('visibilitychange', foregroundResync, false)
-  window.addEventListener('focus', foregroundResync, false)
-}
-
 patchApiMethod('enterQueue', async (original, ...args) => {
   const result = await original(...args)
   if (!result?.success) {
@@ -120,7 +92,5 @@ patchApiMethod('createRoute', async (original, ...args) => {
   }
   return result
 })
-
-installBridgeEvents()
 
 export default null
