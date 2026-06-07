@@ -164,6 +164,33 @@ function normalizeQueueData(raw) {
   return normalizeApiResponse(raw);
 }
 
+const normalizeRoutePayload = (raw) => {
+  const route = raw?.route ?? raw?.data?.route ?? raw?.data ?? raw;
+  const stations =
+    (Array.isArray(route) && route) ||
+    (Array.isArray(route?.stations) && route.stations) ||
+    (Array.isArray(route?.route) && route.route) ||
+    (Array.isArray(route?.pathway) && route.pathway) ||
+    [];
+
+  if (!stations.length) return raw;
+
+  return {
+    ...raw,
+    route: {
+      ...(raw?.route && typeof raw.route === 'object' ? raw.route : {}),
+      stations,
+    },
+    data: {
+      ...(raw?.data && typeof raw.data === 'object' ? raw.data : {}),
+      route: {
+        ...(raw?.data?.route && typeof raw.data.route === 'object' ? raw.data.route : {}),
+        stations,
+      },
+    },
+  };
+};
+
 async function directQueueStatusUpdate(clinicId, patientId, status) {
   const normalized = String(status || '').toLowerCase();
   const update = { status: normalized };
@@ -256,12 +283,12 @@ const api = {
 
   async getRoute(patientId) {
     const raw = await get(`${API_VERSION}/route/get?patientId=${encodeURIComponent(patientId)}`);
-    return raw?.success === false ? raw : normalizeQueueData(raw);
+    return raw?.success === false ? raw : normalizeRoutePayload(normalizeQueueData(raw));
   },
 
   async createRoute(patientId, examType, gender, stations) {
     const raw = await post(`${API_VERSION}/route/create`, { patientId, examType, gender, stations });
-    return raw?.success === false ? raw : normalizeQueueData(raw);
+    return raw?.success === false ? raw : normalizeRoutePayload(normalizeQueueData(raw));
   },
 
   async getClinics() {
