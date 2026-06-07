@@ -258,94 +258,87 @@ function App() {
   return (
     <div className="min-h-screen" style={{background:'transparent'}}>
       <main className="relative z-10">
-        {currentView==='qrscan' && (
-          <Suspense fallback={<LoadingFallback />}>
+        <Suspense fallback={<LoadingFallback />}>
+          {currentView==='qrscan' && (
             <QrScanPage language={language} toggleLanguage={toggleLanguage} />
-          </Suspense>
-        )}
+          )}
 
-        {currentView==='login' && (
-          <LoginPage
-            onLogin={handleLogin}
-            onAdminLogin={handleAdminLogin}
-            onDoctorLogin={handleDoctorLogin}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
-        )}
+          {currentView==='login' && (
+            <LoginPage
+              onLogin={handleLogin}
+              onAdminLogin={handleAdminLogin}
+              onDoctorLogin={handleDoctorLogin}
+              currentTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          )}
 
-        {currentView==='examSelection' && patientData && (
-          <ExamSelectionPage
-            patientData={patientData}
-            onExamSelect={handleExamSelect}
-            onBack={() => { localStorage.removeItem('patientData'); setPatientData(null); setCurrentView('login'); }}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
-        )}
+          {currentView==='examSelection' && patientData && (
+            <ExamSelectionPage
+              patientData={patientData}
+              onExamSelect={handleExamSelect}
+              onBack={() => { localStorage.removeItem('patientData'); setPatientData(null); setCurrentView('login'); }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          )}
 
-        {currentView==='patient' && patientData && (
-          <PatientPage
-            patientData={patientData}
-            onLogout={handleLogout}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
-        )}
+          {currentView==='patient' && patientData && (
+            <PatientPage
+              patientData={patientData}
+              onLogout={handleLogout}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          )}
 
-        {currentView==='admin' && isAdmin && (
-          <Suspense fallback={<LoadingFallback />}>
-            <HealthAlertBanner language={language} />
-            <AdminErrorBoundary>
-              <AdminDashboardV2
-                onLogout={handleLogout}
-                language={language}
-                toggleLanguage={toggleLanguage}
-                currentTheme={currentTheme}
-                onThemeChange={setCurrentTheme}
-              />
-            </AdminErrorBoundary>
-          </Suspense>
-        )}
+          {currentView==='admin' && isAdmin && (
+            <>
+              <HealthAlertBanner language={language} />
+              <AdminErrorBoundary>
+                <AdminDashboardV2
+                  onLogout={handleLogout}
+                  language={language}
+                  toggleLanguage={toggleLanguage}
+                  currentTheme={currentTheme}
+                  onThemeChange={setCurrentTheme}
+                />
+              </AdminErrorBoundary>
+            </>
+          )}
 
-        {currentView==='doctor' && doctorSession && (
-          <Suspense fallback={<LoadingFallback />}>
+          {currentView==='doctor' && doctorSession && (
             <DoctorDashboard
               doctorData={doctorSession}
               onLogout={() => { setDoctorSession(null); localStorage.removeItem('mmc_doctor_session'); setCurrentView('login'); }}
               language={language}
               toggleLanguage={toggleLanguage}
             />
-          </Suspense>
-        )}
+          )}
 
-        {currentView==='clinic_login' && (
-          <ClinicLoginPage
-            onLogin={(session) => { setClinicSession(session); localStorage.setItem('mmc_clinic_session',JSON.stringify(session)); setCurrentView('clinic_dashboard'); }}
-            language={language}
-            toggleLanguage={toggleLanguage}
-          />
-        )}
+          {currentView==='clinic_login' && (
+            <ClinicLoginPage
+              onLogin={(session) => { setClinicSession(session); localStorage.setItem('mmc_clinic_session',JSON.stringify(session)); setCurrentView('clinic_dashboard'); }}
+              language={language}
+              toggleLanguage={toggleLanguage}
+            />
+          )}
 
-        {currentView==='clinic_dashboard' && clinicSession && (
-          <Suspense fallback={<LoadingFallback />}>
+          {currentView==='clinic_dashboard' && clinicSession && (
             <ClinicDashboard
               session={clinicSession}
               onLogout={() => { setClinicSession(null); localStorage.removeItem('mmc_clinic_session'); setCurrentView('clinic_login'); }}
               language={language}
               toggleLanguage={toggleLanguage}
             />
-          </Suspense>
-        )}
+          )}
 
-        {currentView==='display' && (
-          <Suspense fallback={<LoadingFallback />}>
+          {currentView==='display' && (
             <DisplayPage language={language} />
-          </Suspense>
-        )}
-
+          )}
+        </Suspense>
       </main>
       <SpeedInsights />
       <Analytics />
