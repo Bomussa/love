@@ -1,3 +1,4 @@
+import './runtime-hotfixes.js'
 import api from './api-unified'
 
 const ALLOWED_ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN'])
