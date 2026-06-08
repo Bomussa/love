@@ -30,6 +30,45 @@ body {
 .shadow-theme { box-shadow: var(--theme-shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1)) !important; }
 
 /* =========================
+   PATIENT PAGE THEME FIXES
+========================= */
+[data-test="patient-page"] .bg-gray-950,
+[data-test="patient-page"] .bg-gray-900,
+[data-test="patient-page"] .bg-gray-800,
+[data-test="patient-page"] .bg-gray-800\/50,
+[data-test="patient-page"] .bg-gray-800\/60,
+[data-test="patient-page"] .bg-gray-800\/80,
+[data-test="patient-page"] .bg-gray-700,
+[data-test="patient-page"] .bg-gray-700\/30,
+[data-test="patient-page"] .bg-gray-700\/40,
+[data-test="patient-page"] .bg-gray-700\/50,
+[data-test="patient-page"] .bg-gray-700\/60,
+[data-test="patient-page"] .bg-gray-600\/50,
+[data-test="patient-page"] .bg-gray-500\/20 {
+  background-color: var(--theme-surface) !important;
+}
+
+[data-test="patient-page"] .border-gray-700,
+[data-test="patient-page"] .border-gray-600,
+[data-test="patient-page"] .border-gray-600\/50,
+[data-test="patient-page"] .border-gray-600\/60,
+[data-test="patient-page"] .border-gray-500\/30,
+[data-test="patient-page"] .border-gray-500\/50 {
+  border-color: var(--theme-border) !important;
+}
+
+[data-test="patient-page"] .bg-white\/10,
+[data-test="patient-page"] .bg-white\/5 {
+  background-color: color-mix(in srgb, var(--theme-surface) 88%, transparent) !important;
+}
+
+[data-test="patient-page"] .bg-[#0f172a]\/70,
+[data-test="patient-page"] .bg-[#111827]\/95,
+[data-test="patient-page"] .bg-[#1a0a12]\/90 {
+  background-color: var(--theme-surface) !important;
+}
+
+/* =========================
    PATIENT PAGE (unchanged)
 ========================= */
 [data-test="patient-page"] {
