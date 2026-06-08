@@ -69,16 +69,14 @@ class AuthService {
 
   async doctorLogin(username, password) {
     try {
-      const response = await api.doctorLogin(username, password);
+      const response = await api.adminLogin(username, password);
       if (!response?.success || !response?.data) {
         throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
-
       const session = this.createSession(
         response.data.username || response.data.name || username,
         'DOCTOR'
       );
-
       return { success: true, session };
     } catch (error) {
       console.error('[AuthService] Doctor login error:', error);

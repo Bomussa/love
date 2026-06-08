@@ -167,32 +167,35 @@ function App() {
     }
   };
 
-  // ============= DOCTOR LOGIN (fixed: via api.doctorLogin RPC) =============
+  // ============= DOCTOR LOGIN (unified: via api.adminLogin) =============
   const handleDoctorLogin = async (credentials) => {
     try {
-      const [username,password] = credentials.split(':');
-      if (!username||!password) { showNotification('يرجى إدخال اسم المستخدم وكلمة المرور','error'); return; }
-      // استخدام api.doctorLogin الذي يتحقق عبر doctor_login RPC
-      const result = await api.doctorLogin(username, password);
+      const [username, password] = credentials.split(':');
+      if (!username || !password) {
+        showNotification('يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
+        return;
+      }
+      // التعديل الصحيح: جعل دخول الطبيب يذهب مباشرة إلى api.adminLogin
+      const result = await api.adminLogin(username, password);
       if (result.success && result.data) {
         const session = {
-          id: result.data.id,
-          name: result.data.name,
-          clinic_id: result.data.clinic_id,
-          clinic_name: result.data.clinic_name || result.data.clinic_id,
-          role: result.data.role || 'DOCTOR',
-          expiresAt: new Date(Date.now()+24*60*60*1000).toISOString()
+          id: result.data.id || result.data.username || username,
+          name: result.data.name || result.data.username || username,
+          clinic_id: result.data.clinic_id || null,
+          clinic_name: result.data.clinic_name || result.data.clinic_id || null,
+          role: 'DOCTOR',
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         };
         localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
         setDoctorSession(session);
         setCurrentView('doctor');
-        showNotification(language==='ar'?'✅ تم تسجيل الدخول بنجاح':'✅ Login successful','success');
+        showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success');
       } else {
-        showNotification(language==='ar'?'❌ بيانات الدخول غير صحيحة':'❌ Invalid credentials','error');
+        showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error');
       }
-    } catch(e) {
-      console.error('[App] Doctor login error:',e);
-      showNotification('خطأ في الاتصال','error');
+    } catch (e) {
+      console.error('[App] Doctor login error:', e);
+      showNotification('خطأ في الاتصال', 'error');
     }
   };
 
