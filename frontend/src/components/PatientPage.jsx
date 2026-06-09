@@ -363,7 +363,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       clearInterval(heartbeatInterval);
       supabase.removeChannel(statusChannel);
     };
-  }, [patientData?.id, language, stations.length]);
+  }, [patientData?.id, language, stations.length])
 
   useEffect(() => {
     if (!patientData?.id) return;
@@ -433,6 +433,10 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   }
 
   const allStationsCompleted = stations.length > 0 && stations.every(s => s.status === 'completed')
+  const completedCount = stations.filter((s) => s.status === 'completed').length
+  const progress = stations.length > 0 ? Math.round((completedCount / stations.length) * 100) : 0
+  const activeIndex = stations.findIndex((s) => s.status === 'ready' && s.yourNumber !== null)
+  const activeStation = activeIndex >= 0 ? stations[activeIndex] : null
 
   if (allStationsCompleted) {
     return (
