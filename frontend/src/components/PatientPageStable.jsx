@@ -388,9 +388,9 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1a0a12] to-[#0d0507] px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page">
       {currentNotice && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border border-[#C9A54C]/30 bg-[#1a0a12]/95 p-4 shadow-2xl backdrop-blur">
+        <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border p-4 shadow-2xl backdrop-blur" style={{borderColor: 'var(--theme-secondary)', backgroundColor: 'rgba(26, 10, 18, 0.95)'}}>
           <div className="flex items-start gap-3">
-            <div className="text-yellow-400 mt-0.5">ℹ️</div>
+            <div className="mt-0.5" style={{color: 'var(--theme-secondary)'}}>ℹ️</div>
             <div className="flex-1 text-sm text-white leading-relaxed">{currentNotice}</div>
             <button onClick={() => setCurrentNotice(null)} className="text-white/60 hover:text-white">✕</button>
           </div>
@@ -400,7 +400,10 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
       {directAlerts.length > 0 && (
         <div className="fixed top-4 left-4 z-50 space-y-2 max-w-sm">
           {directAlerts.slice(0, 3).map((alert) => (
-            <div key={alert.id} className={`flex items-start gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-sm ${alert.alert_type === 'urgent' ? 'bg-red-900/90 border-red-500/50' : alert.alert_type === 'warning' ? 'bg-yellow-900/90 border-yellow-500/50' : alert.alert_type === 'success' ? 'bg-green-900/90 border-green-500/50' : 'bg-[#1a0a12]/90 border-[#C9A54C]/50'}`}>
+            <div key={alert.id} className="flex items-start gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-sm" style={{
+              backgroundColor: alert.alert_type === 'urgent' ? 'rgba(127, 29, 29, 0.9)' : alert.alert_type === 'warning' ? 'rgba(120, 53, 15, 0.9)' : alert.alert_type === 'success' ? 'rgba(20, 83, 45, 0.9)' : 'rgba(26, 10, 18, 0.9)',
+              borderColor: alert.alert_type === 'urgent' ? 'rgba(239, 68, 68, 0.5)' : alert.alert_type === 'warning' ? 'rgba(217, 119, 6, 0.5)' : alert.alert_type === 'success' ? 'rgba(34, 197, 94, 0.5)' : 'var(--theme-secondary)'
+            }}>
               <p className="flex-1 text-sm font-medium text-white leading-relaxed">{language === 'ar' ? alert.message : (alert.message_en || alert.message)}</p>
               <button onClick={() => dismissDirectAlert(alert.id)} className="text-white/60 hover:text-white">✕</button>
             </div>
@@ -419,12 +422,12 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <div className="space-y-0.5">
             <h1 className="text-xl font-bold text-white">{language === 'ar' ? 'اللجنة الطبية العسكرية' : 'Military Medical Committee'}</h1>
-            <p className="text-sm text-[#C9A54C] font-semibold">{language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}</p>
+            <p className="text-sm font-semibold" style={{color: 'var(--theme-secondary)'}}>{language === 'ar' ? 'قيادة الخدمات الطبية العسكرية' : 'Military Medical Services Command'}</p>
             <p className="text-gray-400 text-xs">{language === 'ar' ? 'المركز الطبي التخصصي العسكري - العطار' : 'Military Specialized Medical Center – Al-Attar'}</p>
           </div>
         </div>
 
-        <div className="bg-[#1a0a12]/70 border border-[#C9A54C]/20 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl p-4 shadow-lg" style={{backgroundColor: 'rgba(26, 10, 18, 0.7)', borderColor: 'var(--theme-secondary)', borderWidth: '1px', opacity: 0.2}}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl">⚕️</div>
             <div>
@@ -434,11 +437,11 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
           </div>
         </div>
 
-        <Card className="bg-[#1a0a12]/70 border-[#C9A54C]/30 shadow-xl">
+        <Card className="shadow-xl" style={{backgroundColor: 'rgba(26, 10, 18, 0.7)', borderColor: 'var(--theme-secondary)', borderWidth: '1px', opacity: 0.3}}>
           <CardHeader className="text-center pb-3 pt-4">
             <CardTitle className="text-white text-xl font-bold tracking-tight">{t('yourMedicalRoute', language)}</CardTitle>
-            <p className="text-gray-400 text-sm mt-1.5">{t('exam', language)}: <span className="font-bold text-[#C9A54C]">{getExamName()}</span></p>
-            <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#8A1538] to-[#C9A54C]" style={{ width: `${progress}%` }} /></div>
+            <p className="text-gray-400 text-sm mt-1.5">{t('exam', language)}: <span className="font-bold" style={{color: 'var(--theme-secondary)'}}>{getExamName()}</span></p>
+            <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }} /></div>
             <p className="text-xs text-gray-400 mt-2">{language === 'ar' ? `تقدم الرحلة: ${completedCount}/${stations.length} مكتمل` : `Journey progress: ${completedCount}/${stations.length} completed`}</p>
           </CardHeader>
 
@@ -449,11 +452,17 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
               const isActive = activeIndex === index;
 
               return (
-                <Card key={station.id} className={`border transition-all duration-200 ${status === 'ready' ? 'bg-[#2a1520]/80 border-[#C9A54C]/40 shadow-md' : status === 'completed' ? 'bg-[#1a0a12]/60 border-[#8A1538]/40 opacity-70' : 'bg-[#1a0a12]/50 border-[#8A1538]/30'}`}>
+                <Card key={station.id} className="border transition-all duration-200 shadow-md" style={{
+                  backgroundColor: status === 'ready' ? 'rgba(42, 21, 32, 0.8)' : status === 'completed' ? 'rgba(26, 10, 18, 0.6)' : 'rgba(26, 10, 18, 0.5)',
+                  borderColor: status === 'ready' ? 'var(--theme-secondary)' : 'var(--theme-primary)',
+                  opacity: status === 'completed' ? 0.7 : 1
+                }}>
                   <CardContent className="p-3.5 sm:p-5">
                     <div className="flex items-center justify-between mb-3 gap-2">
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${status === 'ready' ? 'bg-[#C9A54C]/20' : status === 'completed' ? 'bg-green-500/15' : 'bg-[#8A1538]/40'}`}>
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{
+                        backgroundColor: status === 'ready' ? 'rgba(201, 165, 76, 0.2)' : status === 'completed' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(138, 21, 56, 0.4)'
+                      }}>
                           {status === 'ready' ? <Unlock className="w-5 h-5 text-green-400" /> : status === 'completed' ? <CheckCircle className="w-5 h-5 text-green-400" /> : <Lock className="w-5 h-5 text-gray-400" />}
                         </div>
                         <div className="min-w-0">
@@ -461,35 +470,39 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
                           <p className="text-gray-400 text-sm mt-0.5">{t('floor', language)}: <span className="text-gray-200 font-semibold">{language === 'ar' ? station.floor : station.floorCode}</span></p>
                         </div>
                       </div>
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${status === 'ready' ? 'bg-[#C9A54C]/20 text-[#C9A54C] border border-[#C9A54C]/40' : status === 'completed' ? 'bg-green-500/15 text-green-400 border border-green-500/25' : 'bg-[#8A1538]/20 text-[#C9A54C]/80 border border-[#8A1538]/30'}`}>
+                      <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap border" style={{
+                        backgroundColor: status === 'ready' ? 'rgba(201, 165, 76, 0.2)' : status === 'completed' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(138, 21, 56, 0.2)',
+                        color: status === 'ready' ? 'var(--theme-secondary)' : status === 'completed' ? 'rgb(74, 222, 128)' : 'var(--theme-secondary)',
+                        borderColor: status === 'ready' ? 'var(--theme-secondary)' : status === 'completed' ? 'rgba(34, 197, 94, 0.25)' : 'var(--theme-primary)'
+                      }}>
                         {status === 'ready' ? t('ready', language) : status === 'completed' ? (language === 'ar' ? 'مكتمل ✓' : 'Completed ✓') : t('locked', language)}
                       </span>
                     </div>
 
                     {status !== 'completed' && (
                       <div className="grid grid-cols-2 gap-2.5 text-center" data-test="queue-info">
-                        <div className="py-4 px-2 bg-[#C9A54C]/15 rounded-xl border-2 border-[#C9A54C]/50">
-                          <div className="text-4xl font-black text-[#C9A54C] mb-1.5 leading-none" data-test="your-number">{typeof station.yourNumber === 'number' ? station.yourNumber : (status === 'ready' ? '...' : '—')}</div>
-                          <div className="text-[#C9A54C]/90 text-sm font-bold tracking-wide mt-0.5">{t('yourNumber', language)}</div>
+                        <div className="py-4 px-2 rounded-xl border-2" style={{backgroundColor: 'rgba(201, 165, 76, 0.15)', borderColor: 'rgba(201, 165, 76, 0.5)'}}>
+                          <div className="text-4xl font-black mb-1.5 leading-none" data-test="your-number" style={{color: 'var(--theme-secondary)'}}>{typeof station.yourNumber === 'number' ? station.yourNumber : (status === 'ready' ? '...' : '—')}</div>
+                          <div className="text-sm font-bold tracking-wide mt-0.5" style={{color: 'var(--theme-secondary)', opacity: 0.9}}>{t('yourNumber', language)}</div>
                         </div>
-                        <div className="py-4 px-2 bg-[#1a0a12]/60 rounded-xl border border-[#8A1538]/40">
-                          <div className="text-4xl font-black text-[#C9A54C] mb-1.5 leading-none" data-test="ahead-count">{typeof station.ahead === 'number' ? station.ahead : (status === 'ready' ? '...' : '—')}</div>
-                          <div className="text-[#C9A54C]/70 text-sm font-bold tracking-wide mt-0.5">{t('ahead', language)}</div>
+                        <div className="py-4 px-2 rounded-xl border" style={{backgroundColor: 'rgba(26, 10, 18, 0.6)', borderColor: 'var(--theme-primary)'}}>
+                          <div className="text-4xl font-black mb-1.5 leading-none" data-test="ahead-count" style={{color: 'var(--theme-secondary)'}}>{typeof station.ahead === 'number' ? station.ahead : (status === 'ready' ? '...' : '—')}</div>
+                          <div className="text-sm font-bold tracking-wide mt-0.5" style={{color: 'var(--theme-secondary)', opacity: 0.7}}>{t('ahead', language)}</div>
                         </div>
                       </div>
                     )}
 
                     {canEnter && (
-                        <div className="mt-4 pt-4 border-t border-[#8A1538]/40">
+                        <div className="mt-4 pt-4 border-t" style={{borderColor: 'var(--theme-primary)'}}>
                         {(station.yourNumber > 0 && (station.ahead === 0 || station.ahead === null || station.ahead === undefined)) ? (
                           <Button variant="gradientPrimary" onClick={() => enterStation(station, index)} disabled={loading} className="w-full py-3 text-lg font-bold" data-test="enter-clinic-btn">
                             <LogIn className="w-4 h-4 me-2" />{t('enterClinic', language)}
                           </Button>
                         ) : (
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between px-4 py-3 bg-[#C9A54C]/10 border border-[#C9A54C]/40 rounded-xl">
-                              <div className="flex items-center gap-2"><span className="text-lg">⏳</span><span className="text-[#C9A54C] font-semibold text-sm">{language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}</span></div>
-                              <span className="text-[#C9A54C]/80 text-xs font-medium">{language === 'ar' ? `أمامك ${station.ahead ?? '—'} شخص` : `${station.ahead ?? '—'} ahead`}</span>
+                            <div className="flex items-center justify-between px-4 py-3 rounded-xl border" style={{backgroundColor: 'rgba(201, 165, 76, 0.1)', borderColor: 'var(--theme-secondary)'}}>
+                              <div className="flex items-center gap-2"><span className="text-lg">⏳</span><span className="font-semibold text-sm" style={{color: 'var(--theme-secondary)'}}>{language === 'ar' ? 'انتظر دورك' : 'Wait for your turn'}</span></div>
+                              <span className="text-xs font-medium" style={{color: 'var(--theme-secondary)', opacity: 0.8}}>{language === 'ar' ? `أمامك ${station.ahead ?? '—'} شخص` : `${station.ahead ?? '—'} ahead`}</span>
                             </div>
                             <Button variant="outline" disabled className="w-full opacity-40 cursor-not-allowed border-gray-600 text-sm">
                               <Lock className="w-4 h-4 me-2" />{language === 'ar' ? 'الدخول غير متاح حالياً' : 'Entry not available yet'}
@@ -500,14 +513,14 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
                     )}
 
                     {status === 'ready' && station.isEntered && (
-                      <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
-                        <div className="text-center text-sm text-[#C9A54C] p-3 bg-[#C9A54C]/10 rounded border border-[#C9A54C]/40">{language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}</div>
+                      <div className="mt-3 pt-3 space-y-2" style={{borderTop: '1px solid var(--theme-primary)'}}>
+                        <div className="text-center text-sm p-3 rounded border" style={{color: 'var(--theme-secondary)', backgroundColor: 'rgba(201, 165, 76, 0.1)', borderColor: 'var(--theme-secondary)'}}>{language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}</div>
                         {station.entered_at && <div className="text-sm text-gray-400 flex items-center gap-2"><Clock className="w-4 h-4" /><span>{language === 'ar' ? 'وقت الدخول:' : 'Entry time:'} {formatTime(new Date(station.entered_at))}</span></div>}
                       </div>
                     )}
 
-                    {isActive && status !== 'completed' && <div className="mt-3 pt-3 border-t border-[#C9A54C]/20 text-center text-[#C9A54C] text-sm font-bold">{language === 'ar' ? 'المحطة الحالية ✓' : 'Current station ✓'}</div>}
-                    {status === 'completed' && <div className="mt-3 pt-3 border-t border-green-500/20 text-center text-green-400 text-sm font-bold">{language === 'ar' ? 'تم إنهاء هذه المحطة ✓' : 'Station completed ✓'}</div>}
+                    {isActive && status !== 'completed' && <div className="mt-3 pt-3 text-center text-sm font-bold" style={{borderTop: '1px solid var(--theme-secondary)', color: 'var(--theme-secondary)'}}>{language === 'ar' ? 'المحطة الحالية ✓' : 'Current station ✓'}</div>}
+                    {status === 'completed' && <div className="mt-3 pt-3 text-center text-sm font-bold" style={{borderTop: '1px solid rgba(34, 197, 94, 0.2)', color: 'rgb(74, 222, 128)'}}>{language === 'ar' ? 'تم إنهاء هذه المحطة ✓' : 'Station completed ✓'}</div>}
                   </CardContent>
                 </Card>
               );
