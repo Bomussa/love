@@ -462,7 +462,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
           </div>
         </div>
 
-        <div className="bg-[#0f172a]/70 border border-blue-500/20 rounded-2xl p-4 shadow-lg">
+        <div className="bg-[#1a0820]/80 border border-[#C9A54C]/20 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl">⚕️</div>
             <div>
@@ -487,11 +487,11 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
               const isActive = activeIndex === index;
 
               return (
-                <Card key={station.id} className={`border transition-all duration-200 ${status === 'ready' ? 'bg-gray-700/60 border-[#C9A54C]/30 shadow-md' : status === 'completed' ? 'bg-gray-700/30 border-gray-600/50 opacity-70' : 'bg-gray-700/40 border-gray-600/60'}`}>
+                <Card key={station.id} className={`border transition-all duration-200 ${status === 'ready' ? 'bg-[#8A1538]/20 border-[#C9A54C]/50 shadow-md' : status === 'completed' ? 'bg-[#8A1538]/10 border-[#C9A54C]/20 opacity-70' : 'bg-[#1a0820]/40 border-white/10'}`}>
                   <CardContent className="p-3.5 sm:p-5">
                     <div className="flex items-center justify-between mb-3 gap-2">
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${status === 'ready' ? 'bg-green-500/20' : status === 'completed' ? 'bg-green-500/15' : 'bg-gray-600/50'}`}>
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${status === 'ready' ? 'bg-[#C9A54C]/20' : status === 'completed' ? 'bg-[#C9A54C]/10' : 'bg-white/5'}`}>
                           {status === 'ready' ? <Unlock className="w-5 h-5 text-[#C9A54C]" /> : status === 'completed' ? <CheckCircle className="w-5 h-5 text-[#C9A54C]" /> : <Lock className="w-5 h-5 text-gray-400" />}
                         </div>
                         <div className="min-w-0">
@@ -539,12 +539,12 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
 
                     {status === 'ready' && station.isEntered && (
                       <div className="mt-3 pt-3 border-t border-gray-600 space-y-2">
-                        <div className="text-center text-sm text-[#C9A54C] p-3 bg-green-900/20 rounded border border-[#C9A54C]/30">{language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}</div>
+                        <div className="text-center text-sm text-[#C9A54C] p-3 bg-[#8A1538]/20 rounded border border-[#C9A54C]/30">{language === 'ar' ? '✓ تم الدخول - انتظر مناداتك من الطبيب' : '✓ Entered - Wait for doctor to call you'}</div>
                         {station.entered_at && <div className="text-sm text-gray-400 flex items-center gap-2"><Clock className="w-4 h-4" /><span>{language === 'ar' ? 'وقت الدخول:' : 'Entry time:'} {formatTime(new Date(station.entered_at))}</span></div>}
                       </div>
                     )}
 
-                    {isActive && status !== 'completed' && <div className="mt-3 pt-3 border-t border-green-500/20 text-center text-green-300 text-sm font-bold">{language === 'ar' ? 'المحطة الحالية ✓' : 'Current station ✓'}</div>}
+                    {isActive && status !== 'completed' && <div className="mt-3 pt-3 border-t border-[#C9A54C]/20 text-center text-[#C9A54C] text-sm font-bold">{language === 'ar' ? 'المحطة الحالية ✓' : 'Current station ✓'}</div>}
                     {status === 'completed' && <div className="mt-3 pt-3 border-t border-green-500/20 text-center text-[#C9A54C] text-sm font-bold">{language === 'ar' ? 'تم إنهاء هذه المحطة ✓' : 'Station completed ✓'}</div>}
                   </CardContent>
                 </Card>
