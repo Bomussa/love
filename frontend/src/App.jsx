@@ -15,6 +15,26 @@ import { autoRepairSystem } from './lib/auto-repair-system'
 import { functionTableMonitor } from './lib/function-table-monitor'
 import { elementMonitor } from './lib/element-monitor'
 
+if (typeof document !== 'undefined' && !document.getElementById('mmc-login-layout-fix')) {
+  const style = document.createElement('style');
+  style.id = 'mmc-login-layout-fix';
+  style.textContent = `
+    @media (max-width: 768px) {
+      .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full {
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1.5rem !important;
+      }
+
+      .min-h-screen.flex.items-center.justify-center.p-4.relative.overflow-hidden.w-full.max-w-full > .w-full.max-w-md.mx-auto.space-y-6.relative.z-10 {
+        width: min(100%, 30rem) !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 const LoginPage = lazy(() => import('./components/LoginPage.jsx').then(m => ({ default: m.LoginPage })))
 const ExamSelectionPage = lazy(() => import('./components/ExamSelectionPage.jsx').then(m => ({ default: m.ExamSelectionPage })))
 const PatientPage = lazy(() => import('./components/PatientPage.jsx').then(m => ({ default: m.PatientPage })))
@@ -22,7 +42,7 @@ const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })))
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })))
 const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })))
-const DoctorDashboard = lazy(() => import('./components/DoctorDashboard').then(m => ({ default: m.DoctorDashboard })))
+const DoctorDashboard = lazy(() => import('./components/DoctorDashboardFixed.jsx').then(m => ({ default: m.default || m.DoctorDashboardFixed })))
 const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m => ({ default: m.ClinicLoginPage })))
 
 const preloadComponents = () => {
@@ -167,7 +187,7 @@ function App() {
     }
   };
 
-  // ============= DOCTOR LOGIN (unified: via api.adminLogin) =============
+  // ============= DOCTOR LOGIN =============
   const handleDoctorLogin = async (credentials) => {
     try {
       const [username, password] = credentials.split(':');
@@ -175,8 +195,7 @@ function App() {
         showNotification('يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
         return;
       }
-      // التعديل الصحيح: جعل دخول الطبيب يذهب مباشرة إلى api.adminLogin
-      const result = await api.adminLogin(username, password);
+      const result = await api.doctorLogin(username, password);
       if (result.success && result.data) {
         const session = {
           id: result.data.id || result.data.username || username,
@@ -188,8 +207,9 @@ function App() {
         };
         localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
         setDoctorSession(session);
+        window.history.pushState({}, '', '/doctor');
         setCurrentView('doctor');
-        showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success');
+        showNotification(language === 'ar' ? '✅ تم تسجيل دخول الطبيب بنجاح' : '✅ Doctor login successful', 'success');
       } else {
         showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error');
       }
@@ -315,7 +335,7 @@ function App() {
           {currentView==='doctor' && doctorSession && (
             <DoctorDashboard
               doctorData={doctorSession}
-              onLogout={() => { setDoctorSession(null); localStorage.removeItem('mmc_doctor_session'); setCurrentView('login'); }}
+              onLogout={() => { setDoctorSession(null); localStorage.removeItem('mmc_doctor_session'); setCurrentView('login'); window.history.pushState({},'', '/'); }}
               language={language}
               toggleLanguage={toggleLanguage}
             />
