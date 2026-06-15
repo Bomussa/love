@@ -357,20 +357,20 @@ const api = {
   },
 
   async doctorLogin(username, password) {
-    const admin = await this.adminLogin(username, password);
-    if (admin?.success === false) return admin;
-
+    const raw = await post(`${API_VERSION}/doctor/login`, { username, password });
+    if (raw?.success === false) return raw;
+    const admin = normalizeLoginData(raw, username, 'DOCTOR');
     const data = {
-      ...(admin.data || {}),
-      id: admin.data?.id || admin.data?.username || username,
-      username: admin.data?.username || username,
-      name: admin.data?.name || admin.data?.username || username,
-      clinic_id: admin.data?.clinic_id || null,
-      clinic_name: admin.data?.clinic_name || null,
+      ...admin,
+      id: admin.id || admin.username || username,
+      username: admin.username || username,
+      name: admin.name || admin.username || username,
+      clinic_id: admin.clinic_id || null,
+      clinic_name: admin.clinic_name || null,
       role: 'DOCTOR',
     };
 
-    return normalizeApiResponse({ ...admin, data, user: data, role: 'DOCTOR' }, data);
+    return normalizeApiResponse({ ...raw, data, user: data, role: 'DOCTOR' }, data);
   },
 
   async recoverQueues() {
