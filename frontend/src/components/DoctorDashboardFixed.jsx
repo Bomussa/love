@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRight, CheckCircle2, Clock3, LogOut, RefreshCcw, Stethoscope, Users2 } from 'lucide-react';
+import { Activity, AlertCircle, ArrowRight, CheckCircle2, Clock3, LogOut, RefreshCcw, Stethoscope, Users2 } from 'lucide-react';
 import { Card, CardContent } from './Card';
 import api from '../lib/api-unified';
 
