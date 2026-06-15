@@ -107,12 +107,12 @@ function App() {
     const path = window.location.pathname;
     if (path==='/admin'||path.startsWith('/admin/')) { setCurrentView(isAdmin?'admin':'login'); return; }
     if (isAdmin) { setCurrentView('admin'); return; }
-    if (patientData) { setCurrentView(patientData.queueType||patientData.examType?'patient':'examSelection'); return; }
     if (path==='/doctor'||path.startsWith('/doctor/')) { setCurrentView(doctorSession?'doctor':'login'); return; }
     if (path==='/clinic/login'||path==='/clinic/login/') { setCurrentView('clinic_login'); return; }
     if (path.match(/\/clinic\/[^/]+\/display$/)) { setCurrentView('display'); return; }
     if (path.startsWith('/clinic/')) { setCurrentView(clinicSession?'clinic_dashboard':'clinic_login'); return; }
     if (path.includes('/qr')) { setCurrentView('qrscan'); return; }
+    if (patientData) { setCurrentView(patientData.queueType||patientData.examType?'patient':'examSelection'); return; }
     setCurrentView('login');
   }, [language, isAdmin, patientData, clinicSession, doctorSession]);
 
