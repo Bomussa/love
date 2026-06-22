@@ -5,7 +5,7 @@
  */
 
 export const API_VERSION = 'v1';
-const BASE = import.meta.env.VITE_API_URL || '/api/v1';
+const BASE = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 
 function buildHeaders(extraHeaders = {}) {
   return {
@@ -46,14 +46,12 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  // 1. Patient Login (Persistent Records)
   patientLogin: (personalId, gender, examType) =>
     request('/patient/login', {
       method: 'POST',
       body: JSON.stringify({ personalId, gender, examType }),
     }),
 
-  // 2. Queue Status (Real Data Only)
   getQueueStatus: (clinicId, patientId) => {
     let url = `/queue/status?`;
     if (clinicId) url += `clinicId=${encodeURIComponent(clinicId)}&`;
@@ -61,7 +59,6 @@ export const api = {
     return request(url);
   },
 
-  // 3. Queue Entry (Weighted Dynamic Start)
   enterQueue: (data) =>
     request('/queue/enter', {
       method: 'POST',
@@ -73,7 +70,6 @@ export const api = {
       }),
     }),
 
-  // 4. Doctor Actions
   callNextPatient: (clinicId) =>
     request('/queue/call', {
       method: 'POST',
@@ -98,7 +94,6 @@ export const api = {
       body: JSON.stringify({ queueId }),
     }),
 
-  // 5. Clinics & Admin
   getClinics: () => request('/clinics'),
 
   adminLogin: (username, password) =>
