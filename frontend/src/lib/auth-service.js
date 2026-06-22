@@ -69,7 +69,7 @@ class AuthService {
 
   async doctorLogin(username, password) {
     try {
-      const response = await api.adminLogin(username, password);
+      const response = await api.doctorLogin(username, password);
       if (!response?.success || !response?.data) {
         throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
