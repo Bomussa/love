@@ -4,8 +4,7 @@ import { initGDS } from './guaranteed-data-system';
 /**
  * Unified API Service
  * Canonical contract:
- * - Prefer documented production base for mmc-mms
- * - Allow env override for local/staging
+ * - Prefer environment-provided production base
  * - Preserve only thin resilience fallbacks for tests / network failures
  * - Never read from unified_queue directly
  */
@@ -16,6 +15,14 @@ export const API_VERSION = '/api/v1';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeApiBase(base) {
+  const trimmed = String(base || '').trim().replace(/\/$/, '');
+  if (!trimmed) return '/api/v1';
+  if (trimmed.endsWith('/api/v1') || trimmed.endsWith('/api')) return trimmed;
+  if (trimmed.startsWith('http')) return `${trimmed}/api/v1`;
+  return trimmed;
 }
 
 function qatarDateTime() {
@@ -30,17 +37,17 @@ function resolveApiBases() {
   const bases = [];
 
   try {
-    const envBase = import.meta.env?.VITE_API_BASE?.trim() || import.meta.env?.VITE_API_URL?.trim();
-    if (envBase) bases.push(envBase.replace(/\/$/, ''));
+    const envBase =
+      import.meta.env?.VITE_API_BASE?.trim() ||
+      import.meta.env?.VITE_API_URL?.trim() ||
+      import.meta.env?.VITE_API_BASE_URL?.trim() ||
+      import.meta.env?.API_ORIGIN?.trim();
+    if (envBase) bases.push(normalizeApiBase(envBase));
   } catch {
     // ignore env access errors during tests
   }
 
-  // Documented production base is the canonical fallback.
-  bases.push('https://love-bomussa.vercel.app/api');
-
-  // Local same-origin fallback for previews and dev servers.
-  bases.push('');
+  bases.push('/api/v1');
 
   if (typeof window !== 'undefined' && window.location?.origin) {
     bases.push(window.location.origin.replace(/\/$/, ''));
