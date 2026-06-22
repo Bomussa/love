@@ -4,7 +4,8 @@ import { initGDS } from './guaranteed-data-system';
 /**
  * Unified API Service
  * Canonical contract:
- * - Prefer /api/v1 endpoints from love-api
+ * - Prefer documented production base for mmc-mms
+ * - Allow env override for local/staging
  * - Preserve only thin resilience fallbacks for tests / network failures
  * - Never read from unified_queue directly
  */
@@ -29,13 +30,16 @@ function resolveApiBases() {
   const bases = [];
 
   try {
-    const envBase = import.meta.env?.VITE_API_BASE?.trim();
+    const envBase = import.meta.env?.VITE_API_BASE?.trim() || import.meta.env?.VITE_API_URL?.trim();
     if (envBase) bases.push(envBase.replace(/\/$/, ''));
   } catch {
     // ignore env access errors during tests
   }
 
-  // Relative path first so vitest / same-origin deployments keep exact path assertions stable.
+  // Documented production base is the canonical fallback.
+  bases.push('https://love-bomussa.vercel.app/api');
+
+  // Local same-origin fallback for previews and dev servers.
   bases.push('');
 
   if (typeof window !== 'undefined' && window.location?.origin) {
