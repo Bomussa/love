@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_URL || 'https://love-api-bomussa.vercel.app/api/v1';
+const API = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 
 export async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
