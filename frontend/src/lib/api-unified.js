@@ -41,7 +41,12 @@ function resolveApiBases() {
       import.meta.env?.VITE_API_BASE?.trim() ||
       import.meta.env?.VITE_API_URL?.trim() ||
       import.meta.env?.VITE_API_BASE_URL?.trim() ||
-      import.meta.env?.API_ORIGIN?.trim();
+      import.meta.env?.API_ORIGIN?.trim() ||
+      import.meta.env?.VITE_BACKEND_API_URL?.trim() ||
+      import.meta.env?.VITE_BACKEND_API_BASE_URL?.trim() ||
+      import.meta.env?.NEXT_PUBLIC_BACKEND_API_URL?.trim() ||
+      import.meta.env?.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+      import.meta.env?.BACKEND_API_URL?.trim();
     if (envBase) bases.push(normalizeApiBase(envBase));
   } catch {
     // ignore env access errors during tests
@@ -103,9 +108,11 @@ async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs
         method,
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
           'X-API-Version': 'v1',
           ...headers,
         },
+        credentials: 'include',
         body: payload,
         signal: controller?.signal,
       });
@@ -204,14 +211,19 @@ async function directQueueStatusUpdate(clinicId, patientId, status) {
 
 const api = {
   async patientLogin(patientId, gender) {
+    const normalizedPatientId = String(patientId || '').trim();
     const raw = await post(`${API_VERSION}/patient/login`, {
-      patientId,
-      personalId: patientId,
+      patientId: normalizedPatientId,
+      personalId: normalizedPatientId,
+      personal_id: normalizedPatientId,
+      patient_id: normalizedPatientId,
+      militaryId: normalizedPatientId,
+      military_id: normalizedPatientId,
       gender: gender || 'male',
     });
 
     if (raw?.success === false) return raw;
-    return normalizeApiResponse({ ...raw, data: normalizePatientData(raw, patientId, gender) }, normalizePatientData(raw, patientId, gender));
+    return normalizeApiResponse({ ...raw, data: normalizePatientData(raw, normalizedPatientId, gender) }, normalizePatientData(raw, normalizedPatientId, gender));
   },
 
   getQatarDate() {
@@ -227,12 +239,15 @@ const api = {
       user: patientId,
       patientId,
       personalId: personalId || patientId,
+      personal_id: personalId || patientId,
+      patient_id: patientId,
       patient_name: patientName || null,
       name: patientName || null,
       examType: examType || null,
       queueType: examType || null,
       gender: gender || 'male',
       militaryId: militaryId || null,
+      military_id: militaryId || null,
       isAutoEnter,
       isAutoEntry: isAutoEnter,
     });
