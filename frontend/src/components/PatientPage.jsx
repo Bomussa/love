@@ -1,8 +1,8 @@
 import React from 'react';
-import { PatientPageStable } from './PatientPageStable.jsx';
+import PatientPageThemeAware from './PatientPageThemeAware.jsx';
 
 export function PatientPage(props) {
-  return <PatientPageStable {...props} />;
+  return <PatientPageThemeAware {...props} />;
 }
 
 export default PatientPage;
