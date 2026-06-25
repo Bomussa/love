@@ -1,5 +1,13 @@
 const SESSION_API_BASE = '/api/v1/session';
 
+function normalizeSuccessResponse(data, response) {
+  return {
+    ok: true,
+    status: response.status,
+    data,
+  };
+}
+
 async function sessionRequest(path, payload) {
   const response = await fetch(`${SESSION_API_BASE}${path}`, {
     method: 'POST',
@@ -18,7 +26,15 @@ async function sessionRequest(path, payload) {
     throw error;
   }
 
-  return data;
+  if (data && typeof data === 'object' && data.success === false) {
+    return {
+      ok: false,
+      status: response.status,
+      data,
+    };
+  }
+
+  return normalizeSuccessResponse(data, response);
 }
 
 export const sessionApiClient = {
