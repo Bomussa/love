@@ -1,5 +1,3 @@
-import './lib/session-sanity.js';
-
 if (typeof document !== 'undefined' && !document.getElementById('mmc-patient-page-overrides')) {
   const style = document.createElement('style');
   style.id = 'mmc-patient-page-overrides';
