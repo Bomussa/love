@@ -13,6 +13,12 @@ const normalizeStatus = (status) => {
 
 const todayKey = () => new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+const formatPatientIdentity = (record = {}) => {
+  const idLabel = record.military_id || record.personal_id || record.patient_id || '—';
+  const genderLabel = record.gender || '';
+  return { idLabel, genderLabel };
+};
+
 export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
   const [queueData, setQueueData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +34,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
 
       const { data, error: queryError } = await supabase
         .from('unified_queue')
-        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_type,clinic_id,queue_date')
+        .select('id,display_number,patient_id,personal_id,military_id,gender,status,entered_at,called_at,completed_at,exam_type,clinic_id,queue_date')
         .eq('clinic_id', clinicId)
         .eq('queue_date', todayKey())
         .order('display_number', { ascending: true });
@@ -170,7 +176,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
                     <p className="font-bold text-yellow-500 text-lg">#{entry.display_number}</p>
                     <span className="text-[10px] bg-gray-700 text-gray-400 px-1 rounded">{entry.exam_type}</span>
                   </div>
-                  <p className="text-xs text-gray-300 truncate">{entry.patient_name || entry.patient_id}</p>
+                  <p className="text-xs text-gray-300 truncate">{formatPatientIdentity(entry).idLabel}{formatPatientIdentity(entry).genderLabel ? ` • ${formatPatientIdentity(entry).genderLabel}` : ''}</p>
                   <p className="text-[10px] text-gray-500 mt-1">{new Date(entry.entered_at).toLocaleTimeString('ar-QA')}</p>
                 </div>
               ))
@@ -194,7 +200,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
                     <p className="font-bold text-blue-400 text-lg">#{entry.display_number}</p>
                     <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1 rounded">{entry.status}</span>
                   </div>
-                  <p className="text-xs text-gray-200 truncate">{entry.patient_name || entry.patient_id}</p>
+                  <p className="text-xs text-gray-200 truncate">{formatPatientIdentity(entry).idLabel}{formatPatientIdentity(entry).genderLabel ? ` • ${formatPatientIdentity(entry).genderLabel}` : ''}</p>
                   <p className="text-[10px] text-gray-400 mt-1">
                     {t('Called')}: {new Date(entry.called_at || entry.entered_at).toLocaleTimeString('ar-QA')}
                   </p>
@@ -217,7 +223,7 @@ export function AdminQueueMonitor({ clinicId, autoRefresh = true }) {
                   data-test={`done-ticket-${entry.display_number}`}
                 >
                   <p className="font-bold text-green-500">#{entry.display_number}</p>
-                  <p className="text-xs text-gray-400 truncate">{entry.patient_name || entry.patient_id}</p>
+                  <p className="text-xs text-gray-400 truncate">{formatPatientIdentity(entry).idLabel}{formatPatientIdentity(entry).genderLabel ? ` • ${formatPatientIdentity(entry).genderLabel}` : ''}</p>
                   <p className="text-[10px] text-gray-500 mt-1">
                     {t('Done')}: {new Date(entry.completed_at || entry.updated_at).toLocaleTimeString('ar-QA')}
                   </p>

@@ -140,7 +140,7 @@ const QueueManagement = ({ language, t }) => {
       // جلب الطوابير من unified_queue
       const { data, error } = await supabase
         .from('unified_queue')
-        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date,is_temporary,transferred_from')
+        .select('id,display_number,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_start_time,exam_end_time,gender,exam_type,is_vip,is_priority,is_military_committee,notes,clinic_id,queue_date,is_temporary,transferred_from')
         .eq('queue_date', today)
         .order('display_number', { ascending: true });
 
@@ -245,7 +245,7 @@ const QueueManagement = ({ language, t }) => {
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
-        .or(`patient_id.eq.${priorityPatientId},patient_name.ilike.%${priorityPatientId}%`)
+        .or(`patient_id.eq.${priorityPatientId},military_id.eq.${priorityPatientId},personal_id.eq.${priorityPatientId}`)
         .single();
 
       if (searchError || !patientQueue) {
@@ -267,7 +267,9 @@ const QueueManagement = ({ language, t }) => {
           .insert({
             clinic_id: priorityClinicId,
             patient_id: patient.patient_id || patient.id,
-            patient_name: patient.name || 'مراجع أولوية',
+            personal_id: patient.personal_id || null,
+            military_id: patient.military_id || null,
+            gender: patient.gender || null,
             status: 'called',
             called_at: new Date(Date.now() + 3*60*60*1000).toISOString(),
             queue_number_int: 999,
