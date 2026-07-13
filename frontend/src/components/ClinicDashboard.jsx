@@ -9,6 +9,12 @@ import { AdminQueueMonitor } from './AdminQueueMonitor';
  * Clinic Dashboard Component
  * Real-time queue view backed directly by unified_queue.
  */
+const formatPatientIdentity = (record = {}) => {
+  const idLabel = record.military_id || record.personal_id || record.patient_id || '—';
+  const genderLabel = record.gender || '';
+  return { idLabel, genderLabel };
+};
+
 export function ClinicDashboard({ session, onLogout, language, toggleLanguage }) {
   const clinicId = session?.clinicId;
   const clinicName = session?.clinicName || clinicId;
@@ -36,7 +42,7 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
       setError(null);
       const { data, error: queryError } = await supabase
         .from('unified_queue')
-        .select('id,display_number,patient_name,patient_id,personal_id,military_id,status,entered_at,called_at,completed_at,exam_type,clinic_id,queue_date')
+        .select('id,display_number,patient_id,personal_id,military_id,gender,status,entered_at,called_at,completed_at,exam_type,clinic_id,queue_date')
         .eq('clinic_id', clinicId)
         .eq('queue_date', todayKey())
         .order('display_number', { ascending: true });
@@ -191,7 +197,10 @@ export function ClinicDashboard({ session, onLogout, language, toggleLanguage })
                 {currentTicket ? (
                   <>
                     <div className="text-6xl font-black text-[#C9A54C] mb-2">#{currentTicket.display_number}</div>
-                    <p className="text-sm text-gray-300 font-medium">{currentTicket.patient_name || currentTicket.patient_id || currentTicket.personal_id || '—'}</p>
+                    <p className="text-sm text-gray-300 font-medium">
+                      {formatPatientIdentity(currentTicket).idLabel}
+                      {formatPatientIdentity(currentTicket).genderLabel ? ` • ${formatPatientIdentity(currentTicket).genderLabel}` : ''}
+                    </p>
                     {currentTicket.exam_type && <p className="text-xs text-gray-500 mt-1">{currentTicket.exam_type}</p>}
                   </>
                 ) : (
