@@ -40,25 +40,8 @@
   font-weight: 900;
 }
 
-.admin-pins h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
-}
 
-.pin-row {
-  background: #1f2937;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 0.75rem;
-  display: flex;
-  justify-content: space-between;
-  border: 1px solid #374151;
-}
 
-.pin-code {
-  font-family: 'Cairo', monospace;
-  font-weight: bold;
-}
 
 .admin-loading {
   text-align: center;

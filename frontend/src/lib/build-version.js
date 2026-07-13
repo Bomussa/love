@@ -13,7 +13,6 @@
  * 3. DoctorDashboard: start_exam_record + finish_exam_record RPCs،
  *    ABSENT يُسجَّل في exam_records، توقيت قطر
  *
- * 4. FeatureControlPanel: حُذف pin_system و auto_pin_generate
  *
  * 5. App.jsx: enterQueue يُرسل gender المراجع الفعلي
  *

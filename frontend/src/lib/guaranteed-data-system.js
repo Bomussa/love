@@ -36,15 +36,6 @@ const DEFAULT_FEATURES_CONFIG = Object.freeze({
     realtime: true,
     priority: 3,
   },
-  pins: {
-    id: 'pins',
-    name: 'الأرقام السرية',
-    nameEn: 'PIN Codes',
-    enabled: true,
-    visible: true,
-    realtime: false,
-    priority: 4,
-  },
   routes: {
     id: 'routes',
     name: 'المسارات',
@@ -120,7 +111,6 @@ class GuaranteedDataSystem {
       queues: 'queues',
       clinics: 'clinics',
       notifications: 'notifications',
-      pins: 'pins',
       patient_routes: 'routes',
     };
     return mapping[tableName] || null;
@@ -303,12 +293,6 @@ export async function getRoutes(patientId = null) {
   return GDS.fetchGuaranteed('patient_routes', {
     filters: patientId ? { patient_id: patientId } : {},
     orderBy: { column: 'created_at', ascending: false },
-  });
-}
-
-export async function getPins(clinicId = null) {
-  return GDS.fetchGuaranteed('pins', {
-    filters: clinicId ? { clinic_id: clinicId } : {},
   });
 }
 

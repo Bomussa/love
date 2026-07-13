@@ -15,9 +15,7 @@ function normalizeMessage(text) {
     lower.includes('active_clinic_id') ||
     lower.includes('another clinic') ||
     lower.includes('other clinic') ||
-    lower.includes('clinic conflict') ||
-    lower.includes('wrong_clinic_pin') ||
-    lower.includes('wrong clinic pin')
+    lower.includes('clinic conflict')
   ) {
     return 'أنت مسجل بالفعل في عيادة أخرى اليوم'
   }
