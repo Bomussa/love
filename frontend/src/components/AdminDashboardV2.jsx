@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import authService, { USER_ROLES } from '../lib/auth-service';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -13,6 +14,65 @@ import {
   UserCog, History, Database, Save, Upload, Wifi, WifiOff, Lock, Unlock, Copy, Share2,
   UserPlus, Zap, FolderOpen, Stethoscope, UserX, AlertTriangle, Star, ArrowRight, ArrowLeft
 } from 'lucide-react';
+
+
+const VirtualizedList = ({
+  items,
+  estimateSize = 72,
+  maxHeight = 500,
+  className = '',
+  renderItem,
+  getKey = (item, index) => item?.id || index
+}) => {
+  const parentRef = React.useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => estimateSize,
+    overscan: 6
+  });
+
+  return (
+    <div ref={parentRef} className="overflow-y-auto" style={{ maxHeight }}>
+      <div className={className} style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+          const item = items[virtualRow.index];
+          return (
+            <div
+              key={getKey(item, virtualRow.index)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`
+              }}
+            >
+              {renderItem(item, virtualRow.index)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const useVirtualTable = (items, estimateSize = 56) => {
+  const parentRef = React.useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => estimateSize,
+    overscan: 8
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom = virtualRows.length > 0
+    ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+    : 0;
+
+  return { parentRef, virtualRows, paddingTop, paddingBottom };
+};
 
 // دالة عرض شعار النجاح
 const showSuccessToast = (message) => {
@@ -4005,6 +4065,7 @@ const UsersManagement = ({ language, t }) => {
     'ADMIN': 'bg-blue-500',
     'STAFF': 'bg-green-500'
   };
+  const usersVirtualTable = useVirtualTable(users, 64);
 
   return (
     <div className="space-y-6">
@@ -4023,8 +4084,9 @@ const UsersManagement = ({ language, t }) => {
 
       {/* جدول المستخدمين */}
       <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
+        <div ref={usersVirtualTable.parentRef} className="max-h-[520px] overflow-auto">
         <table className="w-full">
-          <thead className="bg-black/20">
+          <thead className="bg-black/20 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('اسم المستخدم', 'Username')}</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-300">{t('الصلاحية', 'Role')}</th>
@@ -4034,7 +4096,10 @@ const UsersManagement = ({ language, t }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {users.map(user => (
+            {usersVirtualTable.paddingTop > 0 && <tr><td colSpan={5} style={{ height: usersVirtualTable.paddingTop }} /></tr>}
+            {usersVirtualTable.virtualRows.map(virtualRow => {
+              const user = users[virtualRow.index];
+              return (
               <tr key={user.id} className="hover:bg-white/5">
                 <td className="px-4 py-3 font-medium">{user.username}</td>
                 <td className="px-4 py-3">
@@ -4080,9 +4145,12 @@ const UsersManagement = ({ language, t }) => {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
+            {usersVirtualTable.paddingBottom > 0 && <tr><td colSpan={5} style={{ height: usersVirtualTable.paddingBottom }} /></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal إضافة مستخدم */}
@@ -4364,14 +4432,18 @@ const ActivityLog = ({ language, t }) => {
       </div>
 
       <div className="bg-gradient-to-br from-[#8A1538] to-[#6B0F2A] rounded-2xl border border-white/10 overflow-hidden">
-        <div className="max-h-[500px] overflow-y-auto">
+        <div>
           {logs.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               {t('لا توجد سجلات', 'No logs found')}
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {logs.map(log => (
+            <VirtualizedList
+              items={logs}
+              estimateSize={72}
+              maxHeight={500}
+              className="divide-y divide-white/5"
+              renderItem={(log) => (
                 <div key={log.id} className="p-4 hover:bg-white/5 flex items-center gap-4">
                   <div className="p-2 bg-white/10 rounded-lg">
                     {actionIcons[log.action_type] || <Activity size={16} />}
@@ -4384,8 +4456,8 @@ const ActivityLog = ({ language, t }) => {
                     {new Date(log.created_at).toLocaleString('ar-QA')}
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            />
           )}
         </div>
       </div>
@@ -5392,6 +5464,8 @@ const DatabaseManagement = ({ language, t }) => {
     }
   };
 
+  const tableDataVirtualTable = useVirtualTable(tableData, 56);
+
   const exportTable = () => {
     const json = JSON.stringify(tableData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -5458,9 +5532,9 @@ const DatabaseManagement = ({ language, t }) => {
               {t('لا توجد بيانات', 'No data found')}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div ref={tableDataVirtualTable.parentRef} className="max-h-[560px] overflow-auto">
               <table className="w-full">
-                <thead className="bg-white/5">
+                <thead className="bg-white/5 sticky top-0 z-10">
                   <tr>
                     {Object.keys(tableData[0]).slice(0, 6).map(key => (
                       <th key={key} className="px-4 py-3 text-left text-sm font-medium text-gray-300">
@@ -5473,7 +5547,11 @@ const DatabaseManagement = ({ language, t }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {tableData.map((row, index) => (
+                  {tableDataVirtualTable.paddingTop > 0 && <tr><td colSpan={7} style={{ height: tableDataVirtualTable.paddingTop }} /></tr>}
+                  {tableDataVirtualTable.virtualRows.map((virtualRow) => {
+                    const row = tableData[virtualRow.index];
+                    const index = virtualRow.index;
+                    return (
                     <tr key={row.id || index} className="hover:bg-white/5">
                       {Object.entries(row).slice(0, 6).map(([key, value]) => (
                         <td key={key} className="px-4 py-3 text-sm">
@@ -5527,7 +5605,9 @@ const DatabaseManagement = ({ language, t }) => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
+                  {tableDataVirtualTable.paddingBottom > 0 && <tr><td colSpan={7} style={{ height: tableDataVirtualTable.paddingBottom }} /></tr>}
                 </tbody>
               </table>
             </div>
@@ -5708,8 +5788,12 @@ const SmartSystemPanel = ({ language, t }) => {
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <History size={18} className="text-indigo-400" /> {t('آخر عمليات الفحص', 'Recent Runs')}
           </h3>
-          <div className="space-y-3">
-            {qaRuns.map(run => (
+          <VirtualizedList
+            items={qaRuns}
+            estimateSize={76}
+            maxHeight={420}
+            className="space-y-3"
+            renderItem={(run) => (
               <div key={run.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
                 <div>
                   <div className="text-sm font-medium text-white">
@@ -5721,8 +5805,8 @@ const SmartSystemPanel = ({ language, t }) => {
                   {run.ok ? t('سليم', 'Healthy') : t('به مشاكل', 'Issues')}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          />
         </div>
 
         {/* Findings & Auto-Repair */}
@@ -5736,7 +5820,12 @@ const SmartSystemPanel = ({ language, t }) => {
                 {t('لا توجد مشاكل حالية، النظام يعمل بكفاءة 100%', 'No issues found, system running at 100%')}
               </div>
             )}
-            {findings.map(finding => (
+            <VirtualizedList
+              items={findings}
+              estimateSize={132}
+              maxHeight={560}
+              className="space-y-4"
+              renderItem={(finding) => (
               <div key={finding.id} className="p-4 bg-white/5 border border-white/5 rounded-xl flex flex-col md:flex-row justify-between gap-4">
                 <div className="flex gap-4">
                   <div className={`p-3 rounded-xl h-fit ${finding.severity === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
@@ -5768,7 +5857,8 @@ const SmartSystemPanel = ({ language, t }) => {
                   )}
                 </div>
               </div>
-            ))}
+              )}
+            />
           </div>
         </div>
       </div>
