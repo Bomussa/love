@@ -17,7 +17,7 @@ export const USER_ROLES = {
     id: 'ADMIN',
     name: 'مدير',
     nameEn: 'Administrator',
-    permissions: ['dashboard', 'queue_management', 'pin_management', 'reports', 'clinic_configuration', 'settings', 'user_management', 'activity_logs']
+    permissions: ['dashboard', 'queue_management', 'reports', 'clinic_configuration', 'settings', 'user_management', 'activity_logs']
   },
   DOCTOR: {
     id: 'DOCTOR',

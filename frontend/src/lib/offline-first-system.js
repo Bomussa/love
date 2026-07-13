@@ -20,7 +20,7 @@
 const OFS_CONFIG = {
   dbName: 'MMC_OfflineDB',
   dbVersion: 1,
-  stores: ['queues', 'clinics', 'notifications', 'pins', 'patient_routes', 'sync_queue', 'cache_meta'],
+  stores: ['queues', 'clinics', 'notifications', 'patient_routes', 'sync_queue', 'cache_meta'],
   syncInterval: 5000, // 5 ثواني
   maxRetries: 10,
   conflictStrategy: 'server-wins', // server-wins, client-wins, merge

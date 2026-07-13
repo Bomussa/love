@@ -3578,33 +3578,11 @@ const SettingsSection = ({ language, t }) => {
           </div>
         </div>
 
-        {/* إعدادات البن التلقائي */}
+        {/* إعدادات التسجيل التلقائي */}
         <div className="mt-6 pt-6 border-t border-white/10">
-          <h4 className="text-lg font-bold mb-4">{t('إعدادات البن التلقائي', 'Auto PIN Settings')}</h4>
+          <h4 className="text-lg font-bold mb-4">{t('إعدادات التسجيل التلقائي', 'Auto Registration Settings')}</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('وقت إصدار البن (توقيت الدوحة)', 'PIN Generate Time (Doha Time)')}</label>
-              <input
-                type="time"
-                value={settings.pin_auto_generate_time || '05:00'}
-                onChange={(e) => updateSetting('pin_auto_generate_time', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
-              />
-              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لإصدار أرقام البن الجديدة', 'Daily time to generate new PIN codes')}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">{t('وقت حذف البن', 'PIN Delete Time')}</label>
-              <input
-                type="time"
-                value={settings.pin_auto_delete_time || '00:00'}
-                onChange={(e) => updateSetting('pin_auto_delete_time', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white"
-              />
-              <p className="text-xs text-gray-500 mt-1">{t('الوقت اليومي لحذف أرقام البن القديمة', 'Daily time to delete old PIN codes')}</p>
-            </div>
-
             <div>
               <label className="block text-sm text-gray-400 mb-2">{t('وقت إيقاف التسجيل', 'Registration Stop Time')}</label>
               <input
@@ -3680,35 +3658,6 @@ const SettingsSection = ({ language, t }) => {
           <h4 className="text-lg font-bold mb-4">{t('التحكم في الميزات', 'Feature Controls')}</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* نظام البن كود */}
-            <div className="bg-white/5 rounded-xl p-4">
-              <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام البن كود', 'PIN Code System')}</h5>
-              
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-sm">{t('تفعيل النظام', 'Enable System')}</span>
-                </div>
-                <button
-                  onClick={() => updateSetting('pin_system_enabled', settings.pin_system_enabled === 'true' ? 'false' : 'true')}
-                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
-                >
-                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_enabled === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
-                </button>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm">{t('إظهار في الواجهة', 'Show in UI')}</span>
-                </div>
-                <button
-                  onClick={() => updateSetting('pin_system_visible', settings.pin_system_visible === 'true' ? 'false' : 'true')}
-                  className={`w-14 h-8 rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'bg-green-500' : 'bg-red-500'}`}
-                >
-                  <div className={`w-6 h-6 bg-white rounded-full transition-all ${settings.pin_system_visible === 'true' ? 'translate-x-7' : 'translate-x-1'}`} />
-                </button>
-              </div>
-            </div>
-            
             {/* نظام الدور */}
             <div className="bg-white/5 rounded-xl p-4">
               <h5 className="font-medium text-[#C9A54C] mb-3">{t('نظام الدور', 'Queue System')}</h5>
@@ -3849,7 +3798,6 @@ const UsersManagement = ({ language, t }) => {
   const allPermissions = [
     { id: 'dashboard', label: t('لوحة التحكم', 'Dashboard') },
     { id: 'queues', label: t('إدارة الطوابير', 'Queue Management') },
-    { id: 'pins', label: t('الأرقام السرية', 'PIN Codes') },
     { id: 'notifications', label: t('الإشعارات', 'Notifications') },
     { id: 'routes', label: t('المسارات', 'Routes') },
     { id: 'floor_directions', label: t('توجيه الطوابق', 'Floor Directions') },
@@ -5834,7 +5782,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
     waiting: 0,
     completed: 0,
     avgWaitTime: 0,
-    activePins: 0,
     systemHealth: 100
   });
   const [loading, setLoading] = useState(true);
@@ -5872,9 +5819,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
       const { data: clinicsData } = await supabase
         .from('clinics')
         .select('id, name_ar, name_en');
-
-      // pins table removed — always 0
-      const pinCount = 0;
 
       // حساب إحصائيات كل عيادة
       const clinicStats = {};
@@ -5920,7 +5864,6 @@ export const AdminDashboardV2 = ({ onLogout, language, toggleLanguage }) => {
 
       setStats(prev => ({
         ...prev,
-        activePins: pinCount || 0,
         systemHealth: 100,
         clinicStats
       }));

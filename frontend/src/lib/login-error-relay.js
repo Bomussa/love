@@ -14,7 +14,7 @@ function normalizeMessage(text) {
     return 'هذا الجهاز مستخدم برقم آخر اليوم'
   }
 
-  if (lower.includes('another clinic') || lower.includes('other clinic') || lower.includes('clinic conflict') || lower.includes('wrong clinic pin') || lower.includes('wrong_clinic_pin') || lower.includes('active_clinic_id')) {
+  if (lower.includes('another clinic') || lower.includes('other clinic') || lower.includes('clinic conflict') || lower.includes('active_clinic_id')) {
     return 'لا يمكن الدخول لأن الحساب مرتبط بعيادة أخرى'
   }
 

@@ -9,7 +9,6 @@ const DEFAULT_SETTINGS = {
   enable_notifications: 'true',
   working_hours_start: '07:00',
   working_hours_end: '15:00',
-  emergency_pin: '999',
   current_theme: 'medical-professional',
   enable_theme_selector: 'true',
   show_theme_preview: 'true',
@@ -123,7 +122,6 @@ export async function getSystemConfig() {
   const notifications = await getSetting('enable_notifications', DEFAULT_SETTINGS.enable_notifications);
   const workingHoursStart = await getSetting('working_hours_start', DEFAULT_SETTINGS.working_hours_start);
   const workingHoursEnd = await getSetting('working_hours_end', DEFAULT_SETTINGS.working_hours_end);
-  const emergencyPin = await getSetting('emergency_pin', DEFAULT_SETTINGS.emergency_pin);
 
   return {
     graceMinutes: toNumber(graceMinutes, 5),
@@ -135,7 +133,6 @@ export async function getSystemConfig() {
       start: toStringValue(workingHoursStart, DEFAULT_SETTINGS.working_hours_start),
       end: toStringValue(workingHoursEnd, DEFAULT_SETTINGS.working_hours_end),
     },
-    emergencyPin: toStringValue(emergencyPin, DEFAULT_SETTINGS.emergency_pin),
   };
 }
 

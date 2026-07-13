@@ -11,16 +11,15 @@ import { supabase } from '../lib/supabase-client';
 const ALL_TABLES = [
   'activity_log', 'activity_logs', 'admins', 'api_logs', 'api_status', 'app_settings',
   'audit_log', 'audit_logs', 'cache_logs', 'call_engine_state', 'chart_data',
-  'clinic_counters', 'clinic_members', 'clinic_pins', 'clinic_queue_reservations',
+  'clinic_counters', 'clinic_members', 'clinic_queue_reservations',
   'clinic_visits', 'clinics', 'comprehensive_statistics', 'daily_activity_logs',
   'daily_barcode_usage', 'daily_queue_counters', 'db_column_management',
   'db_policy_management', 'db_table_management', 'dead_letter_audit', 'dead_letters',
   'dead_letters_actions', 'device_logins', 'error_log', 'events', 'fallback_responses',
-  'ip_sessions', 'kv_admin', 'kv_cache', 'kv_events', 'kv_locks', 'kv_pins', 'kv_queues',
+  'ip_sessions', 'kv_admin', 'kv_cache', 'kv_events', 'kv_locks', 'kv_queues',
   'notifications', 'operation_progress', 'operation_queue', 'organization',
   'partial_results', 'pathways', 'patient_queue_numbers', 'patient_routes',
-  'patient_sessions', 'patient_visits', 'patients', 'permanent_audit_logs', 'pins',
-  'queue', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending',
+  'patient_sessions', 'patient_visits', 'patients', 'permanent_audit_logs', 'queue', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending',
   'queue_resettle', 'queues', 'rate_limits', 'reports', 'roles', 'route_steps',
   'routes', 'scheduler_jobs', 'sessions', 'settings', 'stats_daily', 'system_config',
   'system_settings', 'unified_queue', 'users'
@@ -38,8 +37,7 @@ const ALL_FUNCTIONS = [
   'enqueue_patient_resilient', 'ensure_clinic_sequence', 'ensure_clinic_sequence_name',
   'enter_clinic', 'enter_queue_v2', 'enter_unified_queue', 'enter_unified_queue_safe',
   'event_trigger_fn', 'exit_clinic', 'fetch_and_lock_dead_letters',
-  'finalize_dead_letter', 'generate_daily_pins', 'generate_pin_safe',
-  'get_current_pins', 'get_fallback_response', 'get_next_display_number',
+  'finalize_dead_letter', 'get_fallback_response', 'get_next_display_number',
   'get_next_queue_number', 'get_next_queue_number_atomic', 'get_patient_visit_report',
   'get_queue_config', 'get_queue_position', 'handle_operation_timeout',
   'increment_event_attempt', 'is_admin', 'is_clinic_member', 'is_clinic_staff',
@@ -50,13 +48,12 @@ const ALL_FUNCTIONS = [
   'retry_failed_operations', 'retry_pending_process', 'save_partial_result',
   'select_dead_letters_for_processing', 'set_display_number', 'start_patient_visit',
   'touch_updated_at', 'update_api_last_used', 'update_operation_progress',
-  'update_updated_at_column', 'verify_clinic_pin', 'verify_clinic_pin_secure',
-  'delete_expired_pins', 'update_pin_expiry', 'validate_pin_data', 'reset_usage_counters'
+  'update_updated_at_column', 'reset_usage_counters'
 ];
 
 // تصنيفات الجداول
 const TABLE_CATEGORIES = {
-  'core': ['clinics', 'patients', 'unified_queue', 'pins', 'settings', 'routes', 'route_steps'],
+  'core': ['clinics', 'patients', 'unified_queue', 'settings', 'routes', 'route_steps'],
   'queue': ['queue', 'queues', 'queue_audit', 'queue_counters', 'queue_history', 'queue_pending', 'queue_resettle'],
   'logs': ['activity_log', 'activity_logs', 'audit_log', 'audit_logs', 'api_logs', 'cache_logs', 'error_log'],
   'system': ['system_config', 'system_settings', 'app_settings', 'scheduler_jobs'],
@@ -67,7 +64,7 @@ const TABLE_CATEGORIES = {
 // تصنيفات الدوال
 const FUNCTION_CATEGORIES = {
   'queue': ['call_next_patient', 'enqueue_patient', 'enter_unified_queue', 'get_queue_position', 'postpone_patient_secure'],
-  'auth': ['is_admin', 'is_clinic_member', 'is_clinic_staff', 'verify_clinic_pin', 'current_auth_user_id'],
+  'auth': ['is_admin', 'is_clinic_member', 'is_clinic_staff', 'current_auth_user_id'],
   'cleanup': ['auto_daily_cleanup', 'daily_cleanup', 'cleanup_daily_logs', 'cleanup_old_operations'],
   'system': ['get_queue_config', 'get_fallback_response', 'handle_operation_timeout'],
   'other': []
@@ -327,8 +324,8 @@ const APIMonitor = ({ language = 'ar', t }) => {
       
       // الدوال الأساسية التي تُفحص فعلياً
       const coreFunctions = [
-        'generate_daily_pins', 'get_current_pins', 'enter_unified_queue_safe',
-        'call_next_patient', 'get_queue_position', 'verify_clinic_pin',
+        'enter_unified_queue_safe',
+        'call_next_patient', 'get_queue_position',
         'is_admin', 'daily_cleanup'
       ];
       
