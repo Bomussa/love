@@ -229,23 +229,33 @@ const QueueManagement = ({ language, t }) => {
   };
 
 
-  // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي
+  // تمرير الدور لمراجع معين بالرقم العسكري/الشخصي فقط بدون البحث بالاسم
   const priorityCallPatient = async () => {
-    if (!priorityPatientId.trim()) {
+    const normalizedPriorityId = priorityPatientId.trim();
+    const isValidPriorityId = /^[A-Za-z0-9_-]+$/.test(normalizedPriorityId);
+
+    if (!normalizedPriorityId) {
       showErrorToast(t('يرجى إدخال الرقم العسكري أو الشخصي', 'Please enter military or personal ID'));
+      return;
+    }
+
+    if (!isValidPriorityId) {
+      showErrorToast(t('يرجى إدخال رقم عسكري أو شخصي صحيح فقط، بدون اسم أو مسافات', 'Please enter a valid military or personal ID only, without names or spaces'));
       return;
     }
 
     try {
       setPriorityLoading(true);
 
-      // البحث عن المراجع في قائمة الانتظار في unified_queue
+      const priorityIdFilter = `patient_id.eq.${normalizedPriorityId},military_id.eq.${normalizedPriorityId},personal_id.eq.${normalizedPriorityId}`;
+
+      // البحث عن المراجع في قائمة الانتظار في unified_queue بالرقم فقط
       const { data: patientQueue, error: searchError } = await supabase
         .from('unified_queue')
         .select('*')
         .eq('clinic_id', priorityClinicId)
         .eq('status', 'waiting')
-        .or(`patient_id.eq.${priorityPatientId},patient_name.ilike.%${priorityPatientId}%`)
+        .or(priorityIdFilter)
         .single();
 
       if (searchError || !patientQueue) {
@@ -253,7 +263,7 @@ const QueueManagement = ({ language, t }) => {
         const { data: patient, error: patientError } = await supabase
           .from('patients')
           .select('*')
-          .or(`patient_id.eq.${priorityPatientId},id.eq.${priorityPatientId}`)
+          .or(priorityIdFilter)
           .single();
 
         if (patientError || !patient) {
@@ -266,8 +276,7 @@ const QueueManagement = ({ language, t }) => {
           .from('unified_queue')
           .insert({
             clinic_id: priorityClinicId,
-            patient_id: patient.patient_id || patient.id,
-            patient_name: patient.name || 'مراجع أولوية',
+            patient_id: patient.patient_id || patient.military_id || patient.personal_id || normalizedPriorityId,
             status: 'called',
             called_at: new Date(Date.now() + 3*60*60*1000).toISOString(),
             queue_number_int: 999,
@@ -282,7 +291,7 @@ const QueueManagement = ({ language, t }) => {
           return;
         }
 
-        showSuccessToast(t(`تم تمرير الدور للمراجع: ${patient.name || patient.military_id}`, `Priority call for: ${patient.name || patient.military_id}`));
+        showSuccessToast(t(`تم تمرير الدور للمراجع رقم: ${patient.patient_id || patient.military_id || patient.personal_id || normalizedPriorityId}`, `Priority call for ID: ${patient.patient_id || patient.military_id || patient.personal_id || normalizedPriorityId}`));
       } else {
         // المراجع موجود في الانتظار، نقوم بتمرير دوره مباشرة
         await supabase
@@ -515,13 +524,13 @@ const QueueManagement = ({ language, t }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
-                  {t('الرقم العسكري أو الشخصي', 'Military or Personal ID')}
+                  {t('الرقم العسكري أو الشخصي فقط (لا تدخل الاسم)', 'Military or personal ID only (do not enter a name)')}
                 </label>
                 <input
                   type="text"
                   value={priorityPatientId}
                   onChange={(e) => setPriorityPatientId(e.target.value)}
-                  placeholder={t('أدخل الرقم هنا...', 'Enter ID here...')}
+                  placeholder={t('أدخل الرقم العسكري أو الشخصي فقط...', 'Enter military or personal ID only...')}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-lg"
                   autoFocus
                 />
