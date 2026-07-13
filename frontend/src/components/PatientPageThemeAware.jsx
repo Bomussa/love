@@ -36,7 +36,6 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const sessionId = useMemo(() => getSessionId(patientData), [patientData]);
   const queueType = patientData?.queueType || patientData?.examType || 'general';
   const gender = patientData?.gender || 'male';
-  const patientName = patientId || sessionId || '';
 
   const [stations, setStations] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -80,7 +79,6 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       const { data, error } = await supabase.rpc('enter_unified_queue_safe', {
         p_clinic_id: station.id,
         p_patient_id: patientId,
-        p_patient_name: patientId, // استخدام الرقم العسكري بدلاً من الاسم
         p_exam_type: queueType,
         p_gender: gender,
         p_military_id: patientId,
@@ -102,7 +100,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     } finally {
       setLoading(false);
     }
-  }, [gender, language, notify, patientId, patientName, queueType]);
+  }, [gender, language, notify, patientId, queueType]);
 
   const loadPathway = useCallback(async () => {
     if (!patientId) {
