@@ -70,7 +70,7 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
       const { data, error } = await supabase
         .from('unified_queue')
         .select([
-          'id','display_number','patient_name','patient_id',
+          'id','display_number','patient_id',
           'military_id','personal_id','gender','exam_type',
           'status','entered_at','called_at','exam_start_time',
           'exam_end_time','completed_at','entered_clinic_at',
@@ -139,15 +139,25 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
     setVipLoading(true);
     try {
       const today = getQatarDate();
-      // البحث عن المريض في الطابور
-      const { data: found } = await supabase
+      // البحث عن المريض بفلاتر مساواة على أعمدة الهوية القابلة للفهرسة.
+      const vipKey = vipId.trim();
+      const findByIdColumn = async (column) => supabase
         .from('unified_queue')
-        .select('id,display_number,patient_name,status')
+        .select('id,display_number,status')
         .eq('clinic_id', selectedClinic)
         .eq('queue_date', today)
-        .or(`military_id.eq.${vipId.trim()},personal_id.eq.${vipId.trim()},patient_id.eq.${vipId.trim()}`)
+        .eq(column, vipKey)
         .in('status', ['waiting','called'])
+        .order('display_number', { ascending: true })
+        .limit(1)
         .maybeSingle();
+
+      let found = null;
+      for (const column of ['military_id', 'personal_id', 'patient_id']) {
+        const { data, error } = await findByIdColumn(column);
+        if (error) throw error;
+        if (data) { found = data; break; }
+      }
 
       if (found) {
         // تمرير الدور مباشرة
@@ -171,9 +181,8 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
           .from('unified_queue')
           .insert({
             clinic_id: selectedClinic,
-            patient_id: vipId.trim(),
-            personal_id: vipId.trim(),
-            patient_name: `VIP - ${vipId.trim()}`,
+            patient_id: vipKey,
+            personal_id: vipKey,
             status: 'called',
             called_at: getQatarNow(),
             entered_at: getQatarNow(),
@@ -328,9 +337,7 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
   const filtered = patients.filter(p => {
     const idStr  = `${p.patient_id||''} ${p.military_id||''} ${p.personal_id||''}`.toLowerCase();
     const search = searchTerm.toLowerCase();
-    const matchSearch = idStr.includes(search)
-      || (p.patient_name||'').toLowerCase().includes(search)
-      || String(p.display_number||'').includes(search);
+    const matchSearch = idStr.includes(search) || String(p.display_number||'').includes(search);
     let matchStatus = filterStatus === 'all';
     if (!matchStatus) {
       if (filterStatus === 'waiting')     matchStatus = p.status === 'waiting';
@@ -531,7 +538,7 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
         <div className="flex-1 min-w-[200px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            placeholder={tr('بحث برقم أو اسم المريض...','Search by ID or name...')}
+            placeholder={tr('بحث برقم الهوية أو رقم الدور...','Search by ID or queue number...')}
             className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500" />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}

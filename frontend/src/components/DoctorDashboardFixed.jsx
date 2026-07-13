@@ -25,22 +25,19 @@ const pickArray = (snapshot) => {
 const pickValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
 
 const getPatientLabel = (item, index) => {
-  const value = pickValue(
-    item?.patient_name,
-    item?.patientName,
-    item?.name,
-    item?.full_name,
-    item?.fullName,
-    item?.display_name,
-    item?.username,
-    item?.militaryId,
-    item?.military_id,
-    item?.patient_id,
-    item?.patientId,
-    item?.id,
-  );
+  const militaryId = pickValue(item?.military_id, item?.militaryId);
+  const personalId = pickValue(item?.personal_id, item?.personalId);
+  const patientId = pickValue(item?.patient_id, item?.patientId, item?.id);
+  const gender = pickValue(item?.gender, item?.sex);
 
-  return value ? String(value) : `#${index + 1}`;
+  const parts = [
+    militaryId ? `MIL: ${militaryId}` : null,
+    personalId ? `PER: ${personalId}` : null,
+    patientId ? `PID: ${patientId}` : null,
+    gender ? `Gender: ${gender}` : null,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(' • ') : `#${index + 1}`;
 };
 
 const getQueueStatusBadge = (status) => {
@@ -160,7 +157,7 @@ function DoctorDashboardFixed({ doctorData, onLogout, language = 'ar', toggleLan
   }, [language, refreshStatus]);
 
   const currentQueueId = pickValue(currentPatient?.queueId, currentPatient?.queue_id, currentPatient?.id, currentPatient?.queueID);
-  const currentPatientId = pickValue(currentPatient?.patient_id, currentPatient?.patientId, currentPatient?.personal_id, currentPatient?.militaryId, currentPatient?.military_id, currentPatient?.id);
+  const currentPatientId = pickValue(currentPatient?.patient_id, currentPatient?.patientId, currentPatient?.personal_id, currentPatient?.personalId, currentPatient?.military_id, currentPatient?.militaryId, currentPatient?.id);
   const currentStatus = currentPatient?.status || snapshot?.status || (currentPatient ? 'waiting' : 'idle');
 
   const hasCurrentPatient = Boolean(currentPatient);
@@ -396,7 +393,7 @@ function DoctorDashboardFixed({ doctorData, onLogout, language = 'ar', toggleLan
                 {queue.slice(0, 12).map((item, index) => {
                   const itemStatus = item?.status || 'waiting';
                   const itemLabel = getPatientLabel(item, index);
-                  const itemId = pickValue(item?.patient_id, item?.patientId, item?.militaryId, item?.military_id, item?.id);
+                  const itemId = pickValue(item?.patient_id, item?.patientId, item?.military_id, item?.militaryId, item?.personal_id, item?.personalId, item?.id);
                   const itemNumber = pickValue(item?.display_number, item?.displayNumber, item?.queue_number, item?.queueNumber, item?.number);
 
                   return (
