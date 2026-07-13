@@ -139,7 +139,7 @@ function App() {
     setTimeout(()=>{ n.style.opacity='0'; setTimeout(()=>{if(document.body.contains(n))document.body.removeChild(n);},300); },3000);
   };
 
-  const handleLogin = async ({ patientId, gender }) => {
+  const handleLogin = async ({ patientId, gender, examType }) => {
     try {
       let devRestrict = false;
       try {
@@ -164,13 +164,24 @@ function App() {
       if (res.success) {
         const patientPayload = res.data || res.patient || res.session || res;
         try { await registerDeviceLogin(patientId); } catch (regError) { console.warn('[App] registerDeviceLogin failed:', regError); }
-        try { await logDailyActivity('patient_login',{patientId,gender,location:'شاشة التسجيل',performedBy:patientId}); } catch (logError) { console.warn('[App] logDailyActivity failed:', logError); }
+        try { await logDailyActivity('patient_login',{patientId,gender,examType,location:'شاشة التسجيل',performedBy:patientId}); } catch (logError) { console.warn('[App] logDailyActivity failed:', logError); }
         localStorage.removeItem('mmc_admin_session');
         localStorage.removeItem('mmc_doctor_session');
         setIsAdmin(false); setDoctorSession(null);
-        setPatientData(patientPayload);
-        localStorage.setItem('patientData', JSON.stringify(patientPayload));
-        setCurrentView('examSelection');
+        
+        // حفظ البيانات مع نوع الفحص
+        const finalPatientData = {
+          ...patientPayload,
+          queueType: examType,
+          examType: examType,
+          gender: gender
+        };
+        
+        setPatientData(finalPatientData);
+        localStorage.setItem('patientData', JSON.stringify(finalPatientData));
+        
+        // الانتقال مباشرة لصفحة المراجع (التي ستتولى إنشاء المسار والدخول في الطابور)
+        setCurrentView('patient');
         showNotification(language==='ar'?'تم تسجيل الدخول بنجاح':'Login successful','success');
       } else {
         showNotification(language==='ar'?'فشل تسجيل الدخول':'Login failed','error');

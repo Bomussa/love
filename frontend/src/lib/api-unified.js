@@ -241,8 +241,8 @@ const api = {
       personalId: personalId || patientId,
       personal_id: personalId || patientId,
       patient_id: patientId,
-      patient_name: patientName || null,
-      name: patientName || null,
+      patient_name: patientId, // استخدام الرقم العسكري بدلاً من الاسم
+      name: patientId, // استخدام الرقم العسكري بدلاً من الاسم
       examType: examType || null,
       queueType: examType || null,
       gender: gender || 'male',

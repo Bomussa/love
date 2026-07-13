@@ -10,10 +10,12 @@ import { QRScanner } from './QRScanner'
 import featuresConfig from '../../config/features.json'
 import LiveStatisticsPanel from './LiveStatisticsPanel'
 import { validateMilitaryId, validateAdminData, sanitizeInput } from '../lib/validation'
+import { examTypes } from '../lib/utils'
 
 export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, onThemeChange, language, toggleLanguage }) {
   const [patientId, setPatientId] = useState('')
   const [gender, setGender] = useState('male')
+  const [examType, setExamType] = useState('')
   const [loading, setLoading] = useState(false)
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [isDoctorMode, setIsDoctorMode] = useState(false)
@@ -67,11 +69,17 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
 
     setLoading(true)
     try {
+      // التحقق من اختيار نوع الفحص
+      if (!examType) {
+        setValidationError(language === 'ar' ? 'يرجى اختيار نوع الفحص' : 'Please select exam type')
+        return
+      }
+
       // تسجيل دخول المراجع
-      logPatientRegistered({ militaryId: sanitizedId, gender })
+      logPatientRegistered({ militaryId: sanitizedId, gender, examType })
       
       console.log('=== Calling onLogin ===')
-      await onLogin({ patientId: sanitizedId, gender })
+      await onLogin({ patientId: sanitizedId, gender, examType })
       console.log('=== onLogin SUCCESS ===')
     } catch (error) {
       console.error('=== onLogin ERROR ===', error)
@@ -361,6 +369,25 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {language === 'ar' ? 'نوع الفحص' : 'Exam Type'}
+                  </label>
+                  <select
+                    value={examType}
+                    onChange={(e) => setExamType(e.target.value)}
+                    className="w-full h-12 px-4 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    required
+                  >
+                    <option value="" disabled>{language === 'ar' ? 'اختر نوع الفحص' : 'Select Exam Type'}</option>
+                    {examTypes.map(type => (
+                      <option key={type.id} value={type.id} className="bg-gray-800">
+                        {language === 'ar' ? type.nameAr : type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* إشعار خاص للنساء */}
                 {gender === 'female' && (
                   <div className="bg-pink-900/30 border-2 border-pink-500/50 rounded-xl p-4 text-center">
@@ -383,7 +410,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
                   type="submit"
                   variant="gradient"
                   className="w-full h-12 text-lg font-semibold"
-                  disabled={loading || !patientId.trim()}
+                  disabled={loading || !patientId.trim() || !examType}
                   onClick={(e) => {
                     console.log('=== Button CLICKED ===')
                     // الزر type=submit سيستدعي onSubmit تلقائياً

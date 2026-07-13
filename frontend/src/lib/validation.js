@@ -161,8 +161,8 @@ export function sanitizeInput(input) {
  */
 export function validateExamType(examType) {
   const validTypes = [
-    'comprehensive', 'periodic', 'initial', 'specialized',
-    'شامل', 'دوري', 'أولي', 'تخصصي',
+    'recruitment', 'promotion', 'transfer', 'referral', 'contract', 'aviation', 'cooks', 'courses',
+    'فحص التجنيد', 'فحص الترفيع', 'فحص النقل', 'فحص التحويل', 'تجديد التعاقد', 'فحص الطيران السنوي', 'فحص الطباخين', 'فحص الدورات الداخلية والخارجية'
   ];
 
   if (!examType || !validTypes.includes(examType)) {
