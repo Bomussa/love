@@ -115,7 +115,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
   const sessionId = useMemo(() => getSessionId(patientData), [patientData]);
   const queueType = patientData?.queueType || patientData?.examType || 'general';
   const gender = patientData?.gender || 'male';
-  const patientName = patientData?.name || patientData?.patient_name || patientId || sessionId || '';
 
   const getExamName = useCallback(() => {
     const exam = examTypes.find((e) => e.id === queueType);
@@ -140,7 +139,6 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
       const { data, error } = await supabase.rpc('enter_unified_queue_safe', {
         p_clinic_id: station.id,
         p_patient_id: patientId,
-        p_patient_name: patientName,
         p_exam_type: queueType,
         p_gender: gender,
         p_military_id: patientId,
@@ -191,7 +189,7 @@ export function PatientPage({ patientData, onLogout, language, toggleLanguage })
     } finally {
       setLoading(false);
     }
-  }, [gender, language, notify, patientId, patientName, queueType]);
+  }, [gender, language, notify, patientId, queueType]);
 
   const loadPathway = useCallback(async () => {
     if (!patientId) {

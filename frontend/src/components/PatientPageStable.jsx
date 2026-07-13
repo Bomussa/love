@@ -102,7 +102,6 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
   const sessionId = useMemo(() => getSessionId(patientData), [patientData]);
   const queueType = patientData?.queueType || patientData?.examType || 'general';
   const gender = patientData?.gender || 'male';
-  const patientName = patientData?.name || patientData?.patient_name || patientId || sessionId || '';
 
   const shellStyle = { backgroundColor: 'hsl(var(--background))' };
   const panelStyle = { backgroundColor: 'hsl(var(--card) / 0.82)' };
@@ -137,7 +136,6 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
       const { data, error } = await supabase.rpc('enter_unified_queue_safe', {
         p_clinic_id: station.id,
         p_patient_id: patientId,
-        p_patient_name: patientName,
         p_exam_type: queueType,
         p_gender: gender,
         p_military_id: patientId,
@@ -174,7 +172,7 @@ export function PatientPageStable({ patientData, onLogout, language, toggleLangu
     } finally {
       setLoading(false);
     }
-  }, [gender, language, notify, patientId, patientName, queueType]);
+  }, [gender, language, notify, patientId, queueType]);
 
   const loadPathway = useCallback(async () => {
     if (!patientId) {
