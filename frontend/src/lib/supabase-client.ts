@@ -9,7 +9,10 @@
  * ✅ معالجة جميع أنواع الأخطاء
  */
 
+/// <reference types="vite/client" />
+
 import { createClient } from '@supabase/supabase-js';
+import type { Database, Json } from '../types/database.types';
 import { connectionManager, initializePersistentConnection, ServiceTypes } from './persistent-connection';
 
 // Supabase configuration - read from environment with safe placeholder fallbacks
@@ -28,7 +31,7 @@ const RETRY_CONFIG = {
 };
 
 // Create Supabase client with enhanced configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -47,13 +50,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // متغير لتتبع حالة الاتصال
-let connectionStatus = 'connected';
+let connectionStatus: 'connected' | 'reconnecting' | 'disconnected' | 'error' = 'connected';
 let reconnectAttempts = 0;
 
 /**
  * دالة إعادة المحاولة مع تأخير متزايد (Exponential Backoff)
  */
-async function retryWithBackoff(fn, retries = RETRY_CONFIG.maxRetries) {
+async function retryWithBackoff<T>(fn: () => Promise<T>, retries = RETRY_CONFIG.maxRetries): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
       const result = await fn();
@@ -81,7 +84,7 @@ async function retryWithBackoff(fn, retries = RETRY_CONFIG.maxRetries) {
 /**
  * استعلام آمن مع إعادة المحاولة التلقائية
  */
-export async function safeQuery(tableName, queryFn) {
+export async function safeQuery<T>(tableName: keyof Database['public']['Tables'] & string, queryFn: (query: ReturnType<typeof supabase.from>) => Promise<{ error: unknown } & T>): Promise<{ error: unknown } & T> {
   return retryWithBackoff(async () => {
     const result = await queryFn(supabase.from(tableName));
     if (result.error) throw result.error;
@@ -122,7 +125,7 @@ export async function healthCheck() {
     connectionStatus = 'error';
     return {
       status: 'ERROR',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       connectionStatus,
       timestamp: new Date().toISOString(),
     };
@@ -177,9 +180,9 @@ export async function reconnect() {
 /**
  * مراقبة الاتصال في الخلفية
  */
-let monitorInterval = null;
+let monitorInterval: ReturnType<typeof setInterval> | null = null;
 
-export function startConnectionMonitor(intervalMs = 30000) {
+export function startConnectionMonitor(intervalMs = 30000): void {
   if (monitorInterval) return;
 
   monitorInterval = setInterval(async () => {
@@ -193,7 +196,7 @@ export function startConnectionMonitor(intervalMs = 30000) {
   console.log('🔍 بدء مراقبة الاتصال');
 }
 
-export function stopConnectionMonitor() {
+export function stopConnectionMonitor(): void {
   if (monitorInterval) {
     clearInterval(monitorInterval);
     monitorInterval = null;
@@ -263,7 +266,7 @@ export function generateDeviceFingerprint() {
  * التحقق من تسجيل الجهاز لهذا اليوم
  * @returns {Promise<{allowed: boolean, existingPatientId?: string}>}
  */
-export async function checkDeviceLogin(patientId) {
+export async function checkDeviceLogin(patientId: string) {
   try {
     const deviceFingerprint = generateDeviceFingerprint();
     const today = new Date().toISOString().split('T')[0];
@@ -300,7 +303,7 @@ export async function checkDeviceLogin(patientId) {
 /**
  * تسجيل دخول الجهاز
  */
-export async function registerDeviceLogin(patientId) {
+export async function registerDeviceLogin(patientId: string): Promise<boolean> {
   try {
     const deviceFingerprint = generateDeviceFingerprint();
 
@@ -329,7 +332,7 @@ export async function registerDeviceLogin(patientId) {
 /**
  * تسجيل نشاط يومي (يُمسح نهاية اليوم)
  */
-export async function logDailyActivity(actionType, details = {}) {
+export async function logDailyActivity(actionType: string, details: Record<string, Json | undefined> = {}): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('daily_activity_logs')
@@ -357,7 +360,7 @@ export async function logDailyActivity(actionType, details = {}) {
 /**
  * تسجيل تعديل دائم (لا يُمسح)
  */
-export async function logPermanentAudit(actionType, details) {
+export async function logPermanentAudit(actionType: string, details: Record<string, Json | undefined>): Promise<boolean> {
   try {
     const { error } = await supabase
       .from('permanent_audit_logs')
@@ -387,7 +390,7 @@ export async function logPermanentAudit(actionType, details) {
 /**
  * جلب سجلات النشاط اليومي
  */
-export async function getDailyActivityLogs(filters = {}) {
+export async function getDailyActivityLogs(filters: { patientId?: string; actionType?: string; clinicId?: string } = {}) {
   try {
     let query = supabase
       .from('daily_activity_logs')
@@ -411,14 +414,14 @@ export async function getDailyActivityLogs(filters = {}) {
     return { success: true, data };
   } catch (error) {
     console.error('خطأ في جلب السجلات اليومية:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
 /**
  * جلب سجلات التدقيق الدائمة
  */
-export async function getPermanentAuditLogs(filters = {}) {
+export async function getPermanentAuditLogs(filters: { performedBy?: string; actionType?: string; targetTable?: string; limit?: number } = {}) {
   try {
     let query = supabase
       .from('permanent_audit_logs')
@@ -444,7 +447,7 @@ export async function getPermanentAuditLogs(filters = {}) {
     return { success: true, data };
   } catch (error) {
     console.error('خطأ في جلب سجلات التدقيق:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -453,7 +456,7 @@ export async function getPermanentAuditLogs(filters = {}) {
  * @param {string} key - مفتاح الإعداد
  * @param {any} defaultValue - القيمة الافتراضية إذا لم يوجد الإعداد
  */
-export async function getSystemSetting(key, defaultValue = null) {
+export async function getSystemSetting<T = unknown>(key: string, defaultValue: T | null = null): Promise<T | null> {
   try {
     const { data, error } = await supabase
       .from('system_settings')
@@ -466,15 +469,15 @@ export async function getSystemSetting(key, defaultValue = null) {
       if (error.code === 'PGRST116') {
         return defaultValue;
       }
-      console.warn(`تحذير: فشل جلب الإعداد ${key}:`, error.message);
+      console.warn(`تحذير: فشل جلب الإعداد ${key}:`, error instanceof Error ? error.message : String(error));
       return defaultValue;
     }
 
     // تحويل القيمة من JSON إذا كانت مخزنة كـ JSON
     try {
-      return JSON.parse(data.value);
+      return JSON.parse(String(data.value)) as T;
     } catch {
-      return data.value;
+      return data.value as T;
     }
   } catch (error) {
     console.error(`خطأ في جلب الإعداد ${key}:`, error);
@@ -488,7 +491,7 @@ export async function getSystemSetting(key, defaultValue = null) {
  * @param {any} value - قيمة الإعداد
  * @param {string} description - وصف الإعداد (اختياري)
  */
-export async function setSystemSetting(key, value, description = null) {
+export async function setSystemSetting(key: string, value: Json, description: string | null = null) {
   try {
     const { error } = await supabase
       .from('system_settings')
@@ -505,7 +508,7 @@ export async function setSystemSetting(key, value, description = null) {
     return { success: true };
   } catch (error) {
     console.error(`خطأ في حفظ الإعداد ${key}:`, error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -522,18 +525,18 @@ export async function getAllSystemSettings() {
     if (error) throw error;
 
     // تحويل إلى كائن key-value
-    const settings = {};
+    const settings: Record<string, unknown> = {};
     data?.forEach((item) => {
       try {
-        settings[item.key] = JSON.parse(item.value);
+        settings[String(item.key)] = JSON.parse(String(item.value));
       } catch {
-        settings[item.key] = item.value;
+        settings[String(item.key)] = item.value;
       }
     });
 
     return { success: true, data: settings, raw: data };
   } catch (error) {
     console.error('خطأ في جلب إعدادات النظام:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
