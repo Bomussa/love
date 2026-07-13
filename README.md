@@ -21,6 +21,15 @@ The live application code is centered in:
 - `frontend/src/lib/api.js` — `/api/v1` compatibility contract
 - `frontend/src/lib/local-api.js` — legacy fallback path only
 
+
+## Frontend source authority
+
+The root `package.json` `build` script is the build source of truth for this repository. It runs the Vite production build from `frontend` (`cd frontend && ... vite build`), synchronizes runtime configuration there, and then copies `frontend/dist` back to the repository-level `dist` directory for deployment. The Vercel configuration also invokes `npm run build`, so production deployments follow this same path.
+
+Because the production build executes from `frontend`, `frontend/src` is the authoritative frontend source tree. Treat files under the repository-level `src` directory as legacy or server/compatibility code unless a deployment configuration explicitly proves they are active. Do not make production UI fixes only in root `src/components`; migrate any needed changes into `frontend/src/components`.
+
+Before archiving or deleting any duplicated component, compare the legacy and active copies with `diff -u src/path frontend/src/path`, migrate any missing production fixes into `frontend/src`, and perform that cleanup in a dedicated verified cleanup PR. CI runs `npm run check:duplicate-components` to fail when the same component path exists in both `src/components` and `frontend/src/components`.
+
 ## Active journeys
 
 ### Patient journey

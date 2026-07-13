@@ -18,7 +18,8 @@
     "test:final": "node final-integration-test.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "verify:ui": "npm run build"
+    "verify:ui": "npm run build",
+    "check:duplicate-components": "node scripts/check-duplicate-active-components.mjs"
   },
   "engines": {
     "node": ">=18.17 <21"
