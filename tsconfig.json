@@ -15,5 +15,5 @@
       "https://esm.sh/*": ["node_modules/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "frontend/src/lib/supabase-client.js"]
+  "exclude": ["node_modules", "dist"]
 }
