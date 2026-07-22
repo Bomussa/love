@@ -18,6 +18,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "https://love-api-bomussa.vercel.app/api/v1/:path*" },
     { "source": "/mms-logo.png", "destination": "/medical_logo.jpg" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/clinic/(.*)", "destination": "/index.html" },
