@@ -75,12 +75,6 @@ body {
   background-color: color-mix(in srgb, var(--theme-surface) 88%, transparent) !important;
 }
 
-[data-test="patient-page"] .bg-[#0f172a]\/70,
-[data-test="patient-page"] .bg-[#111827]\/95,
-[data-test="patient-page"] .bg-[#1a0a12]\/90 {
-  background-color: var(--theme-surface) !important;
-}
-
 /* Loading / error fallbacks that were still hard-coded */
 .min-h-screen.flex.items-center.justify-center.bg-gray-900,
 .min-h-screen.flex.items-center.justify-center.bg-gray-950,
