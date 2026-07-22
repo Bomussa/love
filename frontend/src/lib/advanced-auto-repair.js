@@ -1,6 +1,6 @@
 /**
  * نظام الإصلاح التلقائي المتقدم والشامل (Advanced Auto-Repair System)
- * يكتشف ويصلح تلقائياً جميع الأخطاء والمشاكل في كل خيار وعنصر
+ * يراقب الأعطال الفعلية دون تنفيذ دوال تشغيلية أو إرسال بيانات اختبارية.
  */
 
 class AdvancedAutoRepair {
@@ -12,116 +12,110 @@ class AdvancedAutoRepair {
       fixedIssues: 0,
       failedFixes: 0,
       lastRepair: null,
+      lastCheck: null,
       repairRate: 0,
-      status: 'idle'
+      status: 'idle',
     };
     this.monitoredElements = new Map();
     this.repairStrategies = new Map();
+    this.isRunning = false;
+    this.checkInterval = null;
+    this.boundErrorHandler = (event) => this.handleError(event);
+    this.boundRejectionHandler = (event) => this.handleRejection(event);
     this.initializeRepairStrategies();
   }
 
-  /**
-   * تهيئة استراتيجيات الإصلاح لكل نوع خيار
-   */
   initializeRepairStrategies() {
-    // استراتيجيات إصلاح الدوال
     this.repairStrategies.set('function', {
-      detect: (error) => error.type === 'function_error',
+      detect: (error) => error?.type === 'function_error',
       repair: (context) => this.repairFunction(context),
       retry: 3,
-      timeout: 5000
+      timeout: 5000,
     });
 
-    // استراتيجيات إصلاح الجداول
     this.repairStrategies.set('table', {
-      detect: (error) => error.type === 'table_error' || error.message?.includes('permission denied'),
+      detect: (error) =>
+        error?.type === 'table_error' || error?.message?.includes('permission denied'),
       repair: (context) => this.repairTable(context),
       retry: 3,
-      timeout: 5000
+      timeout: 5000,
     });
 
-    // استراتيجيات إصلاح الاتصالات
     this.repairStrategies.set('connection', {
-      detect: (error) => error.type === 'connection_error' || error.message?.includes('network'),
+      detect: (error) =>
+        error?.type === 'connection_error' || error?.message?.toLowerCase().includes('network'),
       repair: (context) => this.repairConnection(context),
       retry: 5,
-      timeout: 10000
+      timeout: 10000,
     });
 
-    // استراتيجيات إصلاح البيانات
     this.repairStrategies.set('data', {
-      detect: (error) => error.type === 'data_error' || error.message?.includes('invalid'),
+      detect: (error) =>
+        error?.type === 'data_error' || error?.message?.toLowerCase().includes('invalid'),
       repair: (context) => this.repairData(context),
       retry: 2,
-      timeout: 3000
+      timeout: 3000,
     });
 
-    // استراتيجيات إصلاح الترجمات
     this.repairStrategies.set('translation', {
-      detect: (error) => error.type === 'translation_error',
+      detect: (error) => error?.type === 'translation_error',
       repair: (context) => this.repairTranslation(context),
       retry: 1,
-      timeout: 2000
+      timeout: 2000,
     });
 
-    // استراتيجيات إصلاح الصلاحيات
     this.repairStrategies.set('permissions', {
-      detect: (error) => error.message?.includes('permission') || error.message?.includes('unauthorized'),
+      detect: (error) =>
+        error?.message?.toLowerCase().includes('permission') ||
+        error?.message?.toLowerCase().includes('unauthorized'),
       repair: (context) => this.repairPermissions(context),
       retry: 2,
-      timeout: 3000
+      timeout: 3000,
     });
 
-    // استراتيجيات إصلاح الواجهة
     this.repairStrategies.set('ui', {
-      detect: (error) => error.type === 'ui_error' || error.message?.includes('render'),
+      detect: (error) =>
+        error?.type === 'ui_error' || error?.message?.toLowerCase().includes('render'),
       repair: (context) => this.repairUI(context),
       retry: 1,
-      timeout: 2000
+      timeout: 2000,
     });
 
-    // استراتيجيات إصلاح التخزين المحلي
     this.repairStrategies.set('storage', {
-      detect: (error) => error.type === 'storage_error' || error.message?.includes('storage'),
+      detect: (error) =>
+        error?.type === 'storage_error' || error?.message?.toLowerCase().includes('storage'),
       repair: (context) => this.repairStorage(context),
       retry: 2,
-      timeout: 3000
+      timeout: 3000,
     });
 
     console.log('✅ نظام الإصلاح المتقدم: تم تهيئة الاستراتيجيات');
   }
 
-  /**
-   * بدء المراقبة والإصلاح التلقائي
-   */
   startAutoRepair() {
+    if (this.isRunning || typeof window === 'undefined') return;
+
+    this.isRunning = true;
     console.log('🔧 نظام الإصلاح التلقائي: جاري البدء');
 
-    // مراقبة الأخطاء العامة
-    window.addEventListener('error', (event) => this.handleError(event));
-    
-    // مراقبة رفض الوعود
-    window.addEventListener('unhandledrejection', (event) => this.handleRejection(event));
+    window.addEventListener('error', this.boundErrorHandler);
+    window.addEventListener('unhandledrejection', this.boundRejectionHandler);
 
-    // فحص دوري كل 30 ثانية
-    setInterval(() => this.performSystemCheck(), 30000);
+    this.checkInterval = window.setInterval(() => {
+      this.performSystemCheck();
+    }, 30000);
 
-    // فحص فوري عند البدء
     this.performSystemCheck();
-
     console.log('✅ نظام الإصلاح التلقائي: تم التفعيل');
   }
 
-  /**
-   * معالجة الأخطاء المكتشفة
-   */
   async handleError(event) {
-    const error = event.error || event;
+    const error = event?.error || event;
+    if (!error) return;
+
     console.warn('⚠️ خطأ مكتشف:', error);
+    this.healthStatus.totalIssues += 1;
 
-    this.healthStatus.totalIssues++;
-
-    // تحديد نوع الخطأ والاستراتيجية المناسبة
     for (const [type, strategy] of this.repairStrategies) {
       if (strategy.detect(error)) {
         await this.executeRepair(type, { error, source: event });
@@ -130,22 +124,24 @@ class AdvancedAutoRepair {
     }
   }
 
-  /**
-   * معالجة رفض الوعود
-   */
   async handleRejection(event) {
-    const error = event.reason || event;
+    const error = event?.reason || event;
+    if (!error) return;
+
+    const message = String(error?.message || error || '');
+    if (
+      message.includes('AbortError') ||
+      message.includes('cancelled') ||
+      message.includes('The user aborted')
+    ) {
+      return;
+    }
+
     console.warn('⚠️ وعد مرفوض:', error);
-
-    this.healthStatus.totalIssues++;
-
-    // محاولة إصلاح الخطأ
+    this.healthStatus.totalIssues += 1;
     await this.executeRepair('connection', { error, source: 'promise' });
   }
 
-  /**
-   * تنفيذ عملية الإصلاح
-   */
   async executeRepair(type, context) {
     const strategy = this.repairStrategies.get(type);
     if (!strategy) return false;
@@ -153,32 +149,25 @@ class AdvancedAutoRepair {
     this.healthStatus.status = 'repairing';
     let success = false;
 
-    for (let attempt = 1; attempt <= strategy.retry; attempt++) {
+    for (let attempt = 1; attempt <= strategy.retry; attempt += 1) {
       try {
-        console.log(`🔧 محاولة إصلاح ${type} (محاولة ${attempt}/${strategy.retry})`);
+        const timeoutPromise = new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error('Repair timeout')), strategy.timeout);
+        });
 
-        const repairPromise = strategy.repair(context);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Repair timeout')), strategy.timeout)
-        );
-
-        await Promise.race([repairPromise, timeoutPromise]);
+        await Promise.race([strategy.repair(context), timeoutPromise]);
         success = true;
-
-        this.healthStatus.fixedIssues++;
+        this.healthStatus.fixedIssues += 1;
+        this.healthStatus.lastRepair = new Date().toISOString();
         this.logRepair('success', type, context, attempt);
-        console.log(`✅ تم إصلاح ${type} بنجاح`);
         break;
       } catch (error) {
-        console.error(`❌ فشلت محاولة الإصلاح ${attempt}:`, error);
-
         if (attempt === strategy.retry) {
-          this.healthStatus.failedFixes++;
-          this.logRepair('failed', type, context, attempt);
+          this.healthStatus.failedFixes += 1;
+          this.logRepair('failed', type, { ...context, repairError: error }, attempt);
+        } else {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000 * attempt));
         }
-
-        // انتظار قبل المحاولة التالية
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
     }
 
@@ -187,340 +176,217 @@ class AdvancedAutoRepair {
     return success;
   }
 
-  /**
-   * إصلاح الدوال
-   */
   async repairFunction(context) {
     const { error } = context;
-    console.log('🔧 إصلاح الدالة:', error.message);
-
-    // إعادة محاولة استدعاء الدالة
-    if (error.functionName) {
-      // محاولة استدعاء الدالة مرة أخرى
-      return true;
-    }
-
-    throw new Error('Cannot repair function without name');
+    console.log('🔧 فحص خطأ الدالة:', error?.message || error);
+    return Boolean(error?.functionName);
   }
 
-  /**
-   * إصلاح الجداول
-   */
   async repairTable(context) {
     const { error } = context;
-    console.log('🔧 إصلاح الجدول:', error.message);
+    console.log('🔧 فحص خطأ الجدول:', error?.message || error);
 
-    // التحقق من صلاحيات الوصول
-    if (error.message?.includes('permission denied')) {
-      // محاولة إعادة الاتصال
-      await this.supabase.auth.refreshSession();
-      return true;
-    }
-
-    // التحقق من وجود الجدول
-    if (error.message?.includes('not found')) {
-      console.warn('⚠️ الجدول غير موجود');
-      return false;
+    if (error?.message?.includes('permission denied')) {
+      const { error: refreshError } = await this.supabase.auth.refreshSession();
+      if (refreshError) throw refreshError;
     }
 
     return true;
   }
 
-  /**
-   * إصلاح الاتصالات
-   */
   async repairConnection(context) {
     const { error } = context;
-    console.log('🔧 إصلاح الاتصال:', error.message);
+    console.log('🔧 فحص الاتصال:', error?.message || error);
 
-    // التحقق من الاتصال بالإنترنت
-    if (!navigator.onLine) {
-      console.warn('⚠️ لا يوجد اتصال إنترنت');
-      // تفعيل وضع Offline
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.enableOfflineMode();
       return true;
     }
 
-    // إعادة الاتصال بـ Supabase
-    try {
-      await this.supabase.auth.getSession();
-      return true;
-    } catch (e) {
-      throw new Error('Failed to reconnect');
-    }
+    const { error: sessionError } = await this.supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    return true;
   }
 
-  /**
-   * إصلاح البيانات
-   */
   async repairData(context) {
     const { error } = context;
-    console.log('🔧 إصلاح البيانات:', error.message);
-
-    // التحقق من صحة البيانات
-    if (error.data) {
-      // محاولة تنظيف البيانات
-      const cleanedData = this.sanitizeData(error.data);
-      return cleanedData !== null;
-    }
-
+    if (error?.data) return this.sanitizeData(error.data) !== null;
     return true;
   }
 
-  /**
-   * إصلاح الترجمات
-   */
-  async repairTranslation(context) {
-    const { error } = context;
-    console.log('🔧 إصلاح الترجمة:', error.message);
-
-    // التحقق من وجود الترجمة
-    if (error.key) {
-      // استخدام الترجمة الافتراضية
-      return true;
-    }
-
+  async repairTranslation() {
     return true;
   }
 
-  /**
-   * إصلاح الصلاحيات
-   */
-  async repairPermissions(context) {
-    const { error } = context;
-    console.log('🔧 إصلاح الصلاحيات:', error.message);
-
-    // التحقق من جلسة المستخدم
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) {
-      console.warn('⚠️ الجلسة منتهية');
-      return false;
-    }
-
-    // إعادة تحميل الصلاحيات
+  async repairPermissions() {
+    const { error } = await this.supabase.auth.getSession();
+    if (error) throw error;
     return true;
   }
 
-  /**
-   * إصلاح الواجهة
-   */
   async repairUI(context) {
-    const { error } = context;
-    console.log('🔧 إصلاح الواجهة:', error.message);
-
-    // إعادة تحميل الصفحة
-    if (error.message?.includes('render')) {
-      window.location.reload();
-      return true;
+    const message = String(context?.error?.message || '');
+    if (message.toLowerCase().includes('render')) {
+      window.dispatchEvent(new CustomEvent('component_reload'));
     }
-
     return true;
   }
 
-  /**
-   * إصلاح التخزين المحلي
-   */
-  async repairStorage(context) {
-    const { error } = context;
-    console.log('🔧 إصلاح التخزين المحلي:', error.message);
+  async repairStorage() {
+    const testKey = '__mmc_storage_test__';
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
+  }
 
-    try {
-      // التحقق من توفر التخزين المحلي
-      const test = '__test__';
-      localStorage.setItem(test, test);
-      localStorage.removeItem(test);
-      return true;
-    } catch (e) {
-      console.error('❌ فشل التخزين المحلي:', e);
+  async performSystemCheck() {
+    if (!this.supabase) return false;
+
+    this.healthStatus.status = 'checking';
+    const results = await Promise.allSettled([
+      this.checkConnection(),
+      this.checkTables(),
+      this.checkFunctions(),
+      this.checkData(),
+      this.checkTranslations(),
+      this.checkPermissions(),
+    ]);
+
+    const failed = results.filter(
+      (result) => result.status === 'rejected' || result.value === false,
+    );
+
+    this.healthStatus.lastCheck = new Date().toISOString();
+    this.healthStatus.status = failed.length === 0 ? 'idle' : 'degraded';
+
+    if (failed.length > 0) {
+      console.warn(`⚠️ الفحص الشامل: ${failed.length} فحص لم ينجح`);
       return false;
     }
+
+    console.log('✅ الفحص الشامل: اكتمل بنجاح');
+    return true;
   }
 
-  /**
-   * فحص شامل للنظام
-   */
-  async performSystemCheck() {
-    console.log('🔍 فحص شامل للنظام جاري...');
-
-    try {
-      // فحص الاتصال
-      await this.checkConnection();
-
-      // فحص الجداول
-      await this.checkTables();
-
-      // فحص الدوال
-      await this.checkFunctions();
-
-      // فحص البيانات
-      await this.checkData();
-
-      // فحص الترجمات
-      await this.checkTranslations();
-
-      // فحص الصلاحيات
-      await this.checkPermissions();
-
-      console.log('✅ الفحص الشامل: اكتمل بنجاح');
-    } catch (error) {
-      console.error('❌ خطأ في الفحص الشامل:', error);
-    }
-  }
-
-  /**
-   * فحص الاتصال
-   */
   async checkConnection() {
     try {
-      const { data } = await this.supabase.from('clinics').select('count(*)', { count: 'exact', head: true });
+      const { error } = await this.supabase
+        .from('clinics')
+        .select('*', { count: 'exact', head: true })
+        .limit(1);
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.warn('⚠️ مشكلة في الاتصال:', error.message);
+      console.warn('⚠️ مشكلة في الاتصال:', error?.message || error);
       return false;
     }
   }
 
-  /**
-   * فحص الجداول
-   */
   async checkTables() {
-    const tables = ['clinics', 'unified_queue', 'patients', 'roles'];
+    const tables = ['clinics', 'unified_queue', 'patients', 'roles', 'settings'];
+    let healthy = true;
 
     for (const table of tables) {
       try {
-        await this.supabase.from(table).select('count(*)', { count: 'exact', head: true });
-        console.log(`✅ جدول ${table}: يعمل بشكل صحيح`);
+        const { error } = await this.supabase
+          .from(table)
+          .select('*', { count: 'exact', head: true })
+          .limit(1);
+        if (error) throw error;
       } catch (error) {
-        console.warn(`⚠️ جدول ${table}: مشكلة - ${error.message}`);
+        healthy = false;
+        console.warn(`⚠️ جدول ${table}: مشكلة - ${error?.message || error}`);
       }
     }
+
+    return healthy;
   }
 
-  /**
-   * فحص الدوال
-   */
   async checkFunctions() {
-    const functions = ['update_operation_progress', 'start_patient_visit'];
-
-    for (const func of functions) {
-      try {
-        await this.supabase.rpc(func, {});
-        console.log(`✅ دالة ${func}: تعمل بشكل صحيح`);
-      } catch (error) {
-        if (!error.message?.includes('invalid input')) {
-          console.warn(`⚠️ دالة ${func}: مشكلة - ${error.message}`);
-        }
-      }
-    }
+    // لا يتم تنفيذ RPC تشغيلي بمدخلات وهمية. وجود الدوال وصلاحياتها
+    // يُفحص من الخادم، أما التنفيذ فيتم فقط من مسارات العمل الحقيقية.
+    console.log('✅ الدوال التشغيلية: تم تجاوز الاستدعاء الاختباري الآمن');
+    return true;
   }
 
-  /**
-   * فحص البيانات
-   */
   async checkData() {
     try {
-      const { data, error } = await this.supabase.from('clinics').select('*').limit(1);
+      const { error } = await this.supabase.from('clinics').select('*').limit(1);
       if (error) throw error;
-      console.log('✅ البيانات: تحميل صحيح');
+      return true;
     } catch (error) {
-      console.warn('⚠️ مشكلة في البيانات:', error.message);
+      console.warn('⚠️ مشكلة في البيانات:', error?.message || error);
+      return false;
     }
   }
 
-  /**
-   * فحص الترجمات
-   */
   async checkTranslations() {
-    console.log('✅ الترجمات: تم التحقق');
+    return true;
   }
 
-  /**
-   * فحص الصلاحيات
-   */
   async checkPermissions() {
     try {
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (session) {
-        console.log('✅ الصلاحيات: جلسة نشطة');
-      } else {
-        console.log('⚠️ الصلاحيات: لا توجد جلسة');
-      }
+      const { error } = await this.supabase.auth.getSession();
+      if (error) throw error;
+      return true;
     } catch (error) {
-      console.warn('⚠️ مشكلة في الصلاحيات:', error.message);
+      console.warn('⚠️ مشكلة في الصلاحيات:', error?.message || error);
+      return false;
     }
   }
 
-  /**
-   * تفعيل وضع Offline
-   */
   enableOfflineMode() {
-    console.log('📴 تفعيل وضع Offline');
     localStorage.setItem('offlineMode', 'true');
   }
 
-  /**
-   * تنظيف البيانات
-   */
   sanitizeData(data) {
     if (!data) return null;
+    if (typeof data !== 'object') return data;
 
-    // إزالة البيانات الفارغة
-    if (typeof data === 'object') {
-      return Object.keys(data).reduce((acc, key) => {
-        if (data[key] !== null && data[key] !== undefined) {
-          acc[key] = data[key];
-        }
-        return acc;
-      }, {});
-    }
-
-    return data;
+    return Object.keys(data).reduce((cleaned, key) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        cleaned[key] = data[key];
+      }
+      return cleaned;
+    }, {});
   }
 
-  /**
-   * تسجيل عملية الإصلاح
-   */
   logRepair(status, type, context, attempt) {
-    const log = {
-      timestamp: new Date(),
-      status: status,
-      type: type,
-      attempt: attempt,
-      context: context
-    };
+    this.repairLog.push({
+      timestamp: new Date().toISOString(),
+      status,
+      type,
+      attempt,
+      context,
+    });
 
-    this.repairLog.push(log);
-
-    // الاحتفاظ بآخر 100 سجل فقط
-    if (this.repairLog.length > 100) {
-      this.repairLog.shift();
-    }
+    if (this.repairLog.length > 100) this.repairLog.shift();
   }
 
-  /**
-   * تحديث معدل الإصلاح
-   */
   updateRepairRate() {
     const total = this.healthStatus.totalIssues;
-    if (total > 0) {
-      this.healthStatus.repairRate = (this.healthStatus.fixedIssues / total) * 100;
-    }
+    this.healthStatus.repairRate = total > 0
+      ? (this.healthStatus.fixedIssues / total) * 100
+      : 0;
   }
 
-  /**
-   * الحصول على حالة الصحة
-   */
   getHealthStatus() {
     return {
       ...this.healthStatus,
-      recentLogs: this.repairLog.slice(-10)
+      recentLogs: this.repairLog.slice(-10),
     };
   }
 
-  /**
-   * إيقاف نظام الإصلاح
-   */
   stopAutoRepair() {
+    if (!this.isRunning || typeof window === 'undefined') return;
+
+    window.removeEventListener('error', this.boundErrorHandler);
+    window.removeEventListener('unhandledrejection', this.boundRejectionHandler);
+    if (this.checkInterval) window.clearInterval(this.checkInterval);
+
+    this.checkInterval = null;
+    this.isRunning = false;
+    this.healthStatus.status = 'stopped';
     console.log('⛔ تم إيقاف نظام الإصلاح التلقائي');
   }
 }
