@@ -5,6 +5,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   base: '/',
+  envPrefix: ['VITE_API_', 'VITE_SUPABASE_'],
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), './src'),
