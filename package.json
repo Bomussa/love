@@ -22,7 +22,7 @@
     "check:duplicate-components": "node scripts/check-duplicate-active-components.mjs"
   },
   "engines": {
-    "node": ">=18.17 <21"
+    "node": "24.x"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
