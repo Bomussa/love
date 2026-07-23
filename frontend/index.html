@@ -4,26 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/img/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
+
     <!-- Performance optimizations -->
     <meta name="theme-color" content="#8A1538" />
     <meta name="description" content="نظام إدارة الطوابير للمركز الطبي العسكري - Military Medical Committee Queue Management System" />
-    
+
     <!-- Preconnect to external domains -->
     <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <link rel="dns-prefetch" href="%VITE_SUPABASE_URL%" />
-    
+
     <!-- Google Fonts - Cairo - optimized loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- تحميل الأوزان الأساسية فقط لتسريع التحميل -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
-    
+
     <title>اللجنة الطبية العسكرية - Military Medical Committee</title>
-    <!-- Build Version: 2026-02-26-v6-performance-optimized -->
+    <!-- Build Version: 2026-07-23-production-recovery -->
     <meta http-equiv="x-dns-prefetch-control" content="on" />
-    
+
     <!-- Inline critical CSS for faster first paint -->
     <style>
       /* Critical CSS - Loading state */
@@ -44,7 +44,7 @@
         justify-content: center;
         background: transparent;
       }
-      
+
       /* Prevent FOUC */
       html {
         height: 100%;
@@ -64,7 +64,7 @@
         line-height: 1.6;
         letter-spacing: 0.01em;
       }
-      
+
       /* Loading spinner */
       .loading {
         width: 50px;
@@ -74,12 +74,64 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
-      
+
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
     </style>
+    <script>
+      (function () {
+        var watchdogKey = 'mmc_boot_watchdog_attempted';
+
+        function hasInteractiveApplication() {
+          return Boolean(document.querySelector('#root input, #root select, #root button, #root [role="button"]'));
+        }
+
+        async function clearStaleApplicationState() {
+          try {
+            if ('serviceWorker' in navigator) {
+              var registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations.map(function (registration) {
+                return registration.unregister();
+              }));
+            }
+
+            if ('caches' in window) {
+              var cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(function (cacheName) {
+                return caches.delete(cacheName);
+              }));
+            }
+          } catch (error) {
+            console.error('[BootstrapWatchdog] Failed to clear stale assets:', error);
+          }
+        }
+
+        window.setTimeout(async function () {
+          if (hasInteractiveApplication()) {
+            sessionStorage.removeItem(watchdogKey);
+            return;
+          }
+
+          var root = document.getElementById('root');
+          var stillLoading = Boolean(root && (root.querySelector('.loading') || /جارٍ التحميل|جاري التحميل|Loading/i.test(root.textContent || '')));
+          if (!stillLoading) return;
+
+          if (sessionStorage.getItem(watchdogKey) === '1') {
+            console.error('[BootstrapWatchdog] Application remained non-interactive after recovery.');
+            return;
+          }
+
+          sessionStorage.setItem(watchdogKey, '1');
+          await clearStaleApplicationState();
+
+          var recoveryUrl = new URL(window.location.href);
+          recoveryUrl.searchParams.set('_mmc_boot', Date.now().toString());
+          window.location.replace(recoveryUrl.toString());
+        }, 12000);
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
