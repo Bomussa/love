@@ -19,10 +19,17 @@ function isObject(value) {
 
 function normalizeApiBase(base) {
   const trimmed = String(base || '').trim().replace(/\/$/, '');
-  if (!trimmed) return '/api/v1';
-  if (trimmed.endsWith('/api/v1') || trimmed.endsWith('/api')) return trimmed;
-  if (trimmed.startsWith('http')) return `${trimmed}/api/v1`;
+  if (!trimmed) return API_VERSION;
+  if (trimmed.endsWith(API_VERSION)) return trimmed;
+  if (trimmed.endsWith('/api')) return `${trimmed}/v1`;
+  if (trimmed.startsWith('http')) return `${trimmed}${API_VERSION}`;
   return trimmed;
+}
+
+function normalizeApiPath(path) {
+  const normalized = `/${String(path || '').replace(/^\/+/, '')}`;
+  const withoutDuplicateVersion = normalized.replace(/^\/api\/v1(?=\/|$)/, '');
+  return withoutDuplicateVersion || '/';
 }
 
 function qatarDateTime() {
@@ -52,10 +59,10 @@ function resolveApiBases() {
     // ignore env access errors during tests
   }
 
-  bases.push('/api/v1');
+  bases.push(API_VERSION);
 
   if (typeof window !== 'undefined' && window.location?.origin) {
-    bases.push(window.location.origin.replace(/\/$/, ''));
+    bases.push(normalizeApiBase(window.location.origin));
   }
 
   return [...new Set(bases)];
@@ -96,6 +103,7 @@ function failure(message, extra = {}) {
 
 async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs } = {}) {
   const bases = resolveApiBases();
+  const normalizedPath = normalizeApiPath(path);
   const payload = body === undefined ? undefined : JSON.stringify(body);
   let lastError = null;
 
@@ -104,7 +112,7 @@ async function requestJson(path, { method = 'GET', body, headers = {}, timeoutMs
     const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || timeoutFor(method)) : null;
 
     try {
-      const response = await fetch(`${base}${path}`, {
+      const response = await fetch(`${base}${normalizedPath}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
