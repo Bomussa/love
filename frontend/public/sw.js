@@ -1,5 +1,6 @@
-const SHELL_CACHE = 'mmc-shell-v2';
-const RUNTIME_CACHE = 'mmc-runtime-v2';
+const CACHE_VERSION = 'v3';
+const SHELL_CACHE = `mmc-shell-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `mmc-runtime-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -7,7 +8,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => Promise.all(
+        APP_SHELL.map((url) => cache.add(new Request(url, { cache: 'reload' })))
+      ))
       .catch(() => Promise.resolve())
   );
 });
@@ -46,34 +49,34 @@ function hasExpectedContentType(request, response) {
   }
 }
 
+async function networkFirst(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+
+    if (response.ok && hasExpectedContentType(request, response)) {
+      await cache.put(request, response.clone());
+    }
+
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached && hasExpectedContentType(request, cached)) return cached;
+
+    if (request.mode === 'navigate') {
+      return (await caches.match('/index.html')) || (await caches.match('/'));
+    }
+
+    throw error;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
-  event.respondWith(
-    (async () => {
-      const cache = await caches.open(RUNTIME_CACHE);
-
-      try {
-        const response = await fetch(event.request, { cache: 'no-store' });
-
-        if (response.ok && hasExpectedContentType(event.request, response)) {
-          await cache.put(event.request, response.clone());
-        }
-
-        return response;
-      } catch (error) {
-        const cached = await cache.match(event.request);
-        if (cached && hasExpectedContentType(event.request, cached)) return cached;
-
-        if (event.request.mode === 'navigate') {
-          return (await caches.match('/index.html')) || (await caches.match('/'));
-        }
-
-        throw error;
-      }
-    })()
-  );
+  event.respondWith(networkFirst(event.request));
 });
