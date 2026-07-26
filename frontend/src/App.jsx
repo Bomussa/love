@@ -1,7 +1,5 @@
-import InteractiveElementReporter from './lib/interactive-element-reporter';
-import healthMonitor from './lib/app-health-monitor';
 import HealthAlertBanner from './components/HealthAlertBanner';
-import AdvancedAutoRepair from './lib/advanced-auto-repair';
+import { LoginPage } from './components/LoginPage.jsx';
 import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -11,9 +9,6 @@ import authService from './lib/auth-service';
 import getDynamicMedicalPathway from './lib/dynamic-pathways';
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes';
 import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n';
-import { autoRepairSystem } from './lib/auto-repair-system';
-import { functionTableMonitor } from './lib/function-table-monitor';
-import { elementMonitor } from './lib/element-monitor';
 
 if (typeof document !== 'undefined' && !document.getElementById('mmc-login-layout-fix')) {
   const style = document.createElement('style');
@@ -35,7 +30,6 @@ if (typeof document !== 'undefined' && !document.getElementById('mmc-login-layou
   document.head.appendChild(style);
 }
 
-const LoginPage = lazy(() => import('./components/LoginPage.jsx').then(m => ({ default: m.LoginPage })));
 const ExamSelectionPage = lazy(() => import('./components/ExamSelectionPage.jsx').then(m => ({ default: m.ExamSelectionPage })));
 const PatientPage = lazy(() => import('./components/PatientPage.jsx').then(m => ({ default: m.PatientPage })));
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })));
@@ -46,7 +40,6 @@ const DoctorDashboard = lazy(() => import('./components/DoctorDashboardFixed.jsx
 const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m => ({ default: m.ClinicLoginPage })));
 
 const preloadComponents = () => {
-  import('./components/LoginPage.jsx');
   import('./components/PatientPage.jsx');
 };
 if (typeof window !== 'undefined') window.addEventListener('load', preloadComponents, { once: true });
@@ -88,18 +81,58 @@ function App() {
     return false;
   });
   const [currentView, setCurrentView] = useState('login');
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('selectedTheme')||'medical-professional');
-  const [language, setLanguage] = useState(getCurrentLanguage());
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    try { return localStorage.getItem('selectedTheme') || 'medical-professional'; }
+    catch { return 'medical-professional'; }
+  });
+  const [language, setLanguage] = useState(() => {
+    try { return getCurrentLanguage(); }
+    catch { return 'ar'; }
+  });
 
   useEffect(() => {
-    autoRepairSystem.startMonitoring();
-    functionTableMonitor.startMonitoring();
-    elementMonitor.startMonitoring();
-    const adv = new AdvancedAutoRepair(supabase);
-    adv.startAutoRepair();
-    healthMonitor.init(supabase);
-    const rp = new InteractiveElementReporter();
-    rp.startReporting();
+    if (typeof window !== 'undefined') {
+      window.__MMC_BOOT_OK__ = true;
+      try {
+        sessionStorage.removeItem('mmc_boot_watchdog_attempted');
+        sessionStorage.removeItem('mmc_client_asset_recovery');
+      } catch {
+        // Storage can be unavailable in restricted browser modes.
+      }
+    }
+
+    let cancelled = false;
+    const startDiagnostics = async () => {
+      const modules = await Promise.allSettled([
+        import('./lib/interactive-element-reporter'),
+        import('./lib/app-health-monitor'),
+        import('./lib/advanced-auto-repair'),
+        import('./lib/auto-repair-system'),
+        import('./lib/function-table-monitor'),
+        import('./lib/element-monitor'),
+      ]);
+
+      if (cancelled) return;
+
+      try { modules[0].status === 'fulfilled' && new modules[0].value.default().startReporting(); }
+      catch (error) { console.error('[Diagnostics] InteractiveElementReporter failed:', error); }
+      try { modules[1].status === 'fulfilled' && modules[1].value.default.init(supabase); }
+      catch (error) { console.error('[Diagnostics] HealthMonitor failed:', error); }
+      try { modules[2].status === 'fulfilled' && new modules[2].value.default(supabase).startAutoRepair(); }
+      catch (error) { console.error('[Diagnostics] AdvancedAutoRepair failed:', error); }
+      try { modules[3].status === 'fulfilled' && modules[3].value.autoRepairSystem.startMonitoring(); }
+      catch (error) { console.error('[Diagnostics] AutoRepairSystem failed:', error); }
+      try { modules[4].status === 'fulfilled' && modules[4].value.functionTableMonitor.startMonitoring(); }
+      catch (error) { console.error('[Diagnostics] FunctionTableMonitor failed:', error); }
+      try { modules[5].status === 'fulfilled' && modules[5].value.elementMonitor.startMonitoring(); }
+      catch (error) { console.error('[Diagnostics] ElementMonitor failed:', error); }
+    };
+
+    const timer = window.setTimeout(() => { void startDiagnostics(); }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -116,7 +149,10 @@ function App() {
     setCurrentView('login');
   }, [language, isAdmin, patientData, clinicSession, doctorSession]);
 
-  useEffect(() => { applyTheme(currentTheme); localStorage.setItem('selectedTheme',currentTheme); }, [currentTheme]);
+  useEffect(() => {
+    applyTheme(currentTheme);
+    try { localStorage.setItem('selectedTheme', currentTheme); } catch {}
+  }, [currentTheme]);
 
   const applyTheme = (id) => {
     const theme = enhancedMedicalThemes.find(t=>t.id===id);
@@ -168,19 +204,16 @@ function App() {
         localStorage.removeItem('mmc_admin_session');
         localStorage.removeItem('mmc_doctor_session');
         setIsAdmin(false); setDoctorSession(null);
-        
-        // حفظ البيانات مع نوع الفحص
+
         const finalPatientData = {
           ...patientPayload,
           queueType: examType,
           examType: examType,
           gender: gender
         };
-        
+
         setPatientData(finalPatientData);
         localStorage.setItem('patientData', JSON.stringify(finalPatientData));
-        
-        // الانتقال مباشرة لصفحة المراجع (التي ستتولى إنشاء المسار والدخول في الطابور)
         setCurrentView('patient');
         showNotification(language==='ar'?'تم تسجيل الدخول بنجاح':'Login successful','success');
       } else {
