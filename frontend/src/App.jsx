@@ -8,7 +8,7 @@ import api from './lib/api-unified';
 import authService from './lib/auth-service';
 import getDynamicMedicalPathway from './lib/dynamic-pathways';
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes';
-import { t, getCurrentLanguage, setCurrentLanguage } from './lib/i18n';
+import { getCurrentLanguage, setCurrentLanguage } from './lib/i18n';
 
 if (typeof document !== 'undefined' && !document.getElementById('mmc-login-layout-fix')) {
   const style = document.createElement('style');
@@ -69,17 +69,26 @@ class AdminErrorBoundary extends React.Component {
   }
 }
 
+function readValidSession(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session?.token || (session.expiresAt && new Date(session.expiresAt) <= new Date())) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
-  const [doctorSession, setDoctorSession] = useState(() => { try { const s=localStorage.getItem('mmc_doctor_session'); return s?JSON.parse(s):null; } catch{return null;} });
-  const [clinicSession, setClinicSession] = useState(() => { try { const s=localStorage.getItem('mmc_clinic_session'); return s?JSON.parse(s):null; } catch{return null;} });
-  const [patientData, setPatientData] = useState(() => { try { const s=localStorage.getItem('patientData'); return s?JSON.parse(s):null; } catch{return null;} });
-  const [isAdmin, setIsAdmin] = useState(() => {
-    try {
-      const s = localStorage.getItem('mmc_admin_session');
-      if (s) { const p=JSON.parse(s); return new Date(p.expiresAt)>new Date(); }
-    } catch{}
-    return false;
-  });
+  const [doctorSession, setDoctorSession] = useState(() => readValidSession('mmc_doctor_session'));
+  const [clinicSession, setClinicSession] = useState(() => readValidSession('mmc_clinic_session'));
+  const [patientData, setPatientData] = useState(() => readValidSession('patientData'));
+  const [isAdmin, setIsAdmin] = useState(() => Boolean(authService.getSession()));
   const [currentView, setCurrentView] = useState('login');
   const [currentTheme, setCurrentTheme] = useState(() => {
     try { return localStorage.getItem('selectedTheme') || 'medical-professional'; }
@@ -109,7 +118,6 @@ function App() {
         import('./lib/advanced-auto-repair'),
         import('./lib/auto-repair-system'),
         import('./lib/function-table-monitor'),
-        import('./lib/element-monitor'),
       ]);
 
       if (cancelled) return;
@@ -124,8 +132,6 @@ function App() {
       catch (error) { console.error('[Diagnostics] AutoRepairSystem failed:', error); }
       try { modules[4].status === 'fulfilled' && modules[4].value.functionTableMonitor.startMonitoring(); }
       catch (error) { console.error('[Diagnostics] FunctionTableMonitor failed:', error); }
-      try { modules[5].status === 'fulfilled' && modules[5].value.elementMonitor.startMonitoring(); }
-      catch (error) { console.error('[Diagnostics] ElementMonitor failed:', error); }
     };
 
     const timer = window.setTimeout(() => { void startDiagnostics(); }, 0);
@@ -199,6 +205,7 @@ function App() {
       const res = await api.patientLogin(patientId, gender);
       if (res.success) {
         const patientPayload = res.data || res.patient || res.session || res;
+        if (!patientPayload?.token) throw new Error('PATIENT_SESSION_MISSING');
         try { await registerDeviceLogin(patientId); } catch (regError) { console.warn('[App] registerDeviceLogin failed:', regError); }
         try { await logDailyActivity('patient_login',{patientId,gender,examType,location:'شاشة التسجيل',performedBy:patientId}); } catch (logError) { console.warn('[App] logDailyActivity failed:', logError); }
         localStorage.removeItem('mmc_admin_session');
@@ -251,17 +258,14 @@ function App() {
         showNotification('يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
         return;
       }
-      const result = await api.doctorLogin(username, password);
-      if (result.success && result.data) {
-        const session = {
-          id: result.data.id || result.data.username || username,
-          name: result.data.name || result.data.username || username,
-          clinic_id: result.data.clinic_id || null,
-          clinic_name: result.data.clinic_name || result.data.clinic_id || null,
-          role: 'DOCTOR',
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        };
+      const result = await authService.doctorLogin(username, password);
+      if (result.success && result.session?.token) {
+        const session = result.session;
+        localStorage.removeItem('patientData');
+        localStorage.removeItem('mmc_admin_session');
         localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
+        setPatientData(null);
+        setIsAdmin(false);
         setDoctorSession(session);
         window.history.pushState({}, '', '/doctor');
         setCurrentView('doctor');
@@ -276,11 +280,12 @@ function App() {
   };
 
   const handleLogout = () => {
-    setPatientData(null); setIsAdmin(false); setDoctorSession(null);
+    setPatientData(null); setIsAdmin(false); setDoctorSession(null); setClinicSession(null);
     setCurrentView('login');
     localStorage.removeItem('patientData');
     localStorage.removeItem('mmc_admin_session');
     localStorage.removeItem('mmc_doctor_session');
+    localStorage.removeItem('mmc_clinic_session');
     window.history.pushState({},'','/');
   };
 
@@ -288,10 +293,30 @@ function App() {
     try {
       const clinics = await getDynamicMedicalPathway(examType, patientData?.gender||'male');
       if (!clinics||clinics.length===0) throw new Error('No clinics found for: '+examType);
-      const patientId = patientData?.patient_id || patientData?.personal_id || patientData?.id;
+      const patientId = String(
+        patientData?.patient_id
+        || patientData?.patientId
+        || patientData?.personal_id
+        || patientData?.personalId
+        || patientData?.military_id
+        || patientData?.militaryId
+        || '',
+      ).trim();
+      if (!patientId) throw new Error('PATIENT_ID_MISSING');
       const firstClinic = clinics[0];
-      const enterResult = await api.enterQueue(firstClinic.id, patientId, false, patientData?.name, examType);
-      try { await api.createRoute(patientId, examType, patientData?.gender || 'male', clinics); } catch (routeErr) { console.warn('[App] Failed to save route:', routeErr); }
+      const routeResult = await api.createRoute(patientId, examType, patientData?.gender || 'male', clinics);
+      if (routeResult?.success === false) throw new Error(routeResult.error || 'ROUTE_CREATE_FAILED');
+      const enterResult = await api.enterQueue(
+        firstClinic.id,
+        patientId,
+        false,
+        null,
+        examType,
+        patientData?.gender || 'male',
+        patientData?.military_id || patientData?.militaryId || null,
+        patientData?.personal_id || patientData?.personalId || patientId,
+      );
+      if (enterResult?.success === false) throw new Error(enterResult.error || 'QUEUE_ENTER_FAILED');
 
       const updatedData = {
         ...patientData,
