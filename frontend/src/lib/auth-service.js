@@ -4,7 +4,6 @@
  */
 
 import api from './api-unified';
-import { supabase } from './supabase-client';
 
 export const USER_ROLES = {
   SUPER_ADMIN: {
@@ -51,13 +50,14 @@ class AuthService {
   async login(username, password) {
     try {
       const response = await api.adminLogin(username, password);
-      if (!response?.success || !response?.data) {
+      if (!response?.success || !response?.data?.token) {
         throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
 
       const session = this.createSession(
         response.data.username || response.data.name || username,
-        response.data.role || 'ADMIN'
+        response.data.role || 'ADMIN',
+        response.data,
       );
 
       return { success: true, session };
@@ -70,12 +70,13 @@ class AuthService {
   async doctorLogin(username, password) {
     try {
       const response = await api.doctorLogin(username, password);
-      if (!response?.success || !response?.data) {
+      if (!response?.success || !response?.data?.token) {
         throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
       }
       const session = this.createSession(
         response.data.username || response.data.name || username,
-        'DOCTOR'
+        'DOCTOR',
+        response.data,
       );
       return { success: true, session };
     } catch (error) {
@@ -84,14 +85,19 @@ class AuthService {
     }
   }
 
-  createSession(username, role) {
+  createSession(username, role, details = {}) {
+    const token = String(details.token || '').trim();
+    if (!token) throw new Error('لم يتم إصدار جلسة صالحة من الخادم');
+
     const session = {
-      id: `sess_${Date.now()}`,
+      ...details,
+      id: details.id || details.username || username,
       username,
-      role,
-      name: username.toUpperCase(),
+      role: String(role || details.role || '').toUpperCase(),
+      name: details.name || details.full_name || username,
+      token,
       loginTime: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + this.sessionTimeout).toISOString(),
+      expiresAt: details.expiresAt || new Date(Date.now() + this.sessionTimeout).toISOString(),
     };
     this.saveSession(session);
     return session;
@@ -106,7 +112,7 @@ class AuthService {
       const data = localStorage.getItem(this.storageKey);
       if (!data) return null;
       const session = JSON.parse(data);
-      if (new Date(session.expiresAt) < new Date()) {
+      if (!session.token || new Date(session.expiresAt) < new Date()) {
         this.logout();
         return null;
       }
