@@ -1,16 +1,9 @@
 import { supabase } from './supabase-client';
-import routeMap from '../../config/routeMap.json';
 
 const examTypeMap = {
   recruitment: 'تجنيد', promotion: 'ترفيع', transfer: 'نقل', referral: 'تحويل',
   contract: 'تجديد التعاقد', aviation: 'طيران سنوي', cooks: 'طباخين', courses: 'دورات', general: 'تجنيد',
 };
-
-function examKey(examType, gender) {
-  const key = examTypeMap[String(examType || '').trim()] || String(examType || '').trim();
-  if (gender === 'female' && routeMap['نساء/عام']?.F) return 'نساء/عام';
-  return key || (gender === 'female' ? 'نساء/عام' : 'تجنيد');
-}
 
 function toCode(item) {
   if (!item) return null;
@@ -18,10 +11,24 @@ function toCode(item) {
   return String(item.code || item.clinic_code || item.clinicCode || item.id || '').trim() || null;
 }
 
+function floorLabel(value) {
+  const floor = String(value || '').trim();
+  if (!floor) return '';
+  if (floor === 'M' || floor.includes('الميزانين')) return 'الميزانين';
+  if (floor.startsWith('الطابق')) return floor;
+  return `الطابق ${floor}`;
+}
+
 async function clinicByCode(code) {
   if (!supabase || !code) return null;
   for (const field of ['id', 'code']) {
-    const { data } = await supabase.from('clinics').select('id, name, name_ar, name_en, floor, code, is_active').eq(field, code).eq('is_active', true).maybeSingle();
+    const { data, error } = await supabase
+      .from('clinics')
+      .select('id, name, name_ar, name_en, floor, code, is_active')
+      .eq(field, code)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) throw error;
     if (data) return data;
   }
   return null;
@@ -31,29 +38,42 @@ async function routeCodesFromDb(examType) {
   if (!supabase) return [];
   const keys = [String(examType || '').trim(), examTypeMap[String(examType || '').trim()]].filter(Boolean);
   for (const key of keys) {
-    const { data } = await supabase.from('routes').select('clinics, is_active').eq('exam_type', key).eq('is_active', true).maybeSingle();
+    const { data, error } = await supabase
+      .from('routes')
+      .select('clinics, is_active, order_sequence')
+      .eq('exam_type', key)
+      .eq('is_active', true)
+      .order('order_sequence', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
     const codes = Array.isArray(data?.clinics) ? data.clinics.map(toCode).filter(Boolean) : [];
     if (codes.length) return codes;
   }
   return [];
 }
 
-function routeCodesFromMap(examType, gender) {
-  const key = examKey(examType, gender);
-  const raw = routeMap[key];
-  const codes = Array.isArray(raw) ? raw : Array.isArray(raw?.[gender === 'female' ? 'F' : 'M']) ? raw[gender === 'female' ? 'F' : 'M'] : [];
-  return codes.map(toCode).filter(Boolean);
-}
-
 async function queueLoad(clinicId) {
   if (!supabase || !clinicId) return 0;
   const today = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const { count } = await supabase.from('unified_queue').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId).eq('queue_date', today).in('status', ['waiting', 'called', 'in_progress', 'serving']);
+  const { count, error } = await supabase
+    .from('unified_queue')
+    .select('*', { count: 'exact', head: true })
+    .eq('clinic_id', clinicId)
+    .eq('queue_date', today)
+    .in('status', ['waiting', 'called', 'in_progress', 'serving']);
+  if (error) throw error;
   return Number(count || 0);
 }
 
 function floorRank(floorCode) {
-  return ({ M: 1, G: 2, 1: 3, 2: 4, 3: 5 }[String(floorCode || '').trim()] || 99);
+  const floor = String(floorCode || '').trim();
+  if (floor === 'M' || floor.includes('الميزانين')) return 1;
+  if (floor === 'G' || floor.includes('الأرضي')) return 2;
+  if (floor === '1' || floor.includes('الأول')) return 3;
+  if (floor === '2' || floor.includes('الثاني')) return 4;
+  if (floor === '3' || floor.includes('الثالث')) return 5;
+  return 99;
 }
 
 async function buildStations(codes) {
@@ -67,7 +87,7 @@ async function buildStations(codes) {
       name: clinic.name_en || clinic.name,
       nameAr: clinic.name_ar || clinic.name,
       floorCode: clinic.floor,
-      floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}`,
+      floor: floorLabel(clinic.floor),
     });
   }
   const withLoad = await Promise.all(clinics.map(async (clinic) => ({ ...clinic, load: await queueLoad(clinic.id) })));
@@ -84,8 +104,8 @@ async function buildStations(codes) {
 }
 
 export async function getDynamicMedicalPathway(examType, gender = 'male') {
-  const dbCodes = await routeCodesFromDb(examType);
-  const codes = dbCodes.length ? dbCodes : routeCodesFromMap(examType, gender);
+  void gender;
+  const codes = await routeCodesFromDb(examType);
   if (!codes.length) return [];
   return buildStations(codes);
 }
@@ -95,7 +115,14 @@ export async function enrichStationsWithClinicData(stations) {
   const out = [];
   for (const station of stations) {
     const clinic = await clinicByCode(station.code || station.id);
-    out.push(clinic ? { ...station, id: clinic.id, name: clinic.name_en || clinic.name, nameAr: clinic.name_ar || clinic.name, floorCode: clinic.floor, floor: clinic.floor === 'M' ? 'الميزانين' : `الطابق ${clinic.floor}` } : station);
+    out.push(clinic ? {
+      ...station,
+      id: clinic.id,
+      name: clinic.name_en || clinic.name,
+      nameAr: clinic.name_ar || clinic.name,
+      floorCode: clinic.floor,
+      floor: floorLabel(clinic.floor),
+    } : station);
   }
   return out;
 }
