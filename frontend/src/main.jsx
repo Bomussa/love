@@ -100,8 +100,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </SelfHealingErrorBoundary>
   </React.StrictMode>,
 )
-
-if (typeof window !== 'undefined') {
-  window.__MMC_BOOT_OK__ = true
-  sessionStorage.removeItem(CLIENT_RECOVERY_KEY)
-}
