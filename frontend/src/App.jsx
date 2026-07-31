@@ -1,6 +1,7 @@
 import HealthAlertBanner from './components/HealthAlertBanner';
 import { LoginPage } from './components/LoginPage.jsx';
 import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+import healthMonitor from './lib/app-health-monitor';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
@@ -114,7 +115,6 @@ function App() {
     const startDiagnostics = async () => {
       const modules = await Promise.allSettled([
         import('./lib/interactive-element-reporter'),
-        import('./lib/app-health-monitor'),
         import('./lib/advanced-auto-repair'),
         import('./lib/auto-repair-system'),
         import('./lib/function-table-monitor'),
@@ -122,15 +122,15 @@ function App() {
 
       if (cancelled) return;
 
+      try { healthMonitor.init(supabase); }
+      catch (error) { console.error('[Diagnostics] HealthMonitor failed:', error); }
       try { modules[0].status === 'fulfilled' && new modules[0].value.default().startReporting(); }
       catch (error) { console.error('[Diagnostics] InteractiveElementReporter failed:', error); }
-      try { modules[1].status === 'fulfilled' && modules[1].value.default.init(supabase); }
-      catch (error) { console.error('[Diagnostics] HealthMonitor failed:', error); }
-      try { modules[2].status === 'fulfilled' && new modules[2].value.default(supabase).startAutoRepair(); }
+      try { modules[1].status === 'fulfilled' && new modules[1].value.default(supabase).startAutoRepair(); }
       catch (error) { console.error('[Diagnostics] AdvancedAutoRepair failed:', error); }
-      try { modules[3].status === 'fulfilled' && modules[3].value.autoRepairSystem.startMonitoring(); }
+      try { modules[2].status === 'fulfilled' && modules[2].value.autoRepairSystem.startMonitoring(); }
       catch (error) { console.error('[Diagnostics] AutoRepairSystem failed:', error); }
-      try { modules[4].status === 'fulfilled' && modules[4].value.functionTableMonitor.startMonitoring(); }
+      try { modules[3].status === 'fulfilled' && modules[3].value.functionTableMonitor.startMonitoring(); }
       catch (error) { console.error('[Diagnostics] FunctionTableMonitor failed:', error); }
     };
 
