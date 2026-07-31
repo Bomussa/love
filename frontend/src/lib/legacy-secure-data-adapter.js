@@ -242,6 +242,52 @@ async function executeUpsertSetting(args = {}) {
   }
 }
 
+async function executeQueueRpc(functionName, args = {}) {
+  try {
+    let path;
+    let body;
+
+    if (functionName === 'call_next_patient') {
+      path = '/api/v1/queue/call';
+      body = {
+        clinicId: args.p_clinic_id,
+        version: args.p_expected_version ?? null,
+      };
+    } else if (functionName === 'start_exam') {
+      path = '/api/v1/queue/start';
+      body = { queueId: args.p_queue_id, version: args.p_expected_version ?? null };
+    } else if (['finish_exam_record', 'finish_exam', 'complete_exam_and_advance'].includes(functionName)) {
+      path = '/api/v1/queue/done';
+      body = {
+        queueId: args.p_queue_id || null,
+        clinicId: args.p_clinic_id || null,
+        patientId: args.p_patient_id || null,
+        version: args.p_expected_version ?? null,
+      };
+    } else if (functionName === 'advance_patient_route') {
+      path = '/api/v1/queue/done';
+      body = {
+        clinicId: args.p_clinic_id,
+        patientId: args.p_patient_id,
+        version: args.p_expected_version ?? null,
+      };
+    } else if (functionName === 'mark_patient_absent') {
+      path = '/api/v1/queue/update';
+      body = { queueId: args.p_queue_id, queueAction: 'no_show' };
+    } else {
+      return originalRpc(functionName, args);
+    }
+
+    const response = await requestJson(path, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return { data: response.data || response.queue || response, error: null };
+  } catch (error) {
+    return resultError(error);
+  }
+}
+
 if (!globalThis.__MMC_LEGACY_SECURE_DATA_ADAPTER__) {
   globalThis.__MMC_LEGACY_SECURE_DATA_ADAPTER__ = true;
 
@@ -264,6 +310,17 @@ if (!globalThis.__MMC_LEGACY_SECURE_DATA_ADAPTER__) {
   supabase.rpc = (functionName, args, options) => {
     if (functionName === 'upsert_doctor') return executeUpsertDoctor(args);
     if (functionName === 'upsert_setting') return executeUpsertSetting(args);
+    if ([
+      'call_next_patient',
+      'start_exam',
+      'finish_exam_record',
+      'finish_exam',
+      'complete_exam_and_advance',
+      'advance_patient_route',
+      'mark_patient_absent',
+    ].includes(functionName)) {
+      return executeQueueRpc(functionName, args, options);
+    }
     return originalRpc(functionName, args, options);
   };
 }
