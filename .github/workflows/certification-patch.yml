@@ -1,0 +1,103 @@
+name: Certification Patch
+
+on:
+  push:
+    branches:
+      - certification-hardening-20260726
+    paths:
+      - .github/workflows/certification-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout certification branch
+        uses: actions/checkout@v4
+        with:
+          ref: certification-hardening-20260726
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply precise admin fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('frontend/src/components/AdminDashboardV2.jsx')
+          text = path.read_text(encoding='utf-8')
+          original = text
+
+          old_query = """      const { data: patientRoutes } = await supabase
+                .from('patient_routes')
+                .select('patient_id, stations, current_station_index, status')
+                .gte('created_at', weekAgo.toISOString());"""
+          new_query = """      const { data: patientRoutes } = await supabase
+                .from('pathways')
+                .select('patient_id, pathway, current_step, completed, created_at')
+                .gte('created_at', weekAgo.toISOString());"""
+          if old_query not in text:
+              raise SystemExit('Expected patient route statistics query was not found')
+          text = text.replace(old_query, new_query, 1)
+
+          old_calc = """          const stations = typeof route.stations === 'string' 
+            ? JSON.parse(route.stations) 
+            : route.stations;
+          const currentIndex = route.current_station_index || 0;"""
+          new_calc = """          const stations = typeof route.pathway === 'string'
+            ? JSON.parse(route.pathway)
+            : route.pathway;
+          const currentIndex = route.current_step || 0;"""
+          if old_calc not in text:
+              raise SystemExit('Expected weighted pathway calculation was not found')
+          text = text.replace(old_calc, new_calc, 1)
+
+          email_pattern = re.compile(
+              r"  const sendReportByEmail = async \(\) => \{.*?\n  \};\n\n  return \(",
+              re.DOTALL,
+          )
+          email_replacement = """  const sendReportByEmail = async () => {
+    if (!emailAddress || !emailAddress.includes('@')) {
+      showErrorToast(t('يرجى إدخال بريد إلكتروني صحيح', 'Please enter a valid email'));
+      return;
+    }
+
+    showErrorToast(t(
+      'خدمة إرسال التقارير بالبريد غير مهيأة حالياً. استخدم الطباعة أو التصدير.',
+      'Email report delivery is not configured. Use print or export.'
+    ));
+  };
+
+  return ("""
+          text, count = email_pattern.subn(email_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Expected email report handler was not found exactly once')
+
+          if text == original:
+              raise SystemExit('No source changes were made')
+          if "from('email_queue')" in text:
+              raise SystemExit('False email queue write remains')
+          if ".from('patient_routes')\n        .select('patient_id, stations" in text:
+              raise SystemExit('Legacy route statistics query remains')
+
+          path.write_text(text, encoding='utf-8')
+          Path('.github/workflows/certification-patch.yml').unlink()
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Commit verified patch
+        run: |
+          git config user.name "MMC Certification Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add frontend/src/components/AdminDashboardV2.jsx .github/workflows/certification-patch.yml
+          git commit -m "fix(admin): use canonical pathway data and honest email status"
+          git push origin HEAD:certification-hardening-20260726
