@@ -9,7 +9,6 @@ import api from '../lib/api-unified';
 import { supabase } from '../lib/supabase-client';
 import { GENERAL_REFRESH_INTERVAL } from '../core/config/refresh.constants';
 
-const qatarDate = () => new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const normalize = (status) => {
   const v = String(status || '').trim().toLowerCase();
   if (v === 'completed' || v === 'done') return 'completed';
@@ -18,22 +17,23 @@ const normalize = (status) => {
   return 'waiting';
 };
 const getPatientId = (p) => String(p?.patient_id || p?.personal_id || p?.patientId || p?.personalId || p?.id || '').trim();
-const getSessionId = (p) => String(p?.sessionId || p?.session_id || p?.id || '').trim();
 const template = (stations) => stations.map((s, i) => ({ ...s, status: i === 0 ? 'ready' : 'locked', isEntered: false, yourNumber: null, ahead: null, current: null, totalWaiting: null, entered_at: null }));
 
 async function queuePosition(clinicId, patientId) {
-  const today = qatarDate();
-  const { data: myRow } = await supabase.from('unified_queue').select('id, display_number, status, entered_at').eq('clinic_id', clinicId).eq('patient_id', patientId).eq('queue_date', today).not('status', 'eq', 'cancelled').order('entered_at', { ascending: false }).limit(1).maybeSingle();
-  if (!myRow) return null;
-  const { data: serving } = await supabase.from('unified_queue').select('display_number').eq('clinic_id', clinicId).eq('queue_date', today).in('status', ['called', 'serving', 'in_progress']).order('display_number', { ascending: false }).limit(1).maybeSingle();
-  const { count: ahead } = await supabase.from('unified_queue').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId).eq('queue_date', today).in('status', ['waiting', 'called', 'serving', 'in_progress']).lt('display_number', myRow.display_number);
-  const { count: totalWaiting } = await supabase.from('unified_queue').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId).eq('queue_date', today).in('status', ['waiting', 'called', 'serving', 'in_progress']);
-  return { ...myRow, current_number: serving?.display_number ?? 0, ahead: ahead ?? 0, total_waiting: totalWaiting ?? 0, success: true };
+  const response = await api.getQueuePosition(clinicId, patientId);
+  if (!response?.success) return null;
+  const row = response.data || response;
+  return {
+    ...row,
+    current_number: row.current_number ?? row.currentNumber ?? 0,
+    ahead: row.ahead ?? 0,
+    total_waiting: row.total_waiting ?? row.totalWaiting ?? 0,
+    success: true,
+  };
 }
 
 export function PatientPageThemeAware({ patientData, onLogout, language, toggleLanguage }) {
   const patientId = useMemo(() => getPatientId(patientData), [patientData]);
-  const sessionId = useMemo(() => getSessionId(patientData), [patientData]);
   const queueType = patientData?.queueType || patientData?.examType || 'general';
   const gender = patientData?.gender || 'male';
 
@@ -53,8 +53,6 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const textStyle = { color: 'hsl(var(--theme-text))' };
   const subTextStyle = { color: 'hsl(var(--theme-text-secondary))' };
   const accentStyle = { color: 'hsl(var(--theme-secondary))' };
-  const accentBorder = { borderColor: 'hsl(var(--theme-secondary) / 0.3)' };
-  const destructiveBorder = { borderColor: 'hsl(var(--destructive) / 0.4)' };
 
   const examName = useMemo(() => {
     const ex = examTypes.find((e) => e.id === queueType);
@@ -76,27 +74,42 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const enterStation = useCallback(async (station, index) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('enter_unified_queue_safe', {
-        p_clinic_id: station.id,
-        p_patient_id: patientId,
-        p_exam_type: queueType,
-        p_gender: gender,
-        p_military_id: patientId,
-        p_personal_id: patientId,
-        p_force: false,
-      });
-      if (error) throw error;
-      if (data?.status === 'ALREADY_ACTIVE_IN_OTHER_CLINIC') {
-        notify(language === 'ar' ? 'أنت مرتبط بعيادة أخرى. أكملها أولاً.' : 'You are active in another clinic. Finish it first.');
-        return;
+      const result = await api.enterQueue(
+        station.id,
+        patientId,
+        false,
+        null,
+        queueType,
+        gender,
+        patientId,
+        patientId,
+      );
+      if (!result?.success) {
+        if (result?.status === 'ALREADY_ACTIVE_IN_OTHER_CLINIC' || result?.code === 'ALREADY_ACTIVE_IN_OTHER_CLINIC') {
+          notify(language === 'ar' ? 'أنت مرتبط بعيادة أخرى. أكملها أولاً.' : 'You are active in another clinic. Finish it first.');
+          return;
+        }
+        throw new Error(result?.error || 'QUEUE_ENTRY_FAILED');
       }
+
       const pos = await queuePosition(station.id, patientId);
       if (!pos) throw new Error('QUEUE_POSITION_MISSING');
-      setStations((prev) => prev.map((s, i) => (i === index ? { ...s, queueId: data?.id || pos.id, yourNumber: pos.display_number, current: pos.current_number, ahead: pos.ahead, totalWaiting: pos.total_waiting, status: 'ready', isEntered: true, entered_at: pos.entered_at } : s)));
+      setStations((prev) => prev.map((s, i) => (i === index ? {
+        ...s,
+        queueId: result?.id || result?.data?.id || pos.id,
+        yourNumber: pos.display_number,
+        current: pos.current_number,
+        ahead: pos.ahead,
+        totalWaiting: pos.total_waiting,
+        status: 'ready',
+        isEntered: true,
+        entered_at: pos.entered_at,
+      } : s)));
       notify(language === 'ar' ? `✅ رقمك: ${pos.display_number}` : `✅ Your number: ${pos.display_number}`);
     } catch (err) {
       console.error('[PatientPageThemeAware] enterStation:', err);
       notify(language === 'ar' ? 'فشل الدخول للعيادة' : 'Failed to enter clinic');
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -108,20 +121,52 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       setPathwayError(language === 'ar' ? 'بيانات المراجع غير مكتملة.' : 'Patient data is incomplete.');
       return;
     }
+
     setInitialLoading(true);
     setPathwayError(null);
+
     try {
       let pathway = Array.isArray(patientData?.pathway) && patientData.pathway.length > 0 ? patientData.pathway : null;
-      if (!pathway && Array.isArray(patientData?.route?.stations) && patientData.route.stations.length > 0) pathway = patientData.route.stations;
-      if (!pathway) {
-        const saved = await api.getRoute(sessionId || patientId);
-        if (saved?.success && Array.isArray(saved?.route?.stations) && saved.route.stations.length > 0) pathway = saved.route.stations;
+      if (!pathway && Array.isArray(patientData?.route?.stations) && patientData.route.stations.length > 0) {
+        pathway = patientData.route.stations;
       }
+
+      const saved = await api.getRoute(patientId);
+      const savedStations = saved?.success && Array.isArray(saved?.route?.stations) && saved.route.stations.length > 0
+        ? saved.route.stations
+        : null;
+
+      if (!pathway && savedStations) pathway = savedStations;
       if (!pathway) pathway = await getDynamicMedicalPathway(queueType, gender);
       if (!Array.isArray(pathway) || pathway.length === 0) throw new Error('EMPTY_PATHWAY');
+
       const prepared = template(pathway);
+      const firstPosition = await queuePosition(prepared[0].id, patientId);
+
+      if (firstPosition) {
+        prepared[0] = {
+          ...prepared[0],
+          queueId: firstPosition.id,
+          yourNumber: firstPosition.display_number,
+          current: firstPosition.current_number,
+          ahead: firstPosition.ahead,
+          totalWaiting: firstPosition.total_waiting,
+          status: normalize(firstPosition.status) === 'completed' ? 'completed' : 'ready',
+          isEntered: normalize(firstPosition.status) !== 'completed',
+          entered_at: firstPosition.entered_at,
+        };
+        setStations(prepared);
+        return;
+      }
+
+      if (!savedStations) {
+        const routeResult = await api.createRoute(patientId, queueType, gender, pathway);
+        if (!routeResult?.success) {
+          throw new Error(routeResult?.error || 'ROUTE_PERSISTENCE_FAILED');
+        }
+      }
+
       setStations(prepared);
-      try { void api.createRoute(patientId, queueType, gender, pathway); } catch {}
       await enterStation(prepared[0], 0);
     } catch (err) {
       console.error('[PatientPageThemeAware] loadPathway:', err);
@@ -129,7 +174,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     } finally {
       setInitialLoading(false);
     }
-  }, [enterStation, gender, language, patientData, patientId, queueType, sessionId]);
+  }, [enterStation, gender, language, patientData, patientId, queueType]);
 
   const activeIndex = useMemo(() => stations.findIndex((s) => normalize(s.status) === 'ready' && s.yourNumber !== null), [stations]);
   const activeStation = activeIndex >= 0 ? stations[activeIndex] : null;
