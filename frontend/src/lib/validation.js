@@ -6,198 +6,139 @@
  * @description مجموعة شاملة من دوال التحقق من المدخلات لضمان أمان وصحة البيانات
  */
 
-// ============================================================================
-// Regular Expressions - التعبيرات النمطية
-// ============================================================================
-
 const PATTERNS = {
-  // الرقم العسكري: 2-12 رقم
   MILITARY_ID: /^\d{2,12}$/,
-
-  // البريد الإلكتروني
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-
-  // رقم الهاتف السعودي
   PHONE_SA: /^(05|5)\d{8}$/,
-
-  // اسم (عربي أو إنجليزي)
   NAME: /^[\u0600-\u06FFa-zA-Z\s]{2,50}$/,
-
-  // UUID
   UUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-
-  // تاريخ ISO
   ISO_DATE: /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/,
 };
 
-// ============================================================================
-// Validation Functions - دوال التحقق
-// ============================================================================
+const MESSAGES = Object.freeze({
+  ar: {
+    militaryRequired: 'الرقم العسكري مطلوب',
+    militaryShort: 'الرقم العسكري قصير جداً (الحد الأدنى 2 أرقام)',
+    militaryLong: 'الرقم العسكري طويل جداً (الحد الأقصى 12 رقم)',
+    militaryDigits: 'الرقم العسكري يجب أن يحتوي على أرقام فقط',
+    genderRequired: 'يرجى اختيار الجنس',
+    uuidRequired: 'المعرف مطلوب',
+    uuidInvalid: 'معرف غير صالح',
+    nameRequired: 'الاسم مطلوب',
+    nameShort: 'الاسم قصير جداً',
+    nameLong: 'الاسم طويل جداً',
+    examInvalid: 'نوع الفحص غير صالح',
+    usernameShort: 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل',
+    passwordShort: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل',
+  },
+  en: {
+    militaryRequired: 'Military or personal number is required',
+    militaryShort: 'The number is too short (minimum 2 digits)',
+    militaryLong: 'The number is too long (maximum 12 digits)',
+    militaryDigits: 'The number must contain digits only',
+    genderRequired: 'Please select a gender',
+    uuidRequired: 'Identifier is required',
+    uuidInvalid: 'Invalid identifier',
+    nameRequired: 'Name is required',
+    nameShort: 'Name is too short',
+    nameLong: 'Name is too long',
+    examInvalid: 'Invalid examination type',
+    usernameShort: 'Username must contain at least 3 characters',
+    passwordShort: 'Password must contain at least 4 characters',
+  },
+});
 
-/**
- * التحقق من الرقم العسكري
- * @param {string} id - الرقم العسكري
- * @returns {{ isValid: boolean, error?: string }}
- */
-export function validateMilitaryId(id) {
+function resolveLanguage(language) {
+  if (language === 'en' || language === 'ar') return language;
+  if (typeof document !== 'undefined') {
+    const documentLanguage = String(document.documentElement?.lang || '').toLowerCase();
+    if (documentLanguage.startsWith('en') || document.documentElement?.dir === 'ltr') return 'en';
+  }
+  return 'ar';
+}
+
+function messages(language) {
+  return MESSAGES[resolveLanguage(language)];
+}
+
+export function validateMilitaryId(id, language) {
+  const text = messages(language);
   if (!id || typeof id !== 'string') {
-    return { isValid: false, error: 'الرقم العسكري مطلوب' };
+    return { isValid: false, error: text.militaryRequired };
   }
 
   const trimmed = id.trim();
-
-  if (trimmed.length < 2) {
-    return { isValid: false, error: 'الرقم العسكري قصير جداً (الحد الأدنى 2 أرقام)' };
-  }
-
-  if (trimmed.length > 12) {
-    return { isValid: false, error: 'الرقم العسكري طويل جداً (الحد الأقصى 12 رقم)' };
-  }
-
-  if (!PATTERNS.MILITARY_ID.test(trimmed)) {
-    return { isValid: false, error: 'الرقم العسكري يجب أن يحتوي على أرقام فقط' };
-  }
-
+  if (trimmed.length < 2) return { isValid: false, error: text.militaryShort };
+  if (trimmed.length > 12) return { isValid: false, error: text.militaryLong };
+  if (!PATTERNS.MILITARY_ID.test(trimmed)) return { isValid: false, error: text.militaryDigits };
   return { isValid: true };
 }
 
-/**
- * التحقق من الجنس
- * @param {string} gender - الجنس
- * @returns {{ isValid: boolean, error?: string }}
- */
-export function validateGender(gender) {
+export function validateGender(gender, language) {
   const validGenders = ['male', 'female', 'ذكر', 'أنثى'];
-
-  if (!gender || !validGenders.includes(gender.toLowerCase())) {
-    return { isValid: false, error: 'يرجى اختيار الجنس' };
+  const normalized = String(gender || '').toLowerCase();
+  if (!gender || !validGenders.includes(normalized)) {
+    return { isValid: false, error: messages(language).genderRequired };
   }
-
   return { isValid: true };
 }
 
-/**
- * التحقق من UUID
- * @param {string} uuid - المعرف الفريد
- * @returns {{ isValid: boolean, error?: string }}
- */
-export function validateUUID(uuid) {
-  if (!uuid || typeof uuid !== 'string') {
-    return { isValid: false, error: 'المعرف مطلوب' };
-  }
-
-  if (!PATTERNS.UUID.test(uuid)) {
-    return { isValid: false, error: 'معرف غير صالح' };
-  }
-
+export function validateUUID(uuid, language) {
+  const text = messages(language);
+  if (!uuid || typeof uuid !== 'string') return { isValid: false, error: text.uuidRequired };
+  if (!PATTERNS.UUID.test(uuid)) return { isValid: false, error: text.uuidInvalid };
   return { isValid: true };
 }
 
-/**
- * التحقق من الاسم
- * @param {string} name - الاسم
- * @returns {{ isValid: boolean, error?: string }}
- */
-export function validateName(name) {
-  if (!name || typeof name !== 'string') {
-    return { isValid: false, error: 'الاسم مطلوب' };
-  }
-
+export function validateName(name, language) {
+  const text = messages(language);
+  if (!name || typeof name !== 'string') return { isValid: false, error: text.nameRequired };
   const trimmed = name.trim();
-
-  if (trimmed.length < 2) {
-    return { isValid: false, error: 'الاسم قصير جداً' };
-  }
-
-  if (trimmed.length > 50) {
-    return { isValid: false, error: 'الاسم طويل جداً' };
-  }
-
+  if (trimmed.length < 2) return { isValid: false, error: text.nameShort };
+  if (trimmed.length > 50) return { isValid: false, error: text.nameLong };
   return { isValid: true };
 }
 
-/**
- * تنظيف المدخلات من الأحرف الخطرة
- * @param {string} input - المدخل
- * @returns {string}
- */
 export function sanitizeInput(input) {
   if (!input || typeof input !== 'string') return '';
-
   return input
     .trim()
-    .replace(/[<>]/g, '') // إزالة علامات HTML
-    .replace(/javascript:/gi, '') // إزالة JavaScript URLs
-    .replace(/on\w+=/gi, '') // إزالة event handlers
-    .substring(0, 1000); // تحديد الطول الأقصى
+    .replace(/[<>]/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+=/gi, '')
+    .substring(0, 1000);
 }
 
-/**
- * التحقق من صحة نوع الفحص
- * @param {string} examType - نوع الفحص
- * @returns {{ isValid: boolean, error?: string }}
- */
-export function validateExamType(examType) {
+export function validateExamType(examType, language) {
   const validTypes = [
     'recruitment', 'promotion', 'transfer', 'referral', 'contract', 'aviation', 'cooks', 'courses',
-    'فحص التجنيد', 'فحص الترفيع', 'فحص النقل', 'فحص التحويل', 'تجديد التعاقد', 'فحص الطيران السنوي', 'فحص الطباخين', 'فحص الدورات الداخلية والخارجية'
+    'فحص التجنيد', 'فحص الترفيع', 'فحص النقل', 'فحص التحويل', 'تجديد التعاقد', 'فحص الطيران السنوي', 'فحص الطباخين', 'فحص الدورات الداخلية والخارجية',
   ];
-
   if (!examType || !validTypes.includes(examType)) {
-    return { isValid: false, error: 'نوع الفحص غير صالح' };
+    return { isValid: false, error: messages(language).examInvalid };
   }
-
   return { isValid: true };
 }
 
-/**
- * التحقق الشامل من بيانات تسجيل الدخول
- * @param {Object} data - بيانات تسجيل الدخول
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-export function validateLoginData(data) {
+export function validateLoginData(data, language) {
   const errors = [];
+  const militaryIdResult = validateMilitaryId(data?.militaryId || data?.patientId, language);
+  if (!militaryIdResult.isValid) errors.push(militaryIdResult.error);
 
-  const militaryIdResult = validateMilitaryId(data?.militaryId || data?.patientId);
-  if (!militaryIdResult.isValid) {
-    errors.push(militaryIdResult.error);
-  }
-
-  const genderResult = validateGender(data?.gender);
-  if (!genderResult.isValid) {
-    errors.push(genderResult.error);
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+  const genderResult = validateGender(data?.gender, language);
+  if (!genderResult.isValid) errors.push(genderResult.error);
+  return { isValid: errors.length === 0, errors };
 }
 
-/**
- * التحقق من بيانات الإدارة
- * @param {Object} data - بيانات الإدارة
- * @returns {{ isValid: boolean, errors: string[] }}
- */
-export function validateAdminData(data) {
+export function validateAdminData(data, language) {
+  const text = messages(language);
   const errors = [];
-
-  if (!data?.username || data.username.length < 3) {
-    errors.push('اسم المستخدم يجب أن يكون 3 أحرف على الأقل');
-  }
-
-  if (!data?.password || data.password.length < 4) {
-    errors.push('كلمة المرور يجب أن تكون 4 أحرف على الأقل');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+  if (!data?.username || data.username.length < 3) errors.push(text.usernameShort);
+  if (!data?.password || data.password.length < 4) errors.push(text.passwordShort);
+  return { isValid: errors.length === 0, errors };
 }
 
-// تصدير الأنماط للاستخدام الخارجي
-export { PATTERNS };
+export { PATTERNS, MESSAGES };
 
 export default {
   validateMilitaryId,
@@ -209,4 +150,5 @@ export default {
   validateAdminData,
   sanitizeInput,
   PATTERNS,
+  MESSAGES,
 };
