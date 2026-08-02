@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+const ENTRY_URL = process.env.E2E_ENTRY_URL;
 const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
 const DOCTOR_USERNAME = process.env.E2E_DOCTOR_USERNAME;
@@ -117,10 +118,10 @@ async function fillCredentialForm(page, username, password) {
 }
 
 test('discover and exercise all visible application surfaces', async ({ page }, testInfo) => {
-  test.skip(!ADMIN_USERNAME || !ADMIN_PASSWORD || !DOCTOR_USERNAME || !DOCTOR_PASSWORD, 'E2E credentials are required');
+  test.skip(!ENTRY_URL || !ADMIN_USERNAME || !ADMIN_PASSWORD || !DOCTOR_USERNAME || !DOCTOR_PASSWORD, 'E2E credentials are required');
   const evidence = startEvidenceCollection(page);
 
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto(ENTRY_URL, { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: /اللجنة الطبية العسكرية|Military Medical Committee/i })).toBeVisible();
   await page.waitForTimeout(6500);
 
