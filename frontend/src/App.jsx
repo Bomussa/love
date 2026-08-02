@@ -1,7 +1,5 @@
-import HealthAlertBanner from './components/HealthAlertBanner';
 import { LoginPage } from './components/LoginPage.jsx';
-import { supabase, checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
-import healthMonitor from './lib/app-health-monitor';
+import { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
@@ -36,9 +34,7 @@ const PatientPage = lazy(() => import('./components/PatientPage.jsx').then(m => 
 const AdminDashboardV2 = lazy(() => import('./components/AdminDashboardV2.jsx').then(m => ({ default: m.AdminDashboardV2 })));
 const QrScanPage = lazy(() => import('./components/QrScanPage.jsx').then(m => ({ default: m.QrScanPage })));
 const DisplayPage = lazy(() => import('./components/DisplayPage').then(m => ({ default: m.DisplayPage })));
-const ClinicDashboard = lazy(() => import('./components/ClinicDashboard').then(m => ({ default: m.ClinicDashboard })));
 const DoctorDashboard = lazy(() => import('./components/DoctorDashboardFixed.jsx').then(m => ({ default: m.default || m.DoctorDashboardFixed })));
-const ClinicLoginPage = lazy(() => import('./components/ClinicLoginPage').then(m => ({ default: m.ClinicLoginPage })));
 
 const preloadComponents = () => {
   import('./components/PatientPage.jsx');
@@ -55,17 +51,35 @@ const LoadingFallback = () => (
 );
 
 class AdminErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error('[AdminErrorBoundary]', error, info); }
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('[AdminErrorBoundary]', error, info);
+  }
+
   render() {
-    if (this.state.hasError) return (
-      <div className="min-h-screen bg-red-900 text-white p-8">
-        <h1 className="text-2xl font-bold mb-4">AdminPage Error</h1>
-        <p>{this.state.error?.message}</p>
-        <button onClick={() => this.setState({ hasError:false })} className="mt-4 px-4 py-2 bg-white text-red-900 rounded">إعادة المحاولة</button>
-      </div>
-    );
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-900 text-white p-8">
+          <h1 className="text-2xl font-bold mb-4">AdminPage Error</h1>
+          <p>{this.state.error?.message}</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-4 px-4 py-2 bg-white text-red-900 rounded"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      );
+    }
+
     return this.props.children;
   }
 }
@@ -74,11 +88,13 @@ function readValidSession(key) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
+
     const session = JSON.parse(raw);
     if (!session?.token || (session.expiresAt && new Date(session.expiresAt) <= new Date())) {
       localStorage.removeItem(key);
       return null;
     }
+
     return session;
   } catch {
     return null;
@@ -87,114 +103,146 @@ function readValidSession(key) {
 
 function App() {
   const [doctorSession, setDoctorSession] = useState(() => readValidSession('mmc_doctor_session'));
-  const [clinicSession, setClinicSession] = useState(() => readValidSession('mmc_clinic_session'));
   const [patientData, setPatientData] = useState(() => readValidSession('patientData'));
   const [isAdmin, setIsAdmin] = useState(() => Boolean(authService.getSession()));
   const [currentView, setCurrentView] = useState('login');
   const [currentTheme, setCurrentTheme] = useState(() => {
-    try { return localStorage.getItem('selectedTheme') || 'medical-professional'; }
-    catch { return 'medical-professional'; }
+    try {
+      return localStorage.getItem('selectedTheme') || 'medical-professional';
+    } catch {
+      return 'medical-professional';
+    }
   });
   const [language, setLanguage] = useState(() => {
-    try { return getCurrentLanguage(); }
-    catch { return 'ar'; }
+    try {
+      return getCurrentLanguage();
+    } catch {
+      return 'ar';
+    }
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__MMC_BOOT_OK__ = true;
-      try {
-        sessionStorage.removeItem('mmc_boot_watchdog_attempted');
-        sessionStorage.removeItem('mmc_client_asset_recovery');
-      } catch {
-        // Storage can be unavailable in restricted browser modes.
-      }
+    if (typeof window === 'undefined') return;
+
+    window.__MMC_BOOT_OK__ = true;
+    try {
+      sessionStorage.removeItem('mmc_boot_watchdog_attempted');
+      sessionStorage.removeItem('mmc_client_asset_recovery');
+      localStorage.removeItem('mmc_clinic_session');
+    } catch {
+      // Storage can be unavailable in restricted browser modes.
     }
-
-    let cancelled = false;
-    const startDiagnostics = async () => {
-      const modules = await Promise.allSettled([
-        import('./lib/interactive-element-reporter'),
-        import('./lib/advanced-auto-repair'),
-        import('./lib/auto-repair-system'),
-        import('./lib/function-table-monitor'),
-      ]);
-
-      if (cancelled) return;
-
-      try { healthMonitor.init(supabase); }
-      catch (error) { console.error('[Diagnostics] HealthMonitor failed:', error); }
-      try { modules[0].status === 'fulfilled' && new modules[0].value.default().startReporting(); }
-      catch (error) { console.error('[Diagnostics] InteractiveElementReporter failed:', error); }
-      try { modules[1].status === 'fulfilled' && new modules[1].value.default(supabase).startAutoRepair(); }
-      catch (error) { console.error('[Diagnostics] AdvancedAutoRepair failed:', error); }
-      try { modules[2].status === 'fulfilled' && modules[2].value.autoRepairSystem.startMonitoring(); }
-      catch (error) { console.error('[Diagnostics] AutoRepairSystem failed:', error); }
-      try { modules[3].status === 'fulfilled' && modules[3].value.functionTableMonitor.startMonitoring(); }
-      catch (error) { console.error('[Diagnostics] FunctionTableMonitor failed:', error); }
-    };
-
-    const timer = window.setTimeout(() => { void startDiagnostics(); }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
   }, []);
 
   useEffect(() => {
     setCurrentLanguage(language);
-    const path = window.location.pathname;
-    if (path==='/admin'||path.startsWith('/admin/')) { setCurrentView(isAdmin?'admin':'login'); return; }
-    if (isAdmin) { setCurrentView('admin'); return; }
-    if (path==='/doctor'||path.startsWith('/doctor/')) { setCurrentView(doctorSession?'doctor':'login'); return; }
-    if (path==='/clinic/login'||path==='/clinic/login/') { setCurrentView('clinic_login'); return; }
-    if (path.match(/\/clinic\/[^/]+\/display$/)) { setCurrentView('display'); return; }
-    if (path.startsWith('/clinic/')) { setCurrentView(clinicSession?'clinic_dashboard':'clinic_login'); return; }
-    if (path.includes('/qr')) { setCurrentView('qrscan'); return; }
-    if (patientData) { setCurrentView(patientData.queueType||patientData.examType?'patient':'examSelection'); return; }
-    setCurrentView('login');
-  }, [language, isAdmin, patientData, clinicSession, doctorSession]);
+
+    const syncViewFromLocation = () => {
+      const path = window.location.pathname;
+
+      if (/\/clinic\/[^/]+\/display$/.test(path)) {
+        setCurrentView('display');
+        return;
+      }
+
+      if (path.includes('/qr')) {
+        setCurrentView('qrscan');
+        return;
+      }
+
+      if (path === '/admin' || path.startsWith('/admin/')) {
+        setCurrentView(isAdmin ? 'admin' : 'login');
+        return;
+      }
+
+      if (
+        path === '/doctor'
+        || path.startsWith('/doctor/')
+        || path === '/clinic/login'
+        || path === '/clinic/login/'
+        || path.startsWith('/clinic/')
+      ) {
+        setCurrentView(doctorSession ? 'doctor' : 'login');
+        return;
+      }
+
+      if (isAdmin) {
+        setCurrentView('admin');
+        return;
+      }
+
+      if (patientData) {
+        setCurrentView(patientData.queueType || patientData.examType ? 'patient' : 'examSelection');
+        return;
+      }
+
+      setCurrentView('login');
+    };
+
+    syncViewFromLocation();
+    window.addEventListener('popstate', syncViewFromLocation);
+    return () => window.removeEventListener('popstate', syncViewFromLocation);
+  }, [language, isAdmin, patientData, doctorSession]);
 
   useEffect(() => {
     applyTheme(currentTheme);
-    try { localStorage.setItem('selectedTheme', currentTheme); } catch {}
+    try {
+      localStorage.setItem('selectedTheme', currentTheme);
+    } catch {
+      // Storage can be unavailable in restricted browser modes.
+    }
   }, [currentTheme]);
 
   const applyTheme = (id) => {
-    const theme = enhancedMedicalThemes.find(t=>t.id===id);
+    const theme = enhancedMedicalThemes.find(item => item.id === id);
     if (!theme) return;
+
     const css = generateThemeCSS(id);
     const old = document.getElementById('enhanced-theme-style');
     if (old) old.remove();
-    const s = document.createElement('style');
-    s.id='enhanced-theme-style'; s.textContent=css;
-    document.head.appendChild(s);
+
+    const style = document.createElement('style');
+    style.id = 'enhanced-theme-style';
+    style.textContent = css;
+    document.head.appendChild(style);
     document.body.style.background = theme.gradients.background;
     document.body.className = `theme-${id}`;
   };
 
-  const showNotification = (msg, type='info') => {
-    const n = document.createElement('div');
-    n.className=`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-      type==='success'?'bg-green-500 text-white':type==='error'?'bg-red-500 text-white':'bg-blue-500 text-white'}`;
-    n.textContent=msg; document.body.appendChild(n);
-    setTimeout(()=>{ n.style.opacity='0'; setTimeout(()=>{if(document.body.contains(n))document.body.removeChild(n);},300); },3000);
+  const showNotification = (message, type = 'info') => {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+      type === 'success'
+        ? 'bg-green-500 text-white'
+        : type === 'error'
+          ? 'bg-red-500 text-white'
+          : 'bg-blue-500 text-white'
+    }`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        if (document.body.contains(notification)) document.body.removeChild(notification);
+      }, 300);
+    }, 3000);
   };
 
   const handleLogin = async ({ patientId, gender, examType }) => {
     try {
-      let devRestrict = false;
+      let deviceRestrictionEnabled = false;
       try {
-        devRestrict = await getSystemSetting('device_restriction_enabled', false);
+        deviceRestrictionEnabled = await getSystemSetting('device_restriction_enabled', false);
       } catch (settingError) {
         console.warn('[App] getSystemSetting failed:', settingError);
       }
 
-      if (devRestrict) {
+      if (deviceRestrictionEnabled) {
         try {
-          const chk = await checkDeviceLogin(patientId);
-          if (!chk.allowed) {
-            showNotification(`هذا الجهاز مسجل برقم آخر اليوم: ${chk.existingPatientId}`,'error');
+          const check = await checkDeviceLogin(patientId);
+          if (!check.allowed) {
+            showNotification(`هذا الجهاز مسجل برقم آخر اليوم: ${check.existingPatientId}`, 'error');
             return;
           }
         } catch (deviceError) {
@@ -202,52 +250,85 @@ function App() {
         }
       }
 
-      const res = await api.patientLogin(patientId, gender);
-      if (res.success) {
-        const patientPayload = res.data || res.patient || res.session || res;
-        if (!patientPayload?.token) throw new Error('PATIENT_SESSION_MISSING');
-        try { await registerDeviceLogin(patientId); } catch (regError) { console.warn('[App] registerDeviceLogin failed:', regError); }
-        try { await logDailyActivity('patient_login',{patientId,gender,examType,location:'شاشة التسجيل',performedBy:patientId}); } catch (logError) { console.warn('[App] logDailyActivity failed:', logError); }
-        localStorage.removeItem('mmc_admin_session');
-        localStorage.removeItem('mmc_doctor_session');
-        setIsAdmin(false); setDoctorSession(null);
-
-        const finalPatientData = {
-          ...patientPayload,
-          queueType: examType,
-          examType: examType,
-          gender: gender
-        };
-
-        setPatientData(finalPatientData);
-        localStorage.setItem('patientData', JSON.stringify(finalPatientData));
-        setCurrentView('patient');
-        showNotification(language==='ar'?'تم تسجيل الدخول بنجاح':'Login successful','success');
-      } else {
-        showNotification(language==='ar'?'فشل تسجيل الدخول':'Login failed','error');
+      const response = await api.patientLogin(patientId, gender);
+      if (!response.success) {
+        showNotification(language === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed', 'error');
+        return;
       }
-    } catch(e) {
-      console.error('[App] Patient login error:',e);
-      showNotification(language==='ar'?'خطأ في الاتصال':'Connection error','error');
+
+      const patientPayload = response.data || response.patient || response.session || response;
+      if (!patientPayload?.token) throw new Error('PATIENT_SESSION_MISSING');
+
+      try {
+        await registerDeviceLogin(patientId);
+      } catch (registrationError) {
+        console.warn('[App] registerDeviceLogin failed:', registrationError);
+      }
+
+      try {
+        await logDailyActivity('patient_login', {
+          patientId,
+          gender,
+          examType,
+          location: 'شاشة التسجيل',
+          performedBy: patientId,
+        });
+      } catch (logError) {
+        console.warn('[App] logDailyActivity failed:', logError);
+      }
+
+      localStorage.removeItem('mmc_admin_session');
+      localStorage.removeItem('mmc_doctor_session');
+      localStorage.removeItem('mmc_clinic_session');
+      setIsAdmin(false);
+      setDoctorSession(null);
+
+      const finalPatientData = {
+        ...patientPayload,
+        queueType: examType,
+        examType,
+        gender,
+      };
+
+      setPatientData(finalPatientData);
+      localStorage.setItem('patientData', JSON.stringify(finalPatientData));
+      setCurrentView('patient');
+      showNotification(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful', 'success');
+    } catch (error) {
+      console.error('[App] Patient login error:', error);
+      showNotification(language === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'error');
     }
   };
 
   const handleAdminLogin = async (credentials) => {
     try {
-      const [username,password] = credentials.split(':');
-      if (!username||!password) { showNotification('يرجى إدخال اسم المستخدم وكلمة المرور','error'); return; }
-      const result = await authService.login(username,password);
-      if (result.success) {
-        localStorage.removeItem('patientData'); localStorage.removeItem('mmc_doctor_session');
-        setPatientData(null); setDoctorSession(null);
-        setIsAdmin(true); setCurrentView('admin');
-        showNotification(language==='ar'?'✅ تم تسجيل الدخول بنجاح':'✅ Login successful','success');
-      } else {
-        showNotification(language==='ar'?'❌ اسم المستخدم أو كلمة المرور غير صحيحة':'❌ Invalid credentials','error');
+      const [username, password] = credentials.split(':');
+      if (!username || !password) {
+        showNotification('يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
+        return;
       }
-    } catch(e) {
-      console.error('[App] Admin login error:',e);
-      showNotification('خطأ في الاتصال','error');
+
+      const result = await authService.login(username, password);
+      if (!result.success) {
+        showNotification(
+          language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials',
+          'error',
+        );
+        return;
+      }
+
+      localStorage.removeItem('patientData');
+      localStorage.removeItem('mmc_doctor_session');
+      localStorage.removeItem('mmc_clinic_session');
+      setPatientData(null);
+      setDoctorSession(null);
+      setIsAdmin(true);
+      window.history.pushState({}, '', '/admin');
+      setCurrentView('admin');
+      showNotification(language === 'ar' ? '✅ تم تسجيل الدخول بنجاح' : '✅ Login successful', 'success');
+    } catch (error) {
+      console.error('[App] Admin login error:', error);
+      showNotification('خطأ في الاتصال', 'error');
     }
   };
 
@@ -258,41 +339,53 @@ function App() {
         showNotification('يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
         return;
       }
+
       const result = await authService.doctorLogin(username, password);
-      if (result.success && result.session?.token) {
-        const session = result.session;
-        localStorage.removeItem('patientData');
-        localStorage.removeItem('mmc_admin_session');
-        localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
-        setPatientData(null);
-        setIsAdmin(false);
-        setDoctorSession(session);
-        window.history.pushState({}, '', '/doctor');
-        setCurrentView('doctor');
-        showNotification(language === 'ar' ? '✅ تم تسجيل دخول الطبيب بنجاح' : '✅ Doctor login successful', 'success');
-      } else {
-        showNotification(language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials', 'error');
+      if (!result.success || !result.session?.token) {
+        showNotification(
+          language === 'ar' ? '❌ اسم المستخدم أو كلمة المرور غير صحيحة' : '❌ Invalid credentials',
+          'error',
+        );
+        return;
       }
-    } catch (e) {
-      console.error('[App] Doctor login error:', e);
+
+      const session = result.session;
+      localStorage.removeItem('patientData');
+      localStorage.removeItem('mmc_admin_session');
+      localStorage.removeItem('mmc_clinic_session');
+      localStorage.setItem('mmc_doctor_session', JSON.stringify(session));
+      setPatientData(null);
+      setIsAdmin(false);
+      setDoctorSession(session);
+      window.history.pushState({}, '', '/doctor');
+      setCurrentView('doctor');
+      showNotification(
+        language === 'ar' ? '✅ تم تسجيل دخول الطبيب بنجاح' : '✅ Doctor login successful',
+        'success',
+      );
+    } catch (error) {
+      console.error('[App] Doctor login error:', error);
       showNotification('خطأ في الاتصال', 'error');
     }
   };
 
   const handleLogout = () => {
-    setPatientData(null); setIsAdmin(false); setDoctorSession(null); setClinicSession(null);
+    setPatientData(null);
+    setIsAdmin(false);
+    setDoctorSession(null);
     setCurrentView('login');
     localStorage.removeItem('patientData');
     localStorage.removeItem('mmc_admin_session');
     localStorage.removeItem('mmc_doctor_session');
     localStorage.removeItem('mmc_clinic_session');
-    window.history.pushState({},'','/');
+    window.history.pushState({}, '', '/');
   };
 
   const handleExamSelect = async (examType) => {
     try {
-      const clinics = await getDynamicMedicalPathway(examType, patientData?.gender||'male');
-      if (!clinics||clinics.length===0) throw new Error('No clinics found for: '+examType);
+      const clinics = await getDynamicMedicalPathway(examType, patientData?.gender || 'male');
+      if (!clinics || clinics.length === 0) throw new Error(`No clinics found for: ${examType}`);
+
       const patientId = String(
         patientData?.patient_id
         || patientData?.patientId
@@ -303,9 +396,16 @@ function App() {
         || '',
       ).trim();
       if (!patientId) throw new Error('PATIENT_ID_MISSING');
+
       const firstClinic = clinics[0];
-      const routeResult = await api.createRoute(patientId, examType, patientData?.gender || 'male', clinics);
+      const routeResult = await api.createRoute(
+        patientId,
+        examType,
+        patientData?.gender || 'male',
+        clinics,
+      );
       if (routeResult?.success === false) throw new Error(routeResult.error || 'ROUTE_CREATE_FAILED');
+
       const enterResult = await api.enterQueue(
         firstClinic.id,
         patientId,
@@ -321,42 +421,53 @@ function App() {
       const updatedData = {
         ...patientData,
         queueType: examType,
-        examType: examType,
+        examType,
         currentClinic: firstClinic.id,
         pathway: clinics,
         queueNumber: enterResult?.display_number || null,
-        queueId: enterResult?.id || null
+        queueId: enterResult?.id || null,
       };
+
       setPatientData(updatedData);
       localStorage.setItem('patientData', JSON.stringify(updatedData));
       setCurrentView('patient');
-      showNotification(language==='ar'?'تم تسجيل دخولك في الطابور بنجاح':'Registered in queue successfully','success');
-    } catch(e) {
-      console.error('[App] Exam select error:',e);
-      showNotification(language==='ar'?'فشل تسجيل المسار الطبي':'Failed to setup medical pathway','error');
+      showNotification(
+        language === 'ar' ? 'تم تسجيل دخولك في الطابور بنجاح' : 'Registered in queue successfully',
+        'success',
+      );
+    } catch (error) {
+      console.error('[App] Exam select error:', error);
+      showNotification(
+        language === 'ar' ? 'فشل تسجيل المسار الطبي' : 'Failed to setup medical pathway',
+        'error',
+      );
     }
   };
 
-  const toggleLanguage = () => { const l=language==='ar'?'en':'ar'; setLanguage(l); setCurrentLanguage(l); };
+  const toggleLanguage = () => {
+    const nextLanguage = language === 'ar' ? 'en' : 'ar';
+    setLanguage(nextLanguage);
+    setCurrentLanguage(nextLanguage);
+  };
 
-  const theme = enhancedMedicalThemes.find(t=>t.id===currentTheme);
-  React.useEffect(() => {
-    if (theme?.gradients?.background) {
-      document.body.style.background=theme.gradients.background;
-      document.body.style.backgroundAttachment='fixed';
-      document.documentElement.style.background=theme.gradients.background;
-    }
-  },[theme]);
+  const theme = enhancedMedicalThemes.find(item => item.id === currentTheme);
+  useEffect(() => {
+    if (!theme?.gradients?.background) return;
+
+    document.body.style.background = theme.gradients.background;
+    document.body.style.backgroundAttachment = 'fixed';
+    document.documentElement.style.background = theme.gradients.background;
+  }, [theme]);
 
   return (
-    <div className="min-h-screen" style={{background:'transparent'}}>
+    <div className="min-h-screen" style={{ background: 'transparent' }}>
       <main className="relative z-10">
         <Suspense fallback={<LoadingFallback />}>
-          {currentView==='qrscan' && (
+          {currentView === 'qrscan' && (
             <QrScanPage language={language} toggleLanguage={toggleLanguage} />
           )}
 
-          {currentView==='login' && (
+          {currentView === 'login' && (
             <LoginPage
               onLogin={handleLogin}
               onAdminLogin={handleAdminLogin}
@@ -368,17 +479,21 @@ function App() {
             />
           )}
 
-          {currentView==='examSelection' && patientData && (
+          {currentView === 'examSelection' && patientData && (
             <ExamSelectionPage
               patientData={patientData}
               onExamSelect={handleExamSelect}
-              onBack={() => { localStorage.removeItem('patientData'); setPatientData(null); setCurrentView('login'); }}
+              onBack={() => {
+                localStorage.removeItem('patientData');
+                setPatientData(null);
+                setCurrentView('login');
+              }}
               language={language}
               toggleLanguage={toggleLanguage}
             />
           )}
 
-          {currentView==='patient' && patientData && (
+          {currentView === 'patient' && patientData && (
             <PatientPage
               patientData={patientData}
               onLogout={handleLogout}
@@ -387,48 +502,33 @@ function App() {
             />
           )}
 
-          {currentView==='admin' && isAdmin && (
-            <>
-              <HealthAlertBanner language={language} />
-              <AdminErrorBoundary>
-                <AdminDashboardV2
-                  onLogout={handleLogout}
-                  language={language}
-                  toggleLanguage={toggleLanguage}
-                  currentTheme={currentTheme}
-                  onThemeChange={setCurrentTheme}
-                />
-              </AdminErrorBoundary>
-            </>
+          {currentView === 'admin' && isAdmin && (
+            <AdminErrorBoundary>
+              <AdminDashboardV2
+                onLogout={handleLogout}
+                language={language}
+                toggleLanguage={toggleLanguage}
+                currentTheme={currentTheme}
+                onThemeChange={setCurrentTheme}
+              />
+            </AdminErrorBoundary>
           )}
 
-          {currentView==='doctor' && doctorSession && (
+          {currentView === 'doctor' && doctorSession && (
             <DoctorDashboard
               doctorData={doctorSession}
-              onLogout={() => { setDoctorSession(null); localStorage.removeItem('mmc_doctor_session'); setCurrentView('login'); window.history.pushState({},'', '/'); }}
+              onLogout={() => {
+                setDoctorSession(null);
+                localStorage.removeItem('mmc_doctor_session');
+                setCurrentView('login');
+                window.history.pushState({}, '', '/');
+              }}
               language={language}
               toggleLanguage={toggleLanguage}
             />
           )}
 
-          {currentView==='clinic_login' && (
-            <ClinicLoginPage
-              onLogin={(session) => { setClinicSession(session); localStorage.setItem('mmc_clinic_session',JSON.stringify(session)); setCurrentView('clinic_dashboard'); }}
-              language={language}
-              toggleLanguage={toggleLanguage}
-            />
-          )}
-
-          {currentView==='clinic_dashboard' && clinicSession && (
-            <ClinicDashboard
-              session={clinicSession}
-              onLogout={() => { setClinicSession(null); localStorage.removeItem('mmc_clinic_session'); setCurrentView('clinic_login'); }}
-              language={language}
-              toggleLanguage={toggleLanguage}
-            />
-          )}
-
-          {currentView==='display' && (
+          {currentView === 'display' && (
             <DisplayPage language={language} />
           )}
         </Suspense>
