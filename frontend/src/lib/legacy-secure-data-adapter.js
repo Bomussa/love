@@ -61,7 +61,6 @@ function createThenableBuilder(executor) {
 
   const builder = {
     select() {
-      if (state.operation === 'select') state.operation = 'select';
       return builder;
     },
     insert(values) {
@@ -80,6 +79,10 @@ function createThenableBuilder(executor) {
     },
     eq(column, value) {
       state.filters[column] = value;
+      return builder;
+    },
+    match(values = {}) {
+      Object.assign(state.filters, values);
       return builder;
     },
     order() { return builder; },
@@ -226,7 +229,6 @@ async function executeUpsertSetting(args = {}) {
     const { data, error } = await originalFrom('system_settings')
       .upsert({
         id: key,
-        key,
         value: args.p_value,
         description: args.p_description || `Setting ${key}`,
         is_active: true,
@@ -288,12 +290,119 @@ async function executeQueueRpc(functionName, args = {}) {
   }
 }
 
+async function executeUnifiedQueueMutation(state) {
+  const values = state.values || {};
+  const queueId = String(state.filters.id || values.id || '').trim();
+
+  if (state.operation === 'insert') {
+    const patientId = String(values.patient_id || values.personal_id || values.military_id || '').trim();
+    const examType = String(values.exam_type || values.queue_type || '').trim();
+    if (!patientId || !examType) {
+      throw Object.assign(
+        new Error('Patient must complete registration and select an examination type before priority calling'),
+        { code: 'PATIENT_REGISTRATION_REQUIRED' },
+      );
+    }
+
+    const response = await requestJson('/api/v1/queue/enter', {
+      method: 'POST',
+      body: JSON.stringify({
+        patientId,
+        personalId: values.personal_id || patientId,
+        militaryId: values.military_id || patientId,
+        clinicId: values.clinic_id || null,
+        examType,
+        gender: values.gender || 'male',
+      }),
+    });
+    return { data: response.queue ? [response.queue] : (response.data ? [response.data] : null), error: null };
+  }
+
+  if (!queueId) {
+    throw Object.assign(new Error('Queue id is required'), { code: 'MISSING_QUEUE_ID' });
+  }
+
+  if (state.operation === 'delete') {
+    const response = await requestJson('/api/v1/queue/update', {
+      method: 'POST',
+      body: JSON.stringify({ queueId, queueAction: 'cancel' }),
+    });
+    return { data: response.queue ? [response.queue] : null, error: null };
+  }
+
+  if (state.operation !== 'update') {
+    throw new Error('Unsupported queue operation');
+  }
+
+  if (values.patient_id !== undefined) {
+    const response = await requestJson('/api/v1/admin/queue/identity', {
+      method: 'POST',
+      body: JSON.stringify({ queueId, newPatientId: values.patient_id }),
+    });
+    return { data: response.queue ? [response.queue] : null, error: null };
+  }
+
+  const status = String(values.status || '').trim().toLowerCase();
+  let path;
+  let body;
+
+  if (status === 'called') {
+    path = '/api/v1/queue/call';
+    body = { queueId };
+  } else if (status === 'waiting') {
+    path = '/api/v1/queue/update';
+    body = { queueId, queueAction: 'requeue' };
+  } else if (status === 'completed' || status === 'done') {
+    path = '/api/v1/queue/done';
+    body = { queueId };
+  } else if (status === 'absent' || status === 'no_show') {
+    path = '/api/v1/queue/update';
+    body = { queueId, queueAction: 'no_show' };
+  } else if (status === 'cancelled' || status === 'canceled') {
+    path = '/api/v1/queue/update';
+    body = { queueId, queueAction: 'cancel' };
+  } else if (values.is_vip !== undefined || values.is_priority !== undefined) {
+    const enabled = Boolean(values.is_vip ?? values.is_priority);
+    path = '/api/v1/queue/update';
+    body = { queueId, queueAction: enabled ? 'vip' : 'unvip' };
+  } else {
+    throw Object.assign(new Error('Unsupported queue mutation'), { code: 'UNSUPPORTED_QUEUE_MUTATION' });
+  }
+
+  const response = await requestJson(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  return { data: response.queue ? [response.queue] : (response.data ? [response.data] : null), error: null };
+}
+
+function createUnifiedQueueProxy() {
+  const originalBuilder = originalFrom('unified_queue');
+  return new Proxy(originalBuilder, {
+    get(target, property, receiver) {
+      if (property === 'insert') {
+        return (values) => createThenableBuilder(executeUnifiedQueueMutation).insert(values);
+      }
+      if (property === 'update') {
+        return (values) => createThenableBuilder(executeUnifiedQueueMutation).update(values);
+      }
+      if (property === 'delete') {
+        return () => createThenableBuilder(executeUnifiedQueueMutation).delete();
+      }
+
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
 if (!globalThis.__MMC_LEGACY_SECURE_DATA_ADAPTER__) {
   globalThis.__MMC_LEGACY_SECURE_DATA_ADAPTER__ = true;
 
   supabase.from = (relation) => {
     if (relation === 'admin_users') return createThenableBuilder(executeAdminUsers);
     if (relation === 'doctors') return createThenableBuilder(executeDoctors);
+    if (relation === 'unified_queue') return createUnifiedQueueProxy();
     if (relation === 'email_queue') {
       return {
         insert: async () => {
