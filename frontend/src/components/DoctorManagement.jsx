@@ -1,24 +1,19 @@
 /**
  * @fileoverview Doctor Management Component
- * @description Admin panel for managing doctors (add, edit, delete, freeze)
- * @version 2.0.0
+ * @description Admin panel for managing doctors through the signed backend API.
+ * @version 2.1.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { 
+import React, { useEffect, useState } from 'react';
+import {
   UserPlus, Edit2, Trash2, Lock, Unlock, Search, RefreshCw,
-  CheckCircle, XCircle, AlertCircle, UserCheck, Key, Eye, EyeOff
+  XCircle, UserCheck, Eye, EyeOff
 } from 'lucide-react';
-import { supabase } from '../lib/supabase-client';
 import toast from 'react-hot-toast';
+import api from '../lib/api-unified';
+import doctorAdminApi from '../lib/doctor-admin-api';
 
-/**
- * Doctor Management Component
- * @param {Object} props
- * @param {string} props.language - Current language
- * @param {Function} props.t - Translation function
- */
-const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
+const DoctorManagement = ({ language = 'ar', t = (ar) => ar }) => {
   const [doctors, setDoctors] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +21,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -43,55 +38,36 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
   const translate = (ar, en) => language === 'ar' ? ar : en;
 
   useEffect(() => {
-    loadDoctors();
-    loadClinics();
+    void loadDoctors();
+    void loadClinics();
   }, []);
 
-  /**
-   * Load doctors from database
-   */
   const loadDoctors = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('doctors')
-        .select(`
-          *,
-          clinics:clinic_id (name_ar, name_en)
-        `)
-        .order('name');
-
-      if (error) throw error;
-      setDoctors(data || []);
-    } catch (e) {
-      console.error('Error loading doctors:', e);
+      setDoctors(await doctorAdminApi.list());
+    } catch (error) {
+      console.error('Error loading doctors:', error);
       toast.error(translate('خطأ في تحميل الأطباء', 'Error loading doctors'));
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Load clinics list
-   */
   const loadClinics = async () => {
     try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .order('name_ar');
-
-      if (!error && data) {
-        setClinics(data);
-      }
-    } catch (e) {
-      console.error('Error loading clinics:', e);
+      const response = await api.getClinics();
+      const rows = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.clinics)
+          ? response.clinics
+          : [];
+      setClinics(rows);
+    } catch (error) {
+      console.error('Error loading clinics:', error);
     }
   };
 
-  /**
-   * Open modal for adding new doctor
-   */
   const openAddModal = () => {
     setEditingDoctor(null);
     setFormData({
@@ -110,15 +86,12 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
     setShowModal(true);
   };
 
-  /**
-   * Open modal for editing doctor
-   */
   const openEditModal = (doctor) => {
     setEditingDoctor(doctor);
     setFormData({
       name: doctor.name || '',
       username: doctor.username || '',
-      password: '', // Don't show existing password
+      password: '',
       clinic_id: doctor.clinic_id || '',
       specialty: doctor.specialty || '',
       phone: doctor.phone || '',
@@ -131,12 +104,8 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
     setShowModal(true);
   };
 
-  /**
-   * Save doctor (add or update)
-   */
   const saveDoctor = async () => {
     try {
-      // Validation
       if (!formData.name.trim()) {
         toast.error(translate('الاسم مطلوب', 'Name is required'));
         return;
@@ -145,8 +114,12 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         toast.error(translate('اسم المستخدم مطلوب', 'Username is required'));
         return;
       }
-      if (!editingDoctor && !formData.password.trim()) {
-        toast.error(translate('كلمة المرور مطلوبة', 'Password is required'));
+      if (!editingDoctor && formData.password.length < 8) {
+        toast.error(translate('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'Password must contain at least 8 characters'));
+        return;
+      }
+      if (formData.password && formData.password.length < 8) {
+        toast.error(translate('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'Password must contain at least 8 characters'));
         return;
       }
       if (!formData.clinic_id) {
@@ -154,60 +127,36 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         return;
       }
 
-      const doctorData = {
+      await doctorAdminApi.save({
+        id: editingDoctor?.id || null,
         name: formData.name.trim(),
         username: formData.username.trim().toLowerCase(),
+        password: formData.password,
         clinic_id: formData.clinic_id,
         specialty: formData.specialty.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),
         is_active: formData.is_active,
         role: formData.role,
-        permissions: formData.permissions,
-        updated_at: new Date().toISOString()
-      };
+      });
 
-      // Add password only if provided (for new or when changing)
-      if (formData.password.trim()) {
-        doctorData.password_hash = await hashPassword(formData.password);
-      }
-
-      if (editingDoctor) {
-        // Update existing doctor
-        const { error } = await supabase
-          .from('doctors')
-          .update(doctorData)
-          .eq('id', editingDoctor.id);
-
-        if (error) throw error;
-        toast.success(translate('تم تحديث بيانات الطبيب', 'Doctor updated successfully'));
-      } else {
-        // Add new doctor
-        doctorData.created_at = new Date().toISOString();
-        const { error } = await supabase
-          .from('doctors')
-          .insert([doctorData]);
-
-        if (error) throw error;
-        toast.success(translate('تم إضافة الطبيب بنجاح', 'Doctor added successfully'));
-      }
-
+      toast.success(editingDoctor
+        ? translate('تم تحديث بيانات الطبيب', 'Doctor updated successfully')
+        : translate('تم إضافة الطبيب بنجاح', 'Doctor added successfully'));
       setShowModal(false);
-      loadDoctors();
-
-    } catch (e) {
-      console.error('Error saving doctor:', e);
-      if (e.message?.includes('duplicate')) {
+      await loadDoctors();
+    } catch (error) {
+      console.error('Error saving doctor:', error);
+      if (error?.code === 'DUPLICATE_USERNAME') {
         toast.error(translate('اسم المستخدم مستخدم بالفعل', 'Username already exists'));
+      } else if (error?.code === 'WEAK_PASSWORD') {
+        toast.error(translate('كلمة المرور ضعيفة', 'Password is too weak'));
       } else {
         toast.error(translate('خطأ في حفظ البيانات', 'Error saving data'));
       }
     }
   };
 
-  /**
-   * Delete doctor
-   */
   const deleteDoctor = async (doctor) => {
     const confirmed = window.confirm(
       translate(
@@ -215,94 +164,54 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         `Are you sure you want to delete doctor "${doctor.name}"?`
       )
     );
-
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase
-        .from('doctors')
-        .delete()
-        .eq('id', doctor.id);
-
-      if (error) throw error;
+      await doctorAdminApi.remove(doctor.id);
       toast.success(translate('تم حذف الطبيب', 'Doctor deleted'));
-      loadDoctors();
-    } catch (e) {
-      console.error('Error deleting doctor:', e);
+      await loadDoctors();
+    } catch (error) {
+      console.error('Error deleting doctor:', error);
       toast.error(translate('خطأ في حذف الطبيب', 'Error deleting doctor'));
     }
   };
 
-  /**
-   * Toggle doctor active status (freeze/unfreeze)
-   */
   const toggleStatus = async (doctor) => {
     try {
-      const newStatus = !doctor.is_active;
-      const { error } = await supabase
-        .from('doctors')
-        .update({ 
-          is_active: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', doctor.id);
-
-      if (error) throw error;
-      
-      toast.success(
-        newStatus 
-          ? translate('تم تفعيل الطبيب', 'Doctor activated')
-          : translate('تم تجميد الطبيب', 'Doctor frozen')
-      );
-      loadDoctors();
-    } catch (e) {
-      console.error('Error toggling status:', e);
+      const newStatus = doctor.is_active === false;
+      await doctorAdminApi.setStatus(doctor.id, newStatus);
+      toast.success(newStatus
+        ? translate('تم تفعيل الطبيب', 'Doctor activated')
+        : translate('تم تجميد الطبيب', 'Doctor frozen'));
+      await loadDoctors();
+    } catch (error) {
+      console.error('Error toggling status:', error);
       toast.error(translate('خطأ في تغيير الحالة', 'Error changing status'));
     }
   };
 
-  /**
-   * Generate random secure password
-   */
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-    let password = '';
-    for (let i = 0; i < 10; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setFormData({ ...formData, password });
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    const random = new Uint32Array(12);
+    crypto.getRandomValues(random);
+    const password = Array.from(random, (value) => chars[value % chars.length]).join('');
+    setFormData((current) => ({ ...current, password }));
   };
 
-  /**
-   * Hash password (simple implementation - use bcrypt in production)
-   */
-  const hashPassword = async (password) => {
-    // In production, use proper hashing like bcrypt
-    // This is a placeholder - replace with actual hashing
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-  };
-
-  // Filter doctors
-  const filteredDoctors = doctors.filter(d => {
+  const filteredDoctors = doctors.filter((doctor) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      (d.name || '').toLowerCase().includes(searchLower) ||
-      (d.username || '').toLowerCase().includes(searchLower) ||
-      (d.specialty || '').toLowerCase().includes(searchLower) ||
-      (d.phone || '').includes(searchTerm) ||
-      (d.clinics?.name_ar || '').toLowerCase().includes(searchLower) ||
-      (d.clinics?.name_en || '').toLowerCase().includes(searchLower)
+      (doctor.name || '').toLowerCase().includes(searchLower) ||
+      (doctor.username || '').toLowerCase().includes(searchLower) ||
+      (doctor.specialty || '').toLowerCase().includes(searchLower) ||
+      (doctor.phone || '').includes(searchTerm) ||
+      (doctor.clinics?.name_ar || '').toLowerCase().includes(searchLower) ||
+      (doctor.clinics?.name_en || '').toLowerCase().includes(searchLower)
     );
   });
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold flex items-center gap-3">
           <UserCheck className="text-[#C9A54C]" size={28} />
@@ -310,7 +219,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         </h2>
         <div className="flex items-center gap-3">
           <button
-            onClick={loadDoctors}
+            onClick={() => void loadDoctors()}
             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
@@ -325,7 +234,6 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         </div>
       </div>
 
-      {/* Statistics */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-[#1A1A1A] rounded-xl p-4 border border-white/10">
           <div className="text-2xl font-bold text-[#C9A54C]">{doctors.length}</div>
@@ -333,31 +241,29 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         </div>
         <div className="bg-[#1A1A1A] rounded-xl p-4 border border-white/10">
           <div className="text-2xl font-bold text-green-400">
-            {doctors.filter(d => d.is_active !== false).length}
+            {doctors.filter((doctor) => doctor.is_active !== false).length}
           </div>
           <div className="text-sm text-gray-400">{translate('نشط', 'Active')}</div>
         </div>
         <div className="bg-[#1A1A1A] rounded-xl p-4 border border-white/10">
           <div className="text-2xl font-bold text-red-400">
-            {doctors.filter(d => d.is_active === false).length}
+            {doctors.filter((doctor) => doctor.is_active === false).length}
           </div>
           <div className="text-sm text-gray-400">{translate('مجمد', 'Frozen')}</div>
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(event) => setSearchTerm(event.target.value)}
           placeholder={translate('بحث بالاسم أو اسم المستخدم أو العيادة...', 'Search by name or username or clinic...')}
           className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500"
         />
       </div>
 
-      {/* Doctors Table */}
       <div className="bg-[#1A1A1A] rounded-xl overflow-hidden border border-white/10">
         <table className="w-full">
           <thead className="bg-white/5">
@@ -379,19 +285,19 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 </td>
                 <td className="p-4 font-mono text-sm">{doctor.username}</td>
                 <td className="p-4">
-                  {language === 'ar' 
-                    ? (doctor.clinics?.name_ar || 'غير محدد') 
-                    : (doctor.clinics?.name_en || 'Not assigned')}
+                  {language === 'ar'
+                    ? (doctor.clinics?.name_ar || doctor.clinic_name || 'غير محدد')
+                    : (doctor.clinics?.name_en || doctor.clinic_name || 'Not assigned')}
                 </td>
                 <td className="p-4 text-gray-400">{doctor.specialty || translate('غير محدد', 'Not specified')}</td>
                 <td className="p-4">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    doctor.is_active !== false 
-                      ? 'bg-green-500/20 text-green-400' 
+                    doctor.is_active !== false
+                      ? 'bg-green-500/20 text-green-400'
                       : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {doctor.is_active !== false 
-                      ? translate('نشط', 'Active') 
+                    {doctor.is_active !== false
+                      ? translate('نشط', 'Active')
                       : translate('مجمد', 'Frozen')}
                   </span>
                 </td>
@@ -405,7 +311,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                       <Edit2 size={16} />
                     </button>
                     <button
-                      onClick={() => toggleStatus(doctor)}
+                      onClick={() => void toggleStatus(doctor)}
                       className={`p-2 rounded-lg transition-all ${
                         doctor.is_active !== false
                           ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
@@ -416,7 +322,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                       {doctor.is_active !== false ? <Lock size={16} /> : <Unlock size={16} />}
                     </button>
                     <button
-                      onClick={() => deleteDoctor(doctor)}
+                      onClick={() => void deleteDoctor(doctor)}
                       className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
                       title={translate('حذف', 'Delete')}
                     >
@@ -437,13 +343,12 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1A1A1A] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto border border-white/10">
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-xl font-bold">
-                {editingDoctor 
+                {editingDoctor
                   ? translate('تعديل بيانات الطبيب', 'Edit Doctor')
                   : translate('إضافة طبيب جديد', 'Add New Doctor')
                 }
@@ -457,34 +362,31 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Name */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('الاسم الكامل', 'Full Name')} *</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                   placeholder={translate('اسم الطبيب', 'Doctor name')}
                 />
               </div>
 
-              {/* Username */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('اسم المستخدم', 'Username')} *</label>
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, username: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
-                  placeholder={translate('username', 'username')}
+                  placeholder="username"
                 />
               </div>
 
-              {/* Password */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
-                  {translate('كلمة المرور', 'Password')} 
+                  {translate('كلمة المرور', 'Password')}
                   {!editingDoctor && ' *'}
                   {editingDoctor && <span className="text-gray-500 text-xs"> ({translate('اترك فارغاً للاحتفاظ بالحالي', 'Leave empty to keep current')})</span>}
                 </label>
@@ -493,11 +395,12 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                       className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white pr-10"
-                      placeholder={translate('••••••••', '••••••••')}
+                      placeholder="••••••••"
                     />
                     <button
+                      type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                     >
@@ -505,6 +408,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                     </button>
                   </div>
                   <button
+                    type="button"
                     onClick={generatePassword}
                     className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-all"
                   >
@@ -513,16 +417,15 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 </div>
               </div>
 
-              {/* Clinic */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('العيادة', 'Clinic')} *</label>
                 <select
                   value={formData.clinic_id}
-                  onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, clinic_id: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                 >
                   <option value="">{translate('اختر العيادة...', 'Select clinic...')}</option>
-                  {clinics.map(clinic => (
+                  {clinics.map((clinic) => (
                     <option key={clinic.id} value={clinic.id}>
                       {language === 'ar' ? clinic.name_ar : clinic.name_en}
                     </option>
@@ -530,48 +433,44 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 </select>
               </div>
 
-              {/* Specialty */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('التخصص', 'Specialty')}</label>
                 <input
                   type="text"
                   value={formData.specialty}
-                  onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, specialty: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                   placeholder={translate('مثال: باطنية، جراحة', 'e.g., Internal Medicine, Surgery')}
                 />
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('رقم الهاتف', 'Phone')}</label>
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, phone: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
-                  placeholder={translate('05xxxxxxxx', '05xxxxxxxx')}
+                  placeholder="05xxxxxxxx"
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('البريد الإلكتروني', 'Email')}</label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, email: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
-                  placeholder={translate('doctor@example.com', 'doctor@example.com')}
+                  placeholder="doctor@example.com"
                 />
               </div>
 
-              {/* Role Selection */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{translate('الدور / الصلاحية', 'Role / Permission')} *</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, role: event.target.value })}
                   className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white"
                 >
                   <option value="DOCTOR">{translate('طبيب', 'Doctor')}</option>
@@ -580,13 +479,12 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 </select>
               </div>
 
-              {/* Active Status */}
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   id="is_active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
                   className="w-5 h-5 rounded border-white/20 bg-black/30 text-[#C9A54C]"
                 />
                 <label htmlFor="is_active" className="text-sm">
@@ -603,7 +501,7 @@ const DoctorManagement = ({ language = 'ar', t = (ar, en) => ar }) => {
                 {translate('إلغاء', 'Cancel')}
               </button>
               <button
-                onClick={saveDoctor}
+                onClick={() => void saveDoctor()}
                 className="flex-1 py-3 bg-gradient-to-r from-[#C9A54C] to-[#8A1538] hover:from-[#D4B55D] hover:to-[#9A2548] text-white rounded-lg font-medium transition-all"
               >
                 {editingDoctor ? translate('حفظ التغييرات', 'Save Changes') : translate('إضافة الطبيب', 'Add Doctor')}
