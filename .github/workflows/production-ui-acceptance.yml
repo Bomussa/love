@@ -1,0 +1,121 @@
+name: Production UI Acceptance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-ui-acceptance-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  E2E_BASE_URL: https://mmc-mms.com
+  E2E_ACCEPTANCE_FILE: /tmp/mmc-acceptance.json
+  OIDC_AUDIENCE: mmc-mms-production-ui-acceptance
+
+jobs:
+  full-production-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify production is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            status=$(curl -sS -o /tmp/mmc-production.html -w '%{http_code}' "$E2E_BASE_URL" || true)
+            if [ "$status" = "200" ] && grep -q 'Military Medical Committee\|اللجنة الطبية العسكرية' /tmp/mmc-production.html; then
+              echo "Production frontend is reachable"
+              exit 0
+            fi
+            echo "Production is not ready: HTTP $status (attempt $attempt)"
+            sleep 10
+          done
+          echo "Production frontend did not become ready"
+          exit 1
+
+      - name: Bootstrap isolated acceptance accounts with GitHub OIDC
+        id: bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_response=$(curl -fsSL \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
+          oidc_token=$(jq -er '.value' <<<"$oidc_response")
+          echo "::add-mask::$oidc_token"
+
+          curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer $oidc_token" \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"bootstrap"}' \
+            "$E2E_BASE_URL/api/v1/ci/session" \
+            -o "$E2E_ACCEPTANCE_FILE"
+
+          jq -e '.success == true and .data.admin.token and (.data.doctors | length > 0) and (.data.patientIds | length == 3)' \
+            "$E2E_ACCEPTANCE_FILE" >/dev/null
+
+          while IFS= read -r secret; do
+            [ -n "$secret" ] && echo "::add-mask::$secret"
+          done < <(jq -r '[.data.admin.password,.data.admin.token] + [.data.doctors[] | .password,.token] | .[]' "$E2E_ACCEPTANCE_FILE")
+
+          chmod 600 "$E2E_ACCEPTANCE_FILE"
+          echo "Acceptance run $(jq -r '.data.runId' "$E2E_ACCEPTANCE_FILE") bootstrapped"
+
+      - name: Run complete browser acceptance
+        run: npx playwright test --config=playwright.production.config.js
+
+      - name: Cleanup isolated acceptance data
+        if: always() && steps.bootstrap.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_response=$(curl -fsSL \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
+          oidc_token=$(jq -er '.value' <<<"$oidc_response")
+          echo "::add-mask::$oidc_token"
+
+          cleanup_response=$(curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer $oidc_token" \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"cleanup"}' \
+            "$E2E_BASE_URL/api/v1/ci/session")
+
+          jq -e '.success == true and .data.success == true' <<<"$cleanup_response" >/dev/null
+          echo "Acceptance data cleaned"
+          rm -f "$E2E_ACCEPTANCE_FILE"
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-ui-acceptance-${{ github.run_id }}
+          path: |
+            playwright-report-production
+            test-results-production
+          if-no-files-found: warn
+          retention-days: 30
