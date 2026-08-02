@@ -19,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      E2E_BASE_URL: https://love-git-full-ui-acceptance-20260802-bomussa.vercel.app
+      E2E_BASE_URL: https://love-me3my30ej-bomussa.vercel.app
+      E2E_ENTRY_URL: https://love-me3my30ej-bomussa.vercel.app/?_vercel_share=fSwyG7y8xTxuOhNSabEsbZ17zz6NWQVO
       E2E_ADMIN_USERNAME: e2e_ui_20260802_admin
       E2E_ADMIN_PASSWORD: E2E-ONLY-DELETE-ME-2026!
       E2E_DOCTOR_USERNAME: e2e_ui_20260802_lab
@@ -41,14 +42,14 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Wait for preview deployment
+      - name: Wait for protected preview deployment
         shell: bash
         run: |
           set -euo pipefail
           for attempt in {1..30}; do
-            status=$(curl -sS -o /tmp/preview.html -w '%{http_code}' "$E2E_BASE_URL" || true)
+            status=$(curl -sS -L -c /tmp/vercel.cookies -b /tmp/vercel.cookies -o /tmp/preview.html -w '%{http_code}' "$E2E_ENTRY_URL" || true)
             if [ "$status" = "200" ] && grep -q 'Military Medical Committee\|اللجنة الطبية العسكرية' /tmp/preview.html; then
-              echo "Preview is ready"
+              echo "Protected preview is ready"
               exit 0
             fi
             echo "Preview not ready yet: HTTP $status (attempt $attempt)"
