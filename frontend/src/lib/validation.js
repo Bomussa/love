@@ -18,9 +18,8 @@ const PATTERNS = {
 const MESSAGES = Object.freeze({
   ar: {
     militaryRequired: 'الرقم العسكري مطلوب',
-    militaryShort: 'الرقم العسكري قصير جداً (الحد الأدنى 2 أرقام)',
-    militaryLong: 'الرقم العسكري طويل جداً (الحد الأقصى 12 رقم)',
-    militaryDigits: 'الرقم العسكري يجب أن يحتوي على أرقام فقط',
+    militaryRange: 'يجب أن يتكون الرقم العسكري أو الشخصي من 2 إلى 12 رقمًا',
+    militaryDigits: 'الرقم العسكري أو الشخصي يجب أن يحتوي على أرقام فقط',
     genderRequired: 'يرجى اختيار الجنس',
     uuidRequired: 'المعرف مطلوب',
     uuidInvalid: 'معرف غير صالح',
@@ -33,9 +32,8 @@ const MESSAGES = Object.freeze({
   },
   en: {
     militaryRequired: 'Military or personal number is required',
-    militaryShort: 'The number is too short (minimum 2 digits)',
-    militaryLong: 'The number is too long (maximum 12 digits)',
-    militaryDigits: 'The number must contain digits only',
+    militaryRange: 'The military or personal number must contain 2-12 digits',
+    militaryDigits: 'The military or personal number must contain digits only',
     genderRequired: 'Please select a gender',
     uuidRequired: 'Identifier is required',
     uuidInvalid: 'Invalid identifier',
@@ -68,9 +66,12 @@ export function validateMilitaryId(id, language) {
   }
 
   const trimmed = id.trim();
-  if (trimmed.length < 2) return { isValid: false, error: text.militaryShort };
-  if (trimmed.length > 12) return { isValid: false, error: text.militaryLong };
-  if (!PATTERNS.MILITARY_ID.test(trimmed)) return { isValid: false, error: text.militaryDigits };
+  if (trimmed.length < 2 || trimmed.length > 12) {
+    return { isValid: false, error: text.militaryRange };
+  }
+  if (!PATTERNS.MILITARY_ID.test(trimmed)) {
+    return { isValid: false, error: text.militaryDigits };
+  }
   return { isValid: true };
 }
 
