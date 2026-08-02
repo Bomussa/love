@@ -38,6 +38,24 @@ export const USER_ROLES = {
   }
 };
 
+function isConnectionFailure(responseOrError) {
+  const status = Number(responseOrError?.status || responseOrError?.data?.status || 0);
+  if (status >= 500) return true;
+
+  const message = String(
+    responseOrError?.error
+    || responseOrError?.message
+    || responseOrError
+    || '',
+  ).toLowerCase();
+
+  return message.includes('server unreachable')
+    || message.includes('failed to fetch')
+    || message.includes('network')
+    || message.includes('timeout')
+    || message.includes('abort');
+}
+
 class AuthService {
   constructor() {
     this.storageKey = 'mmc_admin_session';
@@ -51,7 +69,14 @@ class AuthService {
     try {
       const response = await api.adminLogin(username, password);
       if (!response?.success || !response?.data?.token) {
-        throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        if (isConnectionFailure(response)) {
+          throw new Error('خطأ في الاتصال بخدمة تسجيل الدخول');
+        }
+        return {
+          success: false,
+          error: response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة',
+          status: response?.status || null,
+        };
       }
 
       const session = this.createSession(
@@ -63,7 +88,8 @@ class AuthService {
       return { success: true, session };
     } catch (error) {
       console.error('[AuthService] Login error:', error);
-      throw new Error(error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+      if (isConnectionFailure(error)) throw error;
+      return { success: false, error: error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة' };
     }
   }
 
@@ -71,8 +97,16 @@ class AuthService {
     try {
       const response = await api.doctorLogin(username, password);
       if (!response?.success || !response?.data?.token) {
-        throw new Error(response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+        if (isConnectionFailure(response)) {
+          throw new Error('خطأ في الاتصال بخدمة تسجيل الدخول');
+        }
+        return {
+          success: false,
+          error: response?.error || 'اسم المستخدم أو كلمة المرور غير صحيحة',
+          status: response?.status || null,
+        };
       }
+
       const session = this.createSession(
         response.data.username || response.data.name || username,
         'DOCTOR',
@@ -81,7 +115,8 @@ class AuthService {
       return { success: true, session };
     } catch (error) {
       console.error('[AuthService] Doctor login error:', error);
-      throw new Error(error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة');
+      if (isConnectionFailure(error)) throw error;
+      return { success: false, error: error.message || 'اسم المستخدم أو كلمة المرور غير صحيحة' };
     }
   }
 
