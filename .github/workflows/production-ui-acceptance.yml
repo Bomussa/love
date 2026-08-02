@@ -1,0 +1,72 @@
+name: Production UI Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'tests/production/**'
+      - 'playwright.production.config.js'
+      - '.github/workflows/production-ui-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-acceptance:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'full-ui-acceptance-20260802'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_BASE_URL: https://love-git-full-ui-acceptance-20260802-bomussa.vercel.app
+      E2E_ADMIN_USERNAME: e2e_ui_20260802_admin
+      E2E_ADMIN_PASSWORD: E2E-ONLY-DELETE-ME-2026!
+      E2E_DOCTOR_USERNAME: e2e_ui_20260802_lab
+      E2E_DOCTOR_PASSWORD: E2E-ONLY-DELETE-ME-2026!
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for preview deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            status=$(curl -sS -o /tmp/preview.html -w '%{http_code}' "$E2E_BASE_URL" || true)
+            if [ "$status" = "200" ] && grep -q 'Military Medical Committee\|اللجنة الطبية العسكرية' /tmp/preview.html; then
+              echo "Preview is ready"
+              exit 0
+            fi
+            echo "Preview not ready yet: HTTP $status (attempt $attempt)"
+            sleep 10
+          done
+          echo "Preview did not become ready"
+          exit 1
+
+      - name: Run browser acceptance discovery
+        run: npx playwright test --config=playwright.production.config.js
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-ui-acceptance-report
+          path: |
+            playwright-report-production
+            test-results-production
+          if-no-files-found: warn
+          retention-days: 14
