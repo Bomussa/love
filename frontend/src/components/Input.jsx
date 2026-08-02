@@ -4,37 +4,31 @@ import { cn } from '../lib/utils'
 /**
  * Input Component
  * مكون الإدخال مع دعم كامل لإمكانية الوصول
- * 
- * @param {Object} props - خصائص المكون
- * @param {string} props.type - نوع الإدخال
- * @param {string} props.label - تسمية الحقل
- * @param {string} props.error - رسالة الخطأ
- * @param {string} props.hint - تلميح للمستخدم
- * @param {boolean} props.required - حقل مطلوب
+ *
+ * Pattern validation is intentionally handled by application validators so the
+ * user receives the correct Arabic/English message instead of a browser-native
+ * message that varies by browser and device locale.
  */
-const Input = React.forwardRef(({ 
-  className, 
-  type = "text", 
-  pattern, 
+const Input = React.forwardRef(({
+  className,
+  type = "text",
+  pattern,
   label,
   error,
   hint,
   required,
   id,
-  ...props 
+  ...props
 }, ref) => {
-  // إنشاء معرف فريد إذا لم يتم توفيره
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
   const errorId = error ? `${inputId}-error` : undefined
   const hintId = hint ? `${inputId}-hint` : undefined
-  
-  // دمج معرفات aria-describedby
   const describedBy = [errorId, hintId].filter(Boolean).join(' ') || undefined
 
   return (
     <div className="w-full">
       {label && (
-        <label 
+        <label
           htmlFor={inputId}
           className="block text-sm font-medium text-gray-300 mb-1"
         >
@@ -42,7 +36,7 @@ const Input = React.forwardRef(({
           {required && <span className="text-red-500 mr-1" aria-hidden="true">*</span>}
         </label>
       )}
-      
+
       <input
         id={inputId}
         type={type}
@@ -56,20 +50,20 @@ const Input = React.forwardRef(({
           className
         )}
         ref={ref}
-        pattern={pattern}
+        data-validation-pattern={pattern || undefined}
         required={required}
         aria-required={required}
         aria-invalid={error ? "true" : undefined}
         aria-describedby={describedBy}
         {...props}
       />
-      
+
       {hint && !error && (
         <p id={hintId} className="mt-1 text-xs text-gray-500">
           {hint}
         </p>
       )}
-      
+
       {error && (
         <p id={errorId} className="mt-1 text-xs text-red-500" role="alert">
           {error}
