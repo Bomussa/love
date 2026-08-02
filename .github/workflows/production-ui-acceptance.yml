@@ -10,7 +10,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: production-ui-acceptance-${{ github.run_id }}
+  group: production-ui-acceptance-main
   cancel-in-progress: false
 
 env:
@@ -92,22 +92,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          trap 'rm -f "$E2E_ACCEPTANCE_FILE" /tmp/mmc-cleanup.json' EXIT
+
           oidc_response=$(curl -fsSL \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
           oidc_token=$(jq -er '.value' <<<"$oidc_response")
           echo "::add-mask::$oidc_token"
 
-          cleanup_response=$(curl -fsSL \
-            -X POST \
-            -H "Authorization: Bearer $oidc_token" \
-            -H 'Content-Type: application/json' \
-            --data '{"action":"cleanup"}' \
-            "$E2E_BASE_URL/api/v1/ci/session")
+          for attempt in {1..5}; do
+            status=$(curl -sS \
+              -o /tmp/mmc-cleanup.json \
+              -w '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $oidc_token" \
+              -H 'Content-Type: application/json' \
+              --data '{"action":"cleanup"}' \
+              "$E2E_BASE_URL/api/v1/ci/session" || true)
 
-          jq -e '.success == true and .data.success == true' <<<"$cleanup_response" >/dev/null
-          echo "Acceptance data cleaned"
-          rm -f "$E2E_ACCEPTANCE_FILE"
+            if [ "$status" = "200" ] && jq -e '.success == true and .data.success == true' /tmp/mmc-cleanup.json >/dev/null 2>&1; then
+              echo "Acceptance data cleaned"
+              exit 0
+            fi
+
+            code=$(jq -r '.code // "UNKNOWN"' /tmp/mmc-cleanup.json 2>/dev/null || echo UNKNOWN)
+            echo "Cleanup attempt $attempt failed: HTTP $status code=$code"
+            sleep $((attempt * 3))
+          done
+
+          echo "Acceptance cleanup failed after five attempts"
+          exit 1
 
       - name: Upload acceptance evidence
         if: always()
