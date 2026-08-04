@@ -5,7 +5,6 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import api from './lib/api-unified';
 import authService from './lib/auth-service';
-import getDynamicMedicalPathway from './lib/dynamic-pathways';
 import { enhancedMedicalThemes, generateThemeCSS } from './lib/enhanced-themes';
 import { getCurrentLanguage, setCurrentLanguage } from './lib/i18n';
 
@@ -383,9 +382,6 @@ function App() {
 
   const handleExamSelect = async (examType) => {
     try {
-      const clinics = await getDynamicMedicalPathway(examType, patientData?.gender || 'male');
-      if (!clinics || clinics.length === 0) throw new Error(`No clinics found for: ${examType}`);
-
       const patientId = String(
         patientData?.patient_id
         || patientData?.patientId
@@ -397,22 +393,33 @@ function App() {
       ).trim();
       if (!patientId) throw new Error('PATIENT_ID_MISSING');
 
-      const firstClinic = clinics[0];
-      const routeResult = await api.createRoute(
-        patientId,
-        examType,
-        patientData?.gender || 'male',
-        clinics,
-      );
+      const gender = patientData?.gender || 'male';
+      const routeResult = await api.createRoute(patientId, examType, gender);
       if (routeResult?.success === false) throw new Error(routeResult.error || 'ROUTE_CREATE_FAILED');
 
+      const canonicalRoute = routeResult?.route || routeResult?.data?.route || routeResult?.data || routeResult;
+      const clinics = Array.isArray(canonicalRoute?.stations)
+        ? canonicalRoute.stations
+        : Array.isArray(canonicalRoute?.pathway)
+          ? canonicalRoute.pathway
+          : [];
+      if (!clinics.length) throw new Error('CANONICAL_ROUTE_EMPTY');
+
+      const currentStep = Math.max(0, Math.min(
+        Number(canonicalRoute?.current_station_index ?? canonicalRoute?.current_step ?? 0),
+        clinics.length - 1,
+      ));
+      const currentClinic = clinics[currentStep]
+        || clinics.find((clinic) => String(clinic?.status || '').toLowerCase() === 'ready')
+        || clinics[0];
+
       const enterResult = await api.enterQueue(
-        firstClinic.id,
+        currentClinic.id,
         patientId,
         false,
         null,
         examType,
-        patientData?.gender || 'male',
+        gender,
         patientData?.military_id || patientData?.militaryId || null,
         patientData?.personal_id || patientData?.personalId || patientId,
       );
@@ -422,10 +429,11 @@ function App() {
         ...patientData,
         queueType: examType,
         examType,
-        currentClinic: firstClinic.id,
+        currentClinic: currentClinic.id,
         pathway: clinics,
-        queueNumber: enterResult?.display_number || null,
-        queueId: enterResult?.id || null,
+        route: canonicalRoute,
+        queueNumber: enterResult?.display_number || canonicalRoute?.display_number || null,
+        queueId: enterResult?.id || enterResult?.queue_id || canonicalRoute?.queue_id || canonicalRoute?.id || null,
       };
 
       setPatientData(updatedData);

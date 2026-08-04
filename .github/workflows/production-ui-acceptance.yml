@@ -74,7 +74,7 @@ jobs:
             "$E2E_BASE_URL/api/v1/ci/session" \
             -o "$E2E_ACCEPTANCE_FILE"
 
-          jq -e '.success == true and .data.admin.token and (.data.doctors | length > 0) and (.data.patientIds | length == 3)' \
+          jq -e '.success == true and .data.admin.token and (.data.doctors | length > 0) and (.data.patientIds | length == 4)' \
             "$E2E_ACCEPTANCE_FILE" >/dev/null
 
           while IFS= read -r secret; do
@@ -86,6 +86,54 @@ jobs:
 
       - name: Run complete browser acceptance
         run: npx playwright test --config=playwright.production.config.js
+
+      - name: Verify persisted queues, records, events and statistics
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_response=$(curl -fsSL \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")
+          oidc_token=$(jq -er '.value' <<<"$oidc_response")
+          echo "::add-mask::$oidc_token"
+
+          verify_response=$(curl -fsSL \
+            -X POST \
+            -H "Authorization: Bearer $oidc_token" \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"verify"}' \
+            "$E2E_BASE_URL/api/v1/ci/session")
+
+          jq -e '
+            .success == true
+            and .data.healthy == true
+            and .data.journeys == 4
+            and .data.completed_journeys == 4
+            and .data.total_stations > 0
+            and .data.route_rows == .data.total_stations
+            and .data.called_events == .data.total_stations
+            and .data.completed_events == .data.total_stations
+            and .data.session_called == .data.total_stations
+            and .data.session_completed == .data.total_stations
+            and .data.completed_exam_records == 4
+          ' <<<"$verify_response" >/dev/null
+
+          printf '%s\n' "$verify_response" | jq '{
+            success,
+            data: {
+              healthy,
+              journeys,
+              completed_journeys,
+              total_stations,
+              route_rows,
+              called_events,
+              completed_events,
+              session_called,
+              session_completed,
+              completed_exam_records,
+              details
+            }
+          }'
 
       - name: Cleanup isolated acceptance data
         if: always() && steps.bootstrap.outcome == 'success'

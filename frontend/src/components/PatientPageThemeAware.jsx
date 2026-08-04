@@ -19,6 +19,41 @@ const normalize = (status) => {
 const getPatientId = (p) => String(p?.patient_id || p?.personal_id || p?.patientId || p?.personalId || p?.id || '').trim();
 const template = (stations) => stations.map((s, i) => ({ ...s, status: i === 0 ? 'ready' : 'locked', isEntered: false, yourNumber: null, ahead: null, current: null, totalWaiting: null, entered_at: null }));
 
+function extractCanonicalRoute(response) {
+  return response?.route || response?.data?.route || response?.data || response || null;
+}
+
+function canonicalRouteStations(route) {
+  if (Array.isArray(route?.stations)) return route.stations;
+  if (Array.isArray(route?.pathway)) return route.pathway;
+  if (Array.isArray(route?.path)) return route.path;
+  return [];
+}
+
+function prepareCanonicalStations(route) {
+  const source = canonicalRouteStations(route);
+  const rawStep = Number(route?.current_station_index ?? route?.current_step ?? 0);
+  const currentStep = Math.max(0, Math.min(Number.isFinite(rawStep) ? rawStep : 0, source.length));
+  const complete = Boolean(route?.completed)
+    || ['completed', 'done'].includes(String(route?.status || '').toLowerCase())
+    || currentStep >= source.length;
+  const queueId = route?.queue_id || route?.id || null;
+
+  return source.map((station, index) => ({
+    ...station,
+    nameAr: station.nameAr || station.name_ar || station.name || station.id,
+    name: station.nameEn || station.name_en || station.name || station.nameAr || station.id,
+    queueId,
+    status: complete || index < currentStep ? 'completed' : index === currentStep ? 'ready' : 'locked',
+    isEntered: false,
+    yourNumber: null,
+    ahead: null,
+    current: null,
+    totalWaiting: null,
+    entered_at: null,
+  }));
+}
+
 async function queuePosition(clinicId, patientId) {
   const response = await api.getQueuePosition(clinicId, patientId);
   if (!response?.success) return null;
@@ -43,6 +78,9 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const [loading, setLoading] = useState(false);
   const [currentNotice, setCurrentNotice] = useState(null);
   const [directAlerts, setDirectAlerts] = useState([]);
+  const [routeVersion, setRouteVersion] = useState(0);
+  const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [realtimeStatus, setRealtimeStatus] = useState('IDLE');
   const channelRef = useRef(null);
   const pollTimerRef = useRef(null);
   const noticeTimerRef = useRef(null);
@@ -115,6 +153,63 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     }
   }, [gender, language, notify, patientId, queueType]);
 
+  const refreshJourney = useCallback(async ({ enterIfMissing = false } = {}) => {
+    let response = await api.getRoute(patientId);
+    let route = response?.success === false ? null : extractCanonicalRoute(response);
+    let routeStations = canonicalRouteStations(route);
+
+    if (!route || routeStations.length === 0) {
+      let fallback = Array.isArray(patientData?.route?.stations) && patientData.route.stations.length > 0
+        ? patientData.route.stations
+        : Array.isArray(patientData?.pathway) && patientData.pathway.length > 0
+          ? patientData.pathway
+          : await getDynamicMedicalPathway(queueType, gender);
+      if (!Array.isArray(fallback) || fallback.length === 0) throw new Error('EMPTY_PATHWAY');
+
+      response = await api.createRoute(patientId, queueType, gender, fallback);
+      if (response?.success === false) throw new Error(response?.error || 'ROUTE_PERSISTENCE_FAILED');
+      route = extractCanonicalRoute(response);
+      routeStations = canonicalRouteStations(route);
+    }
+
+    const prepared = prepareCanonicalStations(route);
+    if (!prepared.length) throw new Error('CANONICAL_ROUTE_EMPTY');
+
+    const rawStep = Number(route?.current_station_index ?? route?.current_step ?? 0);
+    const currentStep = Math.max(0, Math.min(Number.isFinite(rawStep) ? rawStep : 0, prepared.length));
+    const complete = Boolean(route?.completed)
+      || ['completed', 'done'].includes(String(route?.status || '').toLowerCase())
+      || currentStep >= prepared.length;
+
+    setRouteVersion(Number(route?.version || 0));
+    setLastSyncAt(Date.now());
+
+    if (complete) {
+      setStations(prepared.map((station) => ({ ...station, status: 'completed', isEntered: false })));
+      return route;
+    }
+
+    const currentStation = prepared[currentStep];
+    const position = await queuePosition(currentStation.id, patientId);
+    if (position) {
+      prepared[currentStep] = {
+        ...currentStation,
+        queueId: position.id || currentStation.queueId,
+        yourNumber: position.display_number,
+        current: position.current_number,
+        ahead: position.ahead,
+        totalWaiting: position.total_waiting,
+        status: 'ready',
+        isEntered: true,
+        entered_at: position.entered_at,
+      };
+    }
+
+    setStations(prepared);
+    if (!position && enterIfMissing) await enterStation(currentStation, currentStep);
+    return route;
+  }, [enterStation, gender, patientData, patientId, queueType]);
+
   const loadPathway = useCallback(async () => {
     if (!patientId) {
       setInitialLoading(false);
@@ -124,60 +219,19 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
     setInitialLoading(true);
     setPathwayError(null);
-
     try {
-      let pathway = Array.isArray(patientData?.pathway) && patientData.pathway.length > 0 ? patientData.pathway : null;
-      if (!pathway && Array.isArray(patientData?.route?.stations) && patientData.route.stations.length > 0) {
-        pathway = patientData.route.stations;
-      }
-
-      const saved = await api.getRoute(patientId);
-      const savedStations = saved?.success && Array.isArray(saved?.route?.stations) && saved.route.stations.length > 0
-        ? saved.route.stations
-        : null;
-
-      if (!pathway && savedStations) pathway = savedStations;
-      if (!pathway) pathway = await getDynamicMedicalPathway(queueType, gender);
-      if (!Array.isArray(pathway) || pathway.length === 0) throw new Error('EMPTY_PATHWAY');
-
-      const prepared = template(pathway);
-      const firstPosition = await queuePosition(prepared[0].id, patientId);
-
-      if (firstPosition) {
-        prepared[0] = {
-          ...prepared[0],
-          queueId: firstPosition.id,
-          yourNumber: firstPosition.display_number,
-          current: firstPosition.current_number,
-          ahead: firstPosition.ahead,
-          totalWaiting: firstPosition.total_waiting,
-          status: normalize(firstPosition.status) === 'completed' ? 'completed' : 'ready',
-          isEntered: normalize(firstPosition.status) !== 'completed',
-          entered_at: firstPosition.entered_at,
-        };
-        setStations(prepared);
-        return;
-      }
-
-      if (!savedStations) {
-        const routeResult = await api.createRoute(patientId, queueType, gender, pathway);
-        if (!routeResult?.success) {
-          throw new Error(routeResult?.error || 'ROUTE_PERSISTENCE_FAILED');
-        }
-      }
-
-      setStations(prepared);
-      await enterStation(prepared[0], 0);
+      await refreshJourney({ enterIfMissing: true });
     } catch (err) {
       console.error('[PatientPageThemeAware] loadPathway:', err);
       setPathwayError(language === 'ar' ? 'تعذر تحميل المسار الطبي. حاول مرة أخرى.' : 'Unable to load the medical pathway. Please try again.');
     } finally {
       setInitialLoading(false);
     }
-  }, [enterStation, gender, language, patientData, patientId, queueType]);
+  }, [language, patientId, refreshJourney]);
 
   const activeIndex = useMemo(() => stations.findIndex((s) => normalize(s.status) === 'ready' && s.yourNumber !== null), [stations]);
   const activeStation = activeIndex >= 0 ? stations[activeIndex] : null;
+  const activeQueueId = activeStation?.queueId || stations.find((station) => station.queueId)?.queueId || patientData?.queueId || null;
   const completedCount = useMemo(() => stations.filter((s) => normalize(s.status) === 'completed').length, [stations]);
   const allCompleted = stations.length > 0 && stations.every((s) => normalize(s.status) === 'completed');
   const progress = stations.length > 0 ? Math.round((completedCount / stations.length) * 100) : 0;
@@ -185,38 +239,42 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   useEffect(() => { void loadPathway(); }, [loadPathway]);
 
   useEffect(() => {
-    if (!patientId || !activeStation) return undefined;
-    if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; }
-    const channel = supabase.channel(`patient_queue_${patientId}_${activeStation.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'unified_queue', filter: `clinic_id=eq.${activeStation.id}` }, async () => {
-      const pos = await queuePosition(activeStation.id, patientId);
-      if (!pos) return;
-      const status = normalize(pos.status);
-      setStations((prev) => {
-        const idx = prev.findIndex((s) => s.id === activeStation.id);
-        if (idx === -1) return prev;
-        if (status === 'completed') return markCompletedAndUnlockNext(prev, idx).map((station, i) => (i === idx ? { ...station, current: pos.current_number, ahead: pos.ahead, totalWaiting: pos.total_waiting } : station));
-        return prev.map((station, i) => (i === idx ? { ...station, yourNumber: pos.display_number, current: pos.current_number, ahead: pos.ahead, totalWaiting: pos.total_waiting, isEntered: true } : station));
-      });
-    }).subscribe();
+    if (!patientId || !activeQueueId) return undefined;
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channel = supabase
+      .channel(`queue:${activeQueueId}`)
+      .on('broadcast', { event: 'queue_changed' }, () => {
+        void refreshJourney({ enterIfMissing: false });
+      })
+      .subscribe((status) => setRealtimeStatus(status));
+
     channelRef.current = channel;
-    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; } };
-  }, [activeStation, markCompletedAndUnlockNext, patientId]);
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      setRealtimeStatus('CLOSED');
+    };
+  }, [activeQueueId, patientId, refreshJourney]);
 
   useEffect(() => {
-    if (!patientId || !activeStation) return undefined;
-    pollTimerRef.current = window.setInterval(async () => {
-      const pos = await queuePosition(activeStation.id, patientId);
-      if (!pos) return;
-      const status = normalize(pos.status);
-      setStations((prev) => {
-        const idx = prev.findIndex((s) => s.id === activeStation.id);
-        if (idx === -1) return prev;
-        if (status === 'completed') return markCompletedAndUnlockNext(prev, idx);
-        return prev.map((station, i) => (i === idx ? { ...station, yourNumber: pos.display_number, current: pos.current_number, ahead: pos.ahead, totalWaiting: pos.total_waiting, isEntered: true } : station));
-      });
-    }, GENERAL_REFRESH_INTERVAL || 10000);
-    return () => { if (pollTimerRef.current) window.clearInterval(pollTimerRef.current); };
-  }, [activeStation, markCompletedAndUnlockNext, patientId]);
+    if (!patientId) return undefined;
+    let inFlight = false;
+    pollTimerRef.current = window.setInterval(() => {
+      if (inFlight || document.visibilityState === 'hidden') return;
+      inFlight = true;
+      void refreshJourney({ enterIfMissing: false })
+        .finally(() => { inFlight = false; });
+    }, Math.max(GENERAL_REFRESH_INTERVAL || 5000, 5000));
+    return () => {
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+    };
+  }, [patientId, refreshJourney]);
 
   useEffect(() => {
     if (!patientId) return undefined;
@@ -245,7 +303,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
   if (allCompleted) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen">
+      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen" data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''}>
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <CheckCircle className="w-24 h-24 mx-auto" style={accentStyle} />
@@ -298,7 +356,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   }
 
   return (
-    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page">
+    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page" data-current-clinic={activeStation?.id || ''} data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus}>
       {currentNotice && (
         <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border p-4 shadow-2xl backdrop-blur" style={sheetStyle}>
           <div className="flex items-start gap-3">
@@ -360,7 +418,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
               const canEnter = status === 'ready' && !station.isEntered;
               const active = activeIndex === index;
               return (
-                <Card key={station.id} className="border transition-all duration-200" style={status === 'ready' ? { backgroundColor: 'hsl(var(--theme-surface) / 0.8)', borderColor: 'hsl(var(--theme-secondary) / 0.45)' } : status === 'completed' ? { backgroundColor: 'hsl(var(--theme-surface) / 0.65)', borderColor: 'hsl(var(--theme-secondary) / 0.22)', opacity: 0.78 } : { backgroundColor: 'hsl(var(--theme-surface) / 0.56)', borderColor: 'hsl(var(--border) / 0.5)' }}>
+                <Card key={station.id} data-test="route-station" data-clinic-id={station.id} data-status={status} data-order={index + 1} className="border transition-all duration-200" style={status === 'ready' ? { backgroundColor: 'hsl(var(--theme-surface) / 0.8)', borderColor: 'hsl(var(--theme-secondary) / 0.45)' } : status === 'completed' ? { backgroundColor: 'hsl(var(--theme-surface) / 0.65)', borderColor: 'hsl(var(--theme-secondary) / 0.22)', opacity: 0.78 } : { backgroundColor: 'hsl(var(--theme-surface) / 0.56)', borderColor: 'hsl(var(--border) / 0.5)' }}>
                   <CardContent className="p-3.5 sm:p-5">
                     <div className="flex items-center justify-between mb-3 gap-2">
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
