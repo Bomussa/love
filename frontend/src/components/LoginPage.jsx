@@ -314,7 +314,7 @@ export function LoginPage({ onLogin, onAdminLogin, onDoctorLogin, currentTheme, 
             )}
 
             {!isAdminMode && !isDoctorMode ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form noValidate onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-gray-300">

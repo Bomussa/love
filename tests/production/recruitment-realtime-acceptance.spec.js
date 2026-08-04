@@ -113,7 +113,7 @@ async function waitForRealtimeSubscription(page) {
 
 async function runDoctorTransition({ doctorPage, patientPages, doctor, clinicId, isLast, timings }) {
   await loginDoctor(doctorPage, doctor);
-  await expect(doctorPage.getByText(clinicId, { exact: false })).toBeVisible();
+  await expect(doctorPage.getByText(clinicId, { exact: true })).toBeVisible();
 
   const runAndObserve = async (buttonName, label) => {
     const previous = await Promise.all(patientPages.map((page) => numericAttribute(
