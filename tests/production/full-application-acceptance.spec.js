@@ -308,6 +308,7 @@ test.describe.serial('production application acceptance', () => {
       const displayEvidence = evidenceCollector(displayPage);
       await displayPage.goto(`/clinic/${encodeURIComponent(clinicId)}/display`, { waitUntil: 'domcontentloaded' });
       await expect(displayPage.locator('body')).not.toContainText(/Application error|AdminPage Error/i);
+      await expect(displayPage.getByRole('heading').first()).toBeVisible({ timeout: 20_000 });
       const displayInventory = await inventory(displayPage, testInfo, `display-${clinicId}`);
       expect(displayInventory.headings.length, `display heading missing for ${clinicId}`).toBeGreaterThan(0);
       await assertEvidence(testInfo, `display-${clinicId}`, displayEvidence);
