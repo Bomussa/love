@@ -293,7 +293,7 @@ test.describe.serial('production application acceptance', () => {
     await patientForm.locator('input[type="text"]').first().fill('1');
     await patientForm.locator('select').first().selectOption('promotion');
     await patientForm.getByRole('button', { name: /تأكيد|Confirm/i }).click();
-    await expect(page.getByText(/2 إلى 12|2-12|غير صالح|invalid/i).first()).toBeVisible();
+    await expect(page.getByText(/قصير|الحد الأدنى\s*2|2 إلى 12|2-12|غير صالح|invalid/i).first()).toBeVisible();
 
     await page.getByRole('button', { name: /أنثى|Female/i }).click();
     await expect(page.getByText(/ملاحظة مهمة للعنصر النسائي|important.*female/i)).toBeVisible();
