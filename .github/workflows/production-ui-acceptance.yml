@@ -39,20 +39,32 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify production is reachable
+      - name: Verify exact production commit is reachable
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in {1..30}; do
-            status=$(curl -sS -o /tmp/mmc-production.html -w '%{http_code}' "$E2E_BASE_URL" || true)
-            if [ "$status" = "200" ] && grep -q 'Military Medical Committee\|اللجنة الطبية العسكرية' /tmp/mmc-production.html; then
-              echo "Production frontend is reachable"
+          expected_sha="$GITHUB_SHA"
+
+          for attempt in {1..60}; do
+            html_status=$(curl -sS -o /tmp/mmc-production.html -w '%{http_code}' \
+              "$E2E_BASE_URL/?release_sha=${expected_sha}&attempt=${attempt}" || true)
+            meta_status=$(curl -sS -o /tmp/mmc-build-meta.json -w '%{http_code}' \
+              "$E2E_BASE_URL/build-meta.json?release_sha=${expected_sha}&attempt=${attempt}" || true)
+            served_sha=$(jq -r '.commitSha // empty' /tmp/mmc-build-meta.json 2>/dev/null || true)
+
+            if [ "$html_status" = "200" ] \
+              && [ "$meta_status" = "200" ] \
+              && grep -q 'Military Medical Committee\|اللجنة الطبية العسكرية' /tmp/mmc-production.html \
+              && [ "$served_sha" = "$expected_sha" ]; then
+              echo "Production frontend is serving exact commit $expected_sha"
               exit 0
             fi
-            echo "Production is not ready: HTTP $status (attempt $attempt)"
+
+            echo "Production commit mismatch: expected=$expected_sha served=${served_sha:-missing} html=$html_status meta=$meta_status attempt=$attempt"
             sleep 10
           done
-          echo "Production frontend did not become ready"
+
+          echo "Production frontend did not deploy exact commit $expected_sha"
           exit 1
 
       - name: Bootstrap isolated acceptance accounts with GitHub OIDC
