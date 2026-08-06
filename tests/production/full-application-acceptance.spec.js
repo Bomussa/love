@@ -349,7 +349,7 @@ test.describe.serial('production application acceptance', () => {
     expect(visited.length).toBe(ADMIN_SECTIONS.length);
 
     await page.getByRole('button', { name: 'إدارة الأطباء', exact: true }).click();
-    await expect(page.getByRole('heading', { name: /إدارة الأطباء|Doctor Management/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /إدارة حسابات الأطباء|Doctor Accounts|Doctor Management/i })).toBeVisible();
 
     const targetDoctor = acceptance.doctors.find((doctor) => doctor.clinic_id === 'LAB') || acceptance.doctors[0];
     const search = page.getByPlaceholder(/بحث بالاسم|Search by name/i);
