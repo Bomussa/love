@@ -89,7 +89,7 @@ const NotificationsManagementV2 = ({ language, t }) => {
       const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from('patients')
-        .select('id, military_number, gender')
+        .select('id, patient_id, gender')
         .gte('created_at', `${today}T00:00:00`)
         .order('created_at', { ascending: false });
       if (data) setPatients(data);

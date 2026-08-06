@@ -82,6 +82,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [realtimeStatus, setRealtimeStatus] = useState('IDLE');
   const [realtimeEventCount, setRealtimeEventCount] = useState(0);
+  const [realtimeLastEventAt, setRealtimeLastEventAt] = useState(0);
   const channelRef = useRef(null);
   const pollTimerRef = useRef(null);
   const noticeTimerRef = useRef(null);
@@ -249,6 +250,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     const channel = supabase
       .channel(`queue:${activeQueueId}`, { config: { private: false } })
       .on('broadcast', { event: 'queue_changed' }, () => {
+        setRealtimeLastEventAt(Date.now());
         setRealtimeEventCount((count) => count + 1);
         void refreshJourney({ enterIfMissing: false });
       })
@@ -305,7 +307,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
   if (allCompleted) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen" data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount}>
+      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen" data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt}>
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <CheckCircle className="w-24 h-24 mx-auto" style={accentStyle} />
@@ -358,7 +360,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   }
 
   return (
-    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page" data-current-clinic={activeStation?.id || ''} data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount}>
+    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page" data-current-clinic={activeStation?.id || ''} data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt}>
       {currentNotice && (
         <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border p-4 shadow-2xl backdrop-blur" style={sheetStyle}>
           <div className="flex items-start gap-3">
