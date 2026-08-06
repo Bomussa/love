@@ -77,14 +77,7 @@ async function assertStationLocking(page, expectedCurrentClinic = null) {
   return snapshot;
 }
 
-async function clonePatientToSecondPhone(browser, sourcePage) {
-  const state = await sourcePage.evaluate(() => ({
-    patientData: localStorage.getItem('patientData'),
-    selectedTheme: localStorage.getItem('selectedTheme'),
-    language: localStorage.getItem('mmc_language') || localStorage.getItem('language'),
-  }));
-  expect(state.patientData).toBeTruthy();
-
+async function loginPatientOnSecondPhone(browser, patientId) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
@@ -93,14 +86,8 @@ async function clonePatientToSecondPhone(browser, sourcePage) {
     locale: 'ar-QA',
     timezoneId: 'Asia/Qatar',
   });
-  await context.addInitScript((stored) => {
-    if (stored.patientData) localStorage.setItem('patientData', stored.patientData);
-    if (stored.selectedTheme) localStorage.setItem('selectedTheme', stored.selectedTheme);
-    if (stored.language) localStorage.setItem('mmc_language', stored.language);
-  }, state);
   const page = await context.newPage();
-  await page.goto('/');
-  await expect(page.locator('[data-test="patient-page"]')).toBeVisible({ timeout: 30_000 });
+  await loginPatient(page, patientId);
   return { context, page };
 }
 
@@ -166,7 +153,7 @@ test('completes recruitment through every clinic with locked routes and synchron
     expect(initial.map((station) => station.clinicId).sort()).toEqual([...RECRUITMENT_CLINICS].sort());
     expect(initial).toHaveLength(RECRUITMENT_CLINICS.length);
 
-    const { context: phoneTwoContext, page: phoneTwo } = await clonePatientToSecondPhone(browser, phoneOne);
+    const { context: phoneTwoContext, page: phoneTwo } = await loginPatientOnSecondPhone(browser, patientId);
     try {
       await waitForRealtimeSubscription(phoneOne);
       await waitForRealtimeSubscription(phoneTwo);
