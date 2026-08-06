@@ -59,7 +59,14 @@ async function waitForRealtimeEvent(page, previousCount, startedAt, label) {
     () => numericAttribute(page, '[data-test="patient-page"], [data-test="completion-screen"]', 'data-realtime-events'),
     { timeout: MAX_SYNC_MS, intervals: [50, 100, 150, 250] },
   ).toBeGreaterThan(previousCount);
-  const elapsed = Date.now() - startedAt;
+
+  const receivedAt = await numericAttribute(
+    page,
+    '[data-test="patient-page"], [data-test="completion-screen"]',
+    'data-realtime-last-event-at',
+  );
+  expect(receivedAt, `${label} broadcast timestamp missing`).toBeGreaterThanOrEqual(startedAt);
+  const elapsed = receivedAt - startedAt;
   expect(elapsed, `${label} broadcast exceeded ${MAX_SYNC_MS}ms`).toBeLessThanOrEqual(MAX_SYNC_MS);
   return elapsed;
 }
