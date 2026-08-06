@@ -194,16 +194,25 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       || ['completed', 'done'].includes(String(route?.status || '').toLowerCase())
       || currentStep >= prepared.length;
 
-    applyRouteVersion(route?.version);
+    const incomingVersion = Number(route?.version || 0);
+    const routeSnapshotIsStale = () => (
+      routeVersionRef.current > 0
+      && (!Number.isFinite(incomingVersion) || incomingVersion <= 0 || incomingVersion < routeVersionRef.current)
+    );
+
+    if (routeSnapshotIsStale()) return route;
+    applyRouteVersion(incomingVersion);
     setLastSyncAt(Date.now());
 
     if (complete) {
+      if (routeSnapshotIsStale()) return route;
       setStations(prepared.map((station) => ({ ...station, status: 'completed', isEntered: false })));
       return route;
     }
 
     const currentStation = prepared[currentStep];
     const position = await queuePosition(currentStation.id, patientId);
+    if (routeSnapshotIsStale()) return route;
     if (position) {
       prepared[currentStep] = {
         ...currentStation,
