@@ -258,6 +258,22 @@ function App() {
       const patientPayload = response.data || response.patient || response.session || response;
       if (!patientPayload?.token) throw new Error('PATIENT_SESSION_MISSING');
 
+      const finalPatientData = {
+        ...patientPayload,
+        queueType: examType,
+        examType,
+        gender,
+      };
+
+      localStorage.removeItem('mmc_admin_session');
+      localStorage.removeItem('mmc_doctor_session');
+      localStorage.removeItem('mmc_clinic_session');
+      localStorage.setItem('patientData', JSON.stringify(finalPatientData));
+      setIsAdmin(false);
+      setDoctorSession(null);
+      setPatientData(finalPatientData);
+
+      // Persist the signed patient session before writes protected by patient-scoped RLS.
       try {
         await registerDeviceLogin(patientId);
       } catch (registrationError) {
@@ -276,21 +292,6 @@ function App() {
         console.warn('[App] logDailyActivity failed:', logError);
       }
 
-      localStorage.removeItem('mmc_admin_session');
-      localStorage.removeItem('mmc_doctor_session');
-      localStorage.removeItem('mmc_clinic_session');
-      setIsAdmin(false);
-      setDoctorSession(null);
-
-      const finalPatientData = {
-        ...patientPayload,
-        queueType: examType,
-        examType,
-        gender,
-      };
-
-      setPatientData(finalPatientData);
-      localStorage.setItem('patientData', JSON.stringify(finalPatientData));
       setCurrentView('patient');
       showNotification(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful', 'success');
     } catch (error) {

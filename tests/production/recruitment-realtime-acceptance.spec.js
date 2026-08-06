@@ -54,6 +54,16 @@ async function waitForVersion(page, previousVersion, startedAt, label) {
   return elapsed;
 }
 
+async function waitForRealtimeEvent(page, previousCount, startedAt, label) {
+  await expect.poll(
+    () => numericAttribute(page, '[data-test="patient-page"], [data-test="completion-screen"]', 'data-realtime-events'),
+    { timeout: MAX_SYNC_MS, intervals: [50, 100, 150, 250] },
+  ).toBeGreaterThan(previousCount);
+  const elapsed = Date.now() - startedAt;
+  expect(elapsed, `${label} broadcast exceeded ${MAX_SYNC_MS}ms`).toBeLessThanOrEqual(MAX_SYNC_MS);
+  return elapsed;
+}
+
 async function stationSnapshot(page) {
   return page.locator('[data-test="route-station"]').evaluateAll((nodes) => nodes.map((node) => ({
     clinicId: node.getAttribute('data-clinic-id'),
@@ -103,14 +113,20 @@ async function runDoctorTransition({ doctorPage, patientPages, doctor, clinicId,
   await expect(doctorPage.getByText(clinicId, { exact: true })).toBeVisible();
 
   const runAndObserve = async (buttonName, label) => {
-    const previous = await Promise.all(patientPages.map((page) => numericAttribute(
+    const previousVersions = await Promise.all(patientPages.map((page) => numericAttribute(
       page,
       '[data-test="patient-page"], [data-test="completion-screen"]',
       'data-route-version',
     )));
+    const previousEvents = await Promise.all(patientPages.map((page) => numericAttribute(
+      page,
+      '[data-test="patient-page"], [data-test="completion-screen"]',
+      'data-realtime-events',
+    )));
     const startedAt = Date.now();
     await doctorPage.getByRole('button', { name: buttonName }).click();
-    await Promise.all(patientPages.map((page, index) => waitForVersion(page, previous[index], startedAt, label)));
+    await Promise.all(patientPages.map((page, index) => waitForRealtimeEvent(page, previousEvents[index], startedAt, label)));
+    await Promise.all(patientPages.map((page, index) => waitForVersion(page, previousVersions[index], startedAt, label)));
     timings.push({ clinicId, action: label, elapsedMs: Date.now() - startedAt });
   };
 
