@@ -348,7 +348,7 @@ test.describe.serial('production application acceptance', () => {
     await attachJson(testInfo, 'admin-sections', visited);
     expect(visited.length).toBe(ADMIN_SECTIONS.length);
 
-    await page.getByRole('button', { name: 'الأطباء', exact: true }).click();
+    await page.getByRole('button', { name: 'إدارة الأطباء', exact: true }).click();
     await expect(page.getByRole('heading', { name: /إدارة الأطباء|Doctor Management/i })).toBeVisible();
 
     const targetDoctor = acceptance.doctors.find((doctor) => doctor.clinic_id === 'LAB') || acceptance.doctors[0];
