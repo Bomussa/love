@@ -83,6 +83,8 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const [realtimeStatus, setRealtimeStatus] = useState('IDLE');
   const [realtimeEventCount, setRealtimeEventCount] = useState(0);
   const [realtimeLastEventAt, setRealtimeLastEventAt] = useState(0);
+  const [routeVersionUpdatedAt, setRouteVersionUpdatedAt] = useState(0);
+  const routeVersionRef = useRef(0);
   const channelRef = useRef(null);
   const pollTimerRef = useRef(null);
   const noticeTimerRef = useRef(null);
@@ -103,6 +105,15 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     setCurrentNotice(message);
     window.clearTimeout(noticeTimerRef.current);
     noticeTimerRef.current = window.setTimeout(() => setCurrentNotice(null), 4000);
+  }, []);
+
+  const applyRouteVersion = useCallback((value, updatedAt = Date.now()) => {
+    const nextVersion = Number(value || 0);
+    if (!Number.isFinite(nextVersion) || nextVersion <= routeVersionRef.current) return false;
+    routeVersionRef.current = nextVersion;
+    setRouteVersion(nextVersion);
+    setRouteVersionUpdatedAt(updatedAt);
+    return true;
   }, []);
 
   const markCompletedAndUnlockNext = useCallback((prev, completedIndex) => prev.map((station, idx) => {
@@ -183,7 +194,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       || ['completed', 'done'].includes(String(route?.status || '').toLowerCase())
       || currentStep >= prepared.length;
 
-    setRouteVersion(Number(route?.version || 0));
+    applyRouteVersion(route?.version);
     setLastSyncAt(Date.now());
 
     if (complete) {
@@ -210,7 +221,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     setStations(prepared);
     if (!position && enterIfMissing) await enterStation(currentStation, currentStep);
     return route;
-  }, [enterStation, gender, patientData, patientId, queueType]);
+  }, [applyRouteVersion, enterStation, gender, patientData, patientId, queueType]);
 
   const loadPathway = useCallback(async () => {
     if (!patientId) {
@@ -249,9 +260,25 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
     const channel = supabase
       .channel(`queue:${activeQueueId}`, { config: { private: false } })
-      .on('broadcast', { event: 'queue_changed' }, () => {
-        setRealtimeLastEventAt(Date.now());
+      .on('broadcast', { event: 'queue_changed' }, (message) => {
+        const receivedAt = Date.now();
+        const payload = message?.payload || message || {};
+        setRealtimeLastEventAt(receivedAt);
         setRealtimeEventCount((count) => count + 1);
+        applyRouteVersion(payload.version, receivedAt);
+
+        const nextStep = Number(payload.current_step);
+        const nextStatus = String(payload.status || '').trim().toLowerCase();
+        if (Number.isFinite(nextStep)) {
+          setStations((previous) => previous.map((station, index) => {
+            if (['done', 'completed'].includes(nextStatus) || index < nextStep) {
+              return { ...station, status: 'completed', isEntered: false };
+            }
+            if (index === nextStep) return { ...station, status: 'ready' };
+            return { ...station, status: 'locked', isEntered: false };
+          }));
+        }
+
         void refreshJourney({ enterIfMissing: false });
       })
       .subscribe((status) => setRealtimeStatus(status));
@@ -264,7 +291,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       }
       setRealtimeStatus('CLOSED');
     };
-  }, [activeQueueId, patientId, refreshJourney]);
+  }, [activeQueueId, applyRouteVersion, patientId, refreshJourney]);
 
   useEffect(() => {
     if (!patientId) return undefined;
@@ -307,7 +334,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
   if (allCompleted) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen" data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt}>
+      <div className="min-h-screen p-4 flex items-center justify-center" style={shellStyle} data-test="completion-screen" data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt} data-route-version-updated-at={routeVersionUpdatedAt}>
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <img src="/mms-logo.png" alt="اللجنة الطبية العسكرية" className="mx-auto w-24 h-24 object-contain" />
           <CheckCircle className="w-24 h-24 mx-auto" style={accentStyle} />
@@ -360,7 +387,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   }
 
   return (
-    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page" data-current-clinic={activeStation?.id || ''} data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt}>
+    <div className="min-h-screen bg-transparent px-3 py-4 overflow-x-hidden overflow-y-auto" data-test="patient-page" data-current-clinic={activeStation?.id || ''} data-route-version={routeVersion} data-last-sync-at={lastSyncAt || ''} data-realtime-status={realtimeStatus} data-realtime-events={realtimeEventCount} data-realtime-last-event-at={realtimeLastEventAt} data-route-version-updated-at={routeVersionUpdatedAt}>
       {currentNotice && (
         <div className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl border p-4 shadow-2xl backdrop-blur" style={sheetStyle}>
           <div className="flex items-start gap-3">

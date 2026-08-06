@@ -47,9 +47,16 @@ async function numericAttribute(page, selector, attribute) {
 async function waitForVersion(page, previousVersion, startedAt, label) {
   await expect.poll(
     () => numericAttribute(page, '[data-test="patient-page"], [data-test="completion-screen"]', 'data-route-version'),
-    { timeout: MAX_SYNC_MS, intervals: [100, 150, 250, 350] },
+    { timeout: MAX_SYNC_MS, intervals: [50, 100, 150, 250] },
   ).toBeGreaterThan(previousVersion);
-  const elapsed = Date.now() - startedAt;
+
+  const appliedAt = await numericAttribute(
+    page,
+    '[data-test="patient-page"], [data-test="completion-screen"]',
+    'data-route-version-updated-at',
+  );
+  expect(appliedAt, `${label} route version timestamp missing`).toBeGreaterThanOrEqual(startedAt);
+  const elapsed = appliedAt - startedAt;
   expect(elapsed, `${label} exceeded ${MAX_SYNC_MS}ms`).toBeLessThanOrEqual(MAX_SYNC_MS);
   return elapsed;
 }
