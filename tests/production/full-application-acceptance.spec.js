@@ -150,7 +150,8 @@ async function loginDoctor(page, doctor) {
   const form = await fillVisibleCredentials(page, doctor.username, doctor.password);
   await form.getByRole('button', { name: /دخول الطبيب|Doctor Login/i }).click();
   await page.waitForURL(/\/doctor(?:\/|$)/, { timeout: 30_000 });
-  await expect(page.getByText(doctor.username, { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(/لوحة الطبيب|Doctor dashboard/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: doctor.name, exact: true })).toBeVisible();
 }
 
 async function loginPatient(page, patientId, examType) {

@@ -85,6 +85,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   const [realtimeLastEventAt, setRealtimeLastEventAt] = useState(0);
   const [routeVersionUpdatedAt, setRouteVersionUpdatedAt] = useState(0);
   const routeVersionRef = useRef(0);
+  const lastRealtimeEventVersionRef = useRef(0);
   const channelRef = useRef(null);
   const pollTimerRef = useRef(null);
   const noticeTimerRef = useRef(null);
@@ -272,9 +273,14 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       .on('broadcast', { event: 'queue_changed' }, (message) => {
         const receivedAt = Date.now();
         const payload = message?.payload || message || {};
+        const incomingVersion = Number(payload.version || 0);
+        if (Number.isFinite(incomingVersion) && incomingVersion > 0) {
+          if (incomingVersion <= lastRealtimeEventVersionRef.current) return;
+          lastRealtimeEventVersionRef.current = incomingVersion;
+        }
         setRealtimeLastEventAt(receivedAt);
         setRealtimeEventCount((count) => count + 1);
-        applyRouteVersion(payload.version, receivedAt);
+        applyRouteVersion(incomingVersion, receivedAt);
 
         const nextStep = Number(payload.current_step);
         const nextStatus = String(payload.status || '').trim().toLowerCase();
