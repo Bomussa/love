@@ -88,7 +88,7 @@ async function inventory(page, testInfo, name, { screenshot = true } = {}) {
     }));
   });
 
-  const headings = await page.locator('h1, h2, h3, h4').evaluateAll((elements) => elements
+  const headings = await page.locator('h1, h2, h3, h4, [role="heading"]').evaluateAll((elements) => elements
     .filter((element) => element.getClientRects().length)
     .map((element) => (element.innerText || element.textContent || '').trim().replace(/\s+/g, ' '))
     .filter(Boolean));
