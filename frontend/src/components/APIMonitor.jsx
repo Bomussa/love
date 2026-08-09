@@ -105,9 +105,10 @@ const APIMonitor = ({ language = 'ar', t }) => {
   const checkTable = useCallback(async (tableName) => {
     try {
       const startTime = Date.now();
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from(tableName)
-        .select('*', { count: 'exact', head: true });
+        .select('*')
+        .limit(1);
       
       const responseTime = Date.now() - startTime;
       
@@ -127,7 +128,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
         status: 'active',
         responseTime,
         lastCheck: new Date().toISOString(),
-        rowCount: count || 0
+        rowCount: Array.isArray(data) ? data.length : 0
       };
     } catch (err) {
       return {
@@ -208,7 +209,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
       if (type === 'table') {
         // محاولة 1: إعادة الاتصال البسيط
         healingEntry.attempts++;
-        const { error: firstError } = await supabase.from(item.name).select('*', { count: 'exact', head: true });
+        const { error: firstError } = await supabase.from(item.name).select('*').limit(1);
         
         if (!firstError) {
           healingEntry.action = 'reconnected';
@@ -244,7 +245,7 @@ const APIMonitor = ({ language = 'ar', t }) => {
         // محاولة 3: إعادة المحاولة بعد تأخير
         healingEntry.attempts++;
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const { error: retryError } = await supabase.from(item.name).select('*', { count: 'exact', head: true });
+        const { error: retryError } = await supabase.from(item.name).select('*').limit(1);
         
         if (!retryError) {
           healingEntry.action = 'reconnected_after_retry';
