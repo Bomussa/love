@@ -357,43 +357,55 @@ test.describe.serial('production application acceptance', () => {
     const row = page.locator('tr').filter({ hasText: targetDoctor.username }).first();
     await expect(row).toBeVisible();
 
-    const freeze = row.locator('button[title="تجميد"], button[title="Freeze"]');
+    const freeze = row.getByRole('button', { name: /نشط|Active/i });
     await expect(freeze).toBeVisible();
     await freeze.click();
-    await expect(row.getByText(/مجمد|Frozen/i)).toBeVisible();
+    const frozenStatus = row.getByRole('button', { name: /مجمد|Frozen/i });
+    await expect(frozenStatus).toBeVisible();
 
-    const activate = row.locator('button[title="تفعيل"], button[title="Activate"]');
-    await expect(activate).toBeVisible();
-    await activate.click();
-    await expect(row.getByText(/نشط|Active/i)).toBeVisible();
+    await frozenStatus.click();
+    await expect(row.getByRole('button', { name: /نشط|Active/i })).toBeVisible();
 
-    await row.locator('button[title="تعديل"], button[title="Edit"]').click();
-    await expect(page.getByRole('heading', { name: /تعديل بيانات الطبيب|Edit Doctor/i })).toBeVisible();
-    const specialty = page.getByPlaceholder(/مثال: باطنية|e\.g\., Internal Medicine/i);
+    await row.getByRole('button', { name: /تعديل|Edit/i }).click();
+    const editHeading = page.getByRole('heading', { name: /تعديل بيانات الطبيب|Edit Doctor/i });
+    await expect(editHeading).toBeVisible();
+    const editModal = page.locator('div.fixed.inset-0').filter({ has: editHeading }).last();
+    const specialty = editModal.locator('label').filter({ hasText: /التخصص|Specialty/i }).locator('..').locator('input').first();
     const originalSpecialty = await specialty.inputValue();
     await specialty.fill(`CI_BROWSER_${acceptance.runId}`);
-    await page.getByRole('button', { name: /حفظ التغييرات|Save Changes/i }).click();
-    await expect(page.getByText(/تم تحديث بيانات الطبيب|Doctor updated successfully/i)).toBeVisible();
+    await editModal.getByRole('button', { name: /^(حفظ|Save)$/i }).click();
+    await expect(page.getByText(/تم حفظ التعديلات|Changes saved/i).first()).toBeVisible();
 
     await search.fill(targetDoctor.username);
     const updatedRow = page.locator('tr').filter({ hasText: targetDoctor.username }).first();
-    await updatedRow.locator('button[title="تعديل"], button[title="Edit"]').click();
-    await expect(specialty).toHaveValue(`CI_BROWSER_${acceptance.runId}`);
-    await specialty.fill(originalSpecialty);
-    await page.getByRole('button', { name: /حفظ التغييرات|Save Changes/i }).click();
-    await expect(page.getByText(/تم تحديث بيانات الطبيب|Doctor updated successfully/i)).toBeVisible();
+    await updatedRow.getByRole('button', { name: /تعديل|Edit/i }).click();
+    const restoredHeading = page.getByRole('heading', { name: /تعديل بيانات الطبيب|Edit Doctor/i });
+    await expect(restoredHeading).toBeVisible();
+    const restoredModal = page.locator('div.fixed.inset-0').filter({ has: restoredHeading }).last();
+    const restoredSpecialty = restoredModal.locator('label').filter({ hasText: /التخصص|Specialty/i }).locator('..').locator('input').first();
+    await expect(restoredSpecialty).toHaveValue(`CI_BROWSER_${acceptance.runId}`);
+    await restoredSpecialty.fill(originalSpecialty);
+    await restoredModal.getByRole('button', { name: /^(حفظ|Save)$/i }).click();
+    await expect(page.getByText(/تم حفظ التعديلات|Changes saved/i).first()).toBeVisible();
 
     await search.fill(targetDoctor.username);
-    const deleteButton = page.locator('tr').filter({ hasText: targetDoctor.username }).first().locator('button[title="حذف"], button[title="Delete"]');
+    const currentRow = page.locator('tr').filter({ hasText: targetDoctor.username }).first();
+    const passwordButton = currentRow.getByRole('button', { name: /كلمة المرور|Password/i });
+    await passwordButton.click();
+    await expect(page.getByRole('heading', { name: /تغيير كلمة المرور|Change Password/i })).toBeVisible();
+    await page.getByRole('button', { name: /إلغاء|Cancel/i }).click();
+
+    const deleteButton = currentRow.getByRole('button', { name: /حذف|Delete/i });
     await deleteButton.click();
-    await expect(page.locator('tr').filter({ hasText: targetDoctor.username }).first()).toBeVisible();
+    await expect(currentRow).toBeVisible();
 
     await page.getByRole('button', { name: /إضافة طبيب|Add Doctor/i }).click();
-    await expect(page.getByRole('heading', { name: /إضافة طبيب جديد|Add New Doctor/i })).toBeVisible();
-    await page.getByRole('button', { name: /إضافة الطبيب|Add Doctor/i }).last().click();
-    await expect(page.getByText(/الاسم مطلوب|Name is required/i)).toBeVisible();
-    await page.getByRole('button', { name: /توليد|Generate/i }).click();
-    await page.getByRole('button', { name: /إلغاء|Cancel/i }).click();
+    const addHeading = page.getByRole('heading', { name: /إضافة طبيب جديد|Add New Doctor/i });
+    await expect(addHeading).toBeVisible();
+    const addModal = page.locator('div.fixed.inset-0').filter({ has: addHeading }).last();
+    await addModal.getByRole('button', { name: /^(إضافة|Add)$/i }).click();
+    await expect(page.getByText(/يرجى ملء الاسم واسم المستخدم وكلمة المرور|Name, username and password required/i).first()).toBeVisible();
+    await addModal.getByRole('button', { name: /إلغاء|Cancel/i }).click();
 
     await assertEvidence(testInfo, 'admin', evidence);
     await context.close();
