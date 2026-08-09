@@ -822,11 +822,20 @@ const ReportsSection = ({ language, t }) => {
         };
       }) || [];
 
-      // جلب مسارات المرضى لحساب نسبة الإنجاز بالأوزان
-      const { data: patientRoutes } = await supabase
-        .from('patient_routes')
-        .select('patient_id, stations, current_station_index, status')
-        .gte('created_at', weekAgo.toISOString());
+      // جلب المسار القانوني من queues مع أوزان العيادات الحالية
+      const [{ data: patientRoutes }, { data: clinicWeights }] = await Promise.all([
+        supabase
+          .from('queues')
+          .select('patient_id,path,current_step,status')
+          .gte('created_at', weekAgo.toISOString()),
+        supabase
+          .from('clinics')
+          .select('id,weight'),
+      ]);
+      const weightByClinic = new Map((clinicWeights || []).map((clinic) => [
+        String(clinic.id),
+        Number(clinic.weight || 1),
+      ]));
 
       const completed = weekData?.filter(q => ['completed','done'].includes(q.status)) || [];
       const avgWait = completed.length > 0
@@ -842,10 +851,12 @@ const ReportsSection = ({ language, t }) => {
       let avgWeightedCompletion = 0;
       if (patientRoutes && patientRoutes.length > 0) {
         const totalCompletion = patientRoutes.reduce((sum, route) => {
-          const stations = typeof route.stations === 'string' 
-            ? JSON.parse(route.stations) 
-            : route.stations;
-          const currentIndex = route.current_station_index || 0;
+          const path = Array.isArray(route.path) ? route.path : [];
+          const stations = path.map((clinicId) => ({
+            id: String(clinicId),
+            weight: weightByClinic.get(String(clinicId)) || 1,
+          }));
+          const currentIndex = Number(route.current_step || 0);
           return sum + calculateWeightedCompletion(stations, currentIndex);
         }, 0);
         avgWeightedCompletion = Math.round(totalCompletion / patientRoutes.length);
@@ -2179,7 +2190,7 @@ const _OldDoctorManagement_ViewOnly = ({ language, t }) => {
         .from('unified_queue')
         .update({
           status: 'serving',
-          entered_clinic_at: new Date().toISOString()
+          exam_start_time: new Date().toISOString()
         })
         .eq('id', patient.id);
 
@@ -3409,21 +3420,15 @@ const SettingsSection = ({ language, t }) => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // استخدام RPC get_all_settings للحصول على كل الإعدادات دفعة واحدة
-      const { data, error } = await supabase.rpc('get_all_settings');
-      if (!error && data?.success && data?.settings) {
-        setSettings(data.settings);
-        setLocalValues(data.settings);
-      } else {
-        // fallback: قراءة مباشرة
-        const { data: rows } = await supabase.from('system_settings').select('*');
-        const obj = {};
-        (rows || []).forEach(s => {
-          try { obj[s.id] = JSON.parse(s.value); } catch { obj[s.id] = s.value; }
-        });
-        setSettings(obj);
-        setLocalValues(obj);
-      }
+      // system_settings هو المصدر الحالي؛ تجنب RPC legacy غير الممنوحة للمتصفح
+      const { data: rows, error } = await supabase.from('system_settings').select('*');
+      if (error) throw error;
+      const obj = {};
+      (rows || []).forEach((setting) => {
+        try { obj[setting.id] = JSON.parse(setting.value); } catch { obj[setting.id] = setting.value; }
+      });
+      setSettings(obj);
+      setLocalValues(obj);
     } catch (e) {
       console.error('loadSettings error:', e);
     } finally {

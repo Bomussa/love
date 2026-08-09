@@ -48,13 +48,13 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const normalizeDoc = (doc = {}) => ({
-  id: String(doc.id ?? doc.path ?? doc.name ?? crypto.randomUUID()),
+  id: String(doc.id ?? doc.name ?? crypto.randomUUID()),
   name: doc.name_ar || doc.name || 'Untitled',
-  fullName: doc.name || doc.name_ar || 'Untitled',
+  fullName: doc.full_name || doc.name_en || doc.name || doc.name_ar || 'Untitled',
   category: doc.category || 'docs',
-  path: doc.path || '',
+  path: '',
   content: doc.content || '',
-  description: doc.description || doc.description_ar || '',
+  description: doc.description || '',
   updated_at: doc.updated_at || null,
 });
 
@@ -83,7 +83,7 @@ const FilesCenter = ({ language = 'ar' }) => {
     try {
       const { data, error: dbError } = await supabase
         .from('system_docs')
-        .select('id,name,name_ar,category,path,content,description,description_ar,updated_at')
+        .select('id,name,name_ar,name_en,full_name,category,content,description,updated_at')
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
