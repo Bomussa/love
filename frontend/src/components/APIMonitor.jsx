@@ -101,184 +101,100 @@ const APIMonitor = ({ language = 'ar', t }) => {
 
   const monitoringInterval = useRef(null);
 
-  // فحص جدول واحد
+  // فحص جدول واحد عبر metadata RPC موقّعة للإدارة فقط
   const checkTable = useCallback(async (tableName) => {
+    const startTime = Date.now();
     try {
-      const startTime = Date.now();
-      const { data, error } = await supabase
-        .from(tableName)
-        .select('*')
-        .limit(1);
-      
-      const responseTime = Date.now() - startTime;
-      
-      if (error) {
-        return {
-          name: tableName,
-          status: 'error',
-          error: error.message,
-          responseTime,
-          lastCheck: new Date().toISOString(),
-          rowCount: 0
-        };
-      }
-      
+      const { data, error } = await supabase.rpc('mmc_admin_schema_health', {
+        p_tables: [tableName],
+        p_functions: [],
+      });
+      if (error) throw error;
+      const row = data?.tables?.[0];
       return {
         name: tableName,
-        status: 'active',
-        responseTime,
+        status: row?.exists ? 'active' : 'error',
+        error: row?.exists ? undefined : 'TABLE_NOT_FOUND',
+        responseTime: Date.now() - startTime,
         lastCheck: new Date().toISOString(),
-        rowCount: Array.isArray(data) ? data.length : 0
+        rowCount: Number(row?.estimated_rows || 0),
       };
     } catch (err) {
       return {
         name: tableName,
         status: 'error',
-        error: err.message,
-        responseTime: 0,
+        error: err?.message || String(err),
+        responseTime: Date.now() - startTime,
         lastCheck: new Date().toISOString(),
-        rowCount: 0
+        rowCount: 0,
       };
     }
   }, []);
 
-  // فحص دالة واحدة
+  // فحص دالة واحدة عبر catalog metadata فقط؛ لا يتم تنفيذ الدالة التشغيلية
   const checkFunction = useCallback(async (funcName) => {
+    const startTime = Date.now();
     try {
-      const startTime = Date.now();
-      
-      // محاولة استدعاء الدالة بدون معاملات للتحقق من وجودها
-      let error = null;
-      try {
-        const result = await supabase.rpc(funcName, {});
-        error = result.error;
-      } catch (_e) {
-        error = null; // function exists but threw
-      }
-      
-      const responseTime = Date.now() - startTime;
-      
-      // إذا كان الخطأ بسبب معاملات مفقودة، فالدالة موجودة
-      if (error && error.message && error.message.includes('argument')) {
-        return {
-          name: funcName,
-          status: 'active',
-          responseTime,
-          lastCheck: new Date().toISOString(),
-          note: 'requires parameters'
-        };
-      }
-      
+      const { data, error } = await supabase.rpc('mmc_admin_schema_health', {
+        p_tables: [],
+        p_functions: [funcName],
+      });
+      if (error) throw error;
+      const row = data?.functions?.[0];
       return {
         name: funcName,
-        status: error ? 'warning' : 'active',
-        responseTime,
+        status: row?.exists ? 'active' : 'error',
+        error: row?.exists ? undefined : 'FUNCTION_NOT_FOUND',
+        responseTime: Date.now() - startTime,
         lastCheck: new Date().toISOString(),
-        error: error?.message
       };
     } catch (err) {
       return {
         name: funcName,
-        status: 'active', // نفترض أنها موجودة إذا حدث خطأ في الاستدعاء
-        responseTime: 0,
+        status: 'error',
+        error: err?.message || String(err),
+        responseTime: Date.now() - startTime,
         lastCheck: new Date().toISOString(),
-        note: 'exists but requires specific parameters'
       };
     }
   }, []);
 
-  // ✅ نظام الإصلاح التلقائي المحسّن - يصلح سياسات RLS والاتصالات
+  // الإصلاح التلقائي هنا يتحقق من العقد فقط ولا يحاول تجاوز RLS أو لمس بيانات محمية
   const autoHeal = useCallback(async (item, type) => {
     if (!autoHealEnabled) return false;
-    
+
     const healingEntry = {
       id: Date.now(),
       type,
       item: item.name,
       timestamp: new Date().toISOString(),
-      action: 'attempting',
+      action: 'verifying_contract',
       success: false,
-      attempts: 0,
-      maxAttempts: 3
+      attempts: 1,
+      maxAttempts: 1,
     };
-    
+
     setHealingLog(prev => [healingEntry, ...prev.slice(0, 99)]);
     setStats(prev => ({ ...prev, healingAttempts: prev.healingAttempts + 1 }));
-    
+
     try {
-      if (type === 'table') {
-        // محاولة 1: إعادة الاتصال البسيط
-        healingEntry.attempts++;
-        const { error: firstError } = await supabase.from(item.name).select('*').limit(1);
-        
-        if (!firstError) {
-          healingEntry.action = 'reconnected';
-          healingEntry.success = true;
-          setStats(prev => ({ ...prev, successfulHeals: prev.successfulHeals + 1 }));
-          addAlert('success', `✅ تم إصلاح الاتصال بجدول ${item.name} تلقائياً`);
-          return true;
-        }
-        
-        // محاولة 2: التحقق من نوع الخطأ والإصلاح المناسب
-        if (firstError.code === '42501' || firstError.message?.includes('permission denied')) {
-          // خطأ صلاحيات RLS - نحاول القراءة بطريقة أخرى
-          healingEntry.attempts++;
-          healingEntry.action = 'rls_bypass_attempt';
-          
-          // محاولة القراءة بحد 1 فقط
-          const { error: limitedError } = await supabase.from(item.name).select('id').limit(1);
-          
-          if (!limitedError) {
-            healingEntry.action = 'limited_access_ok';
-            healingEntry.success = true;
-            setStats(prev => ({ ...prev, successfulHeals: prev.successfulHeals + 1 }));
-            addAlert('warning', `⚠️ جدول ${item.name} يعمل بصلاحيات محدودة`);
-            return true;
-          }
-          
-          // إضافة تنبيه بالمشكلة
-          addAlert('error', `❌ جدول ${item.name} يحتاج إصلاح سياسات RLS يدوياً`);
-          healingEntry.action = 'needs_manual_rls_fix';
-          return false;
-        }
-        
-        // محاولة 3: إعادة المحاولة بعد تأخير
-        healingEntry.attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { error: retryError } = await supabase.from(item.name).select('*').limit(1);
-        
-        if (!retryError) {
-          healingEntry.action = 'reconnected_after_retry';
-          healingEntry.success = true;
-          setStats(prev => ({ ...prev, successfulHeals: prev.successfulHeals + 1 }));
-          addAlert('success', `✅ تم إصلاح ${item.name} بعد إعادة المحاولة`);
-          return true;
-        }
-        
-      } else if (type === 'function') {
-        // محاولة إعادة فحص الدالة
-        const result = await checkFunction(item.name);
-        if (result.status === 'active') {
-          healingEntry.action = 'verified';
-          healingEntry.success = true;
-          setStats(prev => ({ ...prev, successfulHeals: prev.successfulHeals + 1 }));
-          addAlert('success', `✅ تم التحقق من دالة ${item.name} بنجاح`);
-          return true;
-        }
+      const result = type === 'table'
+        ? await checkTable(item.name)
+        : await checkFunction(item.name);
+      healingEntry.success = result.status === 'active';
+      healingEntry.action = healingEntry.success ? 'contract_verified' : 'contract_missing';
+      if (healingEntry.success) {
+        setStats(prev => ({ ...prev, successfulHeals: prev.successfulHeals + 1 }));
       }
-      
-      healingEntry.action = 'failed';
-      addAlert('error', `❌ فشل الإصلاح التلقائي لـ ${item.name}`);
-      return false;
+      return healingEntry.success;
     } catch (err) {
       healingEntry.action = 'error';
-      healingEntry.error = err.message;
-      addAlert('error', `❌ خطأ في إصلاح ${item.name}: ${err.message}`);
+      healingEntry.error = err?.message || String(err);
       return false;
     } finally {
       setHealingLog(prev => prev.map(h => h.id === healingEntry.id ? healingEntry : h));
     }
-  }, [autoHealEnabled, checkFunction]);
+  }, [autoHealEnabled, checkFunction, checkTable]);
 
   // إضافة تنبيه
   const addAlert = useCallback((type, message) => {
