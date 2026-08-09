@@ -262,7 +262,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
   useEffect(() => { void loadPathway(); }, [loadPathway]);
 
   useEffect(() => {
-    if (!patientId || !activeQueueId) return undefined;
+    if (!patientId || !activeQueueId || allCompleted) return undefined;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -284,6 +284,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
 
         const nextStep = Number(payload.current_step);
         const nextStatus = String(payload.status || '').trim().toLowerCase();
+        const terminalStatus = ['done', 'completed'].includes(nextStatus);
         if (Number.isFinite(nextStep)) {
           setStations((previous) => previous.map((station, index) => {
             if (['done', 'completed'].includes(nextStatus) || index < nextStep) {
@@ -294,7 +295,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
           }));
         }
 
-        void refreshJourney({ enterIfMissing: false });
+        if (!terminalStatus) void refreshJourney({ enterIfMissing: false });
       })
       .subscribe((status) => setRealtimeStatus(status));
 
@@ -306,10 +307,10 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
       }
       setRealtimeStatus('CLOSED');
     };
-  }, [activeQueueId, applyRouteVersion, patientId, refreshJourney]);
+  }, [activeQueueId, allCompleted, applyRouteVersion, patientId, refreshJourney]);
 
   useEffect(() => {
-    if (!patientId) return undefined;
+    if (!patientId || allCompleted) return undefined;
     let inFlight = false;
     pollTimerRef.current = window.setInterval(() => {
       if (inFlight || document.visibilityState === 'hidden') return;
@@ -320,7 +321,7 @@ export function PatientPageThemeAware({ patientData, onLogout, language, toggleL
     return () => {
       if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
     };
-  }, [patientId, refreshJourney]);
+  }, [allCompleted, patientId, refreshJourney]);
 
   useEffect(() => {
     if (!patientId) return undefined;
