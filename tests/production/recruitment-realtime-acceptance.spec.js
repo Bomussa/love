@@ -127,6 +127,9 @@ async function runDoctorTransition({ doctorPage, patientPages, doctor, clinicId,
   await expect(doctorPage.getByText(clinicId, { exact: true })).toBeVisible();
 
   const runAndObserve = async (buttonName, label) => {
+    const actionButton = doctorPage.getByRole('button', { name: buttonName });
+    await expect(actionButton).toBeEnabled();
+
     const previousVersions = await Promise.all(patientPages.map((page) => numericAttribute(
       page,
       '[data-test="patient-page"], [data-test="completion-screen"]',
@@ -137,8 +140,7 @@ async function runDoctorTransition({ doctorPage, patientPages, doctor, clinicId,
       '[data-test="patient-page"], [data-test="completion-screen"]',
       'data-realtime-events',
     )));
-    const actionButton = doctorPage.getByRole('button', { name: buttonName });
-    await expect(actionButton).toBeEnabled();
+
     const startedAt = Date.now();
     await actionButton.click();
     await Promise.all(patientPages.map((page, index) => waitForRealtimeEvent(page, previousEvents[index], startedAt, label)));
