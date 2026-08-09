@@ -1,5 +1,5 @@
 import { LoginPage } from './components/LoginPage.jsx';
-import { checkDeviceLogin, registerDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
+import { checkDeviceLogin, logDailyActivity, getSystemSetting } from './lib/supabase-client';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
@@ -237,17 +237,6 @@ function App() {
         console.warn('[App] getSystemSetting failed:', settingError);
       }
 
-      if (deviceRestrictionEnabled) {
-        try {
-          const check = await checkDeviceLogin(patientId);
-          if (!check.allowed) {
-            showNotification(`هذا الجهاز مسجل برقم آخر اليوم: ${check.existingPatientId}`, 'error');
-            return;
-          }
-        } catch (deviceError) {
-          console.warn('[App] checkDeviceLogin failed, continuing login:', deviceError);
-        }
-      }
 
       const response = await api.patientLogin(patientId, gender);
       if (!response.success) {
@@ -268,17 +257,34 @@ function App() {
       localStorage.removeItem('mmc_admin_session');
       localStorage.removeItem('mmc_doctor_session');
       localStorage.removeItem('mmc_clinic_session');
+      // Persist the signed session before invoking patient-scoped Supabase RPCs.
       localStorage.setItem('patientData', JSON.stringify(finalPatientData));
+
+      if (deviceRestrictionEnabled) {
+        try {
+          const check = await checkDeviceLogin(patientId);
+          if (!check.allowed) {
+            localStorage.removeItem('patientData');
+            showNotification(
+              language === 'ar' ? 'هذا الجهاز مسجل برقم آخر اليوم' : 'This device is already registered to another patient today',
+              'error',
+            );
+            return;
+          }
+        } catch (deviceError) {
+          localStorage.removeItem('patientData');
+          console.error('[App] signed device guard failed:', deviceError);
+          showNotification(
+            language === 'ar' ? 'تعذر التحقق الآمن من الجهاز' : 'Secure device verification failed',
+            'error',
+          );
+          return;
+        }
+      }
+
       setIsAdmin(false);
       setDoctorSession(null);
       setPatientData(finalPatientData);
-
-      // Persist the signed patient session before writes protected by patient-scoped RLS.
-      try {
-        await registerDeviceLogin(patientId);
-      } catch (registrationError) {
-        console.warn('[App] registerDeviceLogin failed:', registrationError);
-      }
 
       try {
         await logDailyActivity('patient_login', {

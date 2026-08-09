@@ -266,67 +266,37 @@ export function generateDeviceFingerprint() {
  * التحقق من تسجيل الجهاز لهذا اليوم
  * @returns {Promise<{allowed: boolean, existingPatientId?: string}>}
  */
-export async function checkDeviceLogin(patientId: string) {
-  try {
-    const deviceFingerprint = generateDeviceFingerprint();
-    const today = new Date().toISOString().split('T')[0];
+export async function checkDeviceLogin(_patientId?: string) {
+  const deviceFingerprint = generateDeviceFingerprint();
+  const { data, error } = await supabase.rpc('mmc_device_login_guard', {
+    p_device_fingerprint: deviceFingerprint,
+    p_user_agent: navigator.userAgent,
+  });
 
-    // التحقق من وجود تسجيل سابق لهذا الجهاز اليوم
-    const { data: existingLogin, error } = await supabase
-      .from('device_logins')
-      .select('patient_id')
-      .eq('device_fingerprint', deviceFingerprint)
-      .eq('login_date', today)
-      .maybeSingle();
-
-    if (error) {
-      console.error('خطأ في التحقق من الجهاز:', error);
-      // في حالة الخطأ، نسمح بالدخول مع تحذير
-      return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
-    }
-
-    if (existingLogin && existingLogin.patient_id !== patientId) {
-      return {
-        allowed: false,
-        existingPatientId: existingLogin.patient_id,
-        message: 'هذا الجهاز مسجل برقم آخر اليوم',
-      };
-    }
-
-    return { allowed: true };
-  } catch (error) {
-    console.error('خطأ في checkDeviceLogin:', error);
-    return { allowed: true, warning: 'تعذر التحقق من الجهاز' };
+  if (error) {
+    console.error('خطأ في التحقق الآمن من الجهاز:', error);
+    throw error;
   }
+
+  const result = (Array.isArray(data) ? data[0] : data) as {
+    allowed?: boolean;
+    registered?: boolean;
+    reason?: string;
+  } | null;
+  return {
+    allowed: result?.allowed === true,
+    registered: result?.registered === true,
+    reason: typeof result?.reason === 'string' ? result.reason : undefined,
+    message: result?.allowed === true ? undefined : 'هذا الجهاز مسجل برقم آخر اليوم',
+  };
 }
 
 /**
  * تسجيل دخول الجهاز
  */
 export async function registerDeviceLogin(patientId: string): Promise<boolean> {
-  try {
-    const deviceFingerprint = generateDeviceFingerprint();
-
-    const { error } = await supabase
-      .from('device_logins')
-      .upsert({
-        device_fingerprint: deviceFingerprint,
-        patient_id: patientId,
-        login_date: new Date().toISOString().split('T')[0],
-        user_agent: navigator.userAgent,
-      }, {
-        onConflict: 'device_fingerprint,login_date',
-      });
-
-    if (error) {
-      console.error('خطأ في تسجيل الجهاز:', error);
-    }
-
-    return !error;
-  } catch (error) {
-    console.error('خطأ في registerDeviceLogin:', error);
-    return false;
-  }
+  const result = await checkDeviceLogin(patientId);
+  return result.allowed === true;
 }
 
 /**
