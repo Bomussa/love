@@ -104,7 +104,24 @@ function App() {
   const [doctorSession, setDoctorSession] = useState(() => readValidSession('mmc_doctor_session'));
   const [patientData, setPatientData] = useState(() => readValidSession('patientData'));
   const [isAdmin, setIsAdmin] = useState(() => Boolean(authService.getSession()));
-  const [currentView, setCurrentView] = useState('login');
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window === 'undefined') return 'login';
+    const path = window.location.pathname;
+
+    if (/\/clinic\/[^/]+\/display$/.test(path)) return 'display';
+    if (path.includes('/qr')) return 'qrscan';
+    if (path === '/admin' || path.startsWith('/admin/')) return isAdmin ? 'admin' : 'login';
+    if (
+      path === '/doctor'
+      || path.startsWith('/doctor/')
+      || path === '/clinic/login'
+      || path === '/clinic/login/'
+      || path.startsWith('/clinic/')
+    ) return doctorSession ? 'doctor' : 'login';
+    if (isAdmin) return 'admin';
+    if (patientData) return patientData.queueType || patientData.examType ? 'patient' : 'examSelection';
+    return 'login';
+  });
   const [currentTheme, setCurrentTheme] = useState(() => {
     try {
       return localStorage.getItem('selectedTheme') || 'medical-professional';
