@@ -73,7 +73,7 @@ const DoctorControl = ({ language = 'ar', t = (ar) => ar, doctorId, clinicId }) 
           'id','display_number','patient_id',
           'military_id','personal_id','gender','exam_type',
           'status','entered_at','called_at','exam_start_time',
-          'exam_end_time','completed_at','entered_clinic_at',
+          'exam_end_time','completed_at',
           'is_vip','is_priority','is_military_committee','notes','queue_date'
         ].join(','))
         .eq('clinic_id', selectedClinic)
